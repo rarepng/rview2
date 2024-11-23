@@ -65,7 +65,8 @@ bool ui::init(vkobjs& renderData) {
 
     VkCommandBuffer imguiCommandBuffer;
 
-    if (!commandbuffer::init(renderData, renderData.rdcommandpool0, imguiCommandBuffer)) {
+
+    if (!commandbuffer::init(renderData, renderData.rdcommandpool[1], imguiCommandBuffer)) {
         return false;
     }
 
@@ -87,6 +88,7 @@ bool ui::init(vkobjs& renderData) {
         return false;
     }
 
+
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.pWaitDstStageMask = nullptr;
@@ -97,30 +99,35 @@ bool ui::init(vkobjs& renderData) {
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &imguiCommandBuffer;
 
-    //VkFence imguiBufferFence;
+    VkFence imguiBufferFence;
 
-    //VkFenceCreateInfo fenceInfo{};
-    //fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    //fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    //if (vkCreateFence(renderData.rdvkbdevice.device, &fenceInfo, nullptr, &imguiBufferFence) != VK_SUCCESS) {
+    if (vkCreateFence(renderData.rdvkbdevice.device, &fenceInfo, nullptr, &imguiBufferFence) != VK_SUCCESS) {
+        return false;
+    }
+
+    if (vkResetFences(renderData.rdvkbdevice.device, 1, &imguiBufferFence) != VK_SUCCESS) {
+        return false;
+    }
+
+    //if (vkWaitForFences(renderData.rdvkbdevice.device, 1, &renderData.rdrenderfence, VK_TRUE, INT64_MAX) != VK_SUCCESS) {
     //    return false;
     //}
+    renderData.mtx->lock();
+    if (vkQueueSubmit(renderData.rdgraphicsqueue, 1, &submitInfo, imguiBufferFence) != VK_SUCCESS) {
+        return false;
+    }
+    renderData.mtx->unlock();
 
-    if (vkResetFences(renderData.rdvkbdevice.device, 1, &renderData.rdrenderfence) != VK_SUCCESS) {
+    if (vkWaitForFences(renderData.rdvkbdevice.device, 1, &imguiBufferFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
         return false;
     }
 
-    if (vkQueueSubmit(renderData.rdgraphicsqueue, 1, &submitInfo, renderData.rdrenderfence) != VK_SUCCESS) {
-        return false;
-    }
-
-    if (vkWaitForFences(renderData.rdvkbdevice.device, 1, &renderData.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-        return false;
-    }
-
-    //vkDestroyFence(renderData.rdvkbdevice.device, imguiBufferFence, nullptr);
-    commandbuffer::cleanup(renderData, renderData.rdcommandpool0, imguiCommandBuffer);
+    vkDestroyFence(renderData.rdvkbdevice.device, imguiBufferFence, nullptr);
+    commandbuffer::cleanup(renderData, renderData.rdcommandpool[1], imguiCommandBuffer);
 
     ImGui::StyleColorsDark();
     
@@ -709,6 +716,7 @@ bool ui::createmainmenuframe(vkobjs& mvkobjs) {
     ImGui::Begin("Menu", nullptr, imguiWindowFlags);
 
 
+
     ImGui::PushStyleColor(ImGuiCol_Button, { 0.0f,0.0f,0.0f,1.0f });
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.4f,0.4f,0.4f,1.0f });
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.9f,0.9f,0.9f,1.0f });
@@ -721,6 +729,10 @@ bool ui::createmainmenuframe(vkobjs& mvkobjs) {
     ImGui::PushStyleColor(ImGuiCol_PopupBg, { 0.0f,0.0f,0.0f,0.2f });
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, { 1.0f,1.0f,1.0f,0.4f });
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, { 1.0f,1.0f,1.0f,1.0f });
+
+    //ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, { 400,600 });
+
+    
 
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("settings")) {
@@ -755,7 +767,7 @@ bool ui::createmainmenuframe(vkobjs& mvkobjs) {
     if (ImGui::Button("EXIT", { 400,120 }))glfwSetWindowShouldClose(mvkobjs.rdwind, true);
     if (ImGui::IsItemHovered())ImGui::SetTooltip(":(");
     ImGui::PopStyleColor(7);
-    //ImGui::PopStyleVar(2);
+    ImGui::PopStyleVar(0);
     ImGui::EndGroup();
 
     ImGui::PopFont();
@@ -796,7 +808,10 @@ bool ui::createloadingscreen(vkobjs& mvkobjs) {
 
 void ui::render(vkobjs& renderData,VkCommandBuffer& cbuffer) {
     ImGui::Render();
+
+    //renderData.mtx.lock();
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cbuffer);
+    //renderData.mtx.unlock();
 }
 
 void ui::cleanup(vkobjs& renderData) {

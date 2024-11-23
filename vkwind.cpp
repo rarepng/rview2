@@ -15,7 +15,7 @@ bool vkwind::init(std::string title) {
 	}
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	mmonitor = glfwGetPrimaryMonitor();
-	const GLFWvidmode* mode = glfwGetVideoMode(mmonitor);
+	static const GLFWvidmode* mode = glfwGetVideoMode(mmonitor);
 	mh = mode->height;
 	mw = mode->width;
 	mwind = glfwCreateWindow(mw, mh, title.c_str(), mmonitor, nullptr);
@@ -29,11 +29,11 @@ bool vkwind::init(std::string title) {
 	glfwSetWindowUserPointer(mwind, mvkrenderer.get());
 
 
-
-	//glfwSetWindowSizeCallback(mwind, [](GLFWwindow* win, int width, int height) {
-	//	auto renderer = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
-	//	renderer->setsize(width, height);
-	//	});
+	//glfwSetWindowCloseCallback();
+	glfwSetWindowSizeCallback(mwind, [](GLFWwindow* win, int width, int height) {
+		auto renderer = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
+		renderer->setsize(width, height);
+	});
 
 	glfwSetWindowMonitor(mwind, mmonitor, 0, 0, mw, mh, mode->refreshRate);
 
@@ -43,10 +43,6 @@ bool vkwind::init(std::string title) {
 	});
 
 
-	glfwSetMouseButtonCallback(mwind, [](GLFWwindow* win, int key, int action, int mods) {
-		auto r = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
-		r->handleclick(key, action, mods);
-	});
 
 
 	glfwSetCursorPosCallback(mwind, [](GLFWwindow* win, double x, double y) {
@@ -67,6 +63,7 @@ bool vkwind::init(std::string title) {
 		glfwTerminate();
 		return false;
 	}
+	mvkrenderer->setsize(mode->width, mode->height);
 
 
 	return true;
@@ -78,18 +75,25 @@ void vkwind::framemainmenuupdate(){
 		if (!mvkrenderer->drawmainmenu()) {
 			auto f = std::async(std::launch::async, [&]{
 				return mvkrenderer->initscene();
-				});
-			auto s = f.wait_for(std::chrono::milliseconds(0));
-			while (s != std::future_status::ready) {
+			});
+			while (!f._Is_ready()) {
 				mvkrenderer->drawloading();
-				s = f.wait_for(std::chrono::milliseconds(0));
 				glfwPollEvents();
 			}
 			break;
 		}
 		glfwPollEvents();
 	}
-
+	mvkrenderer->drawblank();
+	glfwSetMouseButtonCallback(mwind, [](GLFWwindow* win, int key, int action, int mods) {
+		auto r = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
+		r->handleclick(key, action, mods);
+	});
+	auto f = std::async(std::launch::async, [&] {
+		mvkrenderer->cleanmainmenu();
+		mvkrenderer->cleanloading();
+		return true;
+	});
 }
 
 void vkwind::frameupdate() {

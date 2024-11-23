@@ -6,6 +6,10 @@
 #include <GLFW/glfw3.h>
 #include <vk/VkBootstrap.h>
 #include <vk/vk_mem_alloc.h>
+#include <memory>
+#include <thread>
+#include <future>
+#include <mutex>
 
 struct vkvert {
 	glm::vec3 pos;
@@ -90,6 +94,8 @@ struct vkpushconstants {
 
 struct vkobjs {
 
+	static inline std::unique_ptr<std::mutex> mtx{std::make_unique<std::mutex>()};
+
 	GLFWwindow* rdwind = nullptr;
 	GLFWmonitor* rdmonitor = nullptr;
 	const GLFWvidmode* rdmode;
@@ -98,7 +104,7 @@ struct vkobjs {
 	int rdheight = 0;
 	unsigned int rdtricount = 0;
 	unsigned int rdgltftricount = 0;
-	int rdfov = 90;
+	int rdfov = 60;
 	bool rdswitchshader{ false };
 	float rdframetime{ 0.0f };
 	float rdmatrixgeneratetime{ 0.0f };
@@ -159,9 +165,7 @@ struct vkobjs {
 
 
 
-	VkCommandPool rdcommandpool0 = VK_NULL_HANDLE;
-	VkCommandPool rdcommandpool = VK_NULL_HANDLE;
-	VkCommandBuffer rdcommandbuffer0 = VK_NULL_HANDLE;
+	std::vector<VkCommandPool> rdcommandpool = { VK_NULL_HANDLE,VK_NULL_HANDLE };
 	std::vector<VkCommandBuffer> rdcommandbuffer = { VK_NULL_HANDLE,VK_NULL_HANDLE };
 
 	VkSemaphore rdpresentsemaphore = VK_NULL_HANDLE;

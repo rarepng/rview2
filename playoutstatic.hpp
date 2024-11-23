@@ -40,6 +40,7 @@ public:
 
 	unsigned int getnuminstances();
 
+	std::shared_ptr<staticinstance> getinst(int x);
 
 private:
 

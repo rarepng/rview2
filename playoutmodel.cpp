@@ -19,7 +19,7 @@ bool playoutmodel::setup2(vkobjs& objs, std::string vfile,std::string ffile) {
 
 	if (!createplayout(objs))return false;
 	if (!createpline(objs, vfile, ffile))return false;
-	if (!createpline2(objs, "shader/gltf_gpu_dquat.vert.spv", "shader/gltf_gpu_dquat.frag.spv"))return false;
+	if (!createpline2(objs, "shaders/gltf_gpu_dquat.vert.spv", "shaders/gltf_gpu_dquat.frag.spv"))return false;
 	return true;
 }
 

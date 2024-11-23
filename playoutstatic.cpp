@@ -6,7 +6,7 @@
 bool playoutstatic::setup(vkobjs& objs, std::string fname, int count) {
 	if (!createubo(objs))return false;
 	if (!loadmodel(objs, fname))return false;
-	if (!createinstances(objs, count, true))return false;
+	if (!createinstances(objs, count, false))return false;
 	if (!createssbomat(objs))return false;
 
 
@@ -35,7 +35,8 @@ bool playoutstatic::createinstances(vkobjs& objs, int count, bool rand) {
 	for (int i = 0; i < count; ++i) {
 		int xPos = std::rand() % 999;
 		int zPos = std::rand() % 999;
-		minstances.emplace_back(std::make_shared<staticinstance>(mgltf, glm::vec2(static_cast<float>(xPos), static_cast<float>(zPos)), rand));
+		//minstances.emplace_back(std::make_shared<staticinstance>(mgltf, glm::vec2(static_cast<float>(xPos), static_cast<float>(zPos)), rand));
+		minstances.emplace_back(std::make_shared<staticinstance>(mgltf, glm::vec2(0.0f, 0.0f ), rand));
 		numTriangles += mgltf->gettricount(0,0);
 	}
 	totaltricount = numTriangles;
@@ -92,8 +93,14 @@ staticsettings playoutstatic::getinstsettings(int x){
 	return minstances.at(x)->getinstancesettings();
 }
 
+std::shared_ptr<staticinstance> playoutstatic::getinst(int x)
+{
+	return minstances.at(x);
+}
+
 
 void playoutstatic::updatemats(){
+	transmats.clear();
 	for (auto& i : minstances) {
 		staticsettings settings = i->getinstancesettings();
 		if (!settings.msdrawmodel)continue;

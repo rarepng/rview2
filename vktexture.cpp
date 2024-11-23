@@ -2,7 +2,6 @@
 #include <cstring>
 #include "commandbuffer.hpp"
 #include "vktexture.hpp"
-
 #include <vk/VkBootstrap.h>
 
 bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, std::string filename) {
@@ -122,7 +121,7 @@ bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, std::string f
 
 
 	VkCommandBuffer stagingcommandbuffer;
-	if (!commandbuffer::init(rdata,rdata.rdcommandpool, stagingcommandbuffer)) {
+	if (!commandbuffer::init(rdata,rdata.rdcommandpool[0], stagingcommandbuffer)) {
 		return false;
 	}
 
@@ -166,6 +165,7 @@ bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, std::string f
 	fenceinfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 
+	rdata.mtx->lock();
 	if (vkCreateFence(rdata.rdvkbdevice.device, &fenceinfo, nullptr, &stagingbufferfence) != VK_SUCCESS) {
 		return false;
 	}
@@ -179,11 +179,12 @@ bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, std::string f
 		return false;
 	}
 
+	rdata.mtx->unlock();
 
 
 
 	vkDestroyFence(rdata.rdvkbdevice.device, stagingbufferfence, nullptr);
-	commandbuffer::cleanup(rdata, rdata.rdcommandpool, stagingcommandbuffer);
+	commandbuffer::cleanup(rdata, rdata.rdcommandpool[0], stagingcommandbuffer);
 	vmaDestroyBuffer(rdata.rdallocator, stagingbuffer, stagingbufferalloc);
 
 	VkImageViewCreateInfo texviewinfo{};
@@ -292,7 +293,7 @@ bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, std::string f
 
 bool vktexture::loadtexture(vkobjs& rdata, std::vector<vktexdata>& texdata, std::shared_ptr<tinygltf::Model> mmodel){
 	
-
+	unsigned int totaldescsize{ 0 };
 	texdata.reserve(mmodel->images.size());
 	texdata.resize(mmodel->images.size());
 	for (int i{ 0 }; i < mmodel->images.size(); i++) {
@@ -313,7 +314,7 @@ bool vktexture::loadtexture(vkobjs& rdata, std::vector<vktexdata>& texdata, std:
 
 
 	VkDeviceSize imgsize = w * h * 4;
-
+	totaldescsize += w * h*4;
 	VkImageCreateInfo imginfo{};
 	imginfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imginfo.imageType = VK_IMAGE_TYPE_2D;
@@ -417,7 +418,7 @@ bool vktexture::loadtexture(vkobjs& rdata, std::vector<vktexdata>& texdata, std:
 
 
 	VkCommandBuffer stagingcommandbuffer;
-	if (!commandbuffer::init(rdata, rdata.rdcommandpool, stagingcommandbuffer)) {
+	if (!commandbuffer::init(rdata, rdata.rdcommandpool[0], stagingcommandbuffer)) {
 		return false;
 	}
 
@@ -467,9 +468,16 @@ bool vktexture::loadtexture(vkobjs& rdata, std::vector<vktexdata>& texdata, std:
 	if (vkResetFences(rdata.rdvkbdevice.device, 1, &stagingbufferfence) != VK_SUCCESS) {
 		return false;
 	}
+	//if (vkWaitForFences(rdata.rdvkbdevice.device, 1, &rdata.rdrenderfence, VK_TRUE, INT64_MAX) != VK_SUCCESS) {
+	//	return false;
+	//}
+
+	rdata.mtx->lock();
 	if (vkQueueSubmit(rdata.rdgraphicsqueue, 1, &submitinfo, stagingbufferfence) != VK_SUCCESS) {
 		return false;
 	}
+	rdata.mtx->unlock();
+
 	if (vkWaitForFences(rdata.rdvkbdevice.device, 1, &stagingbufferfence, VK_TRUE, INT64_MAX) != VK_SUCCESS) {
 		return false;
 	}
@@ -478,7 +486,7 @@ bool vktexture::loadtexture(vkobjs& rdata, std::vector<vktexdata>& texdata, std:
 
 
 	vkDestroyFence(rdata.rdvkbdevice.device, stagingbufferfence, nullptr);
-	commandbuffer::cleanup(rdata, rdata.rdcommandpool, stagingcommandbuffer);
+	commandbuffer::cleanup(rdata, rdata.rdcommandpool[0], stagingcommandbuffer);
 	vmaDestroyBuffer(rdata.rdallocator, stagingbuffer, stagingbufferalloc);
 
 	VkImageViewCreateInfo texviewinfo{};
@@ -569,7 +577,7 @@ bool vktexture::loadtexlayoutpool(vkobjs& rdata, std::vector<vktexdata>& texdata
 
 	VkDescriptorPoolSize poolsize{};
 	poolsize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolsize.descriptorCount = mmodel->images.size()*1024*1024;
+	poolsize.descriptorCount = mmodel->images.size()*1024*1024*4;
 
 	VkDescriptorPoolCreateInfo descriptorpool{};
 	descriptorpool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

@@ -6,13 +6,9 @@
 #include <glm/glm.hpp>
 #include <vk/VkBootstrap.h>
 
-bool gltfgpupipeline::init(vkobjs& objs, VkPipelineLayout& pipelineLayout,
-    VkPipeline& pipeline, VkPrimitiveTopology topology,
-    std::string vertexShaderFilename, std::string fragmentShaderFilename) {
-    VkShaderModule vertexModule = vkshader::loadshader(objs.rdvkbdevice.device,
-        vertexShaderFilename);
-    VkShaderModule fragmentModule = vkshader::loadshader(objs.rdvkbdevice.device,
-        fragmentShaderFilename);
+bool gltfgpupipeline::init(vkobjs& objs, VkPipelineLayout& pipelineLayout,VkPipeline& pipeline, VkPrimitiveTopology topology,std::string vertexShaderFilename, std::string fragmentShaderFilename) {
+    VkShaderModule vertexModule = vkshader::loadshader(objs.rdvkbdevice.device,vertexShaderFilename);
+    VkShaderModule fragmentModule = vkshader::loadshader(objs.rdvkbdevice.device,fragmentShaderFilename);
 
     if (vertexModule == VK_NULL_HANDLE || fragmentModule == VK_NULL_HANDLE) {
         return false;

@@ -31,6 +31,7 @@
 #include "vkgltfstatic.hpp"
 #include "staticinstance.hpp"
 
+#include "playoutback.hpp"
 #include "playoutplayer.hpp"
 #include "playoutmodel.hpp"
 #include "playoutstatic.hpp"
@@ -55,6 +56,9 @@ public:
 	bool draw();
 	bool drawmainmenu();
 	bool drawloading();
+	bool drawblank();
+	void cleanloading();
+	void cleanmainmenu();
 	void toggleshader();
 	void cleanup();
 	void handlekey(int key, int scancode, int action, int mods);
@@ -72,6 +76,7 @@ private:
 
 	vkcam mcam{};
 
+	std::shared_ptr<playoutback> mbackground;
 
 	std::shared_ptr<playoutplayer> mplayer;
 
@@ -95,14 +100,17 @@ private:
 	int mcamupdown{ 0 };
 
 	unsigned int playercount{ 1 };
+	unsigned int backgobjs{ 1 };
 	const std::vector<unsigned int> animcounts{ 2,4 };
 	const std::vector<unsigned int> staticcounts{ 2,60,1 };
-	std::string playerfname{ "player.glb" };
-	const std::vector<std::string> animfname{ "untitled.glb","untitled1.glb" };
-	const std::vector<std::string> staticfname{ "dontuse1.glb","dontuse2.glb","dontuse3.glb" };
-	const std::vector<std::string> playershaders{ "shader/gltf_gpu.vert.spv", "shader/gltf_gpu.frag.spv" };
-	const std::vector<std::string> animshaders{ "shader/gltf_gpu.vert.spv", "shader/gltf_gpu.frag.spv" };
-	const std::vector<std::string> staticshaders{ "shader/static.vert.spv", "shader/static.frag.spv" };
+	std::string playerfname{ "resources/player.glb" };
+	std::string backfname{ "resources/dontuse3.glb" };
+	const std::vector<std::string> animfname{ "resources/untitled.glb","resources/untitled1.glb" };
+	const std::vector<std::string> staticfname{ "resources/dontuse1.glb","resources/dontuse2.glb","resources/dontuse3.glb" };
+	const std::vector<std::string> playershaders{ "shaders/gltf_gpu.vert.spv", "shaders/gltf_gpu.frag.spv" };
+	const std::vector<std::string> backshaders{ "shaders/static.vert.spv", "shaders/static.frag.spv" };
+	const std::vector<std::string> animshaders{ "shaders/gltf_gpu.vert.spv", "shaders/gltf_gpu.frag.spv" };
+	const std::vector<std::string> staticshaders{ "shaders/static.vert.spv", "shaders/static.frag.spv" };
 
 
 	ui mui{};
@@ -124,6 +132,7 @@ private:
 
 	bool switchshader{ false };
 
+	bool loadbackground();
 	bool setupplayer();
 	bool setupplayer2();
 	bool setupmodels();
@@ -142,6 +151,7 @@ private:
 	bool initui();
 	bool initgameui();
 
+	bool initmenubackground();
 
 	bool initvma();
 
