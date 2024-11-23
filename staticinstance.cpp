@@ -10,7 +10,7 @@ staticinstance::staticinstance(std::shared_ptr<vkgltfstatic> model, glm::vec2 wo
 
 	if (!model)return;
 	mgltfmodel = model;
-	mmodelsettings.msworldpos = worldpos;
+	mmodelsettings.msworldpos = glm::vec3(worldpos.x,0.0f,worldpos.y);
 
 	if (randomize) {
 		float initrotation = std::rand() % 360 - 180;
@@ -24,8 +24,9 @@ staticinstance::staticinstance(std::shared_ptr<vkgltfstatic> model, glm::vec2 wo
 
 
 void staticinstance::checkforupdates() {
-	static glm::vec2 worldPos = mmodelsettings.msworldpos;
+	static glm::vec3 worldPos = mmodelsettings.msworldpos;
 	static glm::vec3 worldRot = mmodelsettings.msworldrot;
+	static glm::vec3 worldScale = mmodelsettings.msworldscale;
 
 	if (worldPos != mmodelsettings.msworldpos) {
 		worldPos = mmodelsettings.msworldpos;
@@ -34,6 +35,15 @@ void staticinstance::checkforupdates() {
 	if (worldRot != mmodelsettings.msworldrot) {
 		worldRot = mmodelsettings.msworldrot;
 	}
+	if (worldScale != mmodelsettings.msworldscale) {
+		worldScale = mmodelsettings.msworldscale;
+	}
+}
+
+glm::mat4 staticinstance::calcmat(){
+	glm::mat4 x{ 1.0 };
+	glm::mat4 t = glm::translate(x, mmodelsettings.msworldpos) * glm::scale(x, mmodelsettings.msworldscale) * glm::rotate(x, 10.0f, mmodelsettings.msworldrot);
+	return t;
 }
 
 

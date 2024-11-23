@@ -26,8 +26,10 @@ bool vkrenderer::init() {
 	if (!createcommandpool())return false;
 	if (!createcommandbuffer())return false;
 	if (!setupmodels())return false;
+	if (!setupstaticmodels())return false;
 	if (!createrenderpass())return false;
 	if (!setupmodels2())return false;
+	if (!setupstaticmodels2())return false;
 	//if (!creategltfmeshpipeline())return false;
 	if (!createframebuffer())return false;
 	if (!createsyncobjects())return false;
@@ -267,6 +269,19 @@ bool vkrenderer::createrenderpass() {
 	return true;
 }
 
+bool vkrenderer::setupstaticmodels()
+{
+	mstatic0 = std::make_shared<playoutstatic>();
+	if (!mstatic0->setup(mvkobjs, "dontuse1.glb"))return false;
+	return true;
+}
+
+bool vkrenderer::setupstaticmodels2()
+{
+	if (!mstatic0->setup2(mvkobjs, "shader/static.vert.spv", "shader/static.frag.spv"))return false;
+	return true;
+}
+
 
 //bool vkrenderer::creategltfpipelinelayout() {
 //	std::vector<vktexdata> texdata0 = mgltf->gettexdata();
@@ -396,6 +411,7 @@ void vkrenderer::cleanup() {
 
 	mpgltf->cleanupmodels(mvkobjs);
 	mpgltf2->cleanupmodels(mvkobjs);
+	mstatic0->cleanupmodels(mvkobjs);
 	mui.cleanup(mvkobjs);
 
 
@@ -407,11 +423,13 @@ void vkrenderer::cleanup() {
 
 	mpgltf->cleanuplines(mvkobjs);
 	mpgltf2->cleanuplines(mvkobjs);
+	mstatic0->cleanuplines(mvkobjs);
 
 	renderpass::cleanup(mvkobjs);
 
 	mpgltf->cleanupbuffers(mvkobjs);
 	mpgltf2->cleanupbuffers(mvkobjs);
+	mstatic0->cleanupbuffers(mvkobjs);
 
 	vkDestroyImageView(mvkobjs.rdvkbdevice.device, mvkobjs.rddepthimageview, nullptr);
 	vmaDestroyImage(mvkobjs.rdallocator, mvkobjs.rddepthimage, mvkobjs.rddepthimagealloc);
@@ -445,8 +463,7 @@ void vkrenderer::handleclick(int key, int action, int mods)
 	if (io.WantCaptureMouse)return;
 	
 
-	if(key==GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
-	ubo::upload(mvkobjs, mvkobjs.rdperspviewmatrixubo[0], (clickz++) % 3);
+	if (key == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)std::cout << "click!" << std::endl;
 
 	if (key == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
 		mlock = !mlock;
@@ -555,15 +572,10 @@ void vkrenderer::movecam() {
 bool vkrenderer::draw() {
 	double tick = glfwGetTime();
 	mvkobjs.rdtickdiff = tick - mlasttick;
-
-
 	mvkobjs.rdframetime = mframetimer.stop();
 	mframetimer.start();
 
-	movecam();
-
-
-
+	movecam();//////////////////////////////////////
 
 	if (vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
 		return false;
@@ -625,17 +637,12 @@ bool vkrenderer::draw() {
 	mpersviewmats.at(0) = mcam.getview(mvkobjs);
 	mpersviewmats.at(1) = glm::perspective(glm::radians(static_cast<float>(mvkobjs.rdfov)), static_cast<float>(mvkobjs.rdvkbswapchain.extent.width) / static_cast<float>(mvkobjs.rdvkbswapchain.extent.height), 0.01f, 6000.0f);
 
-	//if (mgltfinstances.at(mvkobjs.rdcurrentselectedinstance)->getinstancesettings().msplayanimation) {
-		mvkobjs.rdiktime = 0.0f;
-	//}
+	mvkobjs.rdiktime = 0.0f;
 
-		mpgltf->updateanims();
-		mpgltf2->updateanims();
+	mpgltf->updateanims();
+	mpgltf2->updateanims();
 
-	//int selectedInstance = mvkobjs.rdcurrentselectedinstance;
 	int selectedInstance = 0;
-	//glm::vec2 modelWorldPos = mgltfinstances.at(selectedInstance)->getwpos();
-	//glm::quat modelWorldRot = mgltfinstances.at(selectedInstance)->getwrot();
 
 	mvkobjs.rdmatrixgeneratetime = mmatgentimer.stop();
 
@@ -651,8 +658,12 @@ bool vkrenderer::draw() {
 	if (vkBeginCommandBuffer(mvkobjs.rdcommandbuffer, &cmdbgninfo) != VK_SUCCESS)return false;
 
 	muploadtovbotimer.start();
+
 	mpgltf->uploadvboebo(mvkobjs);
 	mpgltf2->uploadvboebo(mvkobjs);
+
+	mstatic0->uploadvboebo(mvkobjs);
+
 	mvkobjs.rduploadtovbotime = muploadtovbotimer.stop();
 
 
@@ -675,6 +686,7 @@ bool vkrenderer::draw() {
 	mpgltf->draw(mvkobjs);
 	mpgltf2->draw(mvkobjs);
 
+	mstatic0->draw(mvkobjs);
 
 	muigentimer.start();
 	modelsettings settings = mpgltf->getinstsettings();
@@ -696,6 +708,8 @@ bool vkrenderer::draw() {
 
 	mpgltf->uploadubossbo(mvkobjs, mpersviewmats);
 	mpgltf2->uploadubossbo(mvkobjs, mpersviewmats);
+
+	mstatic0->uploadubossbo(mvkobjs, mpersviewmats);
 
 	mvkobjs.rduploadtoubotime = muploadtoubotimer.stop();
 

@@ -22,7 +22,7 @@ bool vkgltfstatic::loadmodel(vkobjs& objs, std::string fname)
     std::string err;
     std::string warr;
     bool res = false;
-    res = loader.LoadBinaryFromFile(mmodel.get(), &err, &warr, fname);
+    if(!loader.LoadBinaryFromFile(mmodel.get(), &err, &warr, fname))return false;
     mgltfobjs.rdgltfmodeltex.reserve(mmodel->images.size());
     mgltfobjs.rdgltfmodeltex.resize(mmodel->images.size());
     if (!vktexture::loadtexture(objs, mgltfobjs.rdgltfmodeltex, mmodel))return false;
@@ -34,10 +34,6 @@ bool vkgltfstatic::loadmodel(vkobjs& objs, std::string fname)
 
     createvertexbuffers(objs);
     createindexbuffers(objs);
-
-
-    //mmodel.reset();
-    //mmodel.~shared_ptr();
 
     return true;
 }
@@ -186,7 +182,7 @@ void vkgltfstatic::draw(vkobjs& objs) {
 
 }
 
-void vkgltfstatic::drawinstanced(vkobjs& objs, int instancecount, int stride) {
+void vkgltfstatic::drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, int instancecount, int stride) {
     VkDeviceSize offset = 0;
     std::vector<vkpushconstants> pushes(mgltfobjs.rdgltfvertexbufferdata.size());
 
@@ -195,10 +191,10 @@ void vkgltfstatic::drawinstanced(vkobjs& objs, int instancecount, int stride) {
         pushes[i].pkmodelstride = stride;
         pushes[i].texidx = mmodel->textures[mmodel->materials[i].pbrMetallicRoughness.baseColorTexture.index].source;
 
-        vkCmdPushConstants(objs.rdcommandbuffer, objs.rdgltfpipelinelayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants), &pushes.at(i));
+        vkCmdPushConstants(objs.rdcommandbuffer, vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants), &pushes.at(i));
 
 
-        vkCmdBindDescriptorSets(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objs.rdgltfpipelinelayout, 0, 1, &mgltfobjs.rdgltfmodeltex[0].texdescriptorset, 0, nullptr);
+        vkCmdBindDescriptorSets(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1, &mgltfobjs.rdgltfmodeltex[0].texdescriptorset, 0, nullptr);
         for (int j{ 0 }; j < mgltfobjs.rdgltfvertexbufferdata.at(i).size(); j++) {
             vkCmdBindVertexBuffers(objs.rdcommandbuffer, j, 1, &mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).rdvertexbuffer, &offset);
         }

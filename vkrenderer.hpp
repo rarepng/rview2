@@ -36,6 +36,7 @@
 #include "staticinstance.hpp"
 
 #include "playoutmodel.hpp"
+#include "playoutstatic.hpp"
 
 #include "vkgltfmodel.hpp"
 #include "vkgltfinstance.hpp"
@@ -71,6 +72,8 @@ private:
 
 	std::shared_ptr<playoutmodel> mpgltf = nullptr;
 	std::shared_ptr<playoutmodel> mpgltf2 = nullptr;
+
+	std::shared_ptr<playoutstatic> mstatic0 = nullptr;
 
 	bool mmodeluploadrequired{ true };
 
@@ -127,8 +130,8 @@ private:
 	bool createmeshssbo();
 	bool createswapchain();
 	bool createrenderpass();
-	bool creategltfpipelinelayout();
-	bool creategltfpipelinelayout2();
+	bool setupstaticmodels();
+	bool setupstaticmodels2();
 	bool creategltfgpupipeline();
 	bool creategltfgpudqpipeline();
 	bool creategltfmeshpipeline();

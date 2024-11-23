@@ -6,7 +6,7 @@
 bool playoutmodel::setup(vkobjs& objs, std::string fname) {
 	if (!createubo(objs))return false;
 	if (!loadmodel(objs, fname))return false;
-	if (!createinstances(objs, 6, true))return false;
+	if (!createinstances(objs, 22, true))return false;
 	if (!createssbomat(objs))return false;
 	if (!createssbodq(objs))return false;
 
@@ -36,8 +36,8 @@ bool playoutmodel::loadmodel(vkobjs& objs, std::string fname){
 bool playoutmodel::createinstances(vkobjs& objs,int count, bool rand){
 	int numTriangles{};
 	for (int i = 0; i < count; ++i) {
-		int xPos = std::rand() % 99;
-		int zPos = std::rand() % 99;
+		int xPos = std::rand() % 999;
+		int zPos = std::rand() % 999;
 		minstances.emplace_back(std::make_shared<vkgltfinstance>(mgltf,	glm::vec2(static_cast<float>(xPos), static_cast<float>(zPos)), rand));
 		numTriangles += mgltf->gettricount(0);
 	}

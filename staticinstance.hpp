@@ -18,6 +18,7 @@ public:
 	void setinstancesettings(staticsettings settings);
 	staticsettings getinstancesettings();
 	void checkforupdates();
+	glm::mat4 calcmat();
 
 	glm::vec2 getwpos();
 	glm::quat getwrot();

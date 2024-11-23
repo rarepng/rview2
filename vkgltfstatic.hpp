@@ -13,7 +13,7 @@ class vkgltfstatic {
 public:
 	bool loadmodel(vkobjs& objs, std::string fname);
 	void draw(vkobjs& objs);
-	void drawinstanced(vkobjs& objs, int instancecount, int stride);
+	void drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, int instancecount, int stride);
 	void cleanup(vkobjs& objs);
 	void uploadvertexbuffers(vkobjs& objs);
 	void uploadindexbuffers(vkobjs& objs);

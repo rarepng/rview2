@@ -19,7 +19,6 @@
 bool vkgltfmodel::loadmodel(vkobjs& objs, std::string fname)
 {
 
-
     mmodel = std::make_shared<tinygltf::Model>();
 
     tinygltf::TinyGLTF loader;
