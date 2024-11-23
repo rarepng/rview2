@@ -41,7 +41,7 @@ bool ubo::init(vkobjs& mvkobjs,std::vector<vkuniformbufferdata>& ubodata){
 
 	VkDescriptorPoolSize poolsize{};
 	poolsize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolsize.descriptorCount = 1;
+	poolsize.descriptorCount = 1*(ubodata.size()*sizeof(glm::mat4)+sizeof(unsigned int));
 
 	VkDescriptorPoolCreateInfo dpoolinfo{};
 	dpoolinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

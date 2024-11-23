@@ -244,7 +244,7 @@ bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, std::string f
 
 	VkDescriptorPoolSize poolsize{};
 	poolsize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolsize.descriptorCount = 1;
+	poolsize.descriptorCount = 1000;
 
 	VkDescriptorPoolCreateInfo descriptorpool{};
 	descriptorpool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -569,7 +569,7 @@ bool vktexture::loadtexlayoutpool(vkobjs& rdata, std::vector<vktexdata>& texdata
 
 	VkDescriptorPoolSize poolsize{};
 	poolsize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolsize.descriptorCount = 1;
+	poolsize.descriptorCount = 1000;
 
 	VkDescriptorPoolCreateInfo descriptorpool{};
 	descriptorpool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

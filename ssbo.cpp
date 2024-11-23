@@ -37,7 +37,7 @@ bool ssbo::init(vkobjs& objs, vkshaderstoragebufferdata& SSBOData,
 
     VkDescriptorPoolSize poolSize{};
     poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    poolSize.descriptorCount = 1;
+    poolSize.descriptorCount = bufferSize;
 
     VkDescriptorPoolCreateInfo descriptorPool{};
     descriptorPool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

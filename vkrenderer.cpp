@@ -101,7 +101,8 @@ bool vkrenderer::deviceinit() {
 	physmeshfeatures.multiviewMeshShader = VK_FALSE;
 	physmeshfeatures.primitiveFragmentShadingRateMeshShader = VK_FALSE;
 
-	auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1,3).set_surface(msurface).set_required_features(physfeatures.features).add_required_extension_features(physmeshfeatures).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).add_required_extension("VK_EXT_mesh_shader").select();
+	auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).add_required_extension_features(physmeshfeatures).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).add_required_extension("VK_EXT_mesh_shader").select();
+	//auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).add_required_extension_features(physmeshfeatures).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).select();
 
 	std::cout <<"\n\n\n\n\n\n\n\n\n\n mesh shader value: " << secondphysicaldevselret.value().is_extension_present("VK_EXT_mesh_shader")<< "\n\n\n\n\n";
 	mvkobjs.rdvkbphysdev = secondphysicaldevselret.value();
