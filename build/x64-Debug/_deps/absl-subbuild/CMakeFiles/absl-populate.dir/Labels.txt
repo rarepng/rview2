@@ -1,0 +1,14 @@
+# Target labels
+ absl-populate
+# Source files and their labels
+D:/silver/qtcan/vulkan/build/x64-Debug/_deps/absl-subbuild/CMakeFiles/absl-populate
+D:/silver/qtcan/vulkan/build/x64-Debug/_deps/absl-subbuild/CMakeFiles/absl-populate.rule
+D:/silver/qtcan/vulkan/build/x64-Debug/_deps/absl-subbuild/CMakeFiles/absl-populate-complete.rule
+D:/silver/qtcan/vulkan/build/x64-Debug/_deps/absl-subbuild/absl-populate-prefix/src/absl-populate-stamp/absl-populate-build.rule
+D:/silver/qtcan/vulkan/build/x64-Debug/_deps/absl-subbuild/absl-populate-prefix/src/absl-populate-stamp/absl-populate-configure.rule
+D:/silver/qtcan/vulkan/build/x64-Debug/_deps/absl-subbuild/absl-populate-prefix/src/absl-populate-stamp/absl-populate-download.rule
+D:/silver/qtcan/vulkan/build/x64-Debug/_deps/absl-subbuild/absl-populate-prefix/src/absl-populate-stamp/absl-populate-install.rule
+D:/silver/qtcan/vulkan/build/x64-Debug/_deps/absl-subbuild/absl-populate-prefix/src/absl-populate-stamp/absl-populate-mkdir.rule
+D:/silver/qtcan/vulkan/build/x64-Debug/_deps/absl-subbuild/absl-populate-prefix/src/absl-populate-stamp/absl-populate-patch.rule
+D:/silver/qtcan/vulkan/build/x64-Debug/_deps/absl-subbuild/absl-populate-prefix/src/absl-populate-stamp/absl-populate-test.rule
+D:/silver/qtcan/vulkan/build/x64-Debug/_deps/absl-subbuild/absl-populate-prefix/src/absl-populate-stamp/absl-populate-update.rule

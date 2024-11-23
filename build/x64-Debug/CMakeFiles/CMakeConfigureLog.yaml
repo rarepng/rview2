@@ -1,0 +1,455 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineSystem.cmake:205 (message)"
+      - "CMakeLists.txt"
+    message: |
+      The system is: Windows - 10.0.19044 - AMD64
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineCCompiler.cmake:123 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt"
+    message: |
+      Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+      Compiler: D:/smoke/visual cancer/VC/Tools/MSVC/14.42.34433/bin/Hostx64/x64/cl.exe 
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      Microsoft (R) C/C++ Optimizing Compiler Version 19.42.34433 for x64
+      Copyright (C) Microsoft Corporation.  All rights reserved.
+      
+      CMakeCCompilerId.c
+      Microsoft (R) Incremental Linker Version 14.42.34433.0
+      Copyright (C) Microsoft Corporation.  All rights reserved.
+      
+      /out:CMakeCCompilerId.exe 
+      CMakeCCompilerId.obj 
+      
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CMakeCCompilerId.exe"
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CMakeCCompilerId.obj"
+      
+      The C compiler identification is MSVC, found in:
+        D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/3.29.5-msvc4/CompilerIdC/CMakeCCompilerId.exe
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineCompilerId.cmake:1216 (message)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineCompilerId.cmake:250 (CMAKE_DETERMINE_MSVC_SHOWINCLUDES_PREFIX)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineCCompiler.cmake:123 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt"
+    message: |
+      Detecting C compiler /showIncludes prefix:
+        main.c
+        Note: including file: D:\\silver\\qtcan\\vulkan\\build\\x64-Debug\\CMakeFiles\\ShowIncludes\\foo.h
+        
+      Found prefix "Note: including file: "
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+      Compiler: D:/smoke/visual cancer/VC/Tools/MSVC/14.42.34433/bin/Hostx64/x64/cl.exe 
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      Microsoft (R) C/C++ Optimizing Compiler Version 19.42.34433 for x64
+      Copyright (C) Microsoft Corporation.  All rights reserved.
+      
+      CMakeCXXCompilerId.cpp
+      Microsoft (R) Incremental Linker Version 14.42.34433.0
+      Copyright (C) Microsoft Corporation.  All rights reserved.
+      
+      /out:CMakeCXXCompilerId.exe 
+      CMakeCXXCompilerId.obj 
+      
+      
+      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CMakeCXXCompilerId.exe"
+      
+      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CMakeCXXCompilerId.obj"
+      
+      The CXX compiler identification is MSVC, found in:
+        D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/3.29.5-msvc4/CompilerIdCXX/CMakeCXXCompilerId.exe
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineCompilerId.cmake:1216 (message)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineCompilerId.cmake:250 (CMAKE_DETERMINE_MSVC_SHOWINCLUDES_PREFIX)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt"
+    message: |
+      Detecting CXX compiler /showIncludes prefix:
+        main.c
+        Note: including file: D:\\silver\\qtcan\\vulkan\\build\\x64-Debug\\CMakeFiles\\ShowIncludes\\foo.h
+        
+      Found prefix "Note: including file: "
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineCompilerABI.cmake:67 (try_compile)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt"
+    checks:
+      - "Detecting C compiler ABI info"
+    directories:
+      source: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-wkzlbz"
+      binary: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-wkzlbz"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
+      VCPKG_INSTALLED_DIR: "D:/silver/vcpkg/installed"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_TARGET_TRIPLET: "x64-windows"
+      Z_VCPKG_ROOT_DIR: "D:/silver/vcpkg"
+    buildResult:
+      variable: "CMAKE_C_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-wkzlbz'
+        
+        Run Build Command(s): "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" -v cmTC_1dc1f
+        [1/2] "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\cl.exe"  /nologo   /DWIN32 /D_WINDOWS /W3  /MDd /Zi /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_1dc1f.dir\\CMakeCCompilerABI.c.obj /FdCMakeFiles\\cmTC_1dc1f.dir\\ /FS -c "D:\\smoke\\visual cancer\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\share\\cmake-3.29\\Modules\\CMakeCCompilerABI.c"
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && "D:\\smoke\\visual cancer\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E vs_link_exe --intdir=CMakeFiles\\cmTC_1dc1f.dir --rc="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\rc.exe" --mt="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\mt.exe" --manifests  -- "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\link.exe" /nologo CMakeFiles\\cmTC_1dc1f.dir\\CMakeCCompilerABI.c.obj  /out:cmTC_1dc1f.exe /implib:cmTC_1dc1f.lib /pdb:cmTC_1dc1f.pdb /version:0.0 /machine:x64  /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineCompilerABI.cmake:173 (message)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt"
+    message: |
+      Parsed C implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?))("|,| |$)]
+        implicit libs: []
+        implicit objs: []
+        implicit dirs: []
+        implicit fwks: []
+      
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineCompilerABI.cmake:67 (try_compile)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt"
+    checks:
+      - "Detecting CXX compiler ABI info"
+    directories:
+      source: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-fpfvvy"
+      binary: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-fpfvvy"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /W3 /GR /EHsc"
+      CMAKE_CXX_SCAN_FOR_MODULES: "OFF"
+      VCPKG_INSTALLED_DIR: "D:/silver/vcpkg/installed"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_TARGET_TRIPLET: "x64-windows"
+      Z_VCPKG_ROOT_DIR: "D:/silver/vcpkg"
+    buildResult:
+      variable: "CMAKE_CXX_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-fpfvvy'
+        
+        Run Build Command(s): "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" -v cmTC_66cc6
+        [1/2] "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\cl.exe"  /nologo /TP   /DWIN32 /D_WINDOWS /W3 /GR /EHsc  /MDd /Zi /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_66cc6.dir\\CMakeCXXCompilerABI.cpp.obj /FdCMakeFiles\\cmTC_66cc6.dir\\ /FS -c "D:\\smoke\\visual cancer\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\share\\cmake-3.29\\Modules\\CMakeCXXCompilerABI.cpp"
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && "D:\\smoke\\visual cancer\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E vs_link_exe --intdir=CMakeFiles\\cmTC_66cc6.dir --rc="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\rc.exe" --mt="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\mt.exe" --manifests  -- "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\link.exe" /nologo CMakeFiles\\cmTC_66cc6.dir\\CMakeCXXCompilerABI.cpp.obj  /out:cmTC_66cc6.exe /implib:cmTC_66cc6.lib /pdb:cmTC_66cc6.pdb /version:0.0 /machine:x64  /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeDetermineCompilerABI.cmake:173 (message)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt"
+    message: |
+      Parsed CXX implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?))("|,| |$)]
+        implicit libs: []
+        implicit objs: []
+        implicit dirs: []
+        implicit fwks: []
+      
+      
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CheckCSourceCompiles.cmake:52 (cmake_check_source_compiles)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/FindThreads.cmake:97 (CHECK_C_SOURCE_COMPILES)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/FindThreads.cmake:163 (_threads_check_libc)"
+      - "D:/silver/vcpkg/scripts/buildsystems/vcpkg.cmake:857 (_find_package)"
+      - "glfw/CMakeLists.txt:60 (find_package)"
+    checks:
+      - "Performing Test CMAKE_HAVE_LIBC_PTHREAD"
+    directories:
+      source: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-vopr03"
+      binary: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-vopr03"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
+      CMAKE_C_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MODULE_PATH: "D:/silver/qtcan/vulkan/glfw/CMake/modules"
+      VCPKG_INSTALLED_DIR: "D:/silver/vcpkg/installed"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_TARGET_TRIPLET: "x64-windows"
+      Z_VCPKG_ROOT_DIR: "D:/silver/vcpkg"
+    buildResult:
+      variable: "CMAKE_HAVE_LIBC_PTHREAD"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-vopr03'
+        
+        Run Build Command(s): "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" -v cmTC_67501
+        [1/2] "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\cl.exe"  /nologo -DCMAKE_HAVE_LIBC_PTHREAD  /DWIN32 /D_WINDOWS /W3  /MDd /Zi /Ob0 /Od /RTC1 -MDd /showIncludes /FoCMakeFiles\\cmTC_67501.dir\\src.c.obj /FdCMakeFiles\\cmTC_67501.dir\\ /FS -c D:\\silver\\qtcan\\vulkan\\build\\x64-Debug\\CMakeFiles\\CMakeScratch\\TryCompile-vopr03\\src.c
+        FAILED: CMakeFiles/cmTC_67501.dir/src.c.obj 
+        "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\cl.exe"  /nologo -DCMAKE_HAVE_LIBC_PTHREAD  /DWIN32 /D_WINDOWS /W3  /MDd /Zi /Ob0 /Od /RTC1 -MDd /showIncludes /FoCMakeFiles\\cmTC_67501.dir\\src.c.obj /FdCMakeFiles\\cmTC_67501.dir\\ /FS -c D:\\silver\\qtcan\\vulkan\\build\\x64-Debug\\CMakeFiles\\CMakeScratch\\TryCompile-vopr03\\src.c
+        D:\\silver\\qtcan\\vulkan\\build\\x64-Debug\\CMakeFiles\\CMakeScratch\\TryCompile-vopr03\\src.c(1): fatal error C1083: Cannot open include file: 'pthread.h': No such file or directory
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CheckLibraryExists.cmake:69 (try_compile)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/FindThreads.cmake:112 (CHECK_LIBRARY_EXISTS)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/FindThreads.cmake:175 (_threads_check_lib)"
+      - "D:/silver/vcpkg/scripts/buildsystems/vcpkg.cmake:857 (_find_package)"
+      - "glfw/CMakeLists.txt:60 (find_package)"
+    checks:
+      - "Looking for pthread_create in pthreads"
+    directories:
+      source: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-505zlj"
+      binary: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-505zlj"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
+      CMAKE_C_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MODULE_PATH: "D:/silver/qtcan/vulkan/glfw/CMake/modules"
+      VCPKG_INSTALLED_DIR: "D:/silver/vcpkg/installed"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_TARGET_TRIPLET: "x64-windows"
+      Z_VCPKG_ROOT_DIR: "D:/silver/vcpkg"
+    buildResult:
+      variable: "CMAKE_HAVE_PTHREADS_CREATE"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-505zlj'
+        
+        Run Build Command(s): "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" -v cmTC_8f963
+        [1/2] "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\cl.exe"  /nologo   /DWIN32 /D_WINDOWS /W3 -DCHECK_FUNCTION_EXISTS=pthread_create /MDd /Zi /Ob0 /Od /RTC1 -MDd /showIncludes /FoCMakeFiles\\cmTC_8f963.dir\\CheckFunctionExists.c.obj /FdCMakeFiles\\cmTC_8f963.dir\\ /FS -c D:\\silver\\qtcan\\vulkan\\build\\x64-Debug\\CMakeFiles\\CMakeScratch\\TryCompile-505zlj\\CheckFunctionExists.c
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && "D:\\smoke\\visual cancer\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E vs_link_exe --intdir=CMakeFiles\\cmTC_8f963.dir --rc="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\rc.exe" --mt="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\mt.exe" --manifests  -- "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\link.exe" /nologo CMakeFiles\\cmTC_8f963.dir\\CheckFunctionExists.c.obj  /out:cmTC_8f963.exe /implib:cmTC_8f963.lib /pdb:cmTC_8f963.pdb /version:0.0 /machine:x64  /debug /INCREMENTAL /subsystem:console  pthreads.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        FAILED: cmTC_8f963.exe 
+        C:\\Windows\\system32\\cmd.exe /C "cd . && "D:\\smoke\\visual cancer\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E vs_link_exe --intdir=CMakeFiles\\cmTC_8f963.dir --rc="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\rc.exe" --mt="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\mt.exe" --manifests  -- "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\link.exe" /nologo CMakeFiles\\cmTC_8f963.dir\\CheckFunctionExists.c.obj  /out:cmTC_8f963.exe /implib:cmTC_8f963.lib /pdb:cmTC_8f963.pdb /version:0.0 /machine:x64  /debug /INCREMENTAL /subsystem:console  pthreads.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        LINK Pass 1: command "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_8f963.dir\\CheckFunctionExists.c.obj /out:cmTC_8f963.exe /implib:cmTC_8f963.lib /pdb:cmTC_8f963.pdb /version:0.0 /machine:x64 /debug /INCREMENTAL /subsystem:console pthreads.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTFILE:CMakeFiles\\cmTC_8f963.dir/intermediate.manifest CMakeFiles\\cmTC_8f963.dir/manifest.res" failed (exit code 1104) with the following output:
+        LINK : fatal error LNK1104: cannot open file 'pthreads.lib'\x0d
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CheckLibraryExists.cmake:69 (try_compile)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/FindThreads.cmake:112 (CHECK_LIBRARY_EXISTS)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/FindThreads.cmake:176 (_threads_check_lib)"
+      - "D:/silver/vcpkg/scripts/buildsystems/vcpkg.cmake:857 (_find_package)"
+      - "glfw/CMakeLists.txt:60 (find_package)"
+    checks:
+      - "Looking for pthread_create in pthread"
+    directories:
+      source: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-0qgo4n"
+      binary: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-0qgo4n"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
+      CMAKE_C_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MODULE_PATH: "D:/silver/qtcan/vulkan/glfw/CMake/modules"
+      VCPKG_INSTALLED_DIR: "D:/silver/vcpkg/installed"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_TARGET_TRIPLET: "x64-windows"
+      Z_VCPKG_ROOT_DIR: "D:/silver/vcpkg"
+    buildResult:
+      variable: "CMAKE_HAVE_PTHREAD_CREATE"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-0qgo4n'
+        
+        Run Build Command(s): "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" -v cmTC_82f97
+        [1/2] "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\cl.exe"  /nologo   /DWIN32 /D_WINDOWS /W3 -DCHECK_FUNCTION_EXISTS=pthread_create /MDd /Zi /Ob0 /Od /RTC1 -MDd /showIncludes /FoCMakeFiles\\cmTC_82f97.dir\\CheckFunctionExists.c.obj /FdCMakeFiles\\cmTC_82f97.dir\\ /FS -c D:\\silver\\qtcan\\vulkan\\build\\x64-Debug\\CMakeFiles\\CMakeScratch\\TryCompile-0qgo4n\\CheckFunctionExists.c
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && "D:\\smoke\\visual cancer\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E vs_link_exe --intdir=CMakeFiles\\cmTC_82f97.dir --rc="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\rc.exe" --mt="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\mt.exe" --manifests  -- "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\link.exe" /nologo CMakeFiles\\cmTC_82f97.dir\\CheckFunctionExists.c.obj  /out:cmTC_82f97.exe /implib:cmTC_82f97.lib /pdb:cmTC_82f97.pdb /version:0.0 /machine:x64  /debug /INCREMENTAL /subsystem:console  pthread.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        FAILED: cmTC_82f97.exe 
+        C:\\Windows\\system32\\cmd.exe /C "cd . && "D:\\smoke\\visual cancer\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E vs_link_exe --intdir=CMakeFiles\\cmTC_82f97.dir --rc="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\rc.exe" --mt="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\mt.exe" --manifests  -- "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\link.exe" /nologo CMakeFiles\\cmTC_82f97.dir\\CheckFunctionExists.c.obj  /out:cmTC_82f97.exe /implib:cmTC_82f97.lib /pdb:cmTC_82f97.pdb /version:0.0 /machine:x64  /debug /INCREMENTAL /subsystem:console  pthread.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        LINK Pass 1: command "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_82f97.dir\\CheckFunctionExists.c.obj /out:cmTC_82f97.exe /implib:cmTC_82f97.lib /pdb:cmTC_82f97.pdb /version:0.0 /machine:x64 /debug /INCREMENTAL /subsystem:console pthread.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTFILE:CMakeFiles\\cmTC_82f97.dir/intermediate.manifest CMakeFiles\\cmTC_82f97.dir/manifest.res" failed (exit code 1104) with the following output:
+        LINK : fatal error LNK1104: cannot open file 'pthread.lib'\x0d
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 1
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CheckSymbolExists.cmake:140 (try_compile)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CheckSymbolExists.cmake:66 (__CHECK_SYMBOL_EXISTS_IMPL)"
+      - "gns/CMakeLists.txt:117 (check_symbol_exists)"
+    checks:
+      - "Looking for EVP_MD_CTX_free"
+    directories:
+      source: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-9m3qeq"
+      binary: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-9m3qeq"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
+      CMAKE_C_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MODULE_PATH: "D:/silver/qtcan/vulkan/gns/cmake"
+      VCPKG_INSTALLED_DIR: "D:/silver/vcpkg/installed"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_TARGET_TRIPLET: "x64-windows"
+      Z_VCPKG_ROOT_DIR: "D:/silver/vcpkg"
+    buildResult:
+      variable: "OPENSSL_NEW_ENOUGH"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-9m3qeq'
+        
+        Run Build Command(s): "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" -v cmTC_3f914
+        [1/2] "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\cl.exe"  /nologo  -external:ID:\\silver\\OpenSSL-Win64\\include -external:W0 /DWIN32 /D_WINDOWS /W3  /MDd /Zi /Ob0 /Od /RTC1 -MDd /showIncludes /FoCMakeFiles\\cmTC_3f914.dir\\CheckSymbolExists.c.obj /FdCMakeFiles\\cmTC_3f914.dir\\ /FS -c D:\\silver\\qtcan\\vulkan\\build\\x64-Debug\\CMakeFiles\\CMakeScratch\\TryCompile-9m3qeq\\CheckSymbolExists.c
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && "D:\\smoke\\visual cancer\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E vs_link_exe --intdir=CMakeFiles\\cmTC_3f914.dir --rc="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\rc.exe" --mt="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\mt.exe" --manifests  -- "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\link.exe" /nologo CMakeFiles\\cmTC_3f914.dir\\CheckSymbolExists.c.obj  /out:cmTC_3f914.exe /implib:cmTC_3f914.lib /pdb:cmTC_3f914.pdb /version:0.0 /machine:x64  /debug /INCREMENTAL /subsystem:console  D:\\silver\\OpenSSL-Win64\\lib\\VC\\x64\\MDd\\libcrypto.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        
+      exitCode: 0
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/Internal/CheckLinkerFlag.cmake:37 (cmake_check_source_compiles)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CheckLinkerFlag.cmake:44 (cmake_check_linker_flag)"
+      - "protobuf/CMakeLists.txt:145 (check_linker_flag)"
+    checks:
+      - "Performing Test protobuf_HAVE_LD_VERSION_SCRIPT"
+    directories:
+      source: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-c2xxhv"
+      binary: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-c2xxhv"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /W3 /GR /EHsc"
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      VCPKG_INSTALLED_DIR: "D:/silver/vcpkg/installed"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_TARGET_TRIPLET: "x64-windows"
+      Z_VCPKG_ROOT_DIR: "D:/silver/vcpkg"
+    buildResult:
+      variable: "protobuf_HAVE_LD_VERSION_SCRIPT"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-c2xxhv'
+        
+        Run Build Command(s): "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" -v cmTC_29b4a
+        [1/4] "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\cl.exe" -Dprotobuf_HAVE_LD_VERSION_SCRIPT  /DWIN32 /D_WINDOWS /W3 /GR /EHsc  /MDd /Zi /Ob0 /Od /RTC1 -std:c++20 -MDd D:\\silver\\qtcan\\vulkan\\build\\x64-Debug\\CMakeFiles\\CMakeScratch\\TryCompile-c2xxhv\\src.cxx -nologo -TP -showIncludes -scanDependencies CMakeFiles\\cmTC_29b4a.dir\\src.cxx.obj.ddi -FoCMakeFiles\\cmTC_29b4a.dir\\src.cxx.obj
+        [2/4] "D:\\smoke\\visual cancer\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E cmake_ninja_dyndep --tdi=CMakeFiles\\cmTC_29b4a.dir\\CXXDependInfo.json --lang=CXX --modmapfmt=msvc --dd=CMakeFiles\\cmTC_29b4a.dir\\CXX.dd @CMakeFiles\\cmTC_29b4a.dir\\CXX.dd.rsp
+        [3/4] "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\cl.exe"  /nologo /TP -Dprotobuf_HAVE_LD_VERSION_SCRIPT  /DWIN32 /D_WINDOWS /W3 /GR /EHsc  /MDd /Zi /Ob0 /Od /RTC1 -std:c++20 -MDd /showIncludes @CMakeFiles\\cmTC_29b4a.dir\\src.cxx.obj.modmap /FoCMakeFiles\\cmTC_29b4a.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_29b4a.dir\\ /FS -c D:\\silver\\qtcan\\vulkan\\build\\x64-Debug\\CMakeFiles\\CMakeScratch\\TryCompile-c2xxhv\\src.cxx
+        [4/4] C:\\Windows\\system32\\cmd.exe /C "cd . && "D:\\smoke\\visual cancer\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E vs_link_exe --intdir=CMakeFiles\\cmTC_29b4a.dir --rc="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\rc.exe" --mt="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\mt.exe" --manifests  -- "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\link.exe" /nologo CMakeFiles\\cmTC_29b4a.dir\\src.cxx.obj  /out:cmTC_29b4a.exe /implib:cmTC_29b4a.lib /pdb:cmTC_29b4a.pdb /version:0.0 /machine:x64  /debug /INCREMENTAL /subsystem:console  -Wl,--version-script=D:/silver/qtcan/vulkan/build/x64-Debug/protobuf/cmaketest.map  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CheckCXXSourceCompiles.cmake:52 (cmake_check_source_compiles)"
+      - "build/x64-Debug/_deps/absl-src/CMake/AbseilDll.cmake:702 (check_cxx_source_compiles)"
+      - "build/x64-Debug/_deps/absl-src/CMakeLists.txt:75 (include)"
+    checks:
+      - "Performing Test ABSL_INTERNAL_AT_LEAST_CXX17"
+    directories:
+      source: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-l994c3"
+      binary: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-l994c3"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /W3 /GR /EHsc"
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MODULE_PATH: "D:/silver/qtcan/vulkan/build/x64-Debug/_deps/absl-src/CMake;D:/silver/qtcan/vulkan/build/x64-Debug/_deps/absl-src/absl/copts"
+      CMAKE_MSVC_RUNTIME_LIBRARY: "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+      VCPKG_INSTALLED_DIR: "D:/silver/vcpkg/installed"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_TARGET_TRIPLET: "x64-windows"
+      Z_VCPKG_ROOT_DIR: "D:/silver/vcpkg"
+    buildResult:
+      variable: "ABSL_INTERNAL_AT_LEAST_CXX17"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-l994c3'
+        
+        Run Build Command(s): "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" -v cmTC_60836
+        [1/4] "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\cl.exe" -DABSL_INTERNAL_AT_LEAST_CXX17  /DWIN32 /D_WINDOWS /W3 /GR /EHsc  /MDd /Zi /Ob0 /Od /RTC1 -std:c++20 -MTd D:\\silver\\qtcan\\vulkan\\build\\x64-Debug\\CMakeFiles\\CMakeScratch\\TryCompile-l994c3\\src.cxx -nologo -TP -showIncludes -scanDependencies CMakeFiles\\cmTC_60836.dir\\src.cxx.obj.ddi -FoCMakeFiles\\cmTC_60836.dir\\src.cxx.obj
+        cl : Command line warning D9025 : overriding '/MDd' with '/MTd'
+        [2/4] "D:\\smoke\\visual cancer\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E cmake_ninja_dyndep --tdi=CMakeFiles\\cmTC_60836.dir\\CXXDependInfo.json --lang=CXX --modmapfmt=msvc --dd=CMakeFiles\\cmTC_60836.dir\\CXX.dd @CMakeFiles\\cmTC_60836.dir\\CXX.dd.rsp
+        [3/4] "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\cl.exe"  /nologo /TP -DABSL_INTERNAL_AT_LEAST_CXX17  /DWIN32 /D_WINDOWS /W3 /GR /EHsc  /MDd /Zi /Ob0 /Od /RTC1 -std:c++20 -MTd /showIncludes @CMakeFiles\\cmTC_60836.dir\\src.cxx.obj.modmap /FoCMakeFiles\\cmTC_60836.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_60836.dir\\ /FS -c D:\\silver\\qtcan\\vulkan\\build\\x64-Debug\\CMakeFiles\\CMakeScratch\\TryCompile-l994c3\\src.cxx
+        cl : Command line warning D9025 : overriding '/MDd' with '/MTd'
+        [4/4] C:\\Windows\\system32\\cmd.exe /C "cd . && "D:\\smoke\\visual cancer\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E vs_link_exe --intdir=CMakeFiles\\cmTC_60836.dir --rc="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\rc.exe" --mt="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\mt.exe" --manifests  -- "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\link.exe" /nologo CMakeFiles\\cmTC_60836.dir\\src.cxx.obj  /out:cmTC_60836.exe /implib:cmTC_60836.lib /pdb:cmTC_60836.pdb /version:0.0 /machine:x64  /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.29/Modules/CheckCXXSourceCompiles.cmake:52 (cmake_check_source_compiles)"
+      - "build/x64-Debug/_deps/absl-src/CMake/AbseilDll.cmake:715 (check_cxx_source_compiles)"
+      - "build/x64-Debug/_deps/absl-src/CMakeLists.txt:75 (include)"
+    checks:
+      - "Performing Test ABSL_INTERNAL_AT_LEAST_CXX20"
+    directories:
+      source: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-8x5ihg"
+      binary: "D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-8x5ihg"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /W3 /GR /EHsc"
+      CMAKE_CXX_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+      CMAKE_MODULE_PATH: "D:/silver/qtcan/vulkan/build/x64-Debug/_deps/absl-src/CMake;D:/silver/qtcan/vulkan/build/x64-Debug/_deps/absl-src/absl/copts"
+      CMAKE_MSVC_RUNTIME_LIBRARY: "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+      VCPKG_INSTALLED_DIR: "D:/silver/vcpkg/installed"
+      VCPKG_PREFER_SYSTEM_LIBS: "OFF"
+      VCPKG_TARGET_TRIPLET: "x64-windows"
+      Z_VCPKG_ROOT_DIR: "D:/silver/vcpkg"
+    buildResult:
+      variable: "ABSL_INTERNAL_AT_LEAST_CXX20"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/silver/qtcan/vulkan/build/x64-Debug/CMakeFiles/CMakeScratch/TryCompile-8x5ihg'
+        
+        Run Build Command(s): "D:/smoke/visual cancer/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" -v cmTC_3c6e2
+        [1/4] "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\cl.exe" -DABSL_INTERNAL_AT_LEAST_CXX20  /DWIN32 /D_WINDOWS /W3 /GR /EHsc  /MDd /Zi /Ob0 /Od /RTC1 -std:c++20 -MTd D:\\silver\\qtcan\\vulkan\\build\\x64-Debug\\CMakeFiles\\CMakeScratch\\TryCompile-8x5ihg\\src.cxx -nologo -TP -showIncludes -scanDependencies CMakeFiles\\cmTC_3c6e2.dir\\src.cxx.obj.ddi -FoCMakeFiles\\cmTC_3c6e2.dir\\src.cxx.obj
+        cl : Command line warning D9025 : overriding '/MDd' with '/MTd'
+        [2/4] "D:\\smoke\\visual cancer\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E cmake_ninja_dyndep --tdi=CMakeFiles\\cmTC_3c6e2.dir\\CXXDependInfo.json --lang=CXX --modmapfmt=msvc --dd=CMakeFiles\\cmTC_3c6e2.dir\\CXX.dd @CMakeFiles\\cmTC_3c6e2.dir\\CXX.dd.rsp
+        [3/4] "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\cl.exe"  /nologo /TP -DABSL_INTERNAL_AT_LEAST_CXX20  /DWIN32 /D_WINDOWS /W3 /GR /EHsc  /MDd /Zi /Ob0 /Od /RTC1 -std:c++20 -MTd /showIncludes @CMakeFiles\\cmTC_3c6e2.dir\\src.cxx.obj.modmap /FoCMakeFiles\\cmTC_3c6e2.dir\\src.cxx.obj /FdCMakeFiles\\cmTC_3c6e2.dir\\ /FS -c D:\\silver\\qtcan\\vulkan\\build\\x64-Debug\\CMakeFiles\\CMakeScratch\\TryCompile-8x5ihg\\src.cxx
+        cl : Command line warning D9025 : overriding '/MDd' with '/MTd'
+        [4/4] C:\\Windows\\system32\\cmd.exe /C "cd . && "D:\\smoke\\visual cancer\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E vs_link_exe --intdir=CMakeFiles\\cmTC_3c6e2.dir --rc="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\rc.exe" --mt="D:\\Windows Kits\\10\\bin\\10.0.22621.0\\x64\\mt.exe" --manifests  -- "D:\\smoke\\visual cancer\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\link.exe" /nologo CMakeFiles\\cmTC_3c6e2.dir\\src.cxx.obj  /out:cmTC_3c6e2.exe /implib:cmTC_3c6e2.lib /pdb:cmTC_3c6e2.pdb /version:0.0 /machine:x64  /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        
+      exitCode: 0
+...

@@ -1,0 +1,18 @@
+[submodule "fastgltf"]
+	path = fastgltf
+	url = git@png.github.com:spnda/fastgltf
+[submodule "glm"]
+	path = glm
+	url = git@png.github.com:g-truc/glm
+[submodule "glfw"]
+	path = glfw
+	url = git@png.github.com:glfw/glfw
+[submodule "gns"]
+	path = gns
+	url = git@png.github.com:ValveSoftware/GameNetworkingSockets
+[submodule "protobuf"]
+	path = protobuf
+	url = git@png.github.com:protocolbuffers/protobuf
+[submodule "openssl"]
+	path = openssl
+	url = git@png.github.com:openssl/openssl

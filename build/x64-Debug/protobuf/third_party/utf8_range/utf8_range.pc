@@ -1,0 +1,11 @@
+prefix=D:/silver/qtcan/vulkan/out/install/x64-Debug
+exec_prefix=D:/silver/qtcan/vulkan/out/install/x64-Debug
+libdir=D:/silver/qtcan/vulkan/out/install/x64-Debug/lib
+includedir=D:/silver/qtcan/vulkan/out/install/x64-Debug/include
+
+Name: UTF8 Range
+Description: Google's UTF8 Library
+Version: 1.0
+Requires: absl_strings
+Libs: -L${libdir} -lutf8_validity -lutf8_range 
+Cflags: -I${includedir}
