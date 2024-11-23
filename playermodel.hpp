@@ -1,7 +1,7 @@
 #pragma once
-#include "vkgltfmodel.hpp"
+#include "animmodel.hpp"
 
-class playermodel:public vkgltfmodel {
+class playermodel:public animmodel {
 public:
 
 private:

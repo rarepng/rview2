@@ -89,16 +89,10 @@ void vkwind::framemainmenuupdate(){
 			if(!mvkrenderer->getnetobjs().offlineplay)
 				if (mvkrenderer->getserverclientstatus()) {
 					nserver = new netserver(mvkrenderer->getnetobjs().port);
-					//nserver->SetClientConnectedCallback([&]() {
-					//	cleanup();
-					//});
 					nserver->SetClientConnectedCallback([&](const ClientInfo& clientInfo) { clientconnectcallback(clientInfo); });
 					nserver->SetClientDisconnectedCallback([&](const ClientInfo& clientInfo) { clientdisconnectcallback(clientInfo); });
 					nserver->SetDataReceivedCallback([&](const ClientInfo& clientInfo,const netbuffer& buffer) { datareccallback(clientInfo,buffer); });
-					//auto f2 = std::async(std::launch::async, [&] {
 						nserver->Start();
-					//	return false;
-					//});const ClientInfo& clientInfo
 				}
 				else {
 					nclient = new netclient();
@@ -133,15 +127,33 @@ void vkwind::framemainmenuupdate(){
 }
 
 void vkwind::frameupdate() {
-	if(mvkrenderer->getserverclientstatus())
-		mvkrenderer->quicksetup(nserver);
-	else
-		mvkrenderer->quicksetup(nclient);
-	while (!glfwWindowShouldClose(mwind)) {
-		if (!mvkrenderer->draw()) {
-			break;
+	if (!glfwWindowShouldClose(mwind)) {
+		if (mvkrenderer->getserverclientstatus())
+			mvkrenderer->quicksetup(nserver);
+		else
+			mvkrenderer->quicksetup(nclient);
+		mvkrenderer->uploadfordraw();
+		std::thread gamelogic = std::thread([&] { mvkrenderer->gametick(); });
+		while (!glfwWindowShouldClose(mwind)) {
+			if (gamestate::getstate() == gamestate0::normal) {
+				if (!mvkrenderer->draw()) {
+					break;
+				}
+			} else if (gamestate::getstate() == gamestate0::won) {
+				gamestate::resetwave();
+			} else if (gamestate::getstate() == gamestate0::dead) {
+				break;
+			} else if (gamestate::getstate() == gamestate0::menu) {
+				if(upreq){
+					mvkrenderer->initshop();
+					mvkrenderer->uploadforshop();
+					upreq = false;
+				}
+				mvkrenderer->drawshop();
+			}
+			glfwPollEvents();
 		}
-		glfwPollEvents();
+		gamelogic.join();
 	}
 }
 

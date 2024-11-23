@@ -7,6 +7,7 @@ bool playoutplayer::setup(vkobjs& objs, std::string fname, int count) {
 	if (!createssbomat(objs))return false;
 	if (!createssbodq(objs))return false;
 	if (!createssbodecay(objs))return false;
+	if (!createssbouint(objs))return false;
 
 	return true;
 }
@@ -17,15 +18,13 @@ bool playoutplayer::setup2(vkobjs& objs, std::string vfile, std::string ffile) {
 
 	if (!createplayout(objs))return false;
 	if (!createpline(objs, vfile, ffile))return false;
-	//if (!createpline2(objs, "shaders/gltf_gpu_dquat.vert.spv", "shaders/gltf_gpu_dquat.frag.spv"))return false;
-	//if (!createdecaypline(objs, "shaders/decay.vert.spv", "shaders/decay.frag.spv"))return false;
 	if (!createpline2(objs, "shaders/gltf_gpu_dquat.vert.spv", "shaders/gltf_gpu_dquat.frag.spv"))return false;
 	if (!createdecaypline(objs, "shaders/decay.vert.spv", "shaders/decay.frag.spv"))return false;
 	return true;
 }
 
 bool playoutplayer::loadmodel(vkobjs& objs, std::string fname) {
-	mgltf = std::make_shared<vkgltfmodel>();
+	mgltf = std::make_shared<animmodel>();
 	if (!mgltf->loadmodel(objs, fname))return false;
 	return true;
 }
@@ -33,7 +32,7 @@ bool playoutplayer::loadmodel(vkobjs& objs, std::string fname) {
 bool playoutplayer::createinstances(vkobjs& objs, int count, bool rand) {
 	int numTriangles{};
 	for (int i = 0; i < count; ++i) {
-		minstances.emplace_back(std::make_shared<vkgltfinstance>(mgltf, glm::vec3{ 0.0f, 0.0f, 0.0f }, rand));
+		minstances.emplace_back(std::make_shared<animinstance>(mgltf, glm::vec3{ 0.0f, 0.0f, 0.0f }, rand));
 		numTriangles += mgltf->gettricount(0, 0);
 	}
 	totaltricount = numTriangles;
@@ -46,8 +45,8 @@ bool playoutplayer::createdecayinstances(vkobjs& objs){
 	decayinstances.clear();
 	for (int i{ 0 }; i < 20; i++) {
 		float x = minstances[0]->getinstancesettings().msworldpos.x;
-		float y = minstances[0]->getinstancesettings().msworldpos.y;
-		decayinstances.emplace_back(std::make_shared<vkgltfinstance>(mgltf, glm::vec3{ x, 0.0f, y }, false));
+		float z = minstances[0]->getinstancesettings().msworldpos.z;
+		decayinstances.emplace_back(std::make_shared<animinstance>(mgltf, glm::vec3{ x, 0.0f, z }, false));
 	}
 	return true;
 }
@@ -64,6 +63,13 @@ bool playoutplayer::createssbomat(vkobjs& objs) {
 	desclayouts.push_back(rdjointmatrixssbo.rdssbodescriptorlayout);
 	return true;
 }
+bool playoutplayer::createssbouint(vkobjs& objs) {
+	size_t size = numinstancess * minstances[0]->getjointmatrixsize() * sizeof(glm::mat4);
+	if (!ssbo::init(objs, uintssbo, size))return false;
+	desclayouts.push_back(uintssbo.rdssbodescriptorlayout);
+	return true;
+}
+
 
 bool playoutplayer::createssbodq(vkobjs& objs) {
 	size_t size = (numinstancess)*minstances[0]->getjointdualquatssize() * sizeof(glm::mat2x4);
@@ -79,24 +85,27 @@ bool playoutplayer::createssbodecay(vkobjs& objs) {
 }
 
 bool playoutplayer::createplayout(vkobjs& objs) {
-	std::vector<vktexdata> texdata0 = mgltf->gettexdata();
-	desclayouts.insert(desclayouts.begin(), texdata0[0].texdescriptorlayout);
+	vktexdatapls texdatapls0 = mgltf->gettexdatapls();
+	desclayouts.insert(desclayouts.begin(), texdatapls0.texdescriptorlayout);
 	if (!playout::init(objs, rdgltfpipelinelayout, desclayouts, sizeof(vkpushconstants)))return false;
 	return true;
 }
 
 bool playoutplayer::createpline(vkobjs& objs, std::string vfile, std::string ffile) {
-	if (!gltfgpupipeline::init(objs, rdgltfpipelinelayout, rdgltfgpupipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, vfile, ffile))return false;
+	if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpupipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{vfile, ffile}))return false;
+	if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpupipelineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{"shaders/playeruint.vert.spv", "shaders/playeruint.frag.spv"}, true))return false;
 	return true;
 }
 
 bool playoutplayer::createpline2(vkobjs& objs, std::string vfile, std::string ffile) {
-	if (!gltfgpupipeline::init(objs, rdgltfpipelinelayout, rdgltfgpudqpipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, vfile, ffile))return false;
+	if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpudqpipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{vfile, ffile}))return false;
+	if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpudqpipelineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{vfile, ffile}, true))return false;
 	return true;
 }
 
 bool playoutplayer::createdecaypline(vkobjs& objs, std::string vfile, std::string ffile){
-	if (!gltfgpupipeline::init(objs, rdgltfpipelinelayout, decaypline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, vfile, ffile))return false;
+	if (!pline::init(objs, rdgltfpipelinelayout, decaypline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{vfile, ffile}))return false;
+	if (!pline::init(objs, rdgltfpipelinelayout, decayplineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{vfile, ffile},true))return false;
 	return true;
 }
 
@@ -111,8 +120,9 @@ void playoutplayer::updateanims() {
 
 void playoutplayer::uploadvboebo(vkobjs& objs) {
 	if (uploadreq) {
-		mgltf->uploadvertexbuffers(objs);
-		mgltf->uploadindexbuffers(objs);
+		//mgltf->uploadvertexbuffers(objs);
+		//mgltf->uploadindexbuffers(objs);
+		mgltf->uploadvboebo(objs);
 		uploadreq = false;
 	}
 }
@@ -122,21 +132,22 @@ void playoutplayer::uploadubossbo(vkobjs& objs, std::vector<glm::mat4>& cammats)
 	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1, &rdjointmatrixssbo.rdssbodescriptorset, 0, nullptr);
 	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 3, 1, &rdjointdualquatssbo.rdssbodescriptorset, 0, nullptr);
 	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 4, 1, &rdjointdecay.rdssbodescriptorset, 0, nullptr);
+	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 5, 1, &uintssbo.rdssbodescriptorset, 0, nullptr);
 
 	ubo::upload(objs, rdperspviewmatrixubo, cammats, 0);
 	ssbo::upload(objs, rdjointmatrixssbo, jointmats);
 	ssbo::upload(objs, rdjointdualquatssbo, jointdqs);
 	ssbo::upload(objs, rdjointdecay, decaymat);
+	ssbo::upload(objs, uintssbo, jointmats);
 
 }
 
-std::shared_ptr<vkgltfinstance> playoutplayer::getinst(int i) {
+std::shared_ptr<animinstance> playoutplayer::getinst(int i) {
 	return minstances[i];
 }
 
-modelsettings playoutplayer::getinstsettings()
-{
-	return minstances.at(0)->getinstancesettings();
+std::shared_ptr<animinstance> playoutplayer::getdecayinst(int i){
+	return decayinstances[i];
 }
 
 void playoutplayer::updatemats() {
@@ -174,9 +185,12 @@ void playoutplayer::freezedecay(){
 }
 
 void playoutplayer::cleanuplines(vkobjs& objs) {
-	gltfgpupipeline::cleanup(objs, rdgltfgpudqpipeline);
-	gltfgpupipeline::cleanup(objs, rdgltfgpupipeline);
-	gltfgpupipeline::cleanup(objs, decaypline);
+	pline::cleanup(objs, rdgltfgpudqpipeline);
+	pline::cleanup(objs, rdgltfgpupipeline);
+	pline::cleanup(objs, decaypline);
+	pline::cleanup(objs, rdgltfgpudqpipelineuint);
+	pline::cleanup(objs, rdgltfgpupipelineuint);
+	pline::cleanup(objs, decayplineuint);
 	playout::cleanup(objs, rdgltfpipelinelayout);
 }
 
@@ -185,6 +199,7 @@ void playoutplayer::cleanupbuffers(vkobjs& objs) {
 	ssbo::cleanup(objs, rdjointdualquatssbo);
 	ssbo::cleanup(objs, rdjointmatrixssbo);
 	ssbo::cleanup(objs, rdjointdecay);
+	ssbo::cleanup(objs, uintssbo);
 }
 
 void playoutplayer::cleanupmodels(vkobjs& objs) {
@@ -203,11 +218,11 @@ void playoutplayer::draw(vkobjs& objs) {
 		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1, &rdjointmatrixssbo.rdssbodescriptorset, 0, nullptr);
 		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 3, 1, &rdjointdualquatssbo.rdssbodescriptorset, 0, nullptr);
 		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 4, 1, &rdjointdecay.rdssbodescriptorset, 0, nullptr);
+		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 5, 1, &uintssbo.rdssbodescriptorset, 0, nullptr);
 
-		vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfgpupipeline);
-		mgltf->drawinstanced(objs, rdgltfpipelinelayout, numinstancess, stride);
-		vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfgpudqpipeline);
-		mgltf->drawinstanced(objs, rdgltfpipelinelayout, numinstancess, stridedq);
+		mgltf->drawinstanced(objs, rdgltfpipelinelayout, rdgltfgpupipeline,rdgltfgpupipelineuint, numinstancess, stride);
+		//vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfgpudqpipeline);
+		//mgltf->drawinstanced(objs, rdgltfpipelinelayout, numinstancess, stridedq);
 	}
 
 }
@@ -219,6 +234,7 @@ void playoutplayer::drawdecays(vkobjs& objs, double& decaytime, bool* decaying){
 		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1, &rdjointmatrixssbo.rdssbodescriptorset, 0, nullptr);
 		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 3, 1, &rdjointdualquatssbo.rdssbodescriptorset, 0, nullptr);
 		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 4, 1, &rdjointdecay.rdssbodescriptorset, 0, nullptr);
+		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 5, 1, &uintssbo.rdssbodescriptorset, 0, nullptr);
 
 		vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, decaypline);
 		mgltf->drawinstanced(objs, rdgltfpipelinelayout, decayinstances.size(), stride, decaytime, decaying);

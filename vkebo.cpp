@@ -33,45 +33,41 @@ bool vkebo::init(vkobjs& objs, vkindexbufferdata& indexbufferdata, size_t buffer
 }
 
 
-bool vkebo::upload(vkobjs& objs, vkindexbufferdata& indexbufferdata, const tinygltf::Buffer& buffer, const tinygltf::BufferView& bufferview, const tinygltf::Accessor& acc) {
-
-    if (indexbufferdata.rdindexbuffersize < acc.count*2) {
-        cleanup(objs, indexbufferdata);
-        if (!init(objs, indexbufferdata, acc.count * 2))return false;
-        indexbufferdata.rdindexbuffersize = acc.count * 2;
-    }
-
-    void* d;
-    vmaMapMemory(objs.rdallocator, indexbufferdata.rdstagingbufferalloc, &d);
-    std::memcpy(d, &buffer.data[bufferview.byteOffset+acc.byteOffset], acc.count * 2);
-    vmaUnmapMemory(objs.rdallocator, indexbufferdata.rdstagingbufferalloc);
-
-    VkBufferMemoryBarrier vbbarrier{};
-    vbbarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-    vbbarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-    vbbarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-    vbbarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    vbbarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    vbbarrier.buffer = indexbufferdata.rdstagingbuffer;
-    vbbarrier.offset = 0;
-    vbbarrier.size = indexbufferdata.rdindexbuffersize;
-
-
-    VkBufferCopy stagingbuffercopy{};
-    stagingbuffercopy.srcOffset = 0;
-    stagingbuffercopy.dstOffset = 0;
-    stagingbuffercopy.size = indexbufferdata.rdindexbuffersize;
-
-
-    vkCmdCopyBuffer(objs.rdcommandbuffer[0], indexbufferdata.rdstagingbuffer, indexbufferdata.rdindexbuffer, 1, &stagingbuffercopy);
-    vkCmdPipelineBarrier(objs.rdcommandbuffer[0], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &vbbarrier, 0, nullptr);
-
-
-
-
-
-    return true;
-}
+//bool vkebo::upload(vkobjs& objs, vkindexbufferdata& indexbufferdata, const tinygltf::Buffer& buffer, const tinygltf::BufferView& bufferview, const tinygltf::Accessor& acc) {
+//
+//
+//
+//    void* d;
+//    vmaMapMemory(objs.rdallocator, indexbufferdata.rdstagingbufferalloc, &d);
+//    std::memcpy(d, &buffer.data[bufferview.byteOffset+acc.byteOffset], acc.count * 2);
+//    vmaUnmapMemory(objs.rdallocator, indexbufferdata.rdstagingbufferalloc);
+//
+//    VkBufferMemoryBarrier vbbarrier{};
+//    vbbarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+//    vbbarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+//    vbbarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+//    vbbarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+//    vbbarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+//    vbbarrier.buffer = indexbufferdata.rdstagingbuffer;
+//    vbbarrier.offset = 0;
+//    vbbarrier.size = indexbufferdata.rdindexbuffersize;
+//
+//
+//    VkBufferCopy stagingbuffercopy{};
+//    stagingbuffercopy.srcOffset = 0;
+//    stagingbuffercopy.dstOffset = 0;
+//    stagingbuffercopy.size = indexbufferdata.rdindexbuffersize;
+//
+//
+//    vkCmdCopyBuffer(objs.rdcommandbuffer[0], indexbufferdata.rdstagingbuffer, indexbufferdata.rdindexbuffer, 1, &stagingbuffercopy);
+//    vkCmdPipelineBarrier(objs.rdcommandbuffer[0], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &vbbarrier, 0, nullptr);
+//
+//
+//
+//
+//
+//    return true;
+//}
 
 bool vkebo::upload(vkobjs& objs, vkindexbufferdata& indexbufferdata, std::vector<unsigned short> indicez){
 
@@ -105,6 +101,45 @@ bool vkebo::upload(vkobjs& objs, vkindexbufferdata& indexbufferdata, std::vector
 }
 
 
+bool vkebo::upload(vkobjs& objs, vkindexbufferdata& indexbufferdata, const fastgltf::Buffer& buffer, const fastgltf::BufferView& bufferview, const size_t& count) {
+
+
+    std::visit(fastgltf::visitor {
+        [](auto& arg) {},
+        [&](const fastgltf::sources::Array& vector) {
+            void* d;
+            vmaMapMemory(objs.rdallocator, indexbufferdata.rdstagingbufferalloc, &d);
+            std::memcpy(d, vector.bytes.data() + bufferview.byteOffset, count * 2);//bufferview.byteLength
+            vmaUnmapMemory(objs.rdallocator, indexbufferdata.rdstagingbufferalloc);
+        } },buffer.data);
+
+
+    VkBufferMemoryBarrier vbbarrier{};
+    vbbarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    vbbarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+    vbbarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+    vbbarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    vbbarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    vbbarrier.buffer = indexbufferdata.rdstagingbuffer;
+    vbbarrier.offset = 0;
+    vbbarrier.size = indexbufferdata.rdindexbuffersize;
+
+
+    VkBufferCopy stagingbuffercopy{};
+    stagingbuffercopy.srcOffset = 0;
+    stagingbuffercopy.dstOffset = 0;
+    stagingbuffercopy.size = indexbufferdata.rdindexbuffersize;
+
+
+    vkCmdCopyBuffer(objs.rdcommandbuffer[0], indexbufferdata.rdstagingbuffer, indexbufferdata.rdindexbuffer, 1, &stagingbuffercopy);
+    vkCmdPipelineBarrier(objs.rdcommandbuffer[0], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &vbbarrier, 0, nullptr);
+
+
+
+
+
+    return true;
+}
 
 
 

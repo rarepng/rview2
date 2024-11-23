@@ -6,7 +6,7 @@
 #include "staticinstance.hpp"
 staticinstance::~staticinstance() {}
 
-staticinstance::staticinstance(std::shared_ptr<vkgltfstatic> model, glm::vec3 worldpos, bool randomize) {
+staticinstance::staticinstance(std::shared_ptr<staticmodel> model, glm::vec3 worldpos, bool randomize) {
 
 	if (!model)return;
 	mgltfmodel = model;
@@ -42,7 +42,7 @@ void staticinstance::checkforupdates() {
 
 glm::mat4 staticinstance::calcmat(){
 	glm::mat4 x{ 1.0 };
-	glm::mat4 t = glm::translate(x, mmodelsettings.msworldpos) * glm::scale(x, mmodelsettings.msworldscale) * glm::rotate(x, mmodelsettings.rotang, mmodelsettings.msworldrot);
+	glm::mat4 t = glm::translate(x, mmodelsettings.msworldpos) * glm::scale(x, mmodelsettings.msworldscale) * glm::mat4_cast(glm::quat(glm::radians(mmodelsettings.msworldrot)));
 	return t;
 }
 
@@ -52,7 +52,7 @@ void staticinstance::setinstancesettings(staticsettings settings) {
 	mmodelsettings = settings;
 }
 
-staticsettings staticinstance::getinstancesettings() {
+staticsettings& staticinstance::getinstancesettings() {
 	return mmodelsettings;
 }
 

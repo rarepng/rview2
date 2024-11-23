@@ -18,6 +18,13 @@ struct vkvert {
 	glm::vec3 col;
 	glm::vec2 uv;
 };
+
+
+
+
+
+
+
 struct vkmesh {
 	std::vector<vkvert> verts;
 };
@@ -40,12 +47,32 @@ enum class ikmode {
 	fabrik
 };
 
+struct spell {
+	const unsigned int spellid;
+	bool active;
+	bool ready;
+	bool cast;
+	unsigned int cooldownticks;
+	unsigned int activeticks;
+	unsigned int cdelapsed;
+	unsigned int activeelapsed;
+	unsigned int size;
+	glm::vec3 pos;
+	double dmg;
+};
+
+struct playerobjs {
+	std::vector<spell> spells;
+};
+
 struct vktexdata {
 	VkImage teximg = VK_NULL_HANDLE;
 	VkImageView teximgview = VK_NULL_HANDLE;
 	VkSampler texsampler = VK_NULL_HANDLE;
 	VmaAllocation teximgalloc = nullptr;
 
+};
+struct vktexdatapls {
 	VkDescriptorPool texdescriptorpool = VK_NULL_HANDLE;
 	VkDescriptorSetLayout texdescriptorlayout = VK_NULL_HANDLE;
 	VkDescriptorSet texdescriptorset = VK_NULL_HANDLE;
@@ -93,6 +120,31 @@ struct vkpushconstants {
 	unsigned int texidx;
 	float t{ 0.0f };
 	bool decaying{ false };
+};
+
+
+enum struct pausestate {
+	resumed,
+	paused
+};
+
+
+enum struct gamestate0 {
+	normal,
+	dead,
+	won,
+	menu
+	
+};
+enum struct gamestage {
+	combat,
+	shop
+};
+enum struct wavetype {
+	horde,
+	boss,
+	pvp,
+	event0
 };
 
 struct gobjs{
@@ -154,7 +206,7 @@ struct vkobjs {
 
 
 
-
+	glm::vec3 raymarchpos{ 0.0f };
 
 
 	VmaAllocator rdallocator=nullptr;
@@ -202,5 +254,6 @@ struct vkobjs {
 struct vkgltfobjs {
 	std::vector<std::vector<std::vector<vkvertexbufferdata>>> rdgltfvertexbufferdata{};
 	std::vector<std::vector<vkindexbufferdata>> rdgltfindexbufferdata{};
-	std::vector<vktexdata> rdgltfmodeltex{};
+	std::vector<vktexdata> tex{};
+	vktexdatapls texpls{};
 };

@@ -25,7 +25,7 @@ bool playoutground::setup2(vkobjs& objs, std::string vfile, std::string ffile) {
 }
 
 bool playoutground::loadmodel(vkobjs& objs, std::string fname) {
-	mgltf = std::make_shared<vkgltfstatic>();
+	mgltf = std::make_shared<staticmodel>();
 	if (!mgltf->loadmodel(objs, fname))return false;
 	return true;
 }
@@ -58,22 +58,24 @@ bool playoutground::createssbomat(vkobjs& objs)
 
 
 bool playoutground::createplayout(vkobjs& objs) {
-	std::vector<vktexdata> texdata0 = mgltf->gettexdata();
-	desclayouts.insert(desclayouts.begin(), texdata0[0].texdescriptorlayout);
+	vktexdatapls texdatapls0 = mgltf->gettexdatapls();
+	desclayouts.insert(desclayouts.begin(), texdatapls0.texdescriptorlayout);
 	if (!playout::init(objs, rdgltfpipelinelayout, desclayouts, sizeof(vkpushconstants)))return false;
 	return true;
 }
 
 bool playoutground::createpline(vkobjs& objs, std::string vfile, std::string ffile) {
-	if (!gltfstaticpipeline::init(objs, rdgltfpipelinelayout, rdgltfgpupipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, vfile, ffile))return false;
+	//if (!gltfstaticpipeline::init(objs, rdgltfpipelinelayout, rdgltfgpupipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, vfile, ffile))return false;
+	if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpupipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 3, 7, std::vector<std::string>{vfile, ffile}))return false;
 	return true;
 }
 
 
 void playoutground::uploadvboebo(vkobjs& objs) {
 	if (uploadreq) {
-		mgltf->uploadvertexbuffers(objs);
-		mgltf->uploadindexbuffers(objs);
+		//mgltf->uploadvertexbuffers(objs);
+		//mgltf->uploadindexbuffers(objs);
+		mgltf->uploadvboebo(objs);
 		uploadreq = false;
 	}
 }
@@ -84,10 +86,6 @@ void playoutground::uploadubossbo(vkobjs& objs, std::vector<glm::mat4>& cammats)
 
 	ubo::upload(objs, rdperspviewmatrixubo, cammats, 0);
 	ssbo::upload(objs, rdmodelmatsssbo, transmats);
-}
-
-staticsettings playoutground::getinstsettings(int x) {
-	return minstances.at(x)->getinstancesettings();
 }
 
 std::shared_ptr<staticinstance> playoutground::getinst(int x)
@@ -106,7 +104,7 @@ void playoutground::updatemats() {
 }
 
 void playoutground::cleanuplines(vkobjs& objs) {
-	gltfstaticpipeline::cleanup(objs, rdgltfgpupipeline);
+	pline::cleanup(objs, rdgltfgpupipeline);
 	playout::cleanup(objs, rdgltfpipelinelayout);
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.h>
+#include <vk/VkBootstrap.h>
 #include "vkobjs.hpp"
 class vksyncobjects {
 public:

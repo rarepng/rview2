@@ -8,9 +8,13 @@
 #include "netclient.hpp"
 #include "netserver.hpp"
 #include "ui.hpp"
+#include "gamestate.hpp"
 
 class vkwind {
 public:
+
+	bool upreq{ true };
+
 	bool init(std::string title);
 	void framemainmenuupdate();
 	void frameupdate();

@@ -7,6 +7,7 @@
 #include <thread>
 #include <mutex>
 #include "vkwind.hpp"
+#include <iostream>
 
 //building for windows only
 //#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
@@ -24,6 +25,8 @@ int main() {
 		w->cleanup();
 	}
 	else {
+		std::string hold;
+		std::cin >> hold;
 		return -1;
 	}
 

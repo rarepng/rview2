@@ -51,7 +51,8 @@ bool playoutmenubg::createplayout(vkobjs& objs) {
 }
 
 bool playoutmenubg::createpline(vkobjs& objs, std::string vfile, std::string ffile) {
-	if (!menubgpipeline::init(objs, rdgltfpipelinelayout, rdgltfgpupipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, vfile, ffile))return false;
+	//if (!menubgpipeline::init(objs, rdgltfpipelinelayout, rdgltfgpupipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, vfile, ffile))return false;
+	if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpupipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 1, 1, std::vector<std::string>{vfile, ffile}))return false;
 	return true;
 }
 
@@ -72,7 +73,7 @@ void playoutmenubg::uploadvboebo(vkobjs& objs) {
 	//ssbo::upload(objs, rdmodelmatsssbo, transmats);
 //}
 void playoutmenubg::cleanuplines(vkobjs& objs) {
-	menubgpipeline::cleanup(objs, rdgltfgpupipeline);
+	pline::cleanup(objs, rdgltfgpupipeline);
 	playout::cleanup(objs, rdgltfpipelinelayout);
 }
 

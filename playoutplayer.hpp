@@ -4,7 +4,6 @@
 #include <memory>
 #include <map>
 #include <vulkan/vulkan.h>
-#include <tinygltf/tiny_gltf.h>
 #include "vktexture.hpp"
 #include "vknode.hpp"
 #include "vkclip.hpp"
@@ -12,10 +11,10 @@
 #include "modelsettings.hpp"
 #include "ubo.hpp"
 #include "ssbo.hpp"
-#include "vkgltfmodel.hpp"
+#include "animmodel.hpp"
 #include "playerinstance.hpp"
 #include "playout.hpp"
-#include "gltfgpupipeline.hpp"
+#include "pline.hpp"
 
 class playoutplayer {
 public:
@@ -24,6 +23,7 @@ public:
 	bool createdecayinstances(vkobjs& objs);
 	bool createubo(vkobjs& objs);
 	bool createssbomat(vkobjs& objs);
+	bool createssbouint(vkobjs& objs);
 	bool createssbodq(vkobjs& objs);
 	bool createssbodecay(vkobjs& objs);
 	bool createplayout(vkobjs& objs);
@@ -43,9 +43,9 @@ public:
 	void uploadvboebo(vkobjs& objs);
 	void uploadubossbo(vkobjs& objs, std::vector<glm::mat4>& cammats);
 
-	std::shared_ptr<vkgltfinstance> getinst(int i);
+	std::shared_ptr<animinstance> getinst(int i);
+	std::shared_ptr<animinstance> getdecayinst(int i);
 
-	modelsettings getinstsettings();
 
 	unsigned int getnuminstances();
 
@@ -54,18 +54,21 @@ private:
 
 
 
-
 	std::vector<VkDescriptorSetLayout> desclayouts{};
 
 	VkPipelineLayout rdgltfpipelinelayout = VK_NULL_HANDLE;
 	VkPipeline rdgltfgpupipeline = VK_NULL_HANDLE;
+	VkPipeline rdgltfgpupipelineuint = VK_NULL_HANDLE;
 	VkPipeline rdgltfgpudqpipeline = VK_NULL_HANDLE;
+	VkPipeline rdgltfgpudqpipelineuint = VK_NULL_HANDLE;
 	VkPipeline decaypline = VK_NULL_HANDLE;
+	VkPipeline decayplineuint = VK_NULL_HANDLE;
 
 
 
 	std::vector<vkuniformbufferdata> rdperspviewmatrixubo{};
 	vkshaderstoragebufferdata rdjointmatrixssbo{};
+	vkshaderstoragebufferdata uintssbo{};
 	vkshaderstoragebufferdata rdjointdualquatssbo{};
 	vkshaderstoragebufferdata rdjointdecay{};
 
@@ -81,10 +84,9 @@ private:
 	int nummats{};
 
 	std::string mmodelfilename;
-	std::shared_ptr<vkgltfmodel> mgltf = nullptr;
-	std::vector < std::shared_ptr < vkgltfinstance >> minstances;
-	std::vector < std::shared_ptr < vkgltfinstance >> decayinstances;
-	std::shared_ptr<tinygltf::Model> mmodel = nullptr;
+	std::shared_ptr<animmodel> mgltf = nullptr;
+	std::vector < std::shared_ptr < animinstance >> minstances;
+	std::vector < std::shared_ptr < animinstance >> decayinstances;
 
 
 

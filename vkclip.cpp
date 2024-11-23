@@ -1,6 +1,11 @@
 #include "vkclip.hpp"
 vkclip::vkclip(std::string name) :animname(name) {}
-void vkclip::addchan(std::shared_ptr<tinygltf::Model> model,const tinygltf::Animation& anim,const tinygltf::AnimationChannel& chann) {
+//void vkclip::addchan(std::shared_ptr<tinygltf::Model> model, const tinygltf::Animation& anim, const tinygltf::AnimationChannel& chann) {
+//	std::shared_ptr<vkchannel> chan = std::make_shared<vkchannel>();
+//	chan->loadchannel(model, anim, chann);
+//	animchannels.push_back(chan);
+//}
+void vkclip::addchan(const fastgltf::Asset& model, const fastgltf::Animation& anim, const fastgltf::AnimationChannel& chann) {
 	std::shared_ptr<vkchannel> chan = std::make_shared<vkchannel>();
 	chan->loadchannel(model, anim, chann);
 	animchannels.push_back(chan);
@@ -53,10 +58,6 @@ void vkclip::blendFrame(std::vector<std::shared_ptr<vknode>> nodes, std::vector<
 		}
 	}
 }
-
-
-
-
 
 
 std::string vkclip::getName() {

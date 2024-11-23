@@ -3,7 +3,8 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <tinygltf/tiny_gltf.h>
+//#include <tinygltf/tiny_gltf.h>
+#include <fastgltf/core.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 
@@ -20,7 +21,8 @@ enum class interpolationType {
 };
 class vkchannel {
 public:
-	void loadchannel(std::shared_ptr<tinygltf::Model> model,const tinygltf::Animation& anim, const tinygltf::AnimationChannel& chann);
+	//void loadchannel(std::shared_ptr<tinygltf::Model> model, const tinygltf::Animation& anim, const tinygltf::AnimationChannel& chann);
+	void loadchannel(const fastgltf::Asset& model, const fastgltf::Animation& anim, const fastgltf::AnimationChannel& chann);
 	int getTargetNode();
 	animType getAnimType();
 	//interpolationType getInterpolationType();

@@ -25,7 +25,7 @@ bool playoutstatic::setup2(vkobjs& objs, std::string vfile, std::string ffile) {
 }
 
 bool playoutstatic::loadmodel(vkobjs& objs, std::string fname) {
-	mgltf = std::make_shared<vkgltfstatic>();
+	mgltf = std::make_shared<staticmodel>();
 	if (!mgltf->loadmodel(objs, fname))return false;
 	return true;
 }
@@ -65,22 +65,24 @@ bool playoutstatic::createssbomat(vkobjs& objs)
 
 
 bool playoutstatic::createplayout(vkobjs& objs) {
-	std::vector<vktexdata> texdata0 = mgltf->gettexdata();
-	desclayouts.insert(desclayouts.begin(), texdata0[0].texdescriptorlayout);
+	vktexdatapls texdatapls0 = mgltf->gettexdatapls();
+	desclayouts.insert(desclayouts.begin(), texdatapls0.texdescriptorlayout);
 	if (!playout::init(objs, rdgltfpipelinelayout, desclayouts, sizeof(vkpushconstants)))return false;
 	return true;
 }
 
 bool playoutstatic::createpline(vkobjs& objs, std::string vfile, std::string ffile) {
-	if (!gltfstaticpipeline::init(objs, rdgltfpipelinelayout, rdgltfgpupipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, vfile, ffile))return false;
+	//if (!gltfstaticpipeline::init(objs, rdgltfpipelinelayout, rdgltfgpupipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, vfile, ffile))return false;
+	if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpupipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 3, 7, std::vector<std::string>{vfile, ffile}))return false;
 	return true;
 }
 
 
 void playoutstatic::uploadvboebo(vkobjs& objs) {
 	if (uploadreq) {
-		mgltf->uploadvertexbuffers(objs);
-		mgltf->uploadindexbuffers(objs);
+		//mgltf->uploadvertexbuffers(objs);
+		//mgltf->uploadindexbuffers(objs);
+		mgltf->uploadvboebo(objs);
 		uploadreq = false;
 	}
 }
@@ -93,13 +95,14 @@ void playoutstatic::uploadubossbo(vkobjs& objs, std::vector<glm::mat4>& cammats)
 	ssbo::upload(objs, rdmodelmatsssbo, transmats);
 }
 
-staticsettings playoutstatic::getinstsettings(int x){
-	return minstances.at(x)->getinstancesettings();
+
+
+std::shared_ptr<staticinstance> playoutstatic::getinst(int x){
+	return minstances.at(x);
 }
 
-std::shared_ptr<staticinstance> playoutstatic::getinst(int x)
-{
-	return minstances.at(x);
+std::vector<std::shared_ptr<staticinstance>>& playoutstatic::getallinstances(){
+	return minstances;
 }
 
 
@@ -114,7 +117,7 @@ void playoutstatic::updatemats(){
 }
 
 void playoutstatic::cleanuplines(vkobjs& objs) {
-	gltfstaticpipeline::cleanup(objs, rdgltfgpupipeline);
+	pline::cleanup(objs, rdgltfgpupipeline);
 	playout::cleanup(objs, rdgltfpipelinelayout);
 }
 

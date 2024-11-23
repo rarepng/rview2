@@ -90,7 +90,17 @@ void ssbo::upload(vkobjs& objs,vkshaderstoragebufferdata& ssbodata, std::vector<
     vmaUnmapMemory(objs.rdallocator, ssbodata.rdssbobufferalloc);
 }
 
-void ssbo::upload(vkobjs& objs,vkshaderstoragebufferdata& ssbodata, std::vector<glm::mat2x4> mats) {
+void ssbo::upload(vkobjs& objs, vkshaderstoragebufferdata& ssbodata, std::vector<glm::mat2x4> mats) {
+    if (mats.size() == 0) {
+        return;
+    }
+
+    void* data;
+    vmaMapMemory(objs.rdallocator, ssbodata.rdssbobufferalloc, &data);
+    std::memcpy(data, mats.data(), ssbodata.rdssbobuffersize);
+    vmaUnmapMemory(objs.rdallocator, ssbodata.rdssbobufferalloc);
+}
+void ssbo::upload(vkobjs& objs, vkshaderstoragebufferdata& ssbodata,const std::vector<double>& mats) {
     if (mats.size() == 0) {
         return;
     }

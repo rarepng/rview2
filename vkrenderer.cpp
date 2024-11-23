@@ -14,9 +14,10 @@
 #include <vk/vk_mem_alloc.h>
 #include <iostream>
 #include "vkrenderer.hpp"
-#ifdef _DEBUG
+#include "vksyncobjects.hpp"
+//#ifdef _DEBUG
 #include "logger.hpp"
-#endif
+//#endif
 
 float map2(glm::vec3 x) {
 	return std::max(x.y, 0.0f);
@@ -25,7 +26,7 @@ vkrenderer::vkrenderer(GLFWwindow* wind,GLFWmonitor* mont,const GLFWvidmode* mod
 	mvkobjs.rdwind = wind;
 	mvkobjs.rdmonitor = mont;
 	mvkobjs.rdmode = mode;
-	mvkobjs.decaying = &decaying;
+	mvkobjs.decaying = &mspells[1]->active;
 
 
 	mpersviewmats.emplace_back(glm::mat4{ 1.0f });
@@ -38,92 +39,41 @@ bool vkrenderer::init() {
 	std::srand(static_cast<int>(time(NULL)));
 	mvkobjs.rdheight = mvkobjs.rdvkbswapchain.extent.height;
 	mvkobjs.rdwidth = mvkobjs.rdvkbswapchain.extent.width;
-
-
-
 	if (!mvkobjs.rdwind)return false;
-
-
-	//std::lock_guard<std::shared_mutex> lg{ *mvkobjs.mtx2 };
-	mvkobjs.mtx2->lock();
 	if (!deviceinit()){
-		#ifdef _DEBUG
-		logger::log(0, "crashed at ", __FUNCTION__);
-		#endif
 		return false;
 	}
 	if (!initvma()){
-		#ifdef _DEBUG
-		logger::log(0,"crashed at ",__FUNCTION__);
-		#endif
 		return false;
 	}
-	mvkobjs.mtx2->unlock();
-
-
 	if (!getqueue()){
-		#ifdef _DEBUG
-		logger::log(0,"crashed at ",__FUNCTION__);
-		#endif
 		return false;
 	}
 	if (!createswapchain()){
-		#ifdef _DEBUG
-		logger::log(0,"crashed at ",__FUNCTION__);
-		#endif
 		return false;
 	}
 	if (!createdepthbuffer()){
-		#ifdef _DEBUG
-		logger::log(0,"crashed at ",__FUNCTION__);
-		#endif
 		return false;
 	}
 	if (!createcommandpool()){
-		#ifdef _DEBUG
-		logger::log(0,"crashed at ",__FUNCTION__);
-		#endif
 		return false;
 	}
 	if (!createcommandbuffer()){
-		#ifdef _DEBUG
-		logger::log(0,"crashed at ",__FUNCTION__);
-		#endif
 		return false;
 	}
 	if (!createrenderpass()){
-		#ifdef _DEBUG
-		logger::log(0,"crashed at ",__FUNCTION__);
-		#endif
 		return false;
 	}
 	if (!createframebuffer()){
-		#ifdef _DEBUG
-		logger::log(0,"crashed at ",__FUNCTION__);
-		#endif
 		return false;
 	}
 	if (!createsyncobjects()){
-		#ifdef _DEBUG
-		logger::log(0,"crashed at ",__FUNCTION__);
-		#endif
 		return false;
 	}
-
-
 	if (!loadbackground()){
-		#ifdef _DEBUG
-		logger::log(0,"crashed at ",__FUNCTION__);
-		#endif
 		return false;
 	}
-
-
-
 	if (!initui()){
-		#ifdef _DEBUG
-		logger::log(0,"crashed at ",__FUNCTION__);
-		#endif
 		return false;
 	}
 
@@ -136,9 +86,6 @@ bool vkrenderer::init() {
 
 	return true;
 }
-
-
-
 bool vkrenderer::initscene() {
 
 	mpgltf.reserve(animfname.size());
@@ -146,30 +93,101 @@ bool vkrenderer::initscene() {
 	mstatic0.reserve(staticfname.size());
 	mstatic0.resize(staticfname.size());
 
-	if (!setupground())return false;
+	mground = std::make_shared<playoutground>();
+	if (!mground->setup(mvkobjs, groundfname, groundobjs))return false;
+	mcircle = std::make_shared<playoutcircle>();
+	if (!mcircle->setup(mvkobjs, dndcount))return false;
+	mplates = std::make_shared<playoutcircle>();
+	if (!mplates->setup(mvkobjs, totalanimcounts))return false;
+
 	mvkobjs.loadingprog += 0.1f;
-	if (!setupplayer())return false;
+
+	mplayer = std::make_shared<playoutplayer>();
+	if (!mplayer->setup(mvkobjs, playerfname, playercount))return false;
+
 	mvkobjs.loadingprog += 0.1f;
-	if (!setupmodels())return false;
+
+	for (size_t i{ 0 }; i < mpgltf.size(); i++) {
+		mpgltf[i] = std::make_shared<playoutmodel>();
+		if (!mpgltf[i]->setup(mvkobjs, animfname[i], animcounts[i]))return false;
+	}
+
 	mvkobjs.loadingprog += 0.1f;
-	if (!setupstaticmodels())return false;
+
+	for (size_t i{ 0 }; i < mstatic0.size(); i++) {
+		mstatic0[i] = std::make_shared<playoutstatic>();
+		if (!mstatic0[i]->setup(mvkobjs, staticfname[i], staticcounts[i]))return false;
+	}
+
 	mvkobjs.loadingprog += 0.1f;
-	if (!setuplifebar())return false;
+
+	lifebar = std::make_shared<playoutmenubg>();
+	if (!lifebar->setup(mvkobjs, 1))return false;
+
 	mvkobjs.loadingprog += 0.1f;
-	if (!setupground2())return false;
+
+	if (!mground->setup2(mvkobjs, groundshaders[0], groundshaders[1]))return false;
+	if (!mcircle->setup2(mvkobjs,circletexture, dndshaders[0], dndshaders[1]))return false;
+	if (!mplates->setup2(mvkobjs,hptexture, plateshaders[0], plateshaders[1]))return false;
+
 	mvkobjs.loadingprog += 0.1f;
-	if (!setupplayer2())return false;
+
+	if (!mplayer->setup2(mvkobjs, playershaders[0], playershaders[1]))return false;
+
 	mvkobjs.loadingprog += 0.1f;
-	if (!setupmodels2())return false;
+
+	for (size_t i{ 0 }; i < mpgltf.size(); i++) {
+		if (!mpgltf[i]->setup2(mvkobjs, animshaders[0], animshaders[1]))return false;
+	}
+
 	mvkobjs.loadingprog += 0.1f;
-	if (!setupstaticmodels2())return false;
+
+	for (size_t i{ 0 }; i < mstatic0.size(); i++) {
+		if (!mstatic0[i]->setup2(mvkobjs, staticshaders[0], staticshaders[1]))return false;
+	}
+
 	mvkobjs.loadingprog += 0.1f;
-	if (!setuplifebar2())return false;
+
+	if (!lifebar->setup2(mvkobjs, lifebarshaders[0], lifebarshaders[1]))return false;
+
 	mvkobjs.loadingprog += 0.1f;
 
 	return true;
 }
+void vkrenderer::initshop(){
+	mchoices.reserve(1);
+	mchoices.resize(1);
+	mstaticchoices.reserve(staticshopfname.size());
+	mstaticchoices.resize(staticshopfname.size());
 
+	mchoices[0] = std::make_shared<playoutcircle>();
+	mchoices[0]->setup(mvkobjs, 2);
+	mchoices[0]->setup2(mvkobjs,shopbacktextures[0], shopbgshaders[0], shopbgshaders[1]);
+
+	//for (auto& i : mstaticchoices) {
+	//	i = std::make_shared<playoutstatic>();
+	//	i->setup(mvkobjs, staticshopfname[0], 20);
+	//}	
+
+	mstaticchoices.front() = std::make_shared<playoutstatic>();
+	mstaticchoices.back() = std::make_shared<playoutstatic>();
+	mstaticchoices.front()->setup(mvkobjs, staticshopfname.front(), shopcounts.front());
+	mstaticchoices.back()->setup(mvkobjs, staticshopfname.back(), shopcounts.back());
+	mstaticchoices.front()->setup2(mvkobjs, staticshopshaders[0], staticshopshaders[1]);
+	mstaticchoices.back()->setup2(mvkobjs, staticshopshaders[0], staticshopshaders[1]);
+	//for (size_t i{ 0 }; i < mchoices.size(); i++) {
+	//	for (const auto& j : mchoices[i]->getallinstances()) {
+	//	}
+	//}
+	for (size_t i{ 0 }; i < mstaticchoices.size(); i++) {
+		for (const auto& j : mstaticchoices[i]->getallinstances()) {
+			j->getinstancesettings().msworldpos = glm::vec3(static_cast<float>(std::rand() % 5999) / 5999.0, static_cast<float>(std::rand() % 5999) / 5999.0, 0.5f);
+			j->getinstancesettings().msworldrot = glm::vec3(static_cast<float>(std::rand() % 360), static_cast<float>(std::rand() % 360), static_cast<float>(std::rand() % 360));
+			j->getinstancesettings().msworldscale = glm::vec3(0.2f, 0.2f, 0.2f);
+		}
+	}
+
+}
 bool vkrenderer::getserverclientstatus(){
 	return mnobjs.rdserverclient;
 }
@@ -182,8 +200,6 @@ netobjs& vkrenderer::getnetobjs() {
 vkobjs& vkrenderer::getvkobjs() {
 	return mvkobjs;
 }
-
-
 bool vkrenderer::quicksetup(netclient* nclient){
 	mnobjs.nclient = nclient;
 	ImGui_ImplGlfw_RestoreCallbacks(mvkobjs.rdwind);
@@ -193,7 +209,18 @@ bool vkrenderer::quicksetup(netclient* nclient){
 	});
 	ImGui_ImplGlfw_InstallCallbacks(mvkobjs.rdwind);
 	//ImGui_ImplGlfw_RestoreCallbacks(mvkobjs.rdwind);
+	playerlocation = mplayer->getinst(0)->getinstpos();
 	inmenu = false;
+	gamestate::setstate(gamestate0::normal);
+	gamestate::init(mvkobjs, [&]() { moveplayer(); }, [&]() { moveenemies(); }, mplayer, mcircle, mpgltf, mspells);
+
+
+	modelsettings& s = mplayer->getinst(0)->getinstancesettings();
+	s.msworldscale = glm::vec3{ 1.0f };
+
+	playerhp = &s.hp;
+
+
 	return true;
 }
 bool vkrenderer::quicksetup(netserver* nserver) {
@@ -205,100 +232,49 @@ bool vkrenderer::quicksetup(netserver* nserver) {
 	});
 	ImGui_ImplGlfw_InstallCallbacks(mvkobjs.rdwind);
 	//ImGui_ImplGlfw_RestoreCallbacks(mvkobjs.rdwind);
+	playerlocation = mplayer->getinst(0)->getinstpos();
 	inmenu = false;
+	gamestate::setstate(gamestate0::normal);
+	gamestate::init(mvkobjs, [&]() { moveplayer(); }, [&]() { moveenemies(); }, mplayer, mcircle, mpgltf, mspells);
 	return true;
 }
+void vkrenderer::wavesetup(){
 
-bool vkrenderer::setuplifebar() {
-	lifebar = std::make_shared<playoutmenubg>();
-	if (!lifebar->setup(mvkobjs,1))return false;
-	return true;
-}
-bool vkrenderer::setuplifebar2() {
-	if (!lifebar->setup2(mvkobjs, lifebarshaders[0], lifebarshaders[1]))return false;
-	return true;
-}
+	size_t k = 0;
+	for (size_t i{ 0 }; i < mpgltf.size(); i++) {
+		for (size_t j{ 0 }; j < mpgltf[i]->getnuminstances(); j++) {
+			staticsettings& s = mplates->getinst(k++)->getinstancesettings();
+			s.msworldpos = mpgltf[i]->getinst(j)->getinstancesettings().msworldpos + glm::vec3{ 0.0f,200.0f,0.0f };
+			s.msworldscale = glm::vec3{ 100.0f,28.0f,100.0f };
+			//s.msworldrot = mpgltf[i]->getinst(j)->getinstancesettings().msworldrot;
+			glm::vec3 diff = glm::normalize(mvkobjs.rdcamwpos - s.msworldpos);
+			s.msworldrot.y = glm::degrees(glm::atan(diff.x,diff.z));
+		}
+	}
 
+}
 bool vkrenderer::loadbackground(){
 	mbackground = std::make_shared<playoutback>();
 	mmenubg = std::make_shared<playoutmenubg>();
 	if (!mbackground->setup(mvkobjs, backfname, backgobjs)){
-		#ifdef _DEBUG
-		logger::log(0,"crashed at ",__FUNCTION__);
-		#endif
 		return false;
 	}
 	if (!mbackground->setup2(mvkobjs, backshaders[0], backshaders[1])){
-		#ifdef _DEBUG
-		logger::log(0,"crashed at ",__FUNCTION__);
-		#endif
 		return false;
 	}
 	if (!mmenubg->setup(mvkobjs,1)){
-		#ifdef _DEBUG
-		logger::log(0,"crashed at ",__FUNCTION__);
-		#endif
 		return false;
 	}
 	if (!mmenubg->setup2(mvkobjs, menubgshaders[0], menubgshaders[1])){
-		#ifdef _DEBUG
-		logger::log(0,"crashed at ",__FUNCTION__);
-		#endif
 		return false;
 	}
 	return true;
 }
-
-bool vkrenderer::setupground() {
-	mground = std::make_shared<playoutground>();
-	if (!mground->setup(mvkobjs, groundfname, groundobjs));
-	return true;
-}
-bool vkrenderer::setupground2() {
-	if (!mground->setup2(mvkobjs, groundshaders[0], groundshaders[1]));
-	return true;
-}
-bool vkrenderer::setupplayer(){
-	mplayer = std::make_shared<playoutplayer>();
-	if (!mplayer->setup(mvkobjs, playerfname, playercount));
-	return true;
-}
-bool vkrenderer::setupplayer2(){
-	if (!mplayer->setup2(mvkobjs, playershaders[0], playershaders[1]));
-	return true;
-}
-bool vkrenderer::setupmodels() {
-	for (size_t i{ 0 }; i < mpgltf.size(); i++) {
-		mpgltf[i] = std::make_shared<playoutmodel>();
-		if (!mpgltf[i]->setup(mvkobjs, animfname[i], animcounts[i]))return false;
-	}
-	return true;
-}
-bool vkrenderer::setupmodels2() {
-	for (size_t i{ 0 }; i < mpgltf.size(); i++) {
-		if (!mpgltf[i]->setup2(mvkobjs, animshaders[0], animshaders[1]))return false;
-	}
-	return true;
-}
-bool vkrenderer::setupstaticmodels(){
-	for (size_t i{ 0 }; i < mstatic0.size(); i++) {
-		mstatic0[i] = std::make_shared<playoutstatic>();
-		if (!mstatic0[i]->setup(mvkobjs, staticfname[i], staticcounts[i]))return false;
-	}
-	return true;
-}
-bool vkrenderer::setupstaticmodels2(){
-	for (size_t i{ 0 }; i < mstatic0.size(); i++) {
-		if (!mstatic0[i]->setup2(mvkobjs, staticshaders[0], staticshaders[1]))return false;
-	}
-	return true;
-}
-
 bool vkrenderer::deviceinit() {
 	vkb::InstanceBuilder instbuild{};
 
 	//std::lock_guard<std::shared_mutex> lg{ *mvkobjs.mtx2 };
-	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().enable_validation_layers().require_api_version(1, 2, 0).build();
+	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 3, 0).build();
 	
 
 	//instret.value().
@@ -311,7 +287,7 @@ bool vkrenderer::deviceinit() {
 	
 
 	vkb::PhysicalDeviceSelector physicaldevsel{ mvkobjs.rdvkbinstance };
-	auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1,2).select();
+	auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1,3).select();
 
 	//VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT x;
 	//x.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT;
@@ -323,18 +299,21 @@ bool vkrenderer::deviceinit() {
 
 	//VkPhysicalDevice8BitStorageFeatures b8storagefeature;
 	VkPhysicalDeviceVulkan12Features physfeatures12;
+	VkPhysicalDeviceVulkan11Features physfeatures11;
 	//VkPhysicalDeviceVulkan11Features physfeatures11;
 	VkPhysicalDeviceFeatures2 physfeatures;
 	//b8storagefeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES;
 	//physmeshfeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
 	physfeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+	physfeatures11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
 	physfeatures12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
 	physfeatures13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 	//physmeshfeatures.pNext = &physfeatures12;
-	physfeatures.pNext = &physfeatures12;
+	physfeatures.pNext = &physfeatures11;
+	physfeatures11.pNext = &physfeatures12;
+	physfeatures12.pNext = &physfeatures13;
 	physfeatures13.pNext = VK_NULL_HANDLE;
 	//b8storagefeature.pNext = VK_NULL_HANDLE;
-	physfeatures12.pNext = &physfeatures13;
 	vkGetPhysicalDeviceFeatures2(firstphysicaldevselret.value(), &physfeatures);
 	//std::cout << "\n\n\n\n" << physfeatures12.runtimeDescriptorArray << std::endl;
 	//if (physmeshfeatures.meshShader == VK_FALSE) {
@@ -363,7 +342,7 @@ bool vkrenderer::deviceinit() {
 
 
 	//auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).add_required_extension_features(physmeshfeatures).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).add_required_extension("VK_EXT_mesh_shader").select();
-	auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).select();
+	auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_11(physfeatures11).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).select();
 	//auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 0).set_surface(msurface).select();
 
 	//std::cout << "\n\n\n\n\n\n\n\n\n\n mesh shader value: " << secondphysicaldevselret.value().is_extension_present("VK_EXT_mesh_shader") << "\n\n\n\n\n";
@@ -381,7 +360,16 @@ bool vkrenderer::deviceinit() {
 
 	return true;
 }
-
+bool vkrenderer::initvma() {
+	VmaAllocatorCreateInfo allocinfo{};
+	allocinfo.physicalDevice = mvkobjs.rdvkbphysdev.physical_device;
+	allocinfo.device = mvkobjs.rdvkbdevice.device;
+	allocinfo.instance = mvkobjs.rdvkbinstance.instance;
+	if (vmaCreateAllocator(&allocinfo, &mvkobjs.rdallocator) != VK_SUCCESS) {
+		return false;
+	}
+	return true;
+}
 bool vkrenderer::getqueue()
 {
 	auto graphqueueret = mvkobjs.rdvkbdevice.get_queue(vkb::QueueType::graphics);
@@ -392,7 +380,6 @@ bool vkrenderer::getqueue()
 
 	return true;
 }
-
 bool vkrenderer::createdepthbuffer() {
 	VkExtent3D depthimageextent = {
 		mvkobjs.rdvkbswapchain.extent.width,
@@ -439,7 +426,6 @@ bool vkrenderer::createdepthbuffer() {
 
 	return true;
 }
-
 bool vkrenderer::createswapchain() {
 	vkb::SwapchainBuilder swapchainbuild{ mvkobjs.rdvkbdevice };
 	auto swapchainbuilret = swapchainbuild.set_old_swapchain(mvkobjs.rdvkbswapchain).set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR).build();
@@ -496,30 +482,16 @@ bool vkrenderer::createsyncobjects() {
 	if (!vksyncobjects::init(mvkobjs))return false;
 	return true;
 }
-bool vkrenderer::initvma() {
-	VmaAllocatorCreateInfo allocinfo{};
-	allocinfo.physicalDevice = mvkobjs.rdvkbphysdev.physical_device;
-	allocinfo.device = mvkobjs.rdvkbdevice.device;
-	allocinfo.instance = mvkobjs.rdvkbinstance.instance;
-	if (vmaCreateAllocator(&allocinfo, &mvkobjs.rdallocator) != VK_SUCCESS) {
-		return false;
-	}
-	return true;
-}
-
 bool vkrenderer::initui() {
 	if(!mui.init(mvkobjs))return false;
 	return true;
 }
-
 bool vkrenderer::initgameui(){
 	if (!mui.init(mvkobjs)) {
 		return false;
 	}
 	return true;
 }
-
-
 void vkrenderer::cleanup() {
 	vkDeviceWaitIdle(mvkobjs.rdvkbdevice.device);
 
@@ -535,6 +507,18 @@ void vkrenderer::cleanup() {
 		mplayer->cleanupmodels(mvkobjs);
 	if (mground)
 		mground->cleanupmodels(mvkobjs);
+
+	for (size_t i{ 0 }; i < mchoices.size(); i++) {
+		mchoices[i]->cleanupmodels(mvkobjs);
+	}
+	for (size_t i{ 0 }; i < mstaticchoices.size(); i++) {
+		mstaticchoices[i]->cleanupmodels(mvkobjs);
+	}
+
+
+	if (mcircle)mcircle->cleanupmodels(mvkobjs);
+	if (mplates)mplates->cleanupmodels(mvkobjs);
+
 
 	if(lifebar)
 	lifebar->cleanupmodels(mvkobjs);
@@ -567,6 +551,20 @@ void vkrenderer::cleanup() {
 	if(lifebar)
 	lifebar->cleanuplines(mvkobjs);
 
+	if (mcircle)mcircle->cleanuplines(mvkobjs);
+	if (mplates)mplates->cleanuplines(mvkobjs);
+
+
+
+	for (size_t i{ 0 }; i < mchoices.size(); i++) {
+		mchoices[i]->cleanuplines(mvkobjs);
+	}
+	for (size_t i{ 0 }; i < mstaticchoices.size(); i++) {
+		mstaticchoices[i]->cleanuplines(mvkobjs);
+	}
+
+
+
 
 	renderpass::cleanup(mvkobjs);
 
@@ -583,6 +581,21 @@ void vkrenderer::cleanup() {
 	if (mground)
 		mground->cleanupbuffers(mvkobjs);
 
+	if (mcircle)mcircle->cleanupbuffers(mvkobjs);
+	if (mplates)mplates->cleanupbuffers(mvkobjs);
+
+
+
+
+	for (size_t i{ 0 }; i < mchoices.size(); i++) {
+		mchoices[i]->cleanupbuffers(mvkobjs);
+	}
+	for (size_t i{ 0 }; i < mstaticchoices.size(); i++) {
+		mstaticchoices[i]->cleanupbuffers(mvkobjs);
+	}
+
+
+
 	vkDestroyImageView(mvkobjs.rdvkbdevice.device, mvkobjs.rddepthimageview, nullptr);
 	vmaDestroyImage(mvkobjs.rdallocator, mvkobjs.rddepthimage, mvkobjs.rddepthimagealloc);
 	vmaDestroyAllocator(mvkobjs.rdallocator);
@@ -596,8 +609,211 @@ void vkrenderer::cleanup() {
 
 
 }
+void vkrenderer::cleanloading() {
+	commandbuffer::cleanup(mvkobjs, mvkobjs.rdcommandpool[1], mvkobjs.rdcommandbuffer[1]);
+	commandpool::cleanup(mvkobjs, mvkobjs.rdcommandpool[1]);
+}
+void vkrenderer::cleanmainmenu() {
+	mbackground->cleanupmodels(mvkobjs);
+	mbackground->cleanupbuffers(mvkobjs);
+	mbackground->cleanuplines(mvkobjs);
+	mmenubg->cleanupmodels(mvkobjs);
+	mmenubg->cleanuplines(mvkobjs);
+}
+void vkrenderer::setsize(unsigned int w, unsigned int h) {
+	mvkobjs.rdwidth = w;
+	mvkobjs.rdheight = h;
+	if (!w || !h)
+		mpersviewmats.at(1) = glm::perspective(glm::radians(static_cast<float>(mvkobjs.rdvkbswapchain.extent.width)), static_cast<float>(mvkobjs.rdvkbswapchain.extent.height) / static_cast<float>(mvkobjs.rdheight), 0.01f, 60000.0f);
+	else
+		mpersviewmats.at(1) = glm::perspective(mvkobjs.rdfov, static_cast<float>(mvkobjs.rdwidth) / static_cast<float>(mvkobjs.rdheight), 1.0f, 6000.0f);
+
+}
+
+bool vkrenderer::uploadfordraw(){
+
+	if (vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
+		return false;
+	}
+	if (vkResetFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence) != VK_SUCCESS)return false;
+
+	uint32_t imgidx = 0;
+	VkResult res = vkAcquireNextImageKHR(mvkobjs.rdvkbdevice.device, mvkobjs.rdvkbswapchain.swapchain, UINT64_MAX, mvkobjs.rdpresentsemaphore, VK_NULL_HANDLE, &imgidx);
+	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
+		return recreateswapchain();
+	} else {
+		if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) {
+			return false;
+		}
+	}
 
 
+
+
+	if (vkResetCommandBuffer(mvkobjs.rdcommandbuffer[0], 0) != VK_SUCCESS)return false;
+
+	VkCommandBufferBeginInfo cmdbgninfo{};
+	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	if (vkBeginCommandBuffer(mvkobjs.rdcommandbuffer[0], &cmdbgninfo) != VK_SUCCESS)return false;
+
+
+	muploadtovbotimer.start();
+
+	mplayer->uploadvboebo(mvkobjs);
+
+	for (size_t i{ 0 }; i < mpgltf.size(); i++) {
+		mpgltf[i]->uploadvboebo(mvkobjs);
+	}
+
+	for (size_t i{ 0 }; i < mstatic0.size(); i++) {
+		mstatic0[i]->uploadvboebo(mvkobjs);
+	}
+	mground->uploadvboebo(mvkobjs);
+
+	if (mspells[0]->active)mcircle->uploadvboebo(mvkobjs);
+
+	mplates->uploadvboebo(mvkobjs);
+
+	lifebar->uploadvboebo(mvkobjs);
+
+	mvkobjs.rduploadtovbotime = muploadtovbotimer.stop();
+	if (vkEndCommandBuffer(mvkobjs.rdcommandbuffer[0]) != VK_SUCCESS)return false;
+
+
+	VkSubmitInfo submitinfo{};
+	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+	VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	submitinfo.pWaitDstStageMask = &waitstage;
+
+	submitinfo.waitSemaphoreCount = 1;
+	submitinfo.pWaitSemaphores = &mvkobjs.rdpresentsemaphore;
+
+	submitinfo.signalSemaphoreCount = 1;
+	submitinfo.pSignalSemaphores = &mvkobjs.rdrendersemaphore;
+
+	submitinfo.commandBufferCount = 1;
+	submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer.at(0);
+
+
+	mvkobjs.mtx2->lock();
+	if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
+		return false;
+	}
+	mvkobjs.mtx2->unlock();
+
+	VkPresentInfoKHR presentinfo{};
+	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentinfo.waitSemaphoreCount = 1;
+	presentinfo.pWaitSemaphores = &mvkobjs.rdrendersemaphore;
+
+	presentinfo.swapchainCount = 1;
+	presentinfo.pSwapchains = &mvkobjs.rdvkbswapchain.swapchain;
+
+	presentinfo.pImageIndices = &imgidx;
+
+
+	mvkobjs.mtx2->lock();
+	res = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
+
+	mvkobjs.mtx2->unlock();
+
+	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
+		return recreateswapchain();
+	} else {
+		if (res != VK_SUCCESS) {
+			return false;
+		}
+	}
+
+
+
+	return true;
+}
+
+void vkrenderer::uploadforshop(){
+
+	vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX);
+	vkResetFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence);
+
+	uint32_t imgidx = 0;
+
+	VkResult res = vkAcquireNextImageKHR(mvkobjs.rdvkbdevice.device, mvkobjs.rdvkbswapchain.swapchain, UINT64_MAX, mvkobjs.rdpresentsemaphore, VK_NULL_HANDLE, &imgidx);
+	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
+		recreateswapchain();
+	}
+	vkResetCommandBuffer(mvkobjs.rdcommandbuffer[0], 0);
+
+	VkCommandBufferBeginInfo cmdbgninfo{};
+	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(mvkobjs.rdcommandbuffer[0], &cmdbgninfo);
+
+
+	//upload
+
+
+	for (size_t i{ 0 }; i < mchoices.size(); i++) {
+		mchoices[i]->uploadvboebo(mvkobjs);
+	}
+	for (size_t i{ 0 }; i < mstaticchoices.size(); i++) {
+		mstaticchoices[i]->uploadvboebo(mvkobjs);
+	}
+
+
+
+
+	vkEndCommandBuffer(mvkobjs.rdcommandbuffer[0]);
+
+
+	VkSubmitInfo submitinfo{};
+	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+	VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	submitinfo.pWaitDstStageMask = &waitstage;
+
+	submitinfo.waitSemaphoreCount = 1;
+	submitinfo.pWaitSemaphores = &mvkobjs.rdpresentsemaphore;
+
+	submitinfo.signalSemaphoreCount = 1;
+	submitinfo.pSignalSemaphores = &mvkobjs.rdrendersemaphore;
+
+	submitinfo.commandBufferCount = 1;
+	submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer.at(0);
+
+
+	mvkobjs.mtx2->lock();
+	vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence);
+	mvkobjs.mtx2->unlock();
+
+	VkPresentInfoKHR presentinfo{};
+	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentinfo.waitSemaphoreCount = 1;
+	presentinfo.pWaitSemaphores = &mvkobjs.rdrendersemaphore;
+
+	presentinfo.swapchainCount = 1;
+	presentinfo.pSwapchains = &mvkobjs.rdvkbswapchain.swapchain;
+
+	presentinfo.pImageIndices = &imgidx;
+
+
+	mvkobjs.mtx2->lock();
+	res = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
+
+	mvkobjs.mtx2->unlock();
+
+	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
+		recreateswapchain();
+	} 
+
+
+
+
+
+}
 
 void vkrenderer::handlekeymenu(int key, int scancode, int action, int mods) {
 
@@ -620,10 +836,7 @@ void vkrenderer::handlekeymenu(int key, int scancode, int action, int mods) {
 	//}
 
 }
-
-
-void vkrenderer::handlekey(int key, int scancode, int action, int mods)
-{
+void vkrenderer::handlekey(int key, int scancode, int action, int mods){
 	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_SPACE) == GLFW_PRESS) {
 		switchshader = !switchshader;
 	}
@@ -642,35 +855,58 @@ void vkrenderer::handlekey(int key, int scancode, int action, int mods)
 
 
 	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-		if (paused) {
-			paused = false;
+		if (gamestate::getstate() == gamestate0::menu) {
+			gamestate::setstate(gamestate0::normal);
+		}
+		if (gamestate::getpause()==pausestate::paused) {
+			gamestate::setpause(pausestate::resumed);
 		} else {
-			paused = true;
+			gamestate::setpause(pausestate::paused);
 			pausebgntime = glfwGetTime();
 		}
 		//glfwSetWindowShouldClose(mvkobjs.rdwind, true);
 	}
+
+	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_F) == GLFW_PRESS) {
+		if (mspells[0]->ready) {
+			double x;
+			double y;
+			glfwGetCursorPos(mvkobjs.rdwind, &x, &y);
+			lastmousexy = glm::vec<2, double>{ x,y };
+			x = (2.0 * (x / (double)mvkobjs.rdwidth)) - 1.0;
+			y = (2.0 * (y / (double)mvkobjs.rdheight)) - 1.0;
+			float d{ 0.0f };
+			glm::vec3 cfor{ mcam.mforward };
+			float rotangx{ (float)(1.5 * x * -0.523599f) };
+			float rotangy{ (float)(1.5 * y * (-0.523599f * mvkobjs.rdheight / mvkobjs.rdwidth)) };
+			cfor = glm::rotate(cfor, rotangx, mcam.mup);
+			cfor = glm::rotate(cfor, rotangy, mcam.mright);
+			for (int i{ 0 }; i < 100000; i++) {
+				float dt = map2(mvkobjs.rdcamwpos + cfor * d);
+				d += dt;
+				if (dt < 0.00001f || d>10000.0f)break;
+			}
+			if (d < 10000.0f) {
+				mspells[0]->cast = true;
+				mspells[0]->ready = false;
+				mvkobjs.raymarchpos = mvkobjs.rdcamwpos + cfor * d;
+			}
+		}
+	}
 	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_R) == GLFW_PRESS) {
-		if (!decaying) {
-			mplayer->freezedecay();
-			decaying = true;
+		if (mspells[1]->ready) {
 			decaystart = glfwGetTime();
-			mplayer->createdecayinstances(mvkobjs);
 			{
 				double x;
 				double y;
 				glfwGetCursorPos(mvkobjs.rdwind, &x, &y);
-				//if (glm::abs(x - lastmousexy.x) > 100.0 || glm::abs(y - lastmousexy.y) > 100.0) {
-				//	x += 1.0;
-				//	y -= 1.0;
-				//}
 				lastmousexy = glm::vec<2, double>{ x,y };
 				x = (2.0 * (x / (double)mvkobjs.rdwidth)) - 1.0;
 				y = (2.0 * (y / (double)mvkobjs.rdheight)) - 1.0;
 				float d{ 0.0f };
 				glm::vec3 cfor{ mcam.mforward };
-				float rotangx{ (float)(1.5*x * -0.523599f) };
-				float rotangy{ (float)(1.5*y * (-0.523599f * mvkobjs.rdheight / mvkobjs.rdwidth)) };
+				float rotangx{ (float)(1.5 * x * -0.523599f) };
+				float rotangy{ (float)(1.5 * y * (-0.523599f * mvkobjs.rdheight / mvkobjs.rdwidth)) };
 				cfor = glm::rotate(cfor, rotangx, mcam.mup);
 				cfor = glm::rotate(cfor, rotangy, mcam.mright);
 				for (int i{ 0 }; i < 100000; i++) {
@@ -681,107 +917,91 @@ void vkrenderer::handlekey(int key, int scancode, int action, int mods)
 
 
 				if (d < 10000.0f) {
-					modelsettings s = mplayer->getinst(0)->getinstancesettings();
-					decaypos = s.msworldpos;
-					playerlookto = glm::normalize(mvkobjs.rdcamwpos + cfor * d - s.msworldpos);
-					movediff = glm::vec2(glm::abs(glm::vec3((mvkobjs.rdcamwpos + cfor * d) - s.msworldpos)).x, glm::abs(glm::vec3((mvkobjs.rdcamwpos + cfor * d) - s.msworldpos)).z);
+					//playerlookto = glm::normalize(mvkobjs.rdcamwpos + cfor * d - s.msworldpos);
+					//movediff = glm::vec2(glm::abs(glm::vec3((mvkobjs.rdcamwpos + cfor * d) - s.msworldpos)).x, glm::abs(glm::vec3((mvkobjs.rdcamwpos + cfor * d) - s.msworldpos)).z);
 
-					if (movediff.x > 2.1f || movediff.y > 2.1f) {
-						s.msworldpos = mvkobjs.rdcamwpos + cfor * d;
+					//if (movediff.x > 2.1f || movediff.y > 2.1f) {
+						mvkobjs.raymarchpos = mvkobjs.rdcamwpos + cfor * d;
+						mspells[1]->cast = true;
+						mspells[1]->ready = false;
+						decaypos = mplayer->getinst(0)->getinstancesettings().msworldpos;
 
+						//s.msworldrot.y = glm::degrees(glm::atan(playerlookto.x, playerlookto.z));
 
-						s.msworldrot.y = glm::degrees(glm::atan(playerlookto.x, playerlookto.z));
-
-						s.msanimclip = 9;
 
 
 						playermoving = false;
-
-						mplayer->getinst(0)->setinstancesettings(s);
-						mplayer->getinst(0)->checkforupdates();
-					}
 				}
 			}
 		}
 	}
-}
-int clickz{ 0 };
 
-void vkrenderer::startmoving() {
-	modelsettings s = mplayer->getinst(0)->getinstancesettings();
-	// = playermoveto- s.msworldpos;
-	mplayer->getinst(0)->setinstancesettings(s);
-	mplayer->getinst(0)->checkforupdates();
 }
-
 void vkrenderer::moveplayer(){
-	modelsettings s = mplayer->getinst(0)->getinstancesettings();
-	// = playermoveto- s.msworldpos;
-	glm::vec3 diff = playermoveto - s.msworldpos;
-	//if ((diff.x > 0.001f || diff.x < -0.001f) || (diff.y > 0.001f||diff.y <-0.001f)) {
-		s.msworldpos += glm::normalize(diff)*2.0f;
-	//}
-	/*else if (diff.y > 0.001f || diff.y < -0.001f) {
-		s.msworldpos += (glm::normalize(diff) * 10.0f);
-	} else if (diff.x > 0.001f || diff.x < -0.001f) {
-		s.msworldpos += (glm::normalize(diff) * 10.0f);
-	}*/ 
-	//else {
-		if(glm::abs(diff.x)<2.1f && glm::abs(diff.z)< 2.1f){
+	if (playermoving) {
+		modelsettings& s = mplayer->getinst(0)->getinstancesettings();
+		glm::vec3 diff = playermoveto - s.msworldpos;
+		s.msworldpos += glm::normalize(diff) * 2.0f;
+		if (glm::abs(diff.x) < 2.1f && glm::abs(diff.z) < 2.1f) {
 			s.msworldpos = playermoveto;
 			s.msanimclip = 9;
 			playermoving = false;
 		}
-	//}
-	mplayer->getinst(0)->setinstancesettings(s);
-	mplayer->getinst(0)->checkforupdates();
+	}
 }
-
 void vkrenderer::moveenemies(){
-	modelsettings ps = mplayer->getinst(0)->getinstancesettings();
-	if (!decaying) {
-		for (int i{ 0 }; i < mpgltf[0]->getnuminstances(); i++) {
-			modelsettings es = mpgltf[0]->getinst(i)->getinstancesettings();
-			glm::vec3 diff = ps.msworldpos - es.msworldpos;
-			if (glm::abs(diff.x) < 100.0f && glm::abs(diff.z) < 100.0f) {
-				if (es.msanimclip > 1) {
-					es.msanimclip = 1;
-					es.msanimtimepos = 0.0f;
+	if (!mspells[1]->active) {
+
+		//mplates->getinst(4)->getinstancesettings().msdrawmodel = false;
+		//mplates->getinst(6)->getinstancesettings().msdrawmodel = false;
+		//mplates->getinst(8)->getinstancesettings().msdrawmodel = false;
+		//mplates->getinst(12)->getinstancesettings().msdrawmodel = false;
+		int k = 0;
+		for (int i{ 0 }; i < mpgltf.size(); i++) {
+			for (int j{ 0 }; j < mpgltf[i]->getnuminstances(); j++, k++) {
+				modelsettings& es = mpgltf[i]->getinst(j)->getinstancesettings();
+				if (es.dead) {
+					mplates->getinst(k)->getinstancesettings().msworldpos.y = -200.0;
+					continue;
 				}
-				if (es.msanimtimepos > 1.2f) {
-					playerhp -= 0.001f;
+				if (es.hp > 0.0) {
+					glm::vec3 diff = *playerlocation - es.msworldpos;
+					if (glm::abs(diff.x) < 100.0f && glm::abs(diff.z) < 100.0f) {
+						if (es.msanimclip > 1) {
+							es.msanimclip = 1;
+							es.msanimtimepos = 0.0f;
+						}
+						if (es.msanimtimepos > 1.2f) {
+							*playerhp -= 0.001f;
+						}
+					} else {
+						es.msworldpos += glm::normalize(diff) * 1.0f;
+						es.msanimclip = 14;
+						es.msworldrot.y = glm::degrees(glm::atan(diff.x, diff.z));
+					}
 				}
-				mpgltf[0]->getinst(i)->setinstancesettings(es);
-				mpgltf[0]->getinst(i)->checkforupdates();
-			} else {
-				es.msworldpos += glm::normalize(diff) * 1.0f;
-				es.msanimclip = 14;
-				es.msworldrot.y = glm::degrees(glm::atan(diff.x, diff.z));
-				mpgltf[0]->getinst(i)->setinstancesettings(es);
-				mpgltf[0]->getinst(i)->checkforupdates();
 			}
 		}
 	} else {
-		for (int i{ 0 }; i < mpgltf[0]->getnuminstances(); i++) {
-			modelsettings es = mpgltf[0]->getinst(i)->getinstancesettings();
-			glm::vec3 diff = decaypos - es.msworldpos;
-			if (glm::abs(diff.x) < 100.0f && glm::abs(diff.z) < 100.0f) {
-				if (es.msanimclip > 1) {
-					es.msanimclip = 1;
+		int k = 0;
+		for (int i{ 0 }; i < mpgltf.size(); i++) {
+			for (int j{ 0 }; j < mpgltf[i]->getnuminstances(); j++, k++) {
+				modelsettings& es = mpgltf[i]->getinst(j)->getinstancesettings();
+				if (es.dead)continue;
+				glm::vec3 diff = decaypos - es.msworldpos;
+				if (glm::abs(diff.x) < 100.0f && glm::abs(diff.z) < 100.0f) {
+					if (es.msanimclip > 1) {
+						es.msanimclip = 1;
+					}
+				} else {
+					es.msworldpos += glm::normalize(diff) * 1.0f;
+					es.msanimclip = 14;
+					es.msworldrot.y = glm::degrees(glm::atan(diff.x, diff.z));
 				}
-				mpgltf[0]->getinst(i)->setinstancesettings(es);
-				mpgltf[0]->getinst(i)->checkforupdates();
-			} else {
-				es.msworldpos += glm::normalize(diff) * 1.0f;
-				es.msanimclip = 14;
-				es.msworldrot.y = glm::degrees(glm::atan(diff.x, diff.z));
-				mpgltf[0]->getinst(i)->setinstancesettings(es);
-				mpgltf[0]->getinst(i)->checkforupdates();
 			}
 		}
 	}
 }
-
 void vkrenderer::handleclick(int key, int action, int mods)
 {
 	ImGuiIO& io = ImGui::GetIO();
@@ -819,7 +1039,7 @@ void vkrenderer::handlemouse(double x, double y){
 	//}
 
 
-	if (!paused) {
+	if (gamestate::getstate() == gamestate0::normal) {
 		if (mlock) {
 
 			mpersviewmats.at(0) = mcam.getview(mvkobjs);
@@ -851,18 +1071,6 @@ void vkrenderer::handlemouse(double x, double y){
 		}
 	}
 	
-}
-void vkrenderer::setsize(unsigned int w, unsigned int h) {
-	mvkobjs.rdwidth = w;
-	mvkobjs.rdheight = h;
-	if(!w||!h)
-		mpersviewmats.at(1) = glm::perspective(glm::radians(static_cast<float>(mvkobjs.rdvkbswapchain.extent.width)), static_cast<float>(mvkobjs.rdvkbswapchain.extent.height) / static_cast<float>(mvkobjs.rdheight), 0.01f, 60000.0f);
-	else
-		mpersviewmats.at(1) = glm::perspective(mvkobjs.rdfov, static_cast<float>(mvkobjs.rdwidth) / static_cast<float>(mvkobjs.rdheight), 1.0f, 6000.0f);
-
-}
-void vkrenderer::toggleshader() {
-	mvkobjs.rdswitchshader = !mvkobjs.rdswitchshader;
 }
 void vkrenderer::movecam() {
 
@@ -896,24 +1104,14 @@ void vkrenderer::movecam() {
 		mvkobjs.rdcamup -= 200;
 	}
 
-	//if ((glfwGetKey(mvkobjs.rdwind, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)) {
-	//	mvkobjs.rdcamforward *= 400;
-	//	mvkobjs.rdcamright *= 400;
-	//	mvkobjs.rdcamup *= 400;
-	//}
 	if (glfwGetMouseButton(mvkobjs.rdwind, GLFW_MOUSE_BUTTON_LEFT) != GLFW_RELEASE) {
-		if (!paused) {
+		if (gamestate::getstate() == gamestate0::normal) {
 			double x;
 			double y;
 			glfwGetCursorPos(mvkobjs.rdwind, &x, &y);
-			//if (glm::abs(x - lastmousexy.x) > 100.0 || glm::abs(y - lastmousexy.y) > 100.0) {
-			//	x += 1.0;
-			//	y -= 1.0;
-			//}
 			lastmousexy = glm::vec<2, double>{ x,y };
 			x = (2.0 * (x / (double)mvkobjs.rdwidth)) - 1.0;
 			y = (2.0 * (y / (double)mvkobjs.rdheight)) - 1.0;
-			//std::cout << x << "   " << y << std::endl;
 			float d{ 0.0f };
 			glm::vec3 cfor{ mcam.mforward };
 			float rotangx{ (float)(1.5 * x * -0.523599f) };
@@ -927,20 +1125,18 @@ void vkrenderer::movecam() {
 			}
 
 			if (d < 10000.0f) {
-				modelsettings s = mplayer->getinst(0)->getinstancesettings();
+				modelsettings& s = mplayer->getinst(0)->getinstancesettings();
 
 				playerlookto = glm::normalize(mvkobjs.rdcamwpos + cfor * d - s.msworldpos);
 				movediff = glm::vec2(glm::abs(glm::vec3((mvkobjs.rdcamwpos + cfor * d) - s.msworldpos)).x, glm::abs(glm::vec3((mvkobjs.rdcamwpos + cfor * d) - s.msworldpos)).z);
 
 				if (movediff.x>2.1f||movediff.y>2.1f) {
 					playermoveto = mvkobjs.rdcamwpos + cfor * d;
+					mvkobjs.raymarchpos = mvkobjs.rdcamwpos + cfor * d;
 
 					s.msworldrot.y = glm::degrees(glm::atan(playerlookto.x, playerlookto.z));
 
 					s.msanimclip = 15;
-
-					mplayer->getinst(0)->setinstancesettings(s);
-					mplayer->getinst(0)->checkforupdates();
 
 					playermoving = true;
 				}
@@ -951,20 +1147,64 @@ void vkrenderer::movecam() {
 
 }
 
-bool vkrenderer::checkphp() {
-	if (playerhp < 0.0f)return false;
-	return true;
+
+void vkrenderer::animateshop(){
+	for (size_t i{ 0 }; i < mstaticchoices.size(); i++) {
+		for (const auto& j : mstaticchoices[i]->getallinstances()) {
+			j->getinstancesettings().msworldrot.y += 2.0f;
+		}
+	}
 }
+
+void vkrenderer::gametick() {
+	while (!glfwWindowShouldClose(mvkobjs.rdwind)) {
+
+		if (gamestate::getstate() == gamestate0::dead) break;
+
+		if(gamestate::getpause() == pausestate::resumed){
+				gamestate::tick();
+		}
+
+	}
+}
+
 bool vkrenderer::draw() {
 
-	if (!paused) {
+	if (gamestate::getpause() == pausestate::resumed) {
 
-		if (!checkphp())paused = true;
 
 		double tick = glfwGetTime();
 		mvkobjs.rdtickdiff = tick - mlasttick;
 		mvkobjs.rdframetime = mframetimer.stop();
 		mframetimer.start();
+
+		enemyhps.clear();
+		//size_t k{ 0 };
+		for (size_t i{ 0 }; i < mpgltf.size(); i++) {
+			for (size_t j{ 0 }; j < mpgltf[i]->getnuminstances(); j++) {
+				enemyhps.push_back(mpgltf[i]->getinst(j)->getinstancesettings().hp);
+			}
+			//k += mpgltf[i]->getnuminstances();
+		}
+
+		wavesetup();
+
+
+		mplayer->updateanims();
+		for (size_t i{ 0 }; i < mpgltf.size(); i++) {
+			mpgltf[i]->updateanims();
+		}
+
+
+		if (mspells[0]->active)mcircle->updatemats();
+
+		mplates->updatemats();
+
+		mplayer->updatemats();
+		for (size_t i{ 0 }; i < mpgltf.size(); i++) {
+			mpgltf[i]->updatemats();
+		}
+
 
 
 		if (vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
@@ -1028,13 +1268,6 @@ bool vkrenderer::draw() {
 
 
 
-		mplayer->updateanims();
-
-		for (size_t i{ 0 }; i < mpgltf.size(); i++) {
-			mpgltf[i]->updateanims();
-		}
-
-
 		int selectedInstance = 0;
 
 		mvkobjs.rdmatrixgeneratetime = mmatgentimer.stop();
@@ -1050,30 +1283,8 @@ bool vkrenderer::draw() {
 
 		if (vkBeginCommandBuffer(mvkobjs.rdcommandbuffer[0], &cmdbgninfo) != VK_SUCCESS)return false;
 
-		muploadtovbotimer.start();
 
-		mplayer->uploadvboebo(mvkobjs);
-
-		for (size_t i{ 0 }; i < mpgltf.size(); i++) {
-			mpgltf[i]->uploadvboebo(mvkobjs);
-		}
-
-		for (size_t i{ 0 }; i < mstatic0.size(); i++) {
-			mstatic0[i]->uploadvboebo(mvkobjs);
-		}
-		mground->uploadvboebo(mvkobjs);
-
-		lifebar->uploadvboebo(mvkobjs);
-
-		mvkobjs.rduploadtovbotime = muploadtovbotimer.stop();
-
-
-		mplayer->updatemats();
-
-		for (size_t i{ 0 }; i < mpgltf.size(); i++) {
-			mpgltf[i]->updatemats();
-		}
-
+		if (mspells[0]->active)mcircle->uploadvboebo(mvkobjs);
 
 
 
@@ -1100,25 +1311,41 @@ bool vkrenderer::draw() {
 
 		mplayer->draw(mvkobjs);
 
-		if (decaying) {
+		if (mspells[1]->active) {
 			decaytime = glfwGetTime() - decaystart-pausetime;
-			mplayer->drawdecays(mvkobjs, decaytime, &decaying);
+			mplayer->drawdecays(mvkobjs, decaytime, &mspells[1]->active);
 		}
-		if (!decaying)pausetime = 0.0;
+		if (!mspells[1]->active)pausetime = 0.0;
+
 
 		lifetime = glfwGetTime();
 		lifetime2 = glfwGetTime();
 
-		lifebar->draw(mvkobjs,lifetime, lifetime2,playerhp);
+		lifebar->draw(mvkobjs,lifetime, lifetime2,*playerhp);
+
+		if (mspells[0]->active)mcircle->draw(mvkobjs, lifetime,decaytime,*playerhp);
+
+		mplates->draw(mvkobjs, lifetime,decaytime, *playerhp);
 
 		muigentimer.start();
 		muidrawtimer.start();
-		modelsettings settings = mplayer->getinstsettings();
-		//mui.createchat(mvkobjs);
-		//mui.render(mvkobjs,mvkobjs.rdcommandbuffer[0]);
+		modelsettings& settings = mplayer->getinst(0)->getinstancesettings();
 		mui.createdbgframe(mvkobjs, settings, mnobjs);
-		mplayer->getinst(0)->setinstancesettings(settings);
-		mplayer->getinst(0)->checkforupdates();
+		//mplayer->getinst(0)->setinstancesettings(settings);
+
+		{
+			mplayer->getinst(0)->checkforupdates();
+			size_t k = 0;
+			for (size_t i{ 0 }; i < mpgltf.size(); i++) {
+				for (size_t j{ 0 }; j < mpgltf[i]->getnuminstances(); j++,k++) {
+					mpgltf[i]->getinst(j)->checkforupdates();
+					mplates->getinst(k)->checkforupdates();
+				}
+			}
+
+			if (mspells[0]->active)mcircle->getinst(0)->checkforupdates();
+		}
+
 		mui.render(mvkobjs, mvkobjs.rdcommandbuffer[0]);
 		mvkobjs.rduigeneratetime = muigentimer.stop();
 		mvkobjs.rduidrawtime = muidrawtimer.stop();
@@ -1144,17 +1371,16 @@ bool vkrenderer::draw() {
 
 		mground->uploadubossbo(mvkobjs, mpersviewmats);
 
+		if (mspells[0]->active)mcircle->uploadubossbo(mvkobjs, mpersviewmats, enemyhps);
+
+		mplates->uploadubossbo(mvkobjs, mpersviewmats,enemyhps);
 
 		mvkobjs.rduploadtoubotime = muploadtoubotimer.stop();
 
 
 		if (vkEndCommandBuffer(mvkobjs.rdcommandbuffer[0]) != VK_SUCCESS)return false;
 
-
-		movecam();//////////////////////////////////////
-		moveenemies();
-
-		if (playermoving)moveplayer();
+		movecam();
 
 
 		VkSubmitInfo submitinfo{};
@@ -1309,15 +1535,15 @@ bool vkrenderer::draw() {
 
 			mplayer->draw(mvkobjs);
 
-			if (decaying) {
+			if (mspells[1]->active) {
 				decaytime = glfwGetTime() - decaystart-pausetime;
-				mplayer->drawdecays(mvkobjs, decaytime, &decaying);
+				mplayer->drawdecays(mvkobjs, decaytime, &mspells[1]->active);
 			}
 
 			lifetime = glfwGetTime() - pausetime;
 			lifetime2 = glfwGetTime();
 
-			lifebar->draw(mvkobjs,lifetime, lifetime2,playerhp);
+			lifebar->draw(mvkobjs,lifetime, lifetime2,*playerhp);
 
 
 
@@ -1325,7 +1551,7 @@ bool vkrenderer::draw() {
 
 
 
-			if(mui.createpausebuttons(mvkobjs))paused=false;
+			if(mui.createpausebuttons(mvkobjs))gamestate::setpause(pausestate::resumed);
 			mui.render(mvkobjs, mvkobjs.rdcommandbuffer[0]);
 
 
@@ -1405,8 +1631,6 @@ bool vkrenderer::draw() {
 			return true;
 	}
 }
-
-
 bool vkrenderer::drawmainmenu() {
 
 	if (vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
@@ -1477,11 +1701,11 @@ bool vkrenderer::drawmainmenu() {
 	mmenubg->uploadvboebo(mvkobjs);
 
 	//staticsettings s{};
-	staticsettings s = mbackground->getinst(0)->getinstancesettings();
+	staticsettings& s = mbackground->getinst(0)->getinstancesettings();
 	//s.msworldpos.y = -20.0f;
 	//s.msworldrot.y -= 1.57f;
 	s.rotang += 0.0006f;
-	mbackground->getinst(0)->setinstancesettings(s);
+	//mbackground->getinst(0)->setinstancesettings(s);
 	mbackground->updatemats();
 
 	vkCmdBeginRenderPass(mvkobjs.rdcommandbuffer[0], &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -1497,7 +1721,7 @@ bool vkrenderer::drawmainmenu() {
 
 	lifetime = glfwGetTime();
 
-	mmenubg->draw(mvkobjs,lifetime,lifetime2,playerhp);
+	mmenubg->draw(mvkobjs,lifetime,lifetime2,dummy);
 
 	rdscene = mui.createmainmenuframe(mvkobjs,mnobjs);
 	mui.render(mvkobjs, mvkobjs.rdcommandbuffer[0]);
@@ -1844,15 +2068,183 @@ mvkobjs.mtx2->unlock();
 	return true;
 }
 
-void vkrenderer::cleanloading() {
-	commandbuffer::cleanup(mvkobjs, mvkobjs.rdcommandpool[1], mvkobjs.rdcommandbuffer[1]);
-	commandpool::cleanup(mvkobjs, mvkobjs.rdcommandpool[1]);
+
+void vkrenderer::drawshop() {
+
+
+	animateshop();
+
+	for (size_t i{ 0 }; i < mchoices.size(); i++) {
+		mchoices[i]->updatemats();
+	}
+	for (size_t i{ 0 }; i < mstaticchoices.size(); i++) {
+		mstaticchoices[i]->updatemats();
+	}
+
+
+
+	vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX);
+	vkResetFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence);
+
+	uint32_t imgidx = 0;
+	VkResult res = vkAcquireNextImageKHR(mvkobjs.rdvkbdevice.device, mvkobjs.rdvkbswapchain.swapchain, UINT64_MAX, mvkobjs.rdpresentsemaphore, VK_NULL_HANDLE, &imgidx);
+	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
+		recreateswapchain();
+	}
+
+
+
+	VkClearValue colorclearvalue;
+	colorclearvalue.color = { {0.12f,0.12f,0.12f,1.0f } };
+
+	VkClearValue depthvalue;
+	depthvalue.depthStencil.depth = 1.0f;
+
+	VkClearValue clearvals[] = { colorclearvalue,depthvalue };
+
+
+	VkRenderPassBeginInfo rpinfo{};
+	rpinfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	rpinfo.renderPass = mvkobjs.rdrenderpass;
+
+	rpinfo.renderArea.offset.x = 0;
+	rpinfo.renderArea.offset.y = 0;
+	rpinfo.renderArea.extent = mvkobjs.rdvkbswapchain.extent;
+	rpinfo.framebuffer = mvkobjs.rdframebuffers[imgidx];
+
+	rpinfo.clearValueCount = 2;
+	rpinfo.pClearValues = clearvals;
+
+	VkViewport viewport{};
+	viewport.x = 0.0f;
+	viewport.y = static_cast<float>(mvkobjs.rdvkbswapchain.extent.height);
+	viewport.width = static_cast<float>(mvkobjs.rdvkbswapchain.extent.width);
+	viewport.height = -static_cast<float>(mvkobjs.rdvkbswapchain.extent.height);
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	VkRect2D scissor{};
+	scissor.offset = { 0,0 };
+	scissor.extent = mvkobjs.rdvkbswapchain.extent;
+
+
+
+
+
+
+
+
+
+
+	vkResetCommandBuffer(mvkobjs.rdcommandbuffer[0], 0);
+
+	VkCommandBufferBeginInfo cmdbgninfo{};
+	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(mvkobjs.rdcommandbuffer[0], &cmdbgninfo);
+
+
+
+	vkCmdBeginRenderPass(mvkobjs.rdcommandbuffer[0], &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
+
+
+
+	vkCmdSetViewport(mvkobjs.rdcommandbuffer[0], 0, 1, &viewport);
+	vkCmdSetScissor(mvkobjs.rdcommandbuffer[0], 0, 1, &scissor);
+
+	mground->draw(mvkobjs);
+
+
+
+
+
+	lifetime = glfwGetTime();
+	lifetime2 = glfwGetTime();
+
+
+
+	for (size_t i{ 0 }; i < mstaticchoices.size(); i++) {
+		mstaticchoices[i]->draw(mvkobjs);//TODO
+	}
+
+	for (size_t i{ 0 }; i < mchoices.size(); i++) {
+		mchoices[i]->draw(mvkobjs, lifetime, lifetime2, shopitemcount);
+	}
+	for (size_t i{ 0 }; i < mchoices.size(); i++) {
+		for (const auto& j : mchoices[i]->getallinstances()) {
+			j->checkforupdates();
+		}
+	}
+	for (size_t i{ 0 }; i < mstaticchoices.size(); i++) {
+		for (const auto& j : mstaticchoices[i]->getallinstances()) {
+			j->checkforupdates();
+		}
+	}
+
+
+
+
+
+	vkCmdEndRenderPass(mvkobjs.rdcommandbuffer[0]);
+
+	for (size_t i{ 0 }; i < mchoices.size(); i++) {
+		mchoices[i]->uploadubossbo(mvkobjs,mpersviewmats,enemyhps);
+	}
+	for (size_t i{ 0 }; i < mstaticchoices.size(); i++) {
+		mstaticchoices[i]->uploadubossbo(mvkobjs, mpersviewmats);
+	}
+
+
+	mground->uploadubossbo(mvkobjs, mpersviewmats);
+
+
+
+
+	vkEndCommandBuffer(mvkobjs.rdcommandbuffer[0]);
+
+
+
+	VkSubmitInfo submitinfo{};
+	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+	VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	submitinfo.pWaitDstStageMask = &waitstage;
+
+	submitinfo.waitSemaphoreCount = 1;
+	submitinfo.pWaitSemaphores = &mvkobjs.rdpresentsemaphore;
+
+	submitinfo.signalSemaphoreCount = 1;
+	submitinfo.pSignalSemaphores = &mvkobjs.rdrendersemaphore;
+
+	submitinfo.commandBufferCount = 1;
+	submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer.at(0);
+
+
+	mvkobjs.mtx2->lock();
+	vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence);
+	mvkobjs.mtx2->unlock();
+
+	VkPresentInfoKHR presentinfo{};
+	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentinfo.waitSemaphoreCount = 1;
+	presentinfo.pWaitSemaphores = &mvkobjs.rdrendersemaphore;
+
+	presentinfo.swapchainCount = 1;
+	presentinfo.pSwapchains = &mvkobjs.rdvkbswapchain.swapchain;
+
+	presentinfo.pImageIndices = &imgidx;
+
+
+	mvkobjs.mtx2->lock();
+	res = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
+
+	mvkobjs.mtx2->unlock();
+
+	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
+		recreateswapchain();
+	}
 }
 
-void vkrenderer::cleanmainmenu(){
-	mbackground->cleanupmodels(mvkobjs);
-	mbackground->cleanupbuffers(mvkobjs);
-	mbackground->cleanuplines(mvkobjs);
-	mmenubg->cleanupmodels(mvkobjs);
-	mmenubg->cleanuplines(mvkobjs);
-}
+
+

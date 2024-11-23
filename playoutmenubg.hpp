@@ -9,8 +9,8 @@
 //#include "ubo.hpp"
 //#include "ssbo.hpp"
 #include "playout.hpp"
-#include "menubgpipeline.hpp"
-#include "menubgmodel.hpp"
+#include "pline.hpp"
+#include "quadmodel.hpp"
 
 
 
@@ -47,5 +47,5 @@ private:
 
 	bool uploadreq{ true };
 
-	menubgmodel mmenu{};
+	quadmodel mmenu{};
 };

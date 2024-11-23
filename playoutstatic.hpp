@@ -4,16 +4,15 @@
 #include <memory>
 #include <map>
 #include <vulkan/vulkan.h>
-#include <tinygltf/tiny_gltf.h>
 #include "vktexture.hpp"
 #include "vkobjs.hpp"
 #include "staticsettings.hpp"
 #include "ubo.hpp"
 #include "ssbo.hpp"
-#include "vkgltfstatic.hpp"
+#include "staticmodel.hpp"
 #include "staticinstance.hpp"
 #include "playout.hpp"
-#include "gltfstaticpipeline.hpp"
+#include "pline.hpp"
 
 
 class playoutstatic {
@@ -28,7 +27,6 @@ public:
 	bool setup(vkobjs& objs, std::string fname,int count);
 	bool setup2(vkobjs& objs, std::string vfile, std::string ffile);
 	void draw(vkobjs& objs);
-	//void updateanims();
 	void updatemats();
 	void cleanuplines(vkobjs& objs);
 	void cleanupbuffers(vkobjs& objs);
@@ -36,11 +34,11 @@ public:
 	void uploadvboebo(vkobjs& objs);
 	void uploadubossbo(vkobjs& objs, std::vector<glm::mat4>& cammats);
 
-	staticsettings getinstsettings(int x);
 
 	unsigned int getnuminstances();
 
 	std::shared_ptr<staticinstance> getinst(int x);
+	std::vector<std::shared_ptr<staticinstance>>& getallinstances();
 
 private:
 
@@ -67,9 +65,8 @@ private:
 
 
 	std::string mmodelfilename;
-	std::shared_ptr<vkgltfstatic> mgltf = nullptr;
+	std::shared_ptr<staticmodel> mgltf = nullptr;
 	std::vector < std::shared_ptr < staticinstance >> minstances;
-	std::shared_ptr<tinygltf::Model> mmodel = nullptr;
 
 
 

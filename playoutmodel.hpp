@@ -4,7 +4,7 @@
 #include <memory>
 #include <map>
 #include <vulkan/vulkan.h>
-#include <tinygltf/tiny_gltf.h>
+//#include <tinygltf/tiny_gltf.h>
 #include "vktexture.hpp"
 #include "vknode.hpp"
 #include "vkclip.hpp"
@@ -12,10 +12,10 @@
 #include "modelsettings.hpp"
 #include "ubo.hpp"
 #include "ssbo.hpp"
-#include "vkgltfmodel.hpp"
-#include "vkgltfinstance.hpp"
+#include "animmodel.hpp"
+#include "animinstance.hpp"
 #include "playout.hpp"
-#include "gltfgpupipeline.hpp"
+#include "pline.hpp"
 
 
 class playoutmodel {
@@ -39,7 +39,9 @@ public:
 	void uploadvboebo(vkobjs& objs);
 	void uploadubossbo(vkobjs& objs, std::vector<glm::mat4>& cammats);
 
-	std::shared_ptr<vkgltfinstance> getinst(int i);
+	std::shared_ptr<animinstance> getinst(int i);
+
+	std::vector<std::shared_ptr<animinstance>>& getallinstances();
 
 	modelsettings getinstsettings();
 
@@ -75,9 +77,9 @@ private:
 	int nummats{};
 
 	std::string mmodelfilename;
-	std::shared_ptr<vkgltfmodel> mgltf = nullptr;
-	std::vector < std::shared_ptr < vkgltfinstance >> minstances;
-	std::shared_ptr<tinygltf::Model> mmodel = nullptr;
+	std::shared_ptr<animmodel> mgltf = nullptr;
+	std::vector < std::shared_ptr < animinstance >> minstances;
+	//std::shared_ptr<tinygltf::Model> mmodel = nullptr;
 
 
 

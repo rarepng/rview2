@@ -6,17 +6,17 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 
-#include "vkgltfstatic.hpp"
+#include "staticmodel.hpp"
 #include "vkobjs.hpp"
 #include "staticsettings.hpp"
 
 class staticinstance {
 public:
-	staticinstance(std::shared_ptr<vkgltfstatic>model, glm::vec3 worldpos, bool randomize = false);
+	staticinstance(std::shared_ptr<staticmodel>model, glm::vec3 worldpos, bool randomize = false);
 	~staticinstance();
 
 	void setinstancesettings(staticsettings settings);
-	staticsettings getinstancesettings();
+	staticsettings& getinstancesettings();
 	void checkforupdates();
 	glm::mat4 calcmat();
 
@@ -27,7 +27,7 @@ public:
 
 private:
 
-	std::shared_ptr<vkgltfstatic> mgltfmodel = nullptr;
+	std::shared_ptr<staticmodel> mgltfmodel = nullptr;
 	staticsettings mmodelsettings{};
 
 };

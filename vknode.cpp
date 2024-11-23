@@ -23,6 +23,16 @@ void vknode::addchildren(std::vector<int> childNodes) {
     }
 }
 
+void vknode::addchildren(fastgltf::pmr::MaybeSmallVector<size_t, 0> children){
+    for (const size_t childNode : children) {
+        std::shared_ptr<vknode> child = std::make_shared<vknode>();
+        child->num = childNode;
+        child->parentnode = shared_from_this();
+
+        childnodes.push_back(child);
+    }
+}
+
 std::shared_ptr<vknode> vknode::getparent() {
     std::shared_ptr<vknode> pNode = parentnode.lock();
     if (pNode) {

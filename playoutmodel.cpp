@@ -4,6 +4,7 @@
 
 
 bool playoutmodel::setup(vkobjs& objs, std::string fname,int count) {
+	numinstancess = count;
 	if (!createubo(objs))return false;
 	if (!loadmodel(objs, fname))return false;
 	if (!createinstances(objs, count, true))return false;
@@ -15,8 +16,6 @@ bool playoutmodel::setup(vkobjs& objs, std::string fname,int count) {
 
 
 bool playoutmodel::setup2(vkobjs& objs, std::string vfile,std::string ffile) {
-
-
 	if (!createplayout(objs))return false;
 	if (!createpline(objs, vfile, ffile))return false;
 	if (!createpline2(objs, "shaders/gltf_gpu_dquat.vert.spv", "shaders/gltf_gpu_dquat.frag.spv"))return false;
@@ -24,7 +23,7 @@ bool playoutmodel::setup2(vkobjs& objs, std::string vfile,std::string ffile) {
 }
 
 bool playoutmodel::loadmodel(vkobjs& objs, std::string fname){
-	mgltf = std::make_shared<vkgltfmodel>();
+	mgltf = std::make_shared<animmodel>();
 	if (!mgltf->loadmodel(objs, fname))return false;
     return true;
 }
@@ -36,11 +35,10 @@ bool playoutmodel::createinstances(vkobjs& objs,int count, bool rand){
 		int zPos = std::rand() % 5999;
 		xPos -= 3000;
 		zPos -= 3000;
-		minstances.emplace_back(std::make_shared<vkgltfinstance>(mgltf,	glm::vec3(static_cast<float>(xPos),0.0f, static_cast<float>(zPos)), rand));
+		minstances.emplace_back(std::make_shared<animinstance>(mgltf,	glm::vec3(static_cast<float>(xPos),0.0f, static_cast<float>(zPos)), rand));
 		numTriangles += mgltf->gettricount(0,0);
 	}
 	totaltricount = numTriangles;
-	numinstancess = count;
 
 	if (!minstances.size())return false;
 	return true;
@@ -67,19 +65,19 @@ bool playoutmodel::createssbodq(vkobjs& objs){
 }
 
 bool playoutmodel::createplayout(vkobjs& objs){
-	std::vector<vktexdata> texdata0 = mgltf->gettexdata();
-	desclayouts.insert(desclayouts.begin(), texdata0[0].texdescriptorlayout);
+	vktexdatapls texdatapls0 = mgltf->gettexdatapls();
+	desclayouts.insert(desclayouts.begin(), texdatapls0.texdescriptorlayout);
 	if (!playout::init(objs, rdgltfpipelinelayout,desclayouts , sizeof(vkpushconstants)))return false;
 	return true;
 }
 
 bool playoutmodel::createpline(vkobjs& objs,std::string vfile,std::string ffile){
-	if (!gltfgpupipeline::init(objs, rdgltfpipelinelayout, rdgltfgpupipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, vfile, ffile))return false;
+	if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpupipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{vfile, ffile}))return false;
 	return true;
 }
 
 bool playoutmodel::createpline2(vkobjs& objs, std::string vfile, std::string ffile) {
-	if (!gltfgpupipeline::init(objs, rdgltfpipelinelayout, rdgltfgpudqpipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, vfile, ffile))return false;
+	if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpudqpipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string> {vfile, ffile}))return false;
 	return true;
 }
 
@@ -94,8 +92,9 @@ void playoutmodel::updateanims(){
 
 void playoutmodel::uploadvboebo(vkobjs& objs){
 	if (uploadreq) {
-		mgltf->uploadvertexbuffers(objs);
-		mgltf->uploadindexbuffers(objs);
+		//mgltf->uploadvertexbuffers(objs);
+		//mgltf->uploadindexbuffers(objs);
+		mgltf->uploadvboebo(objs);
 		uploadreq = false;
 	}
 }
@@ -111,8 +110,12 @@ void playoutmodel::uploadubossbo(vkobjs& objs, std::vector<glm::mat4>& cammats){
 
 }
 
-std::shared_ptr<vkgltfinstance> playoutmodel::getinst(int i){
+std::shared_ptr<animinstance> playoutmodel::getinst(int i){
 	return minstances[i];
+}
+
+std::vector<std::shared_ptr<animinstance>>& playoutmodel::getallinstances(){
+	return minstances;
 }
 
 modelsettings playoutmodel::getinstsettings()
@@ -151,8 +154,8 @@ void playoutmodel::updatemats() {
 }
 
 void playoutmodel::cleanuplines(vkobjs& objs){
-	gltfgpupipeline::cleanup(objs, rdgltfgpudqpipeline);
-	gltfgpupipeline::cleanup(objs, rdgltfgpupipeline);
+	pline::cleanup(objs, rdgltfgpudqpipeline);
+	pline::cleanup(objs, rdgltfgpupipeline);
 	playout::cleanup(objs, rdgltfpipelinelayout);
 }
 
@@ -179,8 +182,8 @@ void playoutmodel::draw(vkobjs& objs) {
 	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 3, 1, &rdjointdualquatssbo.rdssbodescriptorset, 0, nullptr);
 
 	vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfgpupipeline);
-	mgltf->drawinstanced(objs, rdgltfpipelinelayout, numinstancess, stride);
-	vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfgpudqpipeline);
-	mgltf->drawinstanced(objs, rdgltfpipelinelayout, numinstancess, stridedq);
+	mgltf->drawinstanced(objs, rdgltfpipelinelayout,rdgltfgpupipeline,rdgltfgpupipeline, numinstancess, stride);
+	//vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfgpudqpipeline);
+	//mgltf->drawinstanced(objs, rdgltfpipelinelayout, numinstancess, stridedq);
 
 }

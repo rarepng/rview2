@@ -6,6 +6,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 
+#include <fastgltf/core.hpp>
+
 
 class vknode:public std::enable_shared_from_this<vknode> {
 public:
@@ -13,6 +15,7 @@ public:
 
 	static std::shared_ptr<vknode> createroot(int root);
 	void addchildren(std::vector<int> children);
+	void addchildren(fastgltf::pmr::MaybeSmallVector<size_t,0> children);
 	std::vector<std::shared_ptr<vknode>> getchildren();
 	int getnum();
 	std::shared_ptr<vknode> getparent();

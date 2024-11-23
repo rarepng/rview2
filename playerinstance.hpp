@@ -1,5 +1,5 @@
 #pragma once
-#include "vkgltfinstance.hpp"
-class playerinstance :public vkgltfinstance {
+#include "animinstance.hpp"
+class playerinstance :public animinstance {
 
 };
