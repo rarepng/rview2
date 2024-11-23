@@ -1,5 +1,9 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #define VMA_IMPLEMENTATION
+
+
+//#define _DEBUG
+
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui.h>
 #include <glm/gtc/matrix_transform.hpp>
@@ -12,7 +16,7 @@
 #include "vkrenderer.hpp"
 #ifdef _DEBUG
 #include "logger.hpp"
-#endif // _DEBUG
+#endif
 
 float map2(glm::vec3 x) {
 	return std::max(x.y, 0.0f);
