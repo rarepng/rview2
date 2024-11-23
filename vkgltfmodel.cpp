@@ -95,7 +95,6 @@ void vkgltfmodel::getjointdata() {
     //mjointvec.resize(accessor.count);
     ////size_t newbytelength{ jointVecSize * bufferView.byteStride };
     //size_t newbytelength{ bufferView.byteLength };
-    //std::memcpy(mjointvec.data(), &buffer.data[bufferView.byteOffset+accessor.byteOffset], newbytelength);
 
     mnodetojoint.reserve(mmodel->nodes.size());
     mnodetojoint.resize(mmodel->nodes.size());
