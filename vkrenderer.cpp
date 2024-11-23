@@ -10,6 +10,10 @@
 #include <vk/vk_mem_alloc.h>
 #include <iostream>
 #include "vkrenderer.hpp"
+#ifdef _DEBUG
+#include "logger.hpp"
+#endif // _DEBUG
+
 float map2(glm::vec3 x) {
 	return std::max(x.y, 0.0f);
 }
@@ -32,35 +36,92 @@ bool vkrenderer::init() {
 	mvkobjs.rdwidth = mvkobjs.rdvkbswapchain.extent.width;
 
 
-	//while (!mvkobjs.mtx2) {
-	//	std::this_thread::sleep_for(std::chrono::milliseconds(20));
-	//}
 
 	if (!mvkobjs.rdwind)return false;
 
 
 	//std::lock_guard<std::shared_mutex> lg{ *mvkobjs.mtx2 };
 	mvkobjs.mtx2->lock();
-	if (!deviceinit())return false;
-	if (!initvma())return false;
+	if (!deviceinit()){
+		#ifdef _DEBUG
+		logger::log(0, "crashed at ", __FUNCTION__);
+		#endif
+		return false;
+	}
+	if (!initvma()){
+		#ifdef _DEBUG
+		logger::log(0,"crashed at ",__FUNCTION__);
+		#endif
+		return false;
+	}
 	mvkobjs.mtx2->unlock();
 
 
-	if (!getqueue())return false;
-	if (!createswapchain())return false;
-	if (!createdepthbuffer())return false;
-	if (!createcommandpool())return false;
-	if (!createcommandbuffer())return false;
-	if (!createrenderpass())return false;
-	if (!createframebuffer())return false;
-	if (!createsyncobjects())return false;
+	if (!getqueue()){
+		#ifdef _DEBUG
+		logger::log(0,"crashed at ",__FUNCTION__);
+		#endif
+		return false;
+	}
+	if (!createswapchain()){
+		#ifdef _DEBUG
+		logger::log(0,"crashed at ",__FUNCTION__);
+		#endif
+		return false;
+	}
+	if (!createdepthbuffer()){
+		#ifdef _DEBUG
+		logger::log(0,"crashed at ",__FUNCTION__);
+		#endif
+		return false;
+	}
+	if (!createcommandpool()){
+		#ifdef _DEBUG
+		logger::log(0,"crashed at ",__FUNCTION__);
+		#endif
+		return false;
+	}
+	if (!createcommandbuffer()){
+		#ifdef _DEBUG
+		logger::log(0,"crashed at ",__FUNCTION__);
+		#endif
+		return false;
+	}
+	if (!createrenderpass()){
+		#ifdef _DEBUG
+		logger::log(0,"crashed at ",__FUNCTION__);
+		#endif
+		return false;
+	}
+	if (!createframebuffer()){
+		#ifdef _DEBUG
+		logger::log(0,"crashed at ",__FUNCTION__);
+		#endif
+		return false;
+	}
+	if (!createsyncobjects()){
+		#ifdef _DEBUG
+		logger::log(0,"crashed at ",__FUNCTION__);
+		#endif
+		return false;
+	}
 
 
-	if (!loadbackground())return false;
+	if (!loadbackground()){
+		#ifdef _DEBUG
+		logger::log(0,"crashed at ",__FUNCTION__);
+		#endif
+		return false;
+	}
 
 
 
-	if (!initui())return false;
+	if (!initui()){
+		#ifdef _DEBUG
+		logger::log(0,"crashed at ",__FUNCTION__);
+		#endif
+		return false;
+	}
 
 	ImGuiIO& io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
@@ -157,10 +218,30 @@ bool vkrenderer::setuplifebar2() {
 bool vkrenderer::loadbackground(){
 	mbackground = std::make_shared<playoutback>();
 	mmenubg = std::make_shared<playoutmenubg>();
-	if (!mbackground->setup(mvkobjs, backfname, backgobjs))return false;
-	if (!mbackground->setup2(mvkobjs, backshaders[0], backshaders[1]))return false;
-	if (!mmenubg->setup(mvkobjs,1))return false;
-	if (!mmenubg->setup2(mvkobjs, menubgshaders[0], menubgshaders[1]))return false;
+	if (!mbackground->setup(mvkobjs, backfname, backgobjs)){
+		#ifdef _DEBUG
+		logger::log(0,"crashed at ",__FUNCTION__);
+		#endif
+		return false;
+	}
+	if (!mbackground->setup2(mvkobjs, backshaders[0], backshaders[1])){
+		#ifdef _DEBUG
+		logger::log(0,"crashed at ",__FUNCTION__);
+		#endif
+		return false;
+	}
+	if (!mmenubg->setup(mvkobjs,1)){
+		#ifdef _DEBUG
+		logger::log(0,"crashed at ",__FUNCTION__);
+		#endif
+		return false;
+	}
+	if (!mmenubg->setup2(mvkobjs, menubgshaders[0], menubgshaders[1])){
+		#ifdef _DEBUG
+		logger::log(0,"crashed at ",__FUNCTION__);
+		#endif
+		return false;
+	}
 	return true;
 }
 

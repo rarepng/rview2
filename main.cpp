@@ -18,10 +18,14 @@
 int main() {
 
 	std::unique_ptr<vkwind> w = std::make_unique<vkwind>();
-	w->init("Random Arena Wars");
-	w->framemainmenuupdate();
-	w->frameupdate();
-	w->cleanup();
+	if (w->init("Random Arena Wars")) {
+		w->framemainmenuupdate();
+		w->frameupdate();
+		w->cleanup();
+	}
+	else {
+		return -1;
+	}
 
 	return 0;
 }
