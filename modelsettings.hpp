@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 
 struct modelsettings {
-	glm::vec2 msworldpos{ 0.0f };
+	glm::vec3 msworldpos{ 0.0f };
 	glm::vec3 msworldrot{ 0.0f };
 	bool msdrawmodel{ true };
 	bool msdrawskeleton{ false };

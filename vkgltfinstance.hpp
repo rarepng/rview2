@@ -15,7 +15,7 @@
 
 class vkgltfinstance {
 public:
-	vkgltfinstance(std::shared_ptr<vkgltfmodel>model, glm::vec2 worldpos, bool randomize = false);
+	vkgltfinstance(std::shared_ptr<vkgltfmodel>model, glm::vec3 worldpos, bool randomize = false);
 	~vkgltfinstance();
 	void resetnodedata();
 	std::shared_ptr<vkmesh> getskeleton();
@@ -31,7 +31,7 @@ public:
 	modelsettings getinstancesettings();
 	void checkforupdates();
 
-	glm::vec2 getwpos();
+	glm::vec3 getwpos();
 	glm::quat getwrot();
 
 	void solveik();

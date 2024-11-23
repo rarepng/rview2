@@ -1,5 +1,4 @@
 #include "vksyncobjects.hpp"
-
 #include <vk/VkBootstrap.h>
 
 bool vksyncobjects::init(vkobjs& rdata) {

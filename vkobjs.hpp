@@ -9,7 +9,7 @@
 #include <memory>
 #include <thread>
 #include <future>
-#include <mutex>
+#include <shared_mutex>
 
 struct vkvert {
 	glm::vec3 pos;
@@ -94,7 +94,8 @@ struct vkpushconstants {
 
 struct vkobjs {
 
-	static inline std::unique_ptr<std::mutex> mtx{std::make_unique<std::mutex>()};
+	inline static const std::shared_ptr<std::shared_mutex>  mtx2{ std::make_shared<std::shared_mutex>() };
+
 
 	GLFWwindow* rdwind = nullptr;
 	GLFWmonitor* rdmonitor = nullptr;
@@ -158,7 +159,7 @@ struct vkobjs {
 	VkFormat rddepthformat;
 	VmaAllocation rddepthimagealloc = VK_NULL_HANDLE;
 
-	VkRenderPass rdrenderpass;
+	VkRenderPass rdrenderpass= VK_NULL_HANDLE;
 
 
 
@@ -178,6 +179,7 @@ struct vkobjs {
 
 
 	VkDescriptorPool rdimguidescriptorpool = VK_NULL_HANDLE;
+
 };
 
 struct vkgltfobjs {

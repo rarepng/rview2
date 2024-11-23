@@ -3,6 +3,9 @@
 #include "commandbuffer.hpp"
 #include "vktexture.hpp"
 #include <vk/VkBootstrap.h>
+#include <future>
+#include <thread>
+#include <mutex>
 
 bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, std::string filename) {
 	int w;
@@ -165,7 +168,7 @@ bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, std::string f
 	fenceinfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 
-	rdata.mtx->lock();
+rdata.mtx2->lock();
 	if (vkCreateFence(rdata.rdvkbdevice.device, &fenceinfo, nullptr, &stagingbufferfence) != VK_SUCCESS) {
 		return false;
 	}
@@ -179,7 +182,7 @@ bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, std::string f
 		return false;
 	}
 
-	rdata.mtx->unlock();
+rdata.mtx2->unlock();
 
 
 
@@ -312,6 +315,7 @@ bool vktexture::loadtexture(vkobjs& rdata, std::vector<vktexdata>& texdata, std:
 		return false;
 	}
 
+	//uint32_t mlvls = static_cast<uint32_t>(std::floor(std::log2(std::max(w, h)))) + 1;
 
 	VkDeviceSize imgsize = w * h * 4;
 	totaldescsize += w * h*4;
@@ -472,11 +476,12 @@ bool vktexture::loadtexture(vkobjs& rdata, std::vector<vktexdata>& texdata, std:
 	//	return false;
 	//}
 
-	rdata.mtx->lock();
+rdata.mtx2->lock();
 	if (vkQueueSubmit(rdata.rdgraphicsqueue, 1, &submitinfo, stagingbufferfence) != VK_SUCCESS) {
 		return false;
 	}
-	rdata.mtx->unlock();
+
+rdata.mtx2->unlock();
 
 	if (vkWaitForFences(rdata.rdvkbdevice.device, 1, &stagingbufferfence, VK_TRUE, INT64_MAX) != VK_SUCCESS) {
 		return false;

@@ -39,6 +39,8 @@ public:
 	void uploadvboebo(vkobjs& objs);
 	void uploadubossbo(vkobjs& objs, std::vector<glm::mat4>& cammats);
 
+	std::shared_ptr<vkgltfinstance> getinst(int i);
+
 	modelsettings getinstsettings();
 
 	unsigned int getnuminstances();

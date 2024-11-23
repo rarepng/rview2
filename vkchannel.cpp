@@ -4,7 +4,7 @@ void vkchannel::loadchannel(std::shared_ptr<tinygltf::Model> model,const tinyglt
 	const tinygltf::Accessor& inacc = model->accessors.at(anim.samplers.at(chann.sampler).input);
 	const tinygltf::BufferView& inbuffview = model->bufferViews.at(inacc.bufferView);
 	const tinygltf::Buffer& inbuff = model->buffers.at(inbuffview.buffer);
-	std::vector<float> times;
+	std::vector<float> times{};
 	times.reserve(inacc.count);
 	times.resize(inacc.count);
 

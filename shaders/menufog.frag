@@ -48,7 +48,6 @@ void main(){
     c = c * vec4(1.0 - smoothstep(0.1, 0.8, pos.y));
 
     
-    f = c/5.0;
+    f = c/2.8;
 
-	//f=vec4(1.0);
 }

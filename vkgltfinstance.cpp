@@ -8,7 +8,7 @@
 #include "vkgltfinstance.hpp"
 vkgltfinstance::~vkgltfinstance(){}
 
-vkgltfinstance::vkgltfinstance(std::shared_ptr<vkgltfmodel> model, glm::vec2 worldpos, bool randomize){
+vkgltfinstance::vkgltfinstance(std::shared_ptr<vkgltfmodel> model, glm::vec3 worldpos, bool randomize){
 
 	if (!model)return;
 	mgltfmodel = model;
@@ -31,7 +31,7 @@ vkgltfinstance::vkgltfinstance(std::shared_ptr<vkgltfmodel> model, glm::vec2 wor
 	gltfnodedata nodedata;
 	nodedata = mgltfmodel->getgltfnodes();
 	mrootnode = nodedata.rootnode;
-	mrootnode->setwpos(glm::vec3(mmodelsettings.msworldpos.x, 0.0f, mmodelsettings.msworldpos.y));
+	mrootnode->setwpos(glm::vec3(mmodelsettings.msworldpos.x, mmodelsettings.msworldpos.y, mmodelsettings.msworldpos.z));
 
 	mnodelist = nodedata.nodelist;
 
@@ -179,7 +179,7 @@ std::vector<glm::mat2x4> vkgltfinstance::getjointdualquats() {
 void vkgltfinstance::checkforupdates() {
 	static blendmode lastBlendMode = mmodelsettings.msblendingmode;
 	static int skelSplitNode = mmodelsettings.msskelsplitnode;
-	static glm::vec2 worldPos = mmodelsettings.msworldpos;
+	static glm::vec3 worldPos = mmodelsettings.msworldpos;
 	static glm::vec3 worldRot = mmodelsettings.msworldrot;
 	static glm::vec3 ikTargetPos = mmodelsettings.msiktargetpos;
 	static ikmode lastIkMode = mmodelsettings.msikmode;
@@ -202,24 +202,23 @@ void vkgltfinstance::checkforupdates() {
 	}
 
 	if (worldPos != mmodelsettings.msworldpos) {
-		mrootnode->setwpos(glm::vec3(mmodelsettings.msworldpos.x, 0.0f,
-			mmodelsettings.msworldpos.y));
+		mrootnode->setwpos(glm::vec3(mmodelsettings.msworldpos.x, mmodelsettings.msworldpos.y, mmodelsettings.msworldpos.z));
 		worldPos = mmodelsettings.msworldpos;
 		mmodelsettings.msiktargetworldpos = getwrot() *
-			mmodelsettings.msiktargetpos + glm::vec3(worldPos.x, 0.0f, worldPos.y);
+			mmodelsettings.msiktargetpos + glm::vec3(worldPos.x, worldPos.y, worldPos.z);
 	}
 
 	if (worldRot != mmodelsettings.msworldrot) {
 		mrootnode->setwrot(mmodelsettings.msworldrot);
 		worldRot = mmodelsettings.msworldrot;
 		mmodelsettings.msiktargetworldpos = getwrot() *
-			mmodelsettings.msiktargetpos + glm::vec3(worldPos.x, 0.0f, worldPos.y);
+			mmodelsettings.msiktargetpos + glm::vec3(worldPos.x, worldPos.y, worldPos.z);
 	}
 
 	if (ikTargetPos != mmodelsettings.msiktargetpos) {
 		ikTargetPos = mmodelsettings.msiktargetpos;
 		mmodelsettings.msiktargetworldpos = getwrot() *
-			mmodelsettings.msiktargetpos + glm::vec3(worldPos.x, 0.0f, worldPos.y);
+			mmodelsettings.msiktargetpos + glm::vec3(worldPos.x, worldPos.y, worldPos.z);
 	}
 
 	if (lastIkMode != mmodelsettings.msikmode) {
@@ -376,7 +375,7 @@ modelsettings vkgltfinstance::getinstancesettings() {
 	return mmodelsettings;
 }
 
-glm::vec2 vkgltfinstance::getwpos() {
+glm::vec3 vkgltfinstance::getwpos() {
 	return mmodelsettings.msworldpos;
 }
 

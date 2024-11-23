@@ -11,14 +11,18 @@
 #include <vk/vk_mem_alloc.h>
 #include <chrono>
 
+#include <future>
+#include <thread>
+#include <mutex>
+
 #include "timer.hpp"
 #include "renderpass.hpp"
+#include "vksyncobjects.hpp"
 #include "gltfgpupipeline.hpp"
 #include "playout.hpp"
 #include "framebuffer.hpp"
 #include "commandpool.hpp"
 #include "commandbuffer.hpp"
-#include "vksyncobjects.hpp"
 #include "vktexture.hpp"
 #include "ubo.hpp"
 #include "ssbomesh.hpp"
@@ -39,8 +43,6 @@
 
 #include "vkgltfmodel.hpp"
 #include "vkgltfinstance.hpp"
-
-//#include "coord.hpp"
 
 #include "vkobjs.hpp"
 
@@ -89,7 +91,7 @@ private:
 
 	bool mmodeluploadrequired{ true };
 
-
+	float tmpx{}, tmpy{};
 
 	bool rdscene{ true };
 

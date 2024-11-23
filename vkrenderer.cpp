@@ -1,13 +1,14 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #define VMA_IMPLEMENTATION
 #include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <ctime>
 #include <cstdlib>
 #include <glm/gtx/spline.hpp>
 #include <vk/vk_mem_alloc.h>
-#include "vkrenderer.hpp"
 #include <iostream>
+#include "vkrenderer.hpp"
 vkrenderer::vkrenderer(GLFWwindow* wind,GLFWmonitor* mont,const GLFWvidmode* mode) {
 	mvkobjs.rdwind = wind;
 	mvkobjs.rdmonitor = mont;
@@ -16,12 +17,26 @@ vkrenderer::vkrenderer(GLFWwindow* wind,GLFWmonitor* mont,const GLFWvidmode* mod
 	mpersviewmats.emplace_back(glm::mat4{ 1.0f });
 }
 bool vkrenderer::init() {
+
+	
+
 	std::srand(static_cast<int>(time(NULL)));
 	mvkobjs.rdheight = mvkobjs.rdvkbswapchain.extent.height;
 	mvkobjs.rdwidth = mvkobjs.rdvkbswapchain.extent.width;
+
+
+	//while (!mvkobjs.mtx2) {
+	//	std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	//}
+
 	if (!mvkobjs.rdwind)return false;
+
+
+	//std::lock_guard<std::shared_mutex> lg{ *mvkobjs.mtx2 };
+	mvkobjs.mtx2->lock_shared();
 	if (!deviceinit())return false;
 	if (!initvma())return false;
+	mvkobjs.mtx2->unlock_shared();
 
 
 	if (!getqueue())return false;
@@ -128,7 +143,9 @@ bool vkrenderer::setupstaticmodels2(){
 
 
 bool vkrenderer::deviceinit() {
-	vkb::InstanceBuilder instbuild;
+	vkb::InstanceBuilder instbuild{};
+
+	//std::lock_guard<std::shared_mutex> lg{ *mvkobjs.mtx2 };
 	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1,3,0).build();
 	mvkobjs.rdvkbinstance = instret.value();
 
@@ -308,9 +325,7 @@ bool vkrenderer::initvma() {
 }
 
 bool vkrenderer::initui() {
-	if (!mui.init(mvkobjs)) {
-		return false;
-	}
+	if(!mui.init(mvkobjs))return false;
 	return true;
 }
 
@@ -414,6 +429,27 @@ void vkrenderer::handleclick(int key, int action, int mods)
 
 	if (key == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
 		std::cout << "click!" << std::endl;
+		double x;
+		double y;
+		glfwGetCursorPos(mvkobjs.rdwind, &x, &y);
+		//x = (2.0 * (x / (double)mvkobjs.rdwidth)) - 1.0;
+		//y = (2.0 * (y / (double)mvkobjs.rdheight)) - 1.0;
+		glm::inverse(mcam.getview(mvkobjs));
+		std::cout << x << "   " << y << std::endl;
+		modelsettings s = mplayer->getinst(0)->getinstancesettings();
+
+		glm::vec4 newp= glm::vec4(x, y, 0.0f,  1.0f)*glm::inverse(glm::perspective(glm::radians(static_cast<float>(mvkobjs.rdfov)), static_cast<float>(mvkobjs.rdwidth) / static_cast<float>(mvkobjs.rdheight), 0.01f, 6000.0f));
+		newp = newp* glm::inverse(mcam.getview(mvkobjs));
+		glm::vec3 newd = glm::vec3(newp)-mvkobjs.rdcamwpos;
+
+		//newp *= glm::vec4(glm::normalize(newd),1.0f);
+		//newp /= newp.w;
+		//newp *= 1000000.0f;
+		s.msworldpos = glm::vec3(newp);
+		tmpx += 100.0;
+		tmpy += 100.0;
+		mplayer->getinst(0)->setinstancesettings(s);
+		mplayer->getinst(0)->checkforupdates();
 	}
 
 	if (key == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
@@ -523,6 +559,7 @@ void vkrenderer::movecam() {
 }
 
 bool vkrenderer::draw() {
+
 	double tick = glfwGetTime();
 	mvkobjs.rdtickdiff = tick - mlasttick;
 	mvkobjs.rdframetime = mframetimer.stop();
@@ -658,11 +695,13 @@ bool vkrenderer::draw() {
 
 
 	muigentimer.start();
-	modelsettings settings = mpgltf[0]->getinstsettings();
-	mui.createframe(mvkobjs, settings);
-	mvkobjs.rduigeneratetime = muigentimer.stop();
 	muidrawtimer.start();
-	mui.render(mvkobjs,mvkobjs.rdcommandbuffer[0]);
+	modelsettings settings = mpgltf[0]->getinstsettings();
+	//mui.createchat(mvkobjs);
+	//mui.render(mvkobjs,mvkobjs.rdcommandbuffer[0]);
+	mui.createdbgframe(mvkobjs, settings);
+	mui.render(mvkobjs, mvkobjs.rdcommandbuffer[0]);
+	mvkobjs.rduigeneratetime = muigentimer.stop();
 	mvkobjs.rduidrawtime = muidrawtimer.stop();
 
 
@@ -708,11 +747,11 @@ bool vkrenderer::draw() {
 	submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer.at(0);
 
 
-	mvkobjs.mtx->lock();
+mvkobjs.mtx2->lock();
 	if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
 		return false;
 	}
-	mvkobjs.mtx->unlock();
+mvkobjs.mtx2->unlock();
 
 	VkPresentInfoKHR presentinfo{};
 	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -725,10 +764,10 @@ bool vkrenderer::draw() {
 	presentinfo.pImageIndices = &imgidx;
 
 
-	mvkobjs.mtx->lock();
+mvkobjs.mtx2->lock();
 	res = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
 
-	mvkobjs.mtx->unlock();
+mvkobjs.mtx2->unlock();
 
 	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
 		return recreateswapchain();
@@ -865,11 +904,11 @@ bool vkrenderer::drawmainmenu() {
 	submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer[0];
 
 
-	mvkobjs.mtx->lock();
+mvkobjs.mtx2->lock();
 	if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
 		return false;
 	}
-	mvkobjs.mtx->unlock();
+mvkobjs.mtx2->unlock();
 
 	VkPresentInfoKHR presentinfo{};
 	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -881,10 +920,10 @@ bool vkrenderer::drawmainmenu() {
 
 	presentinfo.pImageIndices = &imgidx;
 
-	mvkobjs.mtx->lock();
+mvkobjs.mtx2->lock();
 	res = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
 
-	mvkobjs.mtx->unlock();
+mvkobjs.mtx2->unlock();
 
 	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
 		return recreateswapchain();
@@ -1008,11 +1047,11 @@ bool vkrenderer::drawloading() {
 	//if (vkResetFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence) != VK_SUCCESS) {
 	//	return false;
 	//}
-	mvkobjs.mtx->lock();
+mvkobjs.mtx2->lock();
 	if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
 		return false;
 	}
-	mvkobjs.mtx->unlock();
+mvkobjs.mtx2->unlock();
 
 	//if (vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
 	//	return false;
@@ -1028,9 +1067,9 @@ bool vkrenderer::drawloading() {
 
 	presentinfo.pImageIndices = &imgidx;
 
-	mvkobjs.mtx->lock();
+mvkobjs.mtx2->lock();
 	res = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
-	mvkobjs.mtx->unlock();
+mvkobjs.mtx2->unlock();
 	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
 		return recreateswapchain();
 	}
@@ -1146,11 +1185,11 @@ bool vkrenderer::drawblank(){
 	submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer[0];
 
 
-	mvkobjs.mtx->lock();
+mvkobjs.mtx2->lock();
 	if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
 		return false;
 	}
-	mvkobjs.mtx->unlock();
+mvkobjs.mtx2->unlock();
 
 	VkPresentInfoKHR presentinfo{};
 	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1162,10 +1201,10 @@ bool vkrenderer::drawblank(){
 
 	presentinfo.pImageIndices = &imgidx;
 
-	mvkobjs.mtx->lock();
+mvkobjs.mtx2->lock();
 	res = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
 
-	mvkobjs.mtx->unlock();
+mvkobjs.mtx2->unlock();
 
 	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
 		return recreateswapchain();

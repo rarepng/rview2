@@ -34,7 +34,7 @@ bool playoutmodel::createinstances(vkobjs& objs,int count, bool rand){
 	for (int i = 0; i < count; ++i) {
 		int xPos = std::rand() % 999;
 		int zPos = std::rand() % 999;
-		minstances.emplace_back(std::make_shared<vkgltfinstance>(mgltf,	glm::vec2(static_cast<float>(xPos), static_cast<float>(zPos)), rand));
+		minstances.emplace_back(std::make_shared<vkgltfinstance>(mgltf,	glm::vec3(static_cast<float>(xPos),0.0f, static_cast<float>(zPos)), rand));
 		numTriangles += mgltf->gettricount(0,0);
 	}
 	totaltricount = numTriangles;
@@ -107,6 +107,10 @@ void playoutmodel::uploadubossbo(vkobjs& objs, std::vector<glm::mat4>& cammats){
 	ssbo::upload(objs, rdjointmatrixssbo, jointmats);
 	ssbo::upload(objs, rdjointdualquatssbo, jointdqs);
 
+}
+
+std::shared_ptr<vkgltfinstance> playoutmodel::getinst(int i){
+	return minstances[i];
 }
 
 modelsettings playoutmodel::getinstsettings()

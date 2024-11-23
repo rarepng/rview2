@@ -3,6 +3,7 @@
 #include <future>
 #include <thread>
 #include <chrono>
+#include <mutex>
 
 bool vkwind::init(std::string title) {
 	if (!glfwInit()) {
@@ -53,7 +54,7 @@ bool vkwind::init(std::string title) {
 
 	//mouse
 	mouse mmouse{ "resources/mouser.png" };
-	GLFWimage iconer;
+	GLFWimage iconer{};
 	iconer.pixels = stbi_load("resources/icon0.png", &iconer.width, &iconer.height, nullptr, 4);
 	glfwSetCursor(mwind,mmouse.cursor);
 	glfwSetWindowIcon(mwind, 1, &iconer);
@@ -76,7 +77,7 @@ void vkwind::framemainmenuupdate(){
 			auto f = std::async(std::launch::async, [&]{
 				return mvkrenderer->initscene();
 			});
-			while (!f._Is_ready()) {
+			while (f.wait_for(std::chrono::milliseconds(0))!=std::future_status::ready) {
 				mvkrenderer->drawloading();
 				glfwPollEvents();
 			}
