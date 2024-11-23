@@ -5,8 +5,7 @@ can load any gltf model, pbr materials, textures, animations and non-linear anim
 full support for glsl shaders ( compile with glslc for vulkan ).
 ## requirements
 * c++20 compiler
-* if opengl( opengl 4.6 and glad )
-* if vulkan( vulkan 1.3, vkbootstrap and vma_mem_alloc)
+* vulkan( vulkan 1.3, vkbootstrap and vma_mem_alloc)
 * glfw
 * glm
 * tinygltf
