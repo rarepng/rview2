@@ -19,15 +19,15 @@ public:
 	void uploadindexbuffers(vkobjs& objs);
 	std::vector<vktexdata> gettexdata();
 	std::string getmodelfname();
-	int gettricount(int i);
+	int gettricount(int i,int j);
 private:
 	void createvertexbuffers(vkobjs& objs);
 	void createindexbuffers(vkobjs& objs);
 	std::string mmodelfilename;
 	std::shared_ptr<tinygltf::Model> mmodel = nullptr;
-	std::vector<std::vector<int>> mattribaccs{};
+	std::vector<std::vector<std::vector<int>>> mattribaccs{};
 
 	vkgltfobjs mgltfobjs{};
 
-	std::map<std::string, GLint> atts = { {"POSITION",0},{"NORMAL",1},{"TEXCOORD_0",2} };
+	const std::map<std::string, GLint> atts = { {"POSITION",0},{"NORMAL",1},{"TEXCOORD_0",2} };
 };

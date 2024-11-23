@@ -3,10 +3,10 @@
 
 
 
-bool playoutstatic::setup(vkobjs& objs, std::string fname) {
+bool playoutstatic::setup(vkobjs& objs, std::string fname, int count) {
 	if (!createubo(objs))return false;
 	if (!loadmodel(objs, fname))return false;
-	if (!createinstances(objs,200, true))return false;
+	if (!createinstances(objs, count, true))return false;
 	if (!createssbomat(objs))return false;
 
 
@@ -36,7 +36,7 @@ bool playoutstatic::createinstances(vkobjs& objs, int count, bool rand) {
 		int xPos = std::rand() % 999;
 		int zPos = std::rand() % 999;
 		minstances.emplace_back(std::make_shared<staticinstance>(mgltf, glm::vec2(static_cast<float>(xPos), static_cast<float>(zPos)), rand));
-		numTriangles += mgltf->gettricount(0);
+		numTriangles += mgltf->gettricount(0,0);
 	}
 	totaltricount = numTriangles;
 	numinstancess = count;
@@ -81,8 +81,8 @@ void playoutstatic::uploadvboebo(vkobjs& objs) {
 }
 
 void playoutstatic::uploadubossbo(vkobjs& objs, std::vector<glm::mat4>& cammats) {
-	vkCmdBindDescriptorSets(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1, &rdperspviewmatrixubo[0].rdubodescriptorset, 0, nullptr);
-	vkCmdBindDescriptorSets(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1, &rdmodelmatsssbo.rdssbodescriptorset, 0, nullptr);
+	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1, &rdperspviewmatrixubo[0].rdubodescriptorset, 0, nullptr);
+	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1, &rdmodelmatsssbo.rdssbodescriptorset, 0, nullptr);
 
 	ubo::upload(objs, rdperspviewmatrixubo, cammats, 0);
 	ssbo::upload(objs, rdmodelmatsssbo, transmats);
@@ -123,10 +123,10 @@ void playoutstatic::draw(vkobjs& objs) {
 
 	stride = 0;
 
-	vkCmdBindDescriptorSets(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1, &rdperspviewmatrixubo[0].rdubodescriptorset, 0, nullptr);
-	vkCmdBindDescriptorSets(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1, &rdmodelmatsssbo.rdssbodescriptorset, 0, nullptr);
+	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1, &rdperspviewmatrixubo[0].rdubodescriptorset, 0, nullptr);
+	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1, &rdmodelmatsssbo.rdssbodescriptorset, 0, nullptr);
 
-	vkCmdBindPipeline(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfgpupipeline);
+	vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfgpupipeline);
 	mgltf->drawinstanced(objs, rdgltfpipelinelayout, numinstancess, stride);
 
 }

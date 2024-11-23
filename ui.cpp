@@ -16,6 +16,11 @@ bool ui::init(vkobjs& renderData) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
+    ImGuiIO& io = ImGui::GetIO();
+
+    io.Fonts->AddFontFromFileTTF("resources/comicbd.ttf", 29.0f);
+    io.Fonts->AddFontFromFileTTF("resources/bruce.ttf", 52.0f);
+
     VkDescriptorPoolSize imguiPoolSizes[] =
     {
       { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
@@ -60,7 +65,7 @@ bool ui::init(vkobjs& renderData) {
 
     VkCommandBuffer imguiCommandBuffer;
 
-    if (!commandbuffer::init(renderData, imguiCommandBuffer)) {
+    if (!commandbuffer::init(renderData, renderData.rdcommandpool0, imguiCommandBuffer)) {
         return false;
     }
 
@@ -90,34 +95,32 @@ bool ui::init(vkobjs& renderData) {
     submitInfo.signalSemaphoreCount = 0;
     submitInfo.pSignalSemaphores = nullptr;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &imguiCommandBuffer;;
+    submitInfo.pCommandBuffers = &imguiCommandBuffer;
 
-    VkFence imguiBufferFence;
+    //VkFence imguiBufferFence;
 
-    VkFenceCreateInfo fenceInfo{};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    //VkFenceCreateInfo fenceInfo{};
+    //fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    //fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    if (vkCreateFence(renderData.rdvkbdevice.device, &fenceInfo, nullptr, &imguiBufferFence) != VK_SUCCESS) {
+    //if (vkCreateFence(renderData.rdvkbdevice.device, &fenceInfo, nullptr, &imguiBufferFence) != VK_SUCCESS) {
+    //    return false;
+    //}
+
+    if (vkResetFences(renderData.rdvkbdevice.device, 1, &renderData.rdrenderfence) != VK_SUCCESS) {
         return false;
     }
 
-    if (vkResetFences(renderData.rdvkbdevice.device, 1, &imguiBufferFence) != VK_SUCCESS) {
+    if (vkQueueSubmit(renderData.rdgraphicsqueue, 1, &submitInfo, renderData.rdrenderfence) != VK_SUCCESS) {
         return false;
     }
 
-    if (vkQueueSubmit(renderData.rdgraphicsqueue, 1, &submitInfo, imguiBufferFence) != VK_SUCCESS) {
+    if (vkWaitForFences(renderData.rdvkbdevice.device, 1, &renderData.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
         return false;
     }
 
-    if (vkWaitForFences(renderData.rdvkbdevice.device, 1, &imguiBufferFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-        return false;
-    }
-
-    vkDestroyFence(renderData.rdvkbdevice.device, imguiBufferFence, nullptr);
-    commandbuffer::cleanup(renderData, imguiCommandBuffer);
-
-    //ImGui_ImplVulkan_DestroyFontUploadObjects();
+    //vkDestroyFence(renderData.rdvkbdevice.device, imguiBufferFence, nullptr);
+    commandbuffer::cleanup(renderData, renderData.rdcommandpool0, imguiCommandBuffer);
 
     ImGui::StyleColorsDark();
     
@@ -145,24 +148,12 @@ bool ui::init(vkobjs& renderData) {
 
 void ui::createframe(vkobjs& renderData, modelsettings& settings) {
 
-
-    //useless
-    ImGuiConfigFlags confflags = 0;
-    confflags |= ImGuiConfigFlags_NoMouseCursorChange;
-
-
-
-
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
 
     ImGuiWindowFlags imguiWindowFlags = 0;
-    //imguiWindowFlags |= ImGuiConfigFlags_NoMouseCursorChange;
-    //imguiWindowFlags |= ImGuiWindowFlags_NoCollapse;
-    //imguiWindowFlags |= ImGuiWindowFlags_NoResize;
-    //imguiWindowFlags |= ImGuiWindowFlags_NoMove;
 
     ImGui::SetNextWindowBgAlpha(0.8f);
 
@@ -692,9 +683,120 @@ void ui::createframe(vkobjs& renderData, modelsettings& settings) {
     ImGui::End();
 }
 
-void ui::render(vkobjs& renderData) {
+
+bool ui::createmainmenuframe(vkobjs& mvkobjs) {
+
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    ImGuiIO& io = ImGui::GetIO();
+
+
+    ImGuiWindowFlags imguiWindowFlags = 0;
+    imguiWindowFlags |= ImGuiWindowFlags_MenuBar;
+    imguiWindowFlags |= ImGuiWindowFlags_NoBackground;
+    imguiWindowFlags |= ImGuiWindowFlags_NoResize;
+    imguiWindowFlags |= ImGuiWindowFlags_NoMove;
+    imguiWindowFlags |= ImGuiWindowFlags_NoSavedSettings;
+    imguiWindowFlags |= ImGuiWindowFlags_NoCollapse;
+    imguiWindowFlags |= ImGuiWindowFlags_NoTitleBar;
+
+
+    ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), 1, { 0.5f,0.5f });
+
+
+    ImGui::Begin("Menu", nullptr, imguiWindowFlags);
+
+
+    ImGui::PushStyleColor(ImGuiCol_Button, { 0.0f,0.0f,0.0f,1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.4f,0.4f,0.4f,1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.9f,0.9f,0.9f,1.0f });
+
+
+    ImGui::PushFont(io.Fonts->Fonts[0]);
+
+
+    ImGui::PushStyleColor(ImGuiCol_MenuBarBg, { 0.0f,0.0f,0.0f,0.2f });
+    ImGui::PushStyleColor(ImGuiCol_PopupBg, { 0.0f,0.0f,0.0f,0.2f });
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, { 1.0f,1.0f,1.0f,0.4f });
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, { 1.0f,1.0f,1.0f,1.0f });
+
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("settings")) {
+            if (mvkobjs.rdfullscreen) {
+                if (ImGui::MenuItem("windowed", "F4")) {
+                    glfwSetWindowMonitor(mvkobjs.rdwind, nullptr, 100, 200, 900, 600, GLFW_DONT_CARE);
+                    mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
+                }
+            }
+            else {
+                if (ImGui::MenuItem("fullscreen", "F4")) {
+                    glfwSetWindowMonitor(mvkobjs.rdwind, mvkobjs.rdmonitor, 0, 0, mvkobjs.rdmode->width, mvkobjs.rdmode->height, mvkobjs.rdmode->refreshRate);
+                    mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
+                }
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+    ImGui::PopFont();
+
+    ImGui::PushFont(io.Fonts->Fonts[1]);
+
+
+    ImGui::BeginGroup();
+    //ImGui::ImageButton(io.Fonts->TexID,{400,200});
+
+    bool p = ImGui::Button("START", { 400,200 });
+    ImGui::PushFont(io.Fonts->Fonts[0]);
+    if (ImGui::IsItemHovered())ImGui::SetTooltip("loading models might take a while, dont fret!");
+    ImGui::PopFont();
+    if (ImGui::Button("EXIT", { 400,120 }))glfwSetWindowShouldClose(mvkobjs.rdwind, true);
+    if (ImGui::IsItemHovered())ImGui::SetTooltip(":(");
+    ImGui::PopStyleColor(7);
+    //ImGui::PopStyleVar(2);
+    ImGui::EndGroup();
+
+    ImGui::PopFont();
+
+    ImGui::End();
+
+    return !p;
+}
+bool ui::createloadingscreen(vkobjs& mvkobjs) {
+
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    ImGuiIO& io = ImGui::GetIO();
+
+
+    ImGuiWindowFlags imguiWindowFlags = 0;
+    imguiWindowFlags |= ImGuiWindowFlags_NoBackground;
+    imguiWindowFlags |= ImGuiWindowFlags_NoResize;
+    imguiWindowFlags |= ImGuiWindowFlags_NoMove;
+    imguiWindowFlags |= ImGuiWindowFlags_NoSavedSettings;
+    imguiWindowFlags |= ImGuiWindowFlags_NoCollapse;
+    imguiWindowFlags |= ImGuiWindowFlags_NoTitleBar;
+
+
+    ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), 1, { 0.5f,0.5f });
+
+
+    ImGui::Begin("loading", nullptr, imguiWindowFlags);
+
+    ImGui::ProgressBar(static_cast<float>(std::rand()%100)/100.0f, {600,100});
+
+    ImGui::End();
+
+    return true;
+}
+
+void ui::render(vkobjs& renderData,VkCommandBuffer& cbuffer) {
     ImGui::Render();
-    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), renderData.rdcommandbuffer);
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cbuffer);
 }
 
 void ui::cleanup(vkobjs& renderData) {

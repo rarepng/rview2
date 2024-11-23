@@ -3,6 +3,6 @@
 #include "vkobjs.hpp"
 class commandbuffer {
 public:
-	static bool init(vkobjs& rdata, VkCommandBuffer& incommandbuffer);
-	static void cleanup(vkobjs& rdata, VkCommandBuffer& incommandbuffer);
+	static bool init(vkobjs& rdata, VkCommandPool& vkpool, VkCommandBuffer& incommandbuffer);
+	static void cleanup(vkobjs& rdata, VkCommandPool& vkpool, VkCommandBuffer& incommandbuffer);
 };

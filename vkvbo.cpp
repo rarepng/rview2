@@ -1,7 +1,7 @@
 #include "vkvbo.hpp"
 #include "commandbuffer.hpp"
 
-bool vkvbo::init(vkobjs& mvkobjs, vkvertexbufferdata& vbdata, unsigned int bsize)
+bool vkvbo::init(vkobjs& mvkobjs, vkvertexbufferdata& vbdata, size_t bsize)
 {
     VkBufferCreateInfo binfo{};
     binfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -32,7 +32,7 @@ bool vkvbo::init(vkobjs& mvkobjs, vkvertexbufferdata& vbdata, unsigned int bsize
 
 
 bool vkvbo::upload(vkobjs& mvkobjs, vkvertexbufferdata& vbdata, vkmesh vmesh){
-    unsigned int vsize = vmesh.verts.size() * sizeof(vkvert);
+    size_t vsize = vmesh.verts.size() * sizeof(vkvert);
 
     if (vbdata.rdvertexbuffersize < vsize) {
         cleanup(mvkobjs, vbdata);
@@ -63,9 +63,9 @@ bool vkvbo::upload(vkobjs& mvkobjs, vkvertexbufferdata& vbdata, vkmesh vmesh){
 
 
 
-    vkCmdCopyBuffer(mvkobjs.rdcommandbuffer, vbdata.rdstagingbuffer,
+    vkCmdCopyBuffer(mvkobjs.rdcommandbuffer[0], vbdata.rdstagingbuffer,
         vbdata.rdvertexbuffer, 1, &stagingbuffercopy);
-    vkCmdPipelineBarrier(mvkobjs.rdcommandbuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+    vkCmdPipelineBarrier(mvkobjs.rdcommandbuffer[0], VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &vbbarrier, 0, nullptr);
 
     return true;
@@ -73,7 +73,7 @@ bool vkvbo::upload(vkobjs& mvkobjs, vkvertexbufferdata& vbdata, vkmesh vmesh){
 
 bool vkvbo::upload(vkobjs& mvkobjs, vkvertexbufferdata& vbdata,
     std::vector<glm::vec3> vertexData) {
-    unsigned int vertexDataSize = vertexData.size() * sizeof(glm::vec3);
+    size_t vertexDataSize = vertexData.size() * sizeof(glm::vec3);
 
     /* buffer too small, resize */
     if (vbdata.rdvertexbuffersize < vertexDataSize) {
@@ -119,8 +119,8 @@ bool vkvbo::upload(vkobjs& mvkobjs, vkvertexbufferdata& vbdata,
 
 
 
-    vkCmdCopyBuffer(mvkobjs.rdcommandbuffer, vbdata.rdstagingbuffer, vbdata.rdvertexbuffer, 1, &stagingBufferCopy);
-    vkCmdPipelineBarrier(mvkobjs.rdcommandbuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &vertexBufferBarrier, 0, nullptr);
+    vkCmdCopyBuffer(mvkobjs.rdcommandbuffer[0], vbdata.rdstagingbuffer, vbdata.rdvertexbuffer, 1, &stagingBufferCopy);
+    vkCmdPipelineBarrier(mvkobjs.rdcommandbuffer[0], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &vertexBufferBarrier, 0, nullptr);
     
     return true;
 }
@@ -190,8 +190,8 @@ bool vkvbo::upload(vkobjs& mvkobjs, vkvertexbufferdata& vbdata, const tinygltf::
     stagingbuffercopy.dstOffset = 0;
     stagingbuffercopy.size = vbdata.rdvertexbuffersize;
 
-    vkCmdCopyBuffer(mvkobjs.rdcommandbuffer, vbdata.rdstagingbuffer, vbdata.rdvertexbuffer, 1, &stagingbuffercopy);
-    vkCmdPipelineBarrier(mvkobjs.rdcommandbuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &vbbarrier, 0, nullptr);
+    vkCmdCopyBuffer(mvkobjs.rdcommandbuffer[0], vbdata.rdstagingbuffer, vbdata.rdvertexbuffer, 1, &stagingbuffercopy);
+    vkCmdPipelineBarrier(mvkobjs.rdcommandbuffer[0], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &vbbarrier, 0, nullptr);
 
     return true;
 }

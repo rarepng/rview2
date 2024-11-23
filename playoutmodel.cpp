@@ -3,16 +3,12 @@
 
 
 
-bool playoutmodel::setup(vkobjs& objs, std::string fname) {
+bool playoutmodel::setup(vkobjs& objs, std::string fname,int count) {
 	if (!createubo(objs))return false;
 	if (!loadmodel(objs, fname))return false;
-	if (!createinstances(objs, 22, true))return false;
+	if (!createinstances(objs, count, true))return false;
 	if (!createssbomat(objs))return false;
 	if (!createssbodq(objs))return false;
-
-
-
-
 
 	return true;
 }
@@ -39,7 +35,7 @@ bool playoutmodel::createinstances(vkobjs& objs,int count, bool rand){
 		int xPos = std::rand() % 999;
 		int zPos = std::rand() % 999;
 		minstances.emplace_back(std::make_shared<vkgltfinstance>(mgltf,	glm::vec2(static_cast<float>(xPos), static_cast<float>(zPos)), rand));
-		numTriangles += mgltf->gettricount(0);
+		numTriangles += mgltf->gettricount(0,0);
 	}
 	totaltricount = numTriangles;
 	numinstancess = count;
@@ -103,9 +99,9 @@ void playoutmodel::uploadvboebo(vkobjs& objs){
 }
 
 void playoutmodel::uploadubossbo(vkobjs& objs, std::vector<glm::mat4>& cammats){
-	vkCmdBindDescriptorSets(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1, &rdperspviewmatrixubo[0].rdubodescriptorset, 0, nullptr);
-	vkCmdBindDescriptorSets(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1, &rdjointmatrixssbo.rdssbodescriptorset, 0, nullptr);
-	vkCmdBindDescriptorSets(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 3, 1, &rdjointdualquatssbo.rdssbodescriptorset, 0, nullptr);
+	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1, &rdperspviewmatrixubo[0].rdubodescriptorset, 0, nullptr);
+	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1, &rdjointmatrixssbo.rdssbodescriptorset, 0, nullptr);
+	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 3, 1, &rdjointdualquatssbo.rdssbodescriptorset, 0, nullptr);
 
 	ubo::upload(objs, rdperspviewmatrixubo, cammats, 0);
 	ssbo::upload(objs, rdjointmatrixssbo, jointmats);
@@ -140,7 +136,7 @@ void playoutmodel::updatemats() {
 			jointmats.insert(jointmats.end(), mats.begin(), mats.end());
 			nummats++;
 		}
-		totaltricount += mgltf->gettricount(0);
+		totaltricount += mgltf->gettricount(0,0);
 	}
 }
 
@@ -168,13 +164,13 @@ void playoutmodel::draw(vkobjs& objs) {
 	stride = minstances.at(0)->getjointmatrixsize();
 	stridedq = minstances.at(0)->getjointdualquatssize();
 
-	vkCmdBindDescriptorSets(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1, &rdperspviewmatrixubo[0].rdubodescriptorset, 0, nullptr);
-	vkCmdBindDescriptorSets(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1, &rdjointmatrixssbo.rdssbodescriptorset, 0, nullptr);
-	vkCmdBindDescriptorSets(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 3, 1, &rdjointdualquatssbo.rdssbodescriptorset, 0, nullptr);
+	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1, &rdperspviewmatrixubo[0].rdubodescriptorset, 0, nullptr);
+	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1, &rdjointmatrixssbo.rdssbodescriptorset, 0, nullptr);
+	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 3, 1, &rdjointdualquatssbo.rdssbodescriptorset, 0, nullptr);
 
-	vkCmdBindPipeline(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfgpupipeline);
+	vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfgpupipeline);
 	mgltf->drawinstanced(objs, rdgltfpipelinelayout, numinstancess, stride);
-	vkCmdBindPipeline(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfgpudqpipeline);
+	vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfgpudqpipeline);
 	mgltf->drawinstanced(objs, rdgltfpipelinelayout, numinstancess, stridedq);
 
 }

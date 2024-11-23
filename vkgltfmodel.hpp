@@ -25,12 +25,11 @@ public:
 	void cleanup(vkobjs& objs);
 	void uploadvertexbuffers(vkobjs& objs);
 	void uploadindexbuffers(vkobjs& objs);
-	/////////////////////////////////////////////////////////vktexturedata
 	std::vector<vktexdata> gettexdata();
 	std::string getmodelfname();
 	int getnodecount();
 	gltfnodedata getgltfnodes();
-	int gettricount(int i);
+	int gettricount(int i,int j);
 
 	std::vector<glm::mat4> getinversebindmats();
 	std::vector<unsigned int> getnodetojoint();
@@ -59,11 +58,11 @@ private:
 	std::shared_ptr<tinygltf::Model> mmodel = nullptr;
 
 
-	std::vector<unsigned int> mjointvec{};
-	std::vector<glm::vec4> mweightvec{};
+	//std::vector<unsigned int> mjointvec{};
+	//std::vector<glm::vec4> mweightvec{};
 	std::vector<glm::mat4> minversebindmats{};
 
-	std::vector<std::vector<int>> mattribaccs{};
+	std::vector<std::vector<std::vector<int>>> mattribaccs{};
 	std::vector<unsigned int> mnodetojoint{};
 
 	std::vector<std::shared_ptr<vkclip>> manimclips{};

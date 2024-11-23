@@ -1,8 +1,8 @@
-#include "syncobjects.hpp"
+#include "vksyncobjects.hpp"
 
 #include <vk/VkBootstrap.h>
 
-bool syncobjects::init(vkobjs& rdata) {
+bool vksyncobjects::init(vkobjs& rdata) {
 
 	VkFenceCreateInfo fenceinfo{};
 	fenceinfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -16,12 +16,9 @@ bool syncobjects::init(vkobjs& rdata) {
 		vkCreateFence(rdata.rdvkbdevice.device, &fenceinfo, nullptr, &rdata.rdrenderfence) != VK_SUCCESS) {
 		return false;
 	}
-
-
-
 	return true;
 }
-void syncobjects::cleanup(vkobjs& rdata) {
+void vksyncobjects::cleanup(vkobjs& rdata) {
 	vkDestroySemaphore(rdata.rdvkbdevice.device, rdata.rdpresentsemaphore, nullptr);
 	vkDestroySemaphore(rdata.rdvkbdevice.device, rdata.rdrendersemaphore, nullptr);
 	vkDestroyFence(rdata.rdvkbdevice.device, rdata.rdrenderfence, nullptr);

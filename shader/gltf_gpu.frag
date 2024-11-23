@@ -20,23 +20,7 @@ layout (std140,set=1,binding=1) uniform texidx{
 void main() {
   //float lightAngle = max(dot(normalize(normal), normalize(lightPos)), 0.0);
   
-  FragColor = texture(tex[txidx], texCoord);
-  
-//  switch(txidx){
-//  case 0:
-//  FragColor = texture(tex[txidx], texCoord);
-//  break;
-//  case 1:
-//  FragColor = texture(tex[txidx], texCoord);
-//  break;
-//  case 2:
-//  FragColor = texture(tex[txidx], texCoord);
-//  break;
-//  default:
-//  FragColor = vec4(0.2,0.0,0.2,0.0);
-//  break;
-//  }
-//  
+  FragColor = vec4(texture(tex[txidx], texCoord).xyz,0.2f);
   // * vec4((0.3 + 0.7 * lightAngle) * lightColor, 1.0);
   //FragColor = vec4(newcolor.xyz,1.0);
   //FragColor = texture(tex, texCoord);

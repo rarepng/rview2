@@ -122,7 +122,7 @@ bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, std::string f
 
 
 	VkCommandBuffer stagingcommandbuffer;
-	if (!commandbuffer::init(rdata, stagingcommandbuffer)) {
+	if (!commandbuffer::init(rdata,rdata.rdcommandpool, stagingcommandbuffer)) {
 		return false;
 	}
 
@@ -183,7 +183,7 @@ bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, std::string f
 
 
 	vkDestroyFence(rdata.rdvkbdevice.device, stagingbufferfence, nullptr);
-	commandbuffer::cleanup(rdata, stagingcommandbuffer);
+	commandbuffer::cleanup(rdata, rdata.rdcommandpool, stagingcommandbuffer);
 	vmaDestroyBuffer(rdata.rdallocator, stagingbuffer, stagingbufferalloc);
 
 	VkImageViewCreateInfo texviewinfo{};
@@ -244,7 +244,7 @@ bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, std::string f
 
 	VkDescriptorPoolSize poolsize{};
 	poolsize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolsize.descriptorCount = 1000;
+	poolsize.descriptorCount = imgsize;
 
 	VkDescriptorPoolCreateInfo descriptorpool{};
 	descriptorpool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -323,7 +323,7 @@ bool vktexture::loadtexture(vkobjs& rdata, std::vector<vktexdata>& texdata, std:
 	imginfo.mipLevels = 1;
 	imginfo.arrayLayers = 1;
 	imginfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-	imginfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	imginfo.tiling = VK_IMAGE_TILING_LINEAR;
 	imginfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	imginfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	imginfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -417,7 +417,7 @@ bool vktexture::loadtexture(vkobjs& rdata, std::vector<vktexdata>& texdata, std:
 
 
 	VkCommandBuffer stagingcommandbuffer;
-	if (!commandbuffer::init(rdata, stagingcommandbuffer)) {
+	if (!commandbuffer::init(rdata, rdata.rdcommandpool, stagingcommandbuffer)) {
 		return false;
 	}
 
@@ -478,7 +478,7 @@ bool vktexture::loadtexture(vkobjs& rdata, std::vector<vktexdata>& texdata, std:
 
 
 	vkDestroyFence(rdata.rdvkbdevice.device, stagingbufferfence, nullptr);
-	commandbuffer::cleanup(rdata, stagingcommandbuffer);
+	commandbuffer::cleanup(rdata, rdata.rdcommandpool, stagingcommandbuffer);
 	vmaDestroyBuffer(rdata.rdallocator, stagingbuffer, stagingbufferalloc);
 
 	VkImageViewCreateInfo texviewinfo{};
@@ -501,9 +501,9 @@ bool vktexture::loadtexture(vkobjs& rdata, std::vector<vktexdata>& texdata, std:
 	texsamplerinfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	texsamplerinfo.magFilter = VK_FILTER_LINEAR;
 	texsamplerinfo.minFilter = VK_FILTER_LINEAR;
-	texsamplerinfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	texsamplerinfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	texsamplerinfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	texsamplerinfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	texsamplerinfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	texsamplerinfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	texsamplerinfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 	texsamplerinfo.unnormalizedCoordinates = VK_FALSE;
 	texsamplerinfo.compareEnable = VK_FALSE;
@@ -569,7 +569,7 @@ bool vktexture::loadtexlayoutpool(vkobjs& rdata, std::vector<vktexdata>& texdata
 
 	VkDescriptorPoolSize poolsize{};
 	poolsize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolsize.descriptorCount = 1000;
+	poolsize.descriptorCount = mmodel->images.size()*1024*1024;
 
 	VkDescriptorPoolCreateInfo descriptorpool{};
 	descriptorpool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

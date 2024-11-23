@@ -63,8 +63,8 @@ bool indexbuffer::upload(vkobjs& objs, vkindexbufferdata& indexbufferdata, const
     stagingbuffercopy.size = indexbufferdata.rdindexbuffersize;
 
 
-    vkCmdCopyBuffer(objs.rdcommandbuffer, indexbufferdata.rdstagingbuffer, indexbufferdata.rdindexbuffer, 1, &stagingbuffercopy);
-    vkCmdPipelineBarrier(objs.rdcommandbuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &vbbarrier, 0, nullptr);
+    vkCmdCopyBuffer(objs.rdcommandbuffer[0], indexbufferdata.rdstagingbuffer, indexbufferdata.rdindexbuffer, 1, &stagingbuffercopy);
+    vkCmdPipelineBarrier(objs.rdcommandbuffer[0], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &vbbarrier, 0, nullptr);
 
 
 

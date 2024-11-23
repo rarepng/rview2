@@ -47,54 +47,64 @@ std::string vkgltfstatic::getmodelfname() {
 
 
 void vkgltfstatic::createvertexbuffers(vkobjs& objs) {
-    mgltfobjs.rdgltfvertexbufferdata.reserve(mmodel->meshes[0].primitives.size());
-    mgltfobjs.rdgltfvertexbufferdata.resize(mmodel->meshes[0].primitives.size());
-    mattribaccs.reserve(mmodel->meshes[0].primitives.size());
-    mattribaccs.resize(mmodel->meshes[0].primitives.size());
-    for (size_t i{ 0 }; i < mmodel->meshes[0].primitives.size(); i++) {
-        const tinygltf::Primitive& prims = mmodel->meshes.at(0).primitives.at(i);
-        mgltfobjs.rdgltfvertexbufferdata.at(i).reserve(prims.attributes.size());
-        mgltfobjs.rdgltfvertexbufferdata.at(i).resize(prims.attributes.size());
-        mattribaccs.at(i).reserve(prims.attributes.size());
-        mattribaccs.at(i).resize(prims.attributes.size());
-        for (const auto& a : prims.attributes) {
-            const std::string atype = a.first;
-            const int accnum = a.second;
-            const tinygltf::Accessor& acc = mmodel->accessors.at(accnum);
-            const tinygltf::BufferView& bview = mmodel->bufferViews.at(acc.bufferView);
-            const tinygltf::Buffer& buff = mmodel->buffers.at(bview.buffer);
-            if (atype.compare("POSITION") != 0 && atype.compare("NORMAL") != 0 && atype.compare("TEXCOORD_0")) {
-                continue;
+    mgltfobjs.rdgltfvertexbufferdata.reserve(mmodel->meshes.size());
+    mgltfobjs.rdgltfvertexbufferdata.resize(mmodel->meshes.size());
+    mattribaccs.reserve(mmodel->meshes.size());
+    mattribaccs.resize(mmodel->meshes.size());
+    for (size_t i{ 0 }; i < mmodel->meshes.size(); i++) {
+        mgltfobjs.rdgltfvertexbufferdata.at(i).reserve(mmodel->meshes[i].primitives.size());
+        mgltfobjs.rdgltfvertexbufferdata.at(i).resize(mmodel->meshes[i].primitives.size());
+        mattribaccs.at(i).reserve(mmodel->meshes[i].primitives.size());
+        mattribaccs.at(i).resize(mmodel->meshes[i].primitives.size());
+        for (size_t j{ 0 }; j < mmodel->meshes[i].primitives.size(); j++) {
+            const tinygltf::Primitive& prims = mmodel->meshes.at(i).primitives.at(j);
+            mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).reserve(prims.attributes.size());
+            mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).resize(prims.attributes.size());
+            mattribaccs.at(i).at(j).reserve(prims.attributes.size());
+            mattribaccs.at(i).at(j).resize(prims.attributes.size());
+            for (const auto& a : prims.attributes) {
+                const std::string atype = a.first;
+                const int accnum = a.second;
+                const tinygltf::Accessor& acc = mmodel->accessors.at(accnum);
+                const tinygltf::BufferView& bview = mmodel->bufferViews.at(acc.bufferView);
+                const tinygltf::Buffer& buff = mmodel->buffers.at(bview.buffer);
+                if (atype.compare("POSITION") != 0 && atype.compare("NORMAL") != 0 && atype.compare("TEXCOORD_0")!=0) {
+                    continue;
+                }
+
+
+                mattribaccs.at(i).at(j).at(atts.at(atype)) = accnum;
+
+                //mgltfobjs.rdgltfvertexbufferdata.at(atts.at(atype));
+                //sizeof(acc.componentType);
+                //size_t newbytelength{ bview.byteStride * acc.count };
+                size_t newbytelength{ bview.byteLength };//bview.byteStride * acc.count };
+
+
+                vkvbo::init(objs, mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).at(atts.at(atype)), newbytelength);
             }
-
-
-            mattribaccs.at(i).at(atts.at(atype)) = accnum;
-
-            //mgltfobjs.rdgltfvertexbufferdata.at(atts.at(atype));
-            //sizeof(acc.componentType);
-            //size_t newbytelength{ bview.byteStride * acc.count };
-            size_t newbytelength{ bview.byteLength };//bview.byteStride * acc.count };
-
-
-            vkvbo::init(objs, mgltfobjs.rdgltfvertexbufferdata.at(i).at(atts.at(atype)), newbytelength);
         }
     }
 }
 
 
 void vkgltfstatic::createindexbuffers(vkobjs& objs) {
-    mgltfobjs.rdgltfindexbufferdata.reserve(mmodel->meshes[0].primitives.size());
-    mgltfobjs.rdgltfindexbufferdata.resize(mmodel->meshes[0].primitives.size());
-    for (size_t i{ 0 }; i < mmodel->meshes[0].primitives.size(); i++) {
-        const tinygltf::Primitive& prims = mmodel->meshes.at(0).primitives.at(i);
-        const tinygltf::Accessor& acc = mmodel->accessors.at(prims.indices);
-        const tinygltf::BufferView& bview = mmodel->bufferViews.at(acc.bufferView);
-        const tinygltf::Buffer& buff = mmodel->buffers.at(bview.buffer);
+    mgltfobjs.rdgltfindexbufferdata.reserve(mmodel->meshes.size());
+    mgltfobjs.rdgltfindexbufferdata.resize(mmodel->meshes.size());
+    for (size_t i{ 0 }; i < mmodel->meshes.size(); i++) {
+        mgltfobjs.rdgltfindexbufferdata.at(i).reserve(mmodel->meshes[i].primitives.size());
+        mgltfobjs.rdgltfindexbufferdata.at(i).resize(mmodel->meshes[i].primitives.size());
+        for (size_t j{ 0 }; j < mmodel->meshes[i].primitives.size(); j++) {
+            const tinygltf::Primitive& prims = mmodel->meshes.at(i).primitives.at(j);
+            const tinygltf::Accessor& acc = mmodel->accessors.at(prims.indices);
+            const tinygltf::BufferView& bview = mmodel->bufferViews.at(acc.bufferView);
+            const tinygltf::Buffer& buff = mmodel->buffers.at(bview.buffer);
 
 
-        size_t newbytelength{ sizeof(unsigned short) * acc.count };
+            size_t newbytelength{ sizeof(unsigned short) * acc.count };
 
-        indexbuffer::init(objs, mgltfobjs.rdgltfindexbufferdata.at(i), newbytelength);
+            indexbuffer::init(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j), newbytelength);
+        }
     }
 }
 
@@ -104,11 +114,13 @@ void vkgltfstatic::uploadvertexbuffers(vkobjs& objs) {
 
     for (int i{ 0 }; i < mgltfobjs.rdgltfvertexbufferdata.size(); ++i) {
         for (int j{ 0 }; j < mgltfobjs.rdgltfvertexbufferdata.at(i).size(); ++j) {
-            const tinygltf::Accessor& acc = mmodel->accessors.at(mattribaccs.at(i).at(j));
-            const tinygltf::BufferView& bview = mmodel->bufferViews.at(acc.bufferView);
-            const tinygltf::Buffer& buff = mmodel->buffers.at(bview.buffer);
+            for (int k{ 0 }; k < mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).size(); ++k) {
+                const tinygltf::Accessor& acc = mmodel->accessors.at(mattribaccs.at(i).at(j).at(k));
+                const tinygltf::BufferView& bview = mmodel->bufferViews.at(acc.bufferView);
+                const tinygltf::Buffer& buff = mmodel->buffers.at(bview.buffer);
 
-            vkvbo::upload(objs, mgltfobjs.rdgltfvertexbufferdata.at(i).at(j), buff, bview, acc);
+                vkvbo::upload(objs, mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).at(k), buff, bview, acc);
+            }
         }
     }
 
@@ -116,20 +128,22 @@ void vkgltfstatic::uploadvertexbuffers(vkobjs& objs) {
 
 void vkgltfstatic::uploadindexbuffers(vkobjs& objs) {
 
-    for (size_t i{ 0 }; i < mmodel->meshes[0].primitives.size(); i++) {
-        const tinygltf::Primitive& prims = mmodel->meshes.at(0).primitives.at(i);
-        const tinygltf::Accessor& acc = mmodel->accessors.at(prims.indices);
-        const tinygltf::BufferView& bview = mmodel->bufferViews.at(acc.bufferView);
-        const tinygltf::Buffer& buff = mmodel->buffers.at(bview.buffer);
+    for (size_t i{ 0 }; i < mmodel->meshes.size(); i++) {
+        for (size_t j{ 0 }; j < mmodel->meshes[i].primitives.size(); j++) {
+            const tinygltf::Primitive& prims = mmodel->meshes.at(i).primitives.at(j);
+            const tinygltf::Accessor& acc = mmodel->accessors.at(prims.indices);
+            const tinygltf::BufferView& bview = mmodel->bufferViews.at(acc.bufferView);
+            const tinygltf::Buffer& buff = mmodel->buffers.at(bview.buffer);
 
-        indexbuffer::upload(objs, mgltfobjs.rdgltfindexbufferdata.at(i), buff, bview, acc);
+            indexbuffer::upload(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j), buff, bview, acc);
+        }
     }
 
 }
 
 
-int vkgltfstatic::gettricount(int i) {
-    const tinygltf::Primitive& prims = mmodel->meshes.at(0).primitives.at(i);
+int vkgltfstatic::gettricount(int i,int j) {
+    const tinygltf::Primitive& prims = mmodel->meshes.at(i).primitives.at(j);
     const tinygltf::Accessor& acc = mmodel->accessors.at(prims.indices);
     unsigned int c{ 0 };
     switch (prims.mode) {
@@ -147,15 +161,7 @@ int vkgltfstatic::gettricount(int i) {
 
 void vkgltfstatic::draw(vkobjs& objs) {
 
-    VkDeviceSize ofx{ 0 };
-    for (int i{ 0 }; i < mgltfobjs.rdgltfvertexbufferdata.size(); i++) {
-        vkCmdBindDescriptorSets(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objs.rdgltfpipelinelayout, 0, 1, &mgltfobjs.rdgltfmodeltex[i].texdescriptorset, 0, nullptr);
-        for (int j{ 0 }; j < mgltfobjs.rdgltfvertexbufferdata.at(i).size(); j++) {
-            vkCmdBindVertexBuffers(objs.rdcommandbuffer, j, 1, &mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).rdvertexbuffer, &ofx);
-        }
-        vkCmdBindIndexBuffer(objs.rdcommandbuffer, mgltfobjs.rdgltfindexbufferdata.at(i).rdindexbuffer, 0, VK_INDEX_TYPE_UINT16);
-        vkCmdDrawIndexed(objs.rdcommandbuffer, static_cast<uint32_t>(gettricount(i) * 3), 1, 0, 0, 0);
-    }
+}
 
 
 
@@ -180,27 +186,32 @@ void vkgltfstatic::draw(vkobjs& objs) {
     //vkCmdDrawIndexed(objs.rdcommandbuffer, static_cast<uint32_t>(objs.rdgltftricount * 3), 1, 0, 0, 0);
 
 
-}
 
 void vkgltfstatic::drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, int instancecount, int stride) {
     VkDeviceSize offset = 0;
-    std::vector<vkpushconstants> pushes(mgltfobjs.rdgltfvertexbufferdata.size());
+    std::vector<std::vector<vkpushconstants>> pushes(mgltfobjs.rdgltfvertexbufferdata.size());
 
+    vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1, &mgltfobjs.rdgltfmodeltex[0].texdescriptorset, 0, nullptr);
 
     for (int i{ 0 }; i < mgltfobjs.rdgltfvertexbufferdata.size(); i++) {
-        pushes[i].pkmodelstride = stride;
-        pushes[i].texidx = mmodel->textures[mmodel->materials[i].pbrMetallicRoughness.baseColorTexture.index].source;
 
-        vkCmdPushConstants(objs.rdcommandbuffer, vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants), &pushes.at(i));
+        pushes[i].reserve(mgltfobjs.rdgltfvertexbufferdata.at(i).size());
+        pushes[i].resize(mgltfobjs.rdgltfvertexbufferdata.at(i).size());
 
-
-        vkCmdBindDescriptorSets(objs.rdcommandbuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1, &mgltfobjs.rdgltfmodeltex[0].texdescriptorset, 0, nullptr);
         for (int j{ 0 }; j < mgltfobjs.rdgltfvertexbufferdata.at(i).size(); j++) {
-            vkCmdBindVertexBuffers(objs.rdcommandbuffer, j, 1, &mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).rdvertexbuffer, &offset);
+            pushes[i][j].pkmodelstride = stride;
+            pushes[i][j].texidx = mmodel->textures[mmodel->materials[mmodel->meshes.at(i).primitives.at(j).material].pbrMetallicRoughness.baseColorTexture.index].source;
+
+            vkCmdPushConstants(objs.rdcommandbuffer[0], vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants), &pushes.at(i).at(j));
+
+
+            for (int k{ 0 }; k < mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).size(); k++) {
+                vkCmdBindVertexBuffers(objs.rdcommandbuffer[0], k, 1, &mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).at(k).rdvertexbuffer, &offset);
+            }
+            vkCmdBindIndexBuffer(objs.rdcommandbuffer[0], mgltfobjs.rdgltfindexbufferdata.at(i).at(j).rdindexbuffer, 0, VK_INDEX_TYPE_UINT16);
+            //ubo::upload(objs, objs.rdperspviewmatrixubo, mmodel->textures[mmodel->materials[i].pbrMetallicRoughness.baseColorTexture.index].source);
+            vkCmdDrawIndexed(objs.rdcommandbuffer[0], static_cast<uint32_t>(gettricount(i,j) * 3), instancecount, 0, 0, 0);
         }
-        vkCmdBindIndexBuffer(objs.rdcommandbuffer, mgltfobjs.rdgltfindexbufferdata.at(i).rdindexbuffer, 0, VK_INDEX_TYPE_UINT16);
-        //ubo::upload(objs, objs.rdperspviewmatrixubo, mmodel->textures[mmodel->materials[i].pbrMetallicRoughness.baseColorTexture.index].source);
-        vkCmdDrawIndexed(objs.rdcommandbuffer, static_cast<uint32_t>(gettricount(i) * 3), instancecount, 0, 0, 0);
     }
 
 }
@@ -209,15 +220,19 @@ void vkgltfstatic::cleanup(vkobjs& objs) {
 
     for (int i{ 0 }; i < mgltfobjs.rdgltfvertexbufferdata.size(); i++) {
         for (int j{ 0 }; j < mgltfobjs.rdgltfvertexbufferdata.at(i).size(); j++) {
-            vkvbo::cleanup(objs, mgltfobjs.rdgltfvertexbufferdata.at(i).at(j));
+            for (int k{ 0 }; k < mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).size(); k++) {
+                vkvbo::cleanup(objs, mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).at(k));
+            }
         }
     }
     for (int i{ 0 }; i < mgltfobjs.rdgltfindexbufferdata.size(); i++) {
-        indexbuffer::cleanup(objs, mgltfobjs.rdgltfindexbufferdata.at(i));
+        for (int j{ 0 }; j < mgltfobjs.rdgltfindexbufferdata.at(i).size(); j++) {
+            indexbuffer::cleanup(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j));
+        }
     }
-    for (int i{ 0 }; i < mgltfobjs.rdgltfmodeltex.size(); i++)
+    for (int i{ 0 }; i < mgltfobjs.rdgltfmodeltex.size(); i++) {
         vktexture::cleanup(objs, mgltfobjs.rdgltfmodeltex[i]);
-
+    }
     mmodel.reset();
 
 }

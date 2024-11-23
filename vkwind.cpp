@@ -1,5 +1,8 @@
 #include "vkwind.hpp"
 #include <iostream>
+#include <future>
+#include <thread>
+#include <chrono>
 
 bool vkwind::init(std::string title) {
 	if (!glfwInit()) {
@@ -22,7 +25,7 @@ bool vkwind::init(std::string title) {
 		return false;
 	}
 
-	mvkrenderer = std::make_unique<vkrenderer>(mwind);
+	mvkrenderer = std::make_unique<vkrenderer>(mwind,mmonitor,mode);
 	glfwSetWindowUserPointer(mwind, mvkrenderer.get());
 
 
@@ -52,12 +55,6 @@ bool vkwind::init(std::string title) {
 	});
 
 
-	if (!mvkrenderer->init()) {
-		glfwTerminate();
-		return false;
-	}
-
-
 	//mouse
 	mouse mmouse{ "resources/mouser.png" };
 	GLFWimage iconer;
@@ -66,13 +63,37 @@ bool vkwind::init(std::string title) {
 	glfwSetWindowIcon(mwind, 1, &iconer);
 
 
+	if (!mvkrenderer->init()) {
+		glfwTerminate();
+		return false;
+	}
 
 
 	return true;
 
 }
 
+void vkwind::framemainmenuupdate(){
+	while (!glfwWindowShouldClose(mwind)) {
+		if (!mvkrenderer->drawmainmenu()) {
+			auto f = std::async(std::launch::async, [&]{
+				return mvkrenderer->initscene();
+				});
+			auto s = f.wait_for(std::chrono::milliseconds(0));
+			while (s != std::future_status::ready) {
+				mvkrenderer->drawloading();
+				s = f.wait_for(std::chrono::milliseconds(0));
+				glfwPollEvents();
+			}
+			break;
+		}
+		glfwPollEvents();
+	}
+
+}
+
 void vkwind::frameupdate() {
+	mvkrenderer->quicksetup();
 	while (!glfwWindowShouldClose(mwind)) {
 		if (!mvkrenderer->draw()) {
 			break;
@@ -85,4 +106,13 @@ void vkwind::cleanup() {
 	mvkrenderer->cleanup();
 	glfwDestroyWindow(mwind);
 	glfwTerminate();
+}
+
+bool vkwind::initgame(){
+	return true;
+}
+
+bool vkwind::initmenu(){
+
+	return true;
 }

@@ -13,16 +13,12 @@
 
 #include "timer.hpp"
 #include "renderpass.hpp"
-#include "pipeline.hpp"
-#include "gltfpipeline.hpp"
-#include "gltfskeletonpipeline.hpp"
 #include "gltfgpupipeline.hpp"
-#include "gltfmeshpipeline.hpp"
 #include "playout.hpp"
 #include "framebuffer.hpp"
 #include "commandpool.hpp"
 #include "commandbuffer.hpp"
-#include "syncobjects.hpp"
+#include "vksyncobjects.hpp"
 #include "vktexture.hpp"
 #include "ubo.hpp"
 #include "ssbomesh.hpp"
@@ -35,6 +31,7 @@
 #include "vkgltfstatic.hpp"
 #include "staticinstance.hpp"
 
+#include "playoutplayer.hpp"
 #include "playoutmodel.hpp"
 #include "playoutstatic.hpp"
 
@@ -52,15 +49,20 @@
 
 class vkrenderer {
 public:
-	vkrenderer(GLFWwindow* wind);
+	vkrenderer(GLFWwindow* wind,GLFWmonitor* mont,const GLFWvidmode* mode);
 	bool init();
 	void setsize(unsigned int w, unsigned int h);
 	bool draw();
+	bool drawmainmenu();
+	bool drawloading();
 	void toggleshader();
 	void cleanup();
 	void handlekey(int key, int scancode, int action, int mods);
 	void handleclick(int key, int action, int mods);
 	void handlemouse(double x, double y);
+	bool initscene();
+
+	bool quicksetup();
 
 private:
 	vkobjs mvkobjs{};
@@ -70,22 +72,18 @@ private:
 
 	vkcam mcam{};
 
-	std::shared_ptr<playoutmodel> mpgltf = nullptr;
-	std::shared_ptr<playoutmodel> mpgltf2 = nullptr;
 
-	std::shared_ptr<playoutstatic> mstatic0 = nullptr;
+	std::shared_ptr<playoutplayer> mplayer;
+
+	std::vector<std::shared_ptr<playoutmodel>> mpgltf;
+
+	std::vector<std::shared_ptr<playoutstatic>> mstatic0;
 
 	bool mmodeluploadrequired{ true };
 
 
 
-	std::vector<std::shared_ptr<vkgltfinstance>> mgltfinstances{};
-	std::vector<std::shared_ptr<vkgltfinstance>> mgltfinstances2{};
-
-	std::vector<std::vector<glm::mat4>> mmodeljointmatrices{};
-	std::vector<std::vector<glm::mat2x4>> mmodeljointdualquats{};
-
-
+	bool rdscene{ true };
 
 	bool mlock{};
 	int mousex{ 0 };
@@ -96,8 +94,15 @@ private:
 	int mcamstrafe{ 0 };
 	int mcamupdown{ 0 };
 
-
-
+	unsigned int playercount{ 1 };
+	const std::vector<unsigned int> animcounts{ 2,4 };
+	const std::vector<unsigned int> staticcounts{ 2,60,1 };
+	std::string playerfname{ "player.glb" };
+	const std::vector<std::string> animfname{ "untitled.glb","untitled1.glb" };
+	const std::vector<std::string> staticfname{ "dontuse1.glb","dontuse2.glb","dontuse3.glb" };
+	const std::vector<std::string> playershaders{ "shader/gltf_gpu.vert.spv", "shader/gltf_gpu.frag.spv" };
+	const std::vector<std::string> animshaders{ "shader/gltf_gpu.vert.spv", "shader/gltf_gpu.frag.spv" };
+	const std::vector<std::string> staticshaders{ "shader/static.vert.spv", "shader/static.frag.spv" };
 
 
 	ui mui{};
@@ -119,30 +124,24 @@ private:
 
 	bool switchshader{ false };
 
+	bool setupplayer();
+	bool setupplayer2();
 	bool setupmodels();
 	bool setupmodels2();
 	bool deviceinit();
 	bool getqueue();
 	bool createdepthbuffer();
-	bool createubo();
-	bool creatematssbo();
-	bool createdqssbo();
-	bool createmeshssbo();
 	bool createswapchain();
 	bool createrenderpass();
 	bool setupstaticmodels();
 	bool setupstaticmodels2();
-	bool creategltfgpupipeline();
-	bool creategltfgpudqpipeline();
-	bool creategltfmeshpipeline();
 	bool createframebuffer();
 	bool createcommandpool();
 	bool createcommandbuffer();
 	bool createsyncobjects();
 	bool initui();
-	bool loadgltfmodel();
-	bool loadgltfmodel2();
-	bool createinstances();
+	bool initgameui();
+
 
 	bool initvma();
 

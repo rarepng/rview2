@@ -91,6 +91,9 @@ struct vkpushconstants {
 struct vkobjs {
 
 	GLFWwindow* rdwind = nullptr;
+	GLFWmonitor* rdmonitor = nullptr;
+	const GLFWvidmode* rdmode;
+	bool rdfullscreen{ true };
 	int rdwidth = 0;
 	int rdheight = 0;
 	unsigned int rdtricount = 0;
@@ -119,7 +122,7 @@ struct vkobjs {
 
 	float rdazimuth{ 15.0f };
 	float rdelevation{ -25.0f };
-	glm::vec3 rdcamwpos{ -10.0f,16.0f,35.0f };
+	glm::vec3 rdcamwpos{ 350.0f,350.0f,1000.0f };
 
 
 	int rdnumberofinstances{ 0 };
@@ -155,19 +158,11 @@ struct vkobjs {
 
 
 
-	VkPipelineLayout rdgltfpipelinelayout = VK_NULL_HANDLE;
-	VkPipelineLayout rdgltfpipelinelayout2 = VK_NULL_HANDLE;
-	VkPipeline rdgltfgpupipeline = VK_NULL_HANDLE;
-	VkPipeline rdgltfgpupipeline2 = VK_NULL_HANDLE;
-	VkPipeline rdgltfgpudqpipeline = VK_NULL_HANDLE;
-	VkPipeline rdgltfgpudqpipeline2 = VK_NULL_HANDLE;
-	VkPipeline rdgltfmeshpipeline = VK_NULL_HANDLE;
-	
 
-
-
+	VkCommandPool rdcommandpool0 = VK_NULL_HANDLE;
 	VkCommandPool rdcommandpool = VK_NULL_HANDLE;
-	VkCommandBuffer rdcommandbuffer = VK_NULL_HANDLE;
+	VkCommandBuffer rdcommandbuffer0 = VK_NULL_HANDLE;
+	std::vector<VkCommandBuffer> rdcommandbuffer = { VK_NULL_HANDLE,VK_NULL_HANDLE };
 
 	VkSemaphore rdpresentsemaphore = VK_NULL_HANDLE;
 	VkSemaphore rdrendersemaphore = VK_NULL_HANDLE;
@@ -176,17 +171,13 @@ struct vkobjs {
 
 
 
-	std::vector<std::vector<vkuniformbufferdata>> rdperspviewmatrixubo{};
-	std::vector<vkshaderstoragebufferdata> rdjointmatrixssbo{};
-	std::vector <vkshaderstoragebufferdata> rdjointdualquatssbo{};
-	vkshaderstoragebufferdata rdmeshssbo{};
 
 
 	VkDescriptorPool rdimguidescriptorpool = VK_NULL_HANDLE;
 };
 
 struct vkgltfobjs {
-	std::vector<std::vector<vkvertexbufferdata>> rdgltfvertexbufferdata{};
-	std::vector<vkindexbufferdata> rdgltfindexbufferdata{};
+	std::vector<std::vector<std::vector<vkvertexbufferdata>>> rdgltfvertexbufferdata{};
+	std::vector<std::vector<vkindexbufferdata>> rdgltfindexbufferdata{};
 	std::vector<vktexdata> rdgltfmodeltex{};
 };

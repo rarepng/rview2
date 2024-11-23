@@ -2,8 +2,7 @@
 
 #include <vk/VkBootstrap.h>
 
-bool ssbo::init(vkobjs& objs, vkshaderstoragebufferdata& SSBOData,
-    size_t bufferSize) {
+bool ssbo::init(vkobjs& objs, vkshaderstoragebufferdata& SSBOData, size_t bufferSize) {
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.size = bufferSize;

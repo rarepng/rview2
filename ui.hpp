@@ -10,13 +10,14 @@
 class ui {
 public:
 	bool init(vkobjs& mvkobjs);
-	void createframe(vkobjs& mvkobjs,modelsettings& settings);
-	void render(vkobjs& mvkobjs);
+	void createframe(vkobjs& mvkobjs, modelsettings& settings);
+	bool createmainmenuframe(vkobjs& mvkobjs);
+	bool createloadingscreen(vkobjs& mvkobjs);
+	void render(vkobjs& mvkobjs,VkCommandBuffer& cbuffer);
 	void cleanup(vkobjs& mvkobjs);
 private:
 	float mfps = 0.0f;
 	float mavgalpha = 0.96f;
-
 	std::vector<float> mfpsvalues{};
 	int mnumfpsvalues = 90;
 	std::vector<float> mframetimevalues{};

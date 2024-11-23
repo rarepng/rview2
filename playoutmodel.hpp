@@ -28,7 +28,7 @@ public:
 	bool createplayout(vkobjs& objs);
 	bool createpline(vkobjs& objs, std::string vfile, std::string ffile);
 	bool createpline2(vkobjs& objs, std::string vfile, std::string ffile);
-	bool setup(vkobjs& objs, std::string fname);
+	bool setup(vkobjs& objs, std::string fname, int count);
 	bool setup2(vkobjs& objs, std::string vfile,std::string ffile);
 	void draw(vkobjs& objs);
 	void updateanims();

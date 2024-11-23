@@ -3,6 +3,6 @@
 #include "vkobjs.hpp"
 class commandpool {
 public:
-	static bool init(vkobjs& rdata);
-	static void cleanup(vkobjs& rdata);
+	static bool init(vkobjs& rdata, VkCommandPool& vkpool);
+	static void cleanup(vkobjs& rdata, VkCommandPool& vkpool);
 };
