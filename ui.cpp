@@ -451,7 +451,7 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
 
             ImGui::Text("Field of View");
             ImGui::SameLine();
-            ImGui::SliderInt("##FOV", &renderData.rdfov, 40, 150, "%d", flags);
+            ImGui::SliderFloat("##FOV", &renderData.rdfov, 40.0f, 150.0f, "%d", flags);
         }
 
         if (ImGui::CollapsingHeader("glTF Instances")) {
@@ -700,6 +700,19 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
     //chatbox
     {
         ImGuiWindowFlags imguiWindowFlags = 0;
+        imguiWindowFlags |= ImGuiWindowFlags_NoBackground;
+        imguiWindowFlags |= ImGuiWindowFlags_NoResize;
+        imguiWindowFlags |= ImGuiWindowFlags_NoMove;
+        imguiWindowFlags |= ImGuiWindowFlags_NoSavedSettings;
+        imguiWindowFlags |= ImGuiWindowFlags_NoCollapse;
+        imguiWindowFlags |= ImGuiWindowFlags_NoTitleBar;
+        imguiWindowFlags |= ImGuiWindowFlags_AlwaysAutoResize;
+
+        ImVec2 wsize{ ImGui::GetMainViewport()->Size };
+        ImVec2 wpos{ ImGui::GetMainViewport()->Pos };
+
+        ImGui::SetNextWindowPos({ wpos.x + wsize.x * 0.0f , wpos.y + wsize.y * 1.0f - 20.0f }, 1, { 0.0f,1.0f });
+        ImGui::SetNextWindowSizeConstraints({ 600.0f,0.0f }, { 600.0f,400.0f });
 
         ImGui::Begin("chat", nullptr, imguiWindowFlags);
 
@@ -711,20 +724,38 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
         }
 
 
+        ImGui::SetNextWindowPos({ wpos.x + wsize.x * 0.0f , wpos.y + wsize.y * 1.0f }, 1, { 0.0f,1.0f });
+        ImGui::SetNextWindowSizeConstraints({ 600.0f,0.0f }, { 600.0f,400.0f });
 
-        ImGui::InputText("send", &inputxt);
+        ImGui::Begin("chatinput", nullptr, imguiWindowFlags);
+        ImGui::InputText(" ", &inputxt);
         ImGui::SameLine();
-        if (ImGui::Button(">", { 100,50 })) {
+        if (ImGui::Button("send >")) {
             std::string i2 = inputxt;
             chattxts.push_back(i2);
             inputxt.clear();
+            ImGui::SetNextWindowScroll({ 1.0f,1.0f });///////////////////////////////////////////////////////////////////////////////////////////////
         }
 
 
+        ImGui::End();
         ImGui::End(); 
     }
     {
         ImGuiWindowFlags imguiWindowFlags = 0;
+        imguiWindowFlags |= ImGuiWindowFlags_NoBackground;
+        imguiWindowFlags |= ImGuiWindowFlags_NoResize;
+        imguiWindowFlags |= ImGuiWindowFlags_NoMove;
+        imguiWindowFlags |= ImGuiWindowFlags_NoSavedSettings;
+        imguiWindowFlags |= ImGuiWindowFlags_NoCollapse;
+        imguiWindowFlags |= ImGuiWindowFlags_NoTitleBar;
+        imguiWindowFlags |= ImGuiWindowFlags_AlwaysAutoResize;
+
+        ImVec2 wsize{ ImGui::GetMainViewport()->Size };
+        ImVec2 wpos{ ImGui::GetMainViewport()->Pos };
+
+        ImGui::SetNextWindowPos({ wpos.x + wsize.x * 1.0f, wpos.y + wsize.y * 0.0f }, 1, { 1.0f,0.0f });
+
         ImGui::Begin("Scores", nullptr, imguiWindowFlags);
         ImGui::Text("player :");
         ImGui::SameLine();
@@ -738,6 +769,18 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
     }
     {
         ImGuiWindowFlags imguiWindowFlags = 0;
+        imguiWindowFlags |= ImGuiWindowFlags_NoBackground;
+        imguiWindowFlags |= ImGuiWindowFlags_NoResize;
+        imguiWindowFlags |= ImGuiWindowFlags_NoMove;
+        imguiWindowFlags |= ImGuiWindowFlags_NoSavedSettings;
+        imguiWindowFlags |= ImGuiWindowFlags_NoCollapse;
+        imguiWindowFlags |= ImGuiWindowFlags_NoTitleBar;
+        imguiWindowFlags |= ImGuiWindowFlags_AlwaysAutoResize;
+        ImVec2 wsize{ ImGui::GetMainViewport()->Size };
+        ImVec2 wpos{ ImGui::GetMainViewport()->Pos };
+
+        ImGui::SetNextWindowPos({ wpos.x + wsize.x * 1.0f, wpos.y + wsize.y * 1.0f}, 1, { 1.0f,1.0f });
+
         ImGui::Begin("controls", nullptr, imguiWindowFlags);
         if (!aipicking) {
             if (ImGui::Button("ROCK")) {
@@ -795,13 +838,6 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
             }
 
         }
-        ImGui::Text("player :");
-        ImGui::SameLine();
-        ImGui::Text(std::to_string(playerscore).c_str());
-
-        ImGui::Text("ai :");
-        ImGui::SameLine();
-        ImGui::Text(std::to_string(aiscore).c_str());
 
         ImGui::End();
     }

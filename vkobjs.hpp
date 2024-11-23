@@ -89,6 +89,7 @@ struct vkshaderstoragebufferdata {
 struct vkpushconstants {
 	int pkmodelstride;
 	unsigned int texidx;
+	float t{ 0.0f };
 };
 
 
@@ -105,7 +106,7 @@ struct vkobjs {
 	int rdheight = 0;
 	unsigned int rdtricount = 0;
 	unsigned int rdgltftricount = 0;
-	int rdfov = 60;
+	float rdfov = 1.0472f;
 	bool rdswitchshader{ false };
 	float rdframetime{ 0.0f };
 	float rdmatrixgeneratetime{ 0.0f };

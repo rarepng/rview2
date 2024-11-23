@@ -16,6 +16,7 @@ layout (location = 3) out uint txidx;
 layout (push_constant) uniform Constants {
   int aModelStride;
   uint txid;
+  float t;
 };
 
 layout (set = 1, binding = 0) uniform Matrices {

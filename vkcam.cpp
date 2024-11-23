@@ -13,14 +13,18 @@ glm::mat4 vkcam::getview(vkobjs& mvkobjs)
         glm::sin(glm::radians(mvkobjs.rdelevation)),
         -glm::cos(glm::radians(mvkobjs.rdazimuth)) * glm::cos(glm::radians(mvkobjs.rdelevation))
     });
+    //mforward = glm::vec3{ 0.0f,0.0f,-1.0f };
 
     mright = glm::normalize(glm::cross(mforward, wup));
+    //mright = glm::vec3{ 1.0f,0.0f,0.0f };
+
     mup = glm::normalize(glm::cross(mright, mforward));
+    //mup = glm::vec3{ 0.0f,1.0f,0.0f };
 
     mvkobjs.rdcamwpos +=
-        mvkobjs.rdcamforward * mvkobjs.rdtickdiff * mforward +
-        mvkobjs.rdcamright * mvkobjs.rdtickdiff * mright +
-        mvkobjs.rdcamup * mvkobjs.rdtickdiff * mup;
+        mvkobjs.rdcamforward    * mvkobjs.rdtickdiff * mforward +
+        mvkobjs.rdcamright      * mvkobjs.rdtickdiff * mright +
+        mvkobjs.rdcamup         * mvkobjs.rdtickdiff * mup;
 
 
 

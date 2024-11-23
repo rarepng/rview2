@@ -6,9 +6,13 @@
 #include <ctime>
 #include <cstdlib>
 #include <glm/gtx/spline.hpp>
+#include <glm/gtx/rotate_vector.hpp>
 #include <vk/vk_mem_alloc.h>
 #include <iostream>
 #include "vkrenderer.hpp"
+float map2(glm::vec3 x) {
+	return std::max(x.y, 0.0f);
+}
 vkrenderer::vkrenderer(GLFWwindow* wind,GLFWmonitor* mont,const GLFWvidmode* mode) {
 	mvkobjs.rdwind = wind;
 	mvkobjs.rdmonitor = mont;
@@ -416,8 +420,37 @@ void vkrenderer::handlekey(int key, int scancode, int action, int mods)
 	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(mvkobjs.rdwind, true);
 	}
+	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_R) == GLFW_PRESS) {
+		mplayer->freezedecay();
+		decaying = true;
+		decaystart = glfwGetTime();
+		mplayer->createdecayinstances(mvkobjs);
+		{
+			double x;
+			double y;
+			glfwGetCursorPos(mvkobjs.rdwind, &x, &y);
+			x = (2.0 * (x / (double)mvkobjs.rdwidth)) - 1.0;
+			y = (2.0 * (y / (double)mvkobjs.rdheight)) - 1.0;
+			modelsettings s = mplayer->getinst(0)->getinstancesettings();
+			float d{ 0.0f };
+			glm::vec3 cfor{ mcam.mforward };
+			float rotangx{ (float)(x * -0.523599f) };
+			float rotangy{ (float)(y * (-0.523599f * mvkobjs.rdheight / mvkobjs.rdwidth)) };
+			cfor = glm::rotate(cfor, rotangx, mcam.mup);
+			cfor = glm::rotate(cfor, rotangy, mcam.mright);
+			for (int i{ 0 }; i < 100000; i++) {
+				float dt = map2(mvkobjs.rdcamwpos + cfor * d);
+				d += dt;
+				if (dt < 0.00001f || d>10000.0f)break;
+			}
+			s.msworldpos = mvkobjs.rdcamwpos + cfor * d;
+			mplayer->getinst(0)->setinstancesettings(s);
+			mplayer->getinst(0)->checkforupdates();
+		}
+	}
 }
 int clickz{ 0 };
+
 void vkrenderer::handleclick(int key, int action, int mods)
 {
 	ImGuiIO& io = ImGui::GetIO();
@@ -432,22 +465,50 @@ void vkrenderer::handleclick(int key, int action, int mods)
 		double x;
 		double y;
 		glfwGetCursorPos(mvkobjs.rdwind, &x, &y);
-		//x = (2.0 * (x / (double)mvkobjs.rdwidth)) - 1.0;
-		//y = (2.0 * (y / (double)mvkobjs.rdheight)) - 1.0;
-		glm::inverse(mcam.getview(mvkobjs));
+		x = (2.0 * (x / (double)mvkobjs.rdwidth)) - 1.0;
+		y = (2.0 * (y / (double)mvkobjs.rdheight)) - 1.0;
+		//glm::inverse(mcam.getview(mvkobjs));
 		std::cout << x << "   " << y << std::endl;
 		modelsettings s = mplayer->getinst(0)->getinstancesettings();
 
-		glm::vec4 newp= glm::vec4(x, y, 0.0f,  1.0f)*glm::inverse(glm::perspective(glm::radians(static_cast<float>(mvkobjs.rdfov)), static_cast<float>(mvkobjs.rdwidth) / static_cast<float>(mvkobjs.rdheight), 0.01f, 6000.0f));
-		newp = newp* glm::inverse(mcam.getview(mvkobjs));
-		glm::vec3 newd = glm::vec3(newp)-mvkobjs.rdcamwpos;
+		//glm::vec4 newp= glm::vec4(x, y, 0.0f,  1.0f)*glm::inverse(glm::perspective(glm::radians(static_cast<float>(mvkobjs.rdfov)), static_cast<float>(mvkobjs.rdwidth) / static_cast<float>(mvkobjs.rdheight), 0.01f, 6000.0f));
+		//newp = newp* glm::inverse(mcam.getview(mvkobjs));
+		//glm::vec3 newd = glm::vec3(newp)-mvkobjs.rdcamwpos;
 
 		//newp *= glm::vec4(glm::normalize(newd),1.0f);
 		//newp /= newp.w;
 		//newp *= 1000000.0f;
-		s.msworldpos = glm::vec3(newp);
-		tmpx += 100.0;
-		tmpy += 100.0;
+		float d{ 0.0f };
+		glm::vec3 cfor{ mcam.mforward };
+		float rotangx{ (float)(x * -0.523599f) };
+		float rotangy{ (float)(y * (-0.523599f*mvkobjs.rdheight/mvkobjs.rdwidth)) };
+		//float cosrotangx{ glm::cos(rotangx) };
+		//float cosrotangy{ glm::cos(rotangy) };
+		//glm::mat4 rotmatx{
+		//	{cosrotangx+mcam.mup.}
+		//};
+		//cfor.x -= mvkobjs.rdcamwpos.x;
+		//cfor.z -= mvkobjs.rdcamwpos.z;
+		//cfor.x -= mcam.mup.x;
+		//cfor.z -= mcam.mup.z;
+		//cfor = { (cfor.x * glm::sin(x * -0.523599f)) + (cfor.z * glm::cos(x * -0.523599f)),cfor.y, (cfor.x * glm::cos(x * -0.523599f)) - (cfor.z * glm::sin(x * -0.523599f)) };
+		//cfor.x += mcam.mup.x;
+		//cfor.z += mcam.mup.z;
+		//cfor = { cfor.x,(cfor.y * glm::sin(x * -0.523599f)) + (cfor.z * glm::cos(x * -0.523599f)), (cfor.y * glm::cos(x * -0.523599f)) - (cfor.z * glm::sin(x * -0.523599f)) };
+		//cfor.x += mvkobjs.rdcamwpos.x;
+		//cfor.z += mvkobjs.rdcamwpos.z;
+		cfor = glm::rotate(cfor, rotangx, mcam.mup);
+		cfor = glm::rotate(cfor, rotangy, mcam.mright);
+		//cfor += cpos;
+		//cfor = glm::normalize(cfor);
+		for (int i{ 0 }; i < 100000; i++) {
+			float dt = map2(mvkobjs.rdcamwpos + cfor * d);
+			d += dt;
+			if (dt < 0.00001f || d>10000.0f)break;
+		}
+
+
+		s.msworldpos = mvkobjs.rdcamwpos + cfor * d;
 		mplayer->getinst(0)->setinstancesettings(s);
 		mplayer->getinst(0)->checkforupdates();
 	}
@@ -511,7 +572,7 @@ void vkrenderer::setsize(unsigned int w, unsigned int h) {
 	if(!w||!h)
 		mpersviewmats.at(1) = glm::perspective(glm::radians(static_cast<float>(mvkobjs.rdvkbswapchain.extent.width)), static_cast<float>(mvkobjs.rdvkbswapchain.extent.height) / static_cast<float>(mvkobjs.rdheight), 0.01f, 6000.0f);
 	else
-		mpersviewmats.at(1) = glm::perspective(glm::radians(static_cast<float>(mvkobjs.rdfov)), static_cast<float>(mvkobjs.rdwidth) / static_cast<float>(mvkobjs.rdheight), 0.01f, 6000.0f);
+		mpersviewmats.at(1) = glm::perspective(mvkobjs.rdfov, static_cast<float>(mvkobjs.rdwidth) / static_cast<float>(mvkobjs.rdheight), 0.01f, 6000.0f);
 
 }
 void vkrenderer::toggleshader() {
@@ -529,31 +590,31 @@ void vkrenderer::movecam() {
 
 	mvkobjs.rdcamforward = 0;
 	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_W) == GLFW_PRESS) {
-		mvkobjs.rdcamforward += 1;
+		mvkobjs.rdcamforward += 200;
 	}
 	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_S) == GLFW_PRESS) {
-		mvkobjs.rdcamforward -= 1;
+		mvkobjs.rdcamforward -= 200;
 	}
 	mvkobjs.rdcamright = 0;
 	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_A) == GLFW_PRESS) {
-		mvkobjs.rdcamright += 1;
+		mvkobjs.rdcamright += 200;
 	}
 	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_D) == GLFW_PRESS) {
-		mvkobjs.rdcamright -= 1;
+		mvkobjs.rdcamright -= 200;
 	}
 	mvkobjs.rdcamup = 0;
 	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_E) == GLFW_PRESS) {
-		mvkobjs.rdcamup += 1;
+		mvkobjs.rdcamup += 200;
 	}
 	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_Q) == GLFW_PRESS) {
-		mvkobjs.rdcamup -= 1;
+		mvkobjs.rdcamup -= 200;
 	}
 
-	if ((glfwGetKey(mvkobjs.rdwind, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)) {
-		mvkobjs.rdcamforward *= 400;
-		mvkobjs.rdcamright *= 400;
-		mvkobjs.rdcamup *= 400;
-	}
+	//if ((glfwGetKey(mvkobjs.rdwind, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)) {
+	//	mvkobjs.rdcamforward *= 400;
+	//	mvkobjs.rdcamright *= 400;
+	//	mvkobjs.rdcamup *= 400;
+	//}
 
 
 }
@@ -692,6 +753,9 @@ bool vkrenderer::draw() {
 
 
 	mplayer->draw(mvkobjs);
+	if (decaying) {
+		mplayer->drawdecays(mvkobjs,decaystart,&decaying);
+	}
 
 
 	muigentimer.start();

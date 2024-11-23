@@ -40,7 +40,7 @@ bool gltfgpupipeline::init(vkobjs& objs, VkPipelineLayout& pipelineLayout,VkPipe
     vertexBindings[2].stride = sizeof(glm::vec2);
     vertexBindings[2].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     vertexBindings[3].binding = 3;
-    vertexBindings[3].stride = sizeof(uint8_t) * 4; // 4x unsigned short
+    vertexBindings[3].stride = sizeof(uint8_t) * 4; // 4x unsigned byte
     vertexBindings[3].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     vertexBindings[4].binding = 4;
     vertexBindings[4].stride = sizeof(glm::vec4);

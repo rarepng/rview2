@@ -21,7 +21,8 @@ class vkgltfmodel {
 public:
 	bool loadmodel(vkobjs& objs,std::string fname);
 	void draw(vkobjs& objs);
-	void drawinstanced(vkobjs& objs, VkPipelineLayout& vkplayout, int instancecount,int stride);
+	void drawinstanced(vkobjs& objs, VkPipelineLayout& vkplayout, int instancecount, int stride);
+	void drawinstanced(vkobjs& objs, VkPipelineLayout& vkplayout, int instancecount, int stride,float decaystart,bool* decaying);
 	void cleanup(vkobjs& objs);
 	void uploadvertexbuffers(vkobjs& objs);
 	void uploadindexbuffers(vkobjs& objs);

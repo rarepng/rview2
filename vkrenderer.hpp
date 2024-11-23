@@ -74,6 +74,8 @@ public:
 private:
 	vkobjs mvkobjs{};
 
+	double decaystart{};
+	bool decaying{ false };
 
 	std::chrono::high_resolution_clock::time_point starttime = std::chrono::high_resolution_clock::now();
 
