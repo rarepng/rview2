@@ -1,3 +1,5 @@
+
+#define _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR
 #include <string>
 #include <memory>
 #include <vulkan/vulkan.h>
@@ -16,7 +18,7 @@
 int main() {
 
 	std::unique_ptr<vkwind> w = std::make_unique<vkwind>();
-	w->init("vk!!!!!!!!!!!!!!!");
+	w->init("Random Arena Wars");
 	w->framemainmenuupdate();
 	w->frameupdate();
 	w->cleanup();

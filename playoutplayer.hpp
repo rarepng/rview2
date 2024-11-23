@@ -33,7 +33,7 @@ public:
 	bool setup(vkobjs& objs, std::string fname, int count);
 	bool setup2(vkobjs& objs, std::string vfile, std::string ffile);
 	void draw(vkobjs& objs);
-	void drawdecays(vkobjs& objs, float decaystart, bool* decaying);
+	void drawdecays(vkobjs& objs, double& decaytime, bool* decaying);
 	void updateanims();
 	void updatemats();
 	void freezedecay();

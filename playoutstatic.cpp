@@ -33,10 +33,14 @@ bool playoutstatic::loadmodel(vkobjs& objs, std::string fname) {
 bool playoutstatic::createinstances(vkobjs& objs, int count, bool rand) {
 	int numTriangles{};
 	for (int i = 0; i < count; ++i) {
-		int xPos = std::rand() % 999;
-		int zPos = std::rand() % 999;
+		//int xPos = std::rand() % 9999;
+		//int zPos = std::rand() % 9999;
 		//minstances.emplace_back(std::make_shared<staticinstance>(mgltf, glm::vec2(static_cast<float>(xPos), static_cast<float>(zPos)), rand));
-		minstances.emplace_back(std::make_shared<staticinstance>(mgltf, glm::vec3(0.0f,0.0f, 0.0f ), rand));
+		if (i <1)
+		minstances.emplace_back(std::make_shared<staticinstance>(mgltf, glm::vec3(0.0f,-100.0f, 0.0f ), rand));
+		else {
+			minstances.emplace_back(std::make_shared<staticinstance>(mgltf, glm::vec3(static_cast<float>((i%512)*50), 0.0f, static_cast<float>((i/512)*50)), rand));
+		}
 		numTriangles += mgltf->gettricount(0,0);
 	}
 	totaltricount = numTriangles;

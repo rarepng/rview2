@@ -2,14 +2,14 @@
 #include <vk/VkBootstrap.h>
 
 
-bool ubo::init(vkobjs& mvkobjs,std::vector<vkuniformbufferdata>& ubodata){
+bool ubo::init(vkobjs& mvkobjs, std::vector<vkuniformbufferdata>& ubodata) {
 	ubodata.reserve(2);
 	ubodata.resize(2);
 
 	for (int i{ 0 }; i < ubodata.size(); i++) {
 		VkBufferCreateInfo binfo{};
 		binfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		if(i<1)binfo.size = 2*sizeof(glm::mat4);
+		if (i < 1)binfo.size = 2 * sizeof(glm::mat4);
 		else binfo.size = sizeof(unsigned int);
 		binfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
@@ -41,7 +41,7 @@ bool ubo::init(vkobjs& mvkobjs,std::vector<vkuniformbufferdata>& ubodata){
 
 	VkDescriptorPoolSize poolsize{};
 	poolsize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolsize.descriptorCount = 1*(ubodata.size()*sizeof(glm::mat4)+sizeof(unsigned int));
+	poolsize.descriptorCount = 1 * (ubodata.size() * sizeof(glm::mat4) + sizeof(unsigned int));
 
 	VkDescriptorPoolCreateInfo dpoolinfo{};
 	dpoolinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -62,7 +62,7 @@ bool ubo::init(vkobjs& mvkobjs,std::vector<vkuniformbufferdata>& ubodata){
 	std::vector<VkDescriptorBufferInfo> uinfo(2);
 	uinfo[0].buffer = ubodata[0].rdubobuffer;
 	uinfo[0].offset = 0;
-	uinfo[0].range = 2*sizeof(glm::mat4);
+	uinfo[0].range = 2 * sizeof(glm::mat4);
 	uinfo[1].buffer = ubodata[1].rdubobuffer;
 	uinfo[1].offset = 0;
 	uinfo[1].range = sizeof(unsigned int);
@@ -80,7 +80,7 @@ bool ubo::init(vkobjs& mvkobjs,std::vector<vkuniformbufferdata>& ubodata){
 
 		vkUpdateDescriptorSets(mvkobjs.rdvkbdevice.device, 1, &writedset, 0, nullptr);
 
-		if (i < 1)ubodata[i].rduniformbuffersize = 2*sizeof(glm::mat4);
+		if (i < 1)ubodata[i].rduniformbuffersize = 2 * sizeof(glm::mat4);
 		else ubodata[i].rduniformbuffersize = sizeof(unsigned int);
 
 	}

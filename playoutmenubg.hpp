@@ -25,7 +25,7 @@ public:
 	bool createpline(vkobjs& objs, std::string vfile, std::string ffile);
 	bool setup(vkobjs& objs, int count);
 	bool setup2(vkobjs& objs, std::string vfile, std::string ffile);
-	void draw(vkobjs& objs);
+	void draw(vkobjs& objs, double& time, double& time2, double& life);
 	void updatemats();
 	void cleanuplines(vkobjs& objs);
 	void cleanupbuffers(vkobjs& objs);

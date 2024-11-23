@@ -12,7 +12,7 @@
 
 class staticinstance {
 public:
-	staticinstance(std::shared_ptr<vkgltfstatic>model, glm::vec2 worldpos, bool randomize = false);
+	staticinstance(std::shared_ptr<vkgltfstatic>model, glm::vec3 worldpos, bool randomize = false);
 	~staticinstance();
 
 	void setinstancesettings(staticsettings settings);

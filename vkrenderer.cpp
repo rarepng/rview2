@@ -17,6 +17,9 @@ vkrenderer::vkrenderer(GLFWwindow* wind,GLFWmonitor* mont,const GLFWvidmode* mod
 	mvkobjs.rdwind = wind;
 	mvkobjs.rdmonitor = mont;
 	mvkobjs.rdmode = mode;
+	mvkobjs.decaying = &decaying;
+
+
 	mpersviewmats.emplace_back(glm::mat4{ 1.0f });
 	mpersviewmats.emplace_back(glm::mat4{ 1.0f });
 }
@@ -37,10 +40,10 @@ bool vkrenderer::init() {
 
 
 	//std::lock_guard<std::shared_mutex> lg{ *mvkobjs.mtx2 };
-	mvkobjs.mtx2->lock_shared();
+	mvkobjs.mtx2->lock();
 	if (!deviceinit())return false;
 	if (!initvma())return false;
-	mvkobjs.mtx2->unlock_shared();
+	mvkobjs.mtx2->unlock();
 
 
 	if (!getqueue())return false;
@@ -78,18 +81,76 @@ bool vkrenderer::initscene() {
 	mstatic0.reserve(staticfname.size());
 	mstatic0.resize(staticfname.size());
 
-
+	if (!setupground())return false;
+	mvkobjs.loadingprog += 0.1f;
 	if (!setupplayer())return false;
+	mvkobjs.loadingprog += 0.1f;
 	if (!setupmodels())return false;
+	mvkobjs.loadingprog += 0.1f;
 	if (!setupstaticmodels())return false;
+	mvkobjs.loadingprog += 0.1f;
+	if (!setuplifebar())return false;
+	mvkobjs.loadingprog += 0.1f;
+	if (!setupground2())return false;
+	mvkobjs.loadingprog += 0.1f;
 	if (!setupplayer2())return false;
+	mvkobjs.loadingprog += 0.1f;
 	if (!setupmodels2())return false;
+	mvkobjs.loadingprog += 0.1f;
 	if (!setupstaticmodels2())return false;
+	mvkobjs.loadingprog += 0.1f;
+	if (!setuplifebar2())return false;
+	mvkobjs.loadingprog += 0.1f;
 
 	return true;
 }
 
-bool vkrenderer::quicksetup() {
+bool vkrenderer::getserverclientstatus(){
+	return mnobjs.rdserverclient;
+}
+ui* vkrenderer::getuihandle(){
+	return &mui;
+}
+netobjs& vkrenderer::getnetobjs() {
+	return mnobjs;
+}
+vkobjs& vkrenderer::getvkobjs() {
+	return mvkobjs;
+}
+
+
+bool vkrenderer::quicksetup(netclient* nclient){
+	mnobjs.nclient = nclient;
+	ImGui_ImplGlfw_RestoreCallbacks(mvkobjs.rdwind);
+	glfwSetKeyCallback(mvkobjs.rdwind, [](GLFWwindow* win, int key, int scancode, int action, int mods) {
+		auto r = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
+		r->handlekey(key, scancode, action, mods);
+	});
+	ImGui_ImplGlfw_InstallCallbacks(mvkobjs.rdwind);
+	//ImGui_ImplGlfw_RestoreCallbacks(mvkobjs.rdwind);
+	inmenu = false;
+	return true;
+}
+bool vkrenderer::quicksetup(netserver* nserver) {
+	mnobjs.nserver = nserver;
+	ImGui_ImplGlfw_RestoreCallbacks(mvkobjs.rdwind);
+	glfwSetKeyCallback(mvkobjs.rdwind, [](GLFWwindow* win, int key, int scancode, int action, int mods) {
+		auto r = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
+		r->handlekey(key, scancode, action, mods);
+	});
+	ImGui_ImplGlfw_InstallCallbacks(mvkobjs.rdwind);
+	//ImGui_ImplGlfw_RestoreCallbacks(mvkobjs.rdwind);
+	inmenu = false;
+	return true;
+}
+
+bool vkrenderer::setuplifebar() {
+	lifebar = std::make_shared<playoutmenubg>();
+	if (!lifebar->setup(mvkobjs,1))return false;
+	return true;
+}
+bool vkrenderer::setuplifebar2() {
+	if (!lifebar->setup2(mvkobjs, lifebarshaders[0], lifebarshaders[1]))return false;
 	return true;
 }
 
@@ -103,17 +164,24 @@ bool vkrenderer::loadbackground(){
 	return true;
 }
 
+bool vkrenderer::setupground() {
+	mground = std::make_shared<playoutground>();
+	if (!mground->setup(mvkobjs, groundfname, groundobjs));
+	return true;
+}
+bool vkrenderer::setupground2() {
+	if (!mground->setup2(mvkobjs, groundshaders[0], groundshaders[1]));
+	return true;
+}
 bool vkrenderer::setupplayer(){
 	mplayer = std::make_shared<playoutplayer>();
 	if (!mplayer->setup(mvkobjs, playerfname, playercount));
 	return true;
 }
-
 bool vkrenderer::setupplayer2(){
 	if (!mplayer->setup2(mvkobjs, playershaders[0], playershaders[1]));
 	return true;
 }
-
 bool vkrenderer::setupmodels() {
 	for (size_t i{ 0 }; i < mpgltf.size(); i++) {
 		mpgltf[i] = std::make_shared<playoutmodel>();
@@ -127,7 +195,6 @@ bool vkrenderer::setupmodels2() {
 	}
 	return true;
 }
-
 bool vkrenderer::setupstaticmodels(){
 	for (size_t i{ 0 }; i < mstatic0.size(); i++) {
 		mstatic0[i] = std::make_shared<playoutstatic>();
@@ -135,7 +202,6 @@ bool vkrenderer::setupstaticmodels(){
 	}
 	return true;
 }
-
 bool vkrenderer::setupstaticmodels2(){
 	for (size_t i{ 0 }; i < mstatic0.size(); i++) {
 		if (!mstatic0[i]->setup2(mvkobjs, staticshaders[0], staticshaders[1]))return false;
@@ -143,24 +209,33 @@ bool vkrenderer::setupstaticmodels2(){
 	return true;
 }
 
-
-
-
 bool vkrenderer::deviceinit() {
 	vkb::InstanceBuilder instbuild{};
 
 	//std::lock_guard<std::shared_mutex> lg{ *mvkobjs.mtx2 };
-	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1,3,0).build();
+	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().enable_validation_layers().require_api_version(1, 2, 0).build();
+	
+
+	//instret.value().
+
 	mvkobjs.rdvkbinstance = instret.value();
 
 	VkResult res = VK_ERROR_UNKNOWN;
 	res = glfwCreateWindowSurface(mvkobjs.rdvkbinstance, mvkobjs.rdwind, nullptr, &msurface);
 
+	
+
 	vkb::PhysicalDeviceSelector physicaldevsel{ mvkobjs.rdvkbinstance };
-	auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).select();
+	auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1,2).select();
+
+	//VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT x;
+	//x.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT;
+	//x.swapchainMaintenance1 = VK_FALSE;
+	//x.pNext = VK_NULL_HANDLE;
 
 	//VkPhysicalDeviceMeshShaderFeaturesEXT physmeshfeatures;
 	VkPhysicalDeviceVulkan13Features physfeatures13;
+
 	//VkPhysicalDevice8BitStorageFeatures b8storagefeature;
 	VkPhysicalDeviceVulkan12Features physfeatures12;
 	//VkPhysicalDeviceVulkan11Features physfeatures11;
@@ -176,7 +251,7 @@ bool vkrenderer::deviceinit() {
 	//b8storagefeature.pNext = VK_NULL_HANDLE;
 	physfeatures12.pNext = &physfeatures13;
 	vkGetPhysicalDeviceFeatures2(firstphysicaldevselret.value(), &physfeatures);
-	std::cout << "\n\n\n\n" << physfeatures12.runtimeDescriptorArray << std::endl;
+	//std::cout << "\n\n\n\n" << physfeatures12.runtimeDescriptorArray << std::endl;
 	//if (physmeshfeatures.meshShader == VK_FALSE) {
 	//	std::cout << "NO mesh shader support"  << std::endl;
 	//}
@@ -187,12 +262,31 @@ bool vkrenderer::deviceinit() {
 	//physmeshfeatures.taskShader = VK_TRUE;
 	//physmeshfeatures.multiviewMeshShader = VK_FALSE;
 	//physmeshfeatures.primitiveFragmentShadingRateMeshShader = VK_FALSE;
+	{
+		
+
+		
+
+
+
+
+	}
+
+
+
+
+
 
 	//auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).add_required_extension_features(physmeshfeatures).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).add_required_extension("VK_EXT_mesh_shader").select();
 	auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).select();
+	//auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 0).set_surface(msurface).select();
 
-	std::cout <<"\n\n\n\n\n\n\n\n\n\n mesh shader value: " << secondphysicaldevselret.value().is_extension_present("VK_EXT_mesh_shader")<< "\n\n\n\n\n";
+	//std::cout << "\n\n\n\n\n\n\n\n\n\n mesh shader value: " << secondphysicaldevselret.value().is_extension_present("VK_EXT_mesh_shader") << "\n\n\n\n\n";
+	//std::cout << "\n\n\n\n\n\n\n\n\n\n maintenance: " << secondphysicaldevselret.value().is_extension_present("VK_EXT_swapchain_maintenance1") << "\n\n\n\n\n";
 	mvkobjs.rdvkbphysdev = secondphysicaldevselret.value();
+
+
+	//for (auto& x : secondphysicaldevselret.value().get_available_extensions()) { std::cout << x << std::endl; }
 
 	mminuniformbufferoffsetalignment = mvkobjs.rdvkbphysdev.properties.limits.minUniformBufferOffsetAlignment;
 
@@ -353,7 +447,13 @@ void vkrenderer::cleanup() {
 		mstatic0[i]->cleanupmodels(mvkobjs);
 	}
 	if(mplayer)
-	mplayer->cleanupmodels(mvkobjs);
+		mplayer->cleanupmodels(mvkobjs);
+	if (mground)
+		mground->cleanupmodels(mvkobjs);
+
+	if(lifebar)
+	lifebar->cleanupmodels(mvkobjs);
+
 
 	mui.cleanup(mvkobjs);
 
@@ -376,7 +476,12 @@ void vkrenderer::cleanup() {
 	}
 
 	if (mplayer)
-	mplayer->cleanuplines(mvkobjs);
+		mplayer->cleanuplines(mvkobjs);
+	if (mground)
+		mground->cleanuplines(mvkobjs);
+	if(lifebar)
+	lifebar->cleanuplines(mvkobjs);
+
 
 	renderpass::cleanup(mvkobjs);
 
@@ -390,6 +495,8 @@ void vkrenderer::cleanup() {
 
 	if (mplayer)
 	mplayer->cleanupbuffers(mvkobjs);
+	if (mground)
+		mground->cleanupbuffers(mvkobjs);
 
 	vkDestroyImageView(mvkobjs.rdvkbdevice.device, mvkobjs.rddepthimageview, nullptr);
 	vmaDestroyImage(mvkobjs.rdallocator, mvkobjs.rddepthimage, mvkobjs.rddepthimagealloc);
@@ -404,11 +511,42 @@ void vkrenderer::cleanup() {
 
 
 }
+
+
+
+void vkrenderer::handlekeymenu(int key, int scancode, int action, int mods) {
+
+	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_F4) == GLFW_PRESS) {
+		if (mvkobjs.rdfullscreen)glfwSetWindowMonitor(mvkobjs.rdwind, nullptr, 100, 200, 900, 600, GLFW_DONT_CARE);
+		else {
+			glfwSetWindowMonitor(mvkobjs.rdwind, mvkobjs.rdmonitor, 0, 0, mvkobjs.rdmode->width, mvkobjs.rdmode->height, mvkobjs.rdmode->refreshRate);
+		}
+		mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
+	}
+	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_F3) == GLFW_PRESS) {
+		mui.setnetwork = !mui.setnetwork;
+	}
+
+	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+		glfwSetWindowShouldClose(mvkobjs.rdwind, true);
+	}
+	//if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_ENTER) == GLFW_PRESS) {
+	//	ImGui_ImplGlfw_InstallCallbacks(mvkobjs.rdwind);
+	//}
+
+}
+
+
 void vkrenderer::handlekey(int key, int scancode, int action, int mods)
 {
 	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_SPACE) == GLFW_PRESS) {
 		switchshader = !switchshader;
 	}
+	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_BACKSPACE) == GLFW_PRESS) {
+		mui.backspace();
+	}
+	//if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_ENTER) == GLFW_PRESS) {
+	//}
 	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_F4) == GLFW_PRESS) {
 		if (mvkobjs.rdfullscreen)glfwSetWindowMonitor(mvkobjs.rdwind, nullptr, 100, 200, 900, 600, GLFW_DONT_CARE);
 		else {
@@ -417,39 +555,147 @@ void vkrenderer::handlekey(int key, int scancode, int action, int mods)
 		mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
 	}
 
+
 	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-		glfwSetWindowShouldClose(mvkobjs.rdwind, true);
+		if (paused) {
+			paused = false;
+		} else {
+			paused = true;
+			pausebgntime = glfwGetTime();
+		}
+		//glfwSetWindowShouldClose(mvkobjs.rdwind, true);
 	}
 	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_R) == GLFW_PRESS) {
-		mplayer->freezedecay();
-		decaying = true;
-		decaystart = glfwGetTime();
-		mplayer->createdecayinstances(mvkobjs);
-		{
-			double x;
-			double y;
-			glfwGetCursorPos(mvkobjs.rdwind, &x, &y);
-			x = (2.0 * (x / (double)mvkobjs.rdwidth)) - 1.0;
-			y = (2.0 * (y / (double)mvkobjs.rdheight)) - 1.0;
-			modelsettings s = mplayer->getinst(0)->getinstancesettings();
-			float d{ 0.0f };
-			glm::vec3 cfor{ mcam.mforward };
-			float rotangx{ (float)(x * -0.523599f) };
-			float rotangy{ (float)(y * (-0.523599f * mvkobjs.rdheight / mvkobjs.rdwidth)) };
-			cfor = glm::rotate(cfor, rotangx, mcam.mup);
-			cfor = glm::rotate(cfor, rotangy, mcam.mright);
-			for (int i{ 0 }; i < 100000; i++) {
-				float dt = map2(mvkobjs.rdcamwpos + cfor * d);
-				d += dt;
-				if (dt < 0.00001f || d>10000.0f)break;
+		if (!decaying) {
+			mplayer->freezedecay();
+			decaying = true;
+			decaystart = glfwGetTime();
+			mplayer->createdecayinstances(mvkobjs);
+			{
+				double x;
+				double y;
+				glfwGetCursorPos(mvkobjs.rdwind, &x, &y);
+				//if (glm::abs(x - lastmousexy.x) > 100.0 || glm::abs(y - lastmousexy.y) > 100.0) {
+				//	x += 1.0;
+				//	y -= 1.0;
+				//}
+				lastmousexy = glm::vec<2, double>{ x,y };
+				x = (2.0 * (x / (double)mvkobjs.rdwidth)) - 1.0;
+				y = (2.0 * (y / (double)mvkobjs.rdheight)) - 1.0;
+				float d{ 0.0f };
+				glm::vec3 cfor{ mcam.mforward };
+				float rotangx{ (float)(1.5*x * -0.523599f) };
+				float rotangy{ (float)(1.5*y * (-0.523599f * mvkobjs.rdheight / mvkobjs.rdwidth)) };
+				cfor = glm::rotate(cfor, rotangx, mcam.mup);
+				cfor = glm::rotate(cfor, rotangy, mcam.mright);
+				for (int i{ 0 }; i < 100000; i++) {
+					float dt = map2(mvkobjs.rdcamwpos + cfor * d);
+					d += dt;
+					if (dt < 0.00001f || d>10000.0f)break;
+				}
+
+
+				if (d < 10000.0f) {
+					modelsettings s = mplayer->getinst(0)->getinstancesettings();
+					decaypos = s.msworldpos;
+					playerlookto = glm::normalize(mvkobjs.rdcamwpos + cfor * d - s.msworldpos);
+					movediff = glm::vec2(glm::abs(glm::vec3((mvkobjs.rdcamwpos + cfor * d) - s.msworldpos)).x, glm::abs(glm::vec3((mvkobjs.rdcamwpos + cfor * d) - s.msworldpos)).z);
+
+					if (movediff.x > 2.1f || movediff.y > 2.1f) {
+						s.msworldpos = mvkobjs.rdcamwpos + cfor * d;
+
+
+						s.msworldrot.y = glm::degrees(glm::atan(playerlookto.x, playerlookto.z));
+
+						s.msanimclip = 9;
+
+
+						playermoving = false;
+
+						mplayer->getinst(0)->setinstancesettings(s);
+						mplayer->getinst(0)->checkforupdates();
+					}
+				}
 			}
-			s.msworldpos = mvkobjs.rdcamwpos + cfor * d;
-			mplayer->getinst(0)->setinstancesettings(s);
-			mplayer->getinst(0)->checkforupdates();
 		}
 	}
 }
 int clickz{ 0 };
+
+void vkrenderer::startmoving() {
+	modelsettings s = mplayer->getinst(0)->getinstancesettings();
+	// = playermoveto- s.msworldpos;
+	mplayer->getinst(0)->setinstancesettings(s);
+	mplayer->getinst(0)->checkforupdates();
+}
+
+void vkrenderer::moveplayer(){
+	modelsettings s = mplayer->getinst(0)->getinstancesettings();
+	// = playermoveto- s.msworldpos;
+	glm::vec3 diff = playermoveto - s.msworldpos;
+	//if ((diff.x > 0.001f || diff.x < -0.001f) || (diff.y > 0.001f||diff.y <-0.001f)) {
+		s.msworldpos += glm::normalize(diff)*2.0f;
+	//}
+	/*else if (diff.y > 0.001f || diff.y < -0.001f) {
+		s.msworldpos += (glm::normalize(diff) * 10.0f);
+	} else if (diff.x > 0.001f || diff.x < -0.001f) {
+		s.msworldpos += (glm::normalize(diff) * 10.0f);
+	}*/ 
+	//else {
+		if(glm::abs(diff.x)<2.1f && glm::abs(diff.z)< 2.1f){
+			s.msworldpos = playermoveto;
+			s.msanimclip = 9;
+			playermoving = false;
+		}
+	//}
+	mplayer->getinst(0)->setinstancesettings(s);
+	mplayer->getinst(0)->checkforupdates();
+}
+
+void vkrenderer::moveenemies(){
+	modelsettings ps = mplayer->getinst(0)->getinstancesettings();
+	if (!decaying) {
+		for (int i{ 0 }; i < mpgltf[0]->getnuminstances(); i++) {
+			modelsettings es = mpgltf[0]->getinst(i)->getinstancesettings();
+			glm::vec3 diff = ps.msworldpos - es.msworldpos;
+			if (glm::abs(diff.x) < 100.0f && glm::abs(diff.z) < 100.0f) {
+				if (es.msanimclip > 1) {
+					es.msanimclip = 1;
+					es.msanimtimepos = 0.0f;
+				}
+				if (es.msanimtimepos > 1.2f) {
+					playerhp -= 0.001f;
+				}
+				mpgltf[0]->getinst(i)->setinstancesettings(es);
+				mpgltf[0]->getinst(i)->checkforupdates();
+			} else {
+				es.msworldpos += glm::normalize(diff) * 1.0f;
+				es.msanimclip = 14;
+				es.msworldrot.y = glm::degrees(glm::atan(diff.x, diff.z));
+				mpgltf[0]->getinst(i)->setinstancesettings(es);
+				mpgltf[0]->getinst(i)->checkforupdates();
+			}
+		}
+	} else {
+		for (int i{ 0 }; i < mpgltf[0]->getnuminstances(); i++) {
+			modelsettings es = mpgltf[0]->getinst(i)->getinstancesettings();
+			glm::vec3 diff = decaypos - es.msworldpos;
+			if (glm::abs(diff.x) < 100.0f && glm::abs(diff.z) < 100.0f) {
+				if (es.msanimclip > 1) {
+					es.msanimclip = 1;
+				}
+				mpgltf[0]->getinst(i)->setinstancesettings(es);
+				mpgltf[0]->getinst(i)->checkforupdates();
+			} else {
+				es.msworldpos += glm::normalize(diff) * 1.0f;
+				es.msanimclip = 14;
+				es.msworldrot.y = glm::degrees(glm::atan(diff.x, diff.z));
+				mpgltf[0]->getinst(i)->setinstancesettings(es);
+				mpgltf[0]->getinst(i)->checkforupdates();
+			}
+		}
+	}
+}
 
 void vkrenderer::handleclick(int key, int action, int mods)
 {
@@ -460,58 +706,6 @@ void vkrenderer::handleclick(int key, int action, int mods)
 	if (io.WantCaptureMouse)return;
 	
 
-	if (key == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
-		std::cout << "click!" << std::endl;
-		double x;
-		double y;
-		glfwGetCursorPos(mvkobjs.rdwind, &x, &y);
-		x = (2.0 * (x / (double)mvkobjs.rdwidth)) - 1.0;
-		y = (2.0 * (y / (double)mvkobjs.rdheight)) - 1.0;
-		//glm::inverse(mcam.getview(mvkobjs));
-		std::cout << x << "   " << y << std::endl;
-		modelsettings s = mplayer->getinst(0)->getinstancesettings();
-
-		//glm::vec4 newp= glm::vec4(x, y, 0.0f,  1.0f)*glm::inverse(glm::perspective(glm::radians(static_cast<float>(mvkobjs.rdfov)), static_cast<float>(mvkobjs.rdwidth) / static_cast<float>(mvkobjs.rdheight), 0.01f, 6000.0f));
-		//newp = newp* glm::inverse(mcam.getview(mvkobjs));
-		//glm::vec3 newd = glm::vec3(newp)-mvkobjs.rdcamwpos;
-
-		//newp *= glm::vec4(glm::normalize(newd),1.0f);
-		//newp /= newp.w;
-		//newp *= 1000000.0f;
-		float d{ 0.0f };
-		glm::vec3 cfor{ mcam.mforward };
-		float rotangx{ (float)(x * -0.523599f) };
-		float rotangy{ (float)(y * (-0.523599f*mvkobjs.rdheight/mvkobjs.rdwidth)) };
-		//float cosrotangx{ glm::cos(rotangx) };
-		//float cosrotangy{ glm::cos(rotangy) };
-		//glm::mat4 rotmatx{
-		//	{cosrotangx+mcam.mup.}
-		//};
-		//cfor.x -= mvkobjs.rdcamwpos.x;
-		//cfor.z -= mvkobjs.rdcamwpos.z;
-		//cfor.x -= mcam.mup.x;
-		//cfor.z -= mcam.mup.z;
-		//cfor = { (cfor.x * glm::sin(x * -0.523599f)) + (cfor.z * glm::cos(x * -0.523599f)),cfor.y, (cfor.x * glm::cos(x * -0.523599f)) - (cfor.z * glm::sin(x * -0.523599f)) };
-		//cfor.x += mcam.mup.x;
-		//cfor.z += mcam.mup.z;
-		//cfor = { cfor.x,(cfor.y * glm::sin(x * -0.523599f)) + (cfor.z * glm::cos(x * -0.523599f)), (cfor.y * glm::cos(x * -0.523599f)) - (cfor.z * glm::sin(x * -0.523599f)) };
-		//cfor.x += mvkobjs.rdcamwpos.x;
-		//cfor.z += mvkobjs.rdcamwpos.z;
-		cfor = glm::rotate(cfor, rotangx, mcam.mup);
-		cfor = glm::rotate(cfor, rotangy, mcam.mright);
-		//cfor += cpos;
-		//cfor = glm::normalize(cfor);
-		for (int i{ 0 }; i < 100000; i++) {
-			float dt = map2(mvkobjs.rdcamwpos + cfor * d);
-			d += dt;
-			if (dt < 0.00001f || d>10000.0f)break;
-		}
-
-
-		s.msworldpos = mvkobjs.rdcamwpos + cfor * d;
-		mplayer->getinst(0)->setinstancesettings(s);
-		mplayer->getinst(0)->checkforupdates();
-	}
 
 	if (key == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
 		mlock = !mlock;
@@ -535,34 +729,41 @@ void vkrenderer::handlemouse(double x, double y){
 	int relativex = static_cast<int>(x) - mousex;
 	int relativey = static_cast<int>(y) - mousey;
 
-	if (mlock) {
+	//if (glfwGetMouseButton(mvkobjs.rdwind, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
 
-		mpersviewmats.at(0) = mcam.getview(mvkobjs);
-		//mpersviewmats.at(1) = glm::perspective(glm::radians(static_cast<float>(mvkobjs.rdfov)), static_cast<float>(mvkobjs.rdwidth) / static_cast<float>(mvkobjs.rdheight), 0.01f, 6000.0f);
+	//}
 
-		mvkobjs.rdazimuth += relativex / 10.0;
 
-		mvkobjs.rdelevation -= relativey / 10.0;
+	if (!paused) {
+		if (mlock) {
 
-		if (mvkobjs.rdelevation > 89.0) {
-			mvkobjs.rdelevation = 89.0;
+			mpersviewmats.at(0) = mcam.getview(mvkobjs);
+			//mpersviewmats.at(1) = glm::perspective(glm::radians(static_cast<float>(mvkobjs.rdfov)), static_cast<float>(mvkobjs.rdwidth) / static_cast<float>(mvkobjs.rdheight), 0.01f, 6000.0f);
+
+			mvkobjs.rdazimuth += relativex / 10.0;
+
+			mvkobjs.rdelevation -= relativey / 10.0;
+
+			if (mvkobjs.rdelevation > 89.0) {
+				mvkobjs.rdelevation = 89.0;
+			}
+
+			if (mvkobjs.rdelevation < -89.0) {
+				mvkobjs.rdelevation = -89.0;
+			}
+
+
+			if (mvkobjs.rdazimuth > 90.0) {
+				mvkobjs.rdazimuth = 90.0;
+			}
+			if (mvkobjs.rdazimuth < -90.0) {
+				mvkobjs.rdazimuth = -90.0;
+			}
+
+
+			mousex = static_cast<int>(x);
+			mousey = static_cast<int>(y);
 		}
-
-		if (mvkobjs.rdelevation < -89.0) {
-			mvkobjs.rdelevation = -89.0;
-		}
-
-
-		if (mvkobjs.rdazimuth > 90.0) {
-			mvkobjs.rdazimuth = 90.0;
-		}
-		if (mvkobjs.rdazimuth < -90.0) {
-			mvkobjs.rdazimuth = -90.0;
-		}
-
-
-		mousex = static_cast<int>(x);
-		mousey = static_cast<int>(y);
 	}
 	
 }
@@ -570,9 +771,9 @@ void vkrenderer::setsize(unsigned int w, unsigned int h) {
 	mvkobjs.rdwidth = w;
 	mvkobjs.rdheight = h;
 	if(!w||!h)
-		mpersviewmats.at(1) = glm::perspective(glm::radians(static_cast<float>(mvkobjs.rdvkbswapchain.extent.width)), static_cast<float>(mvkobjs.rdvkbswapchain.extent.height) / static_cast<float>(mvkobjs.rdheight), 0.01f, 6000.0f);
+		mpersviewmats.at(1) = glm::perspective(glm::radians(static_cast<float>(mvkobjs.rdvkbswapchain.extent.width)), static_cast<float>(mvkobjs.rdvkbswapchain.extent.height) / static_cast<float>(mvkobjs.rdheight), 0.01f, 60000.0f);
 	else
-		mpersviewmats.at(1) = glm::perspective(mvkobjs.rdfov, static_cast<float>(mvkobjs.rdwidth) / static_cast<float>(mvkobjs.rdheight), 0.01f, 6000.0f);
+		mpersviewmats.at(1) = glm::perspective(mvkobjs.rdfov, static_cast<float>(mvkobjs.rdwidth) / static_cast<float>(mvkobjs.rdheight), 1.0f, 6000.0f);
 
 }
 void vkrenderer::toggleshader() {
@@ -615,237 +816,511 @@ void vkrenderer::movecam() {
 	//	mvkobjs.rdcamright *= 400;
 	//	mvkobjs.rdcamup *= 400;
 	//}
+	if (glfwGetMouseButton(mvkobjs.rdwind, GLFW_MOUSE_BUTTON_LEFT) != GLFW_RELEASE) {
+		if (!paused) {
+			double x;
+			double y;
+			glfwGetCursorPos(mvkobjs.rdwind, &x, &y);
+			//if (glm::abs(x - lastmousexy.x) > 100.0 || glm::abs(y - lastmousexy.y) > 100.0) {
+			//	x += 1.0;
+			//	y -= 1.0;
+			//}
+			lastmousexy = glm::vec<2, double>{ x,y };
+			x = (2.0 * (x / (double)mvkobjs.rdwidth)) - 1.0;
+			y = (2.0 * (y / (double)mvkobjs.rdheight)) - 1.0;
+			//std::cout << x << "   " << y << std::endl;
+			float d{ 0.0f };
+			glm::vec3 cfor{ mcam.mforward };
+			float rotangx{ (float)(1.5 * x * -0.523599f) };
+			float rotangy{ (float)(1.5 * y * (-0.523599f * mvkobjs.rdheight / mvkobjs.rdwidth)) };
+			cfor = glm::rotate(cfor, rotangx, mcam.mup);
+			cfor = glm::rotate(cfor, rotangy, mcam.mright);
+			for (int i{ 0 }; i < 100000; i++) {
+				float dt = map2(mvkobjs.rdcamwpos + cfor * d);
+				d += dt;
+				if (dt < 0.00001f || d>10000.0f)break;
+			}
+
+			if (d < 10000.0f) {
+				modelsettings s = mplayer->getinst(0)->getinstancesettings();
+
+				playerlookto = glm::normalize(mvkobjs.rdcamwpos + cfor * d - s.msworldpos);
+				movediff = glm::vec2(glm::abs(glm::vec3((mvkobjs.rdcamwpos + cfor * d) - s.msworldpos)).x, glm::abs(glm::vec3((mvkobjs.rdcamwpos + cfor * d) - s.msworldpos)).z);
+
+				if (movediff.x>2.1f||movediff.y>2.1f) {
+					playermoveto = mvkobjs.rdcamwpos + cfor * d;
+
+					s.msworldrot.y = glm::degrees(glm::atan(playerlookto.x, playerlookto.z));
+
+					s.msanimclip = 15;
+
+					mplayer->getinst(0)->setinstancesettings(s);
+					mplayer->getinst(0)->checkforupdates();
+
+					playermoving = true;
+				}
+			}
+		}
+	}
 
 
 }
 
-bool vkrenderer::draw() {
-
-	double tick = glfwGetTime();
-	mvkobjs.rdtickdiff = tick - mlasttick;
-	mvkobjs.rdframetime = mframetimer.stop();
-	mframetimer.start();
-
-	movecam();//////////////////////////////////////
-
-	if (vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-		return false;
-	}
-	if (vkResetFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence) != VK_SUCCESS)return false;
-
-	uint32_t imgidx = 0;
-	VkResult res = vkAcquireNextImageKHR(mvkobjs.rdvkbdevice.device, mvkobjs.rdvkbswapchain.swapchain, UINT64_MAX, mvkobjs.rdpresentsemaphore, VK_NULL_HANDLE, &imgidx);
-	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
-		return recreateswapchain();
-	}
-	else {
-		if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) {
-			return false;
-		}
-	}
-
-
-
-	VkClearValue colorclearvalue;
-	colorclearvalue.color = { {0.12f,0.12f,0.12f,1.0f } };
-
-	VkClearValue depthvalue;
-	depthvalue.depthStencil.depth = 1.0f;
-
-	VkClearValue clearvals[] = { colorclearvalue,depthvalue };
-
-
-	VkRenderPassBeginInfo rpinfo{};
-	rpinfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	rpinfo.renderPass = mvkobjs.rdrenderpass;
-
-	rpinfo.renderArea.offset.x = 0;
-	rpinfo.renderArea.offset.y = 0;
-	rpinfo.renderArea.extent = mvkobjs.rdvkbswapchain.extent;
-	rpinfo.framebuffer = mvkobjs.rdframebuffers[imgidx];
-
-	rpinfo.clearValueCount = 2;
-	rpinfo.pClearValues = clearvals;
-
-	VkViewport viewport{};
-	viewport.x = 0.0f;
-	viewport.y =static_cast<float>(mvkobjs.rdvkbswapchain.extent.height);
-	viewport.width = static_cast<float>(mvkobjs.rdvkbswapchain.extent.width);
-	viewport.height = -static_cast<float>(mvkobjs.rdvkbswapchain.extent.height);
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor{};
-	scissor.offset = { 0,0 };
-	scissor.extent = mvkobjs.rdvkbswapchain.extent;
-
-
-
-
-
-	mmatgentimer.start();
-
-
-	mvkobjs.rdiktime = 0.0f;
-
-	mplayer->updateanims();
-
-	for (size_t i{ 0 }; i < mpgltf.size(); i++) {
-		mpgltf[i]->updateanims();
-	}
-
-	int selectedInstance = 0;
-
-	mvkobjs.rdmatrixgeneratetime = mmatgentimer.stop();
-
-
-
-
-	if (vkResetCommandBuffer(mvkobjs.rdcommandbuffer[0], 0) != VK_SUCCESS)return false;
-
-	VkCommandBufferBeginInfo cmdbgninfo{};
-	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	if (vkBeginCommandBuffer(mvkobjs.rdcommandbuffer[0], &cmdbgninfo) != VK_SUCCESS)return false;
-
-	muploadtovbotimer.start();
-
-	mplayer->uploadvboebo(mvkobjs);
-
-	for (size_t i{ 0 }; i < mpgltf.size(); i++) {
-		mpgltf[i]->uploadvboebo(mvkobjs);
-	}
-
-	for (size_t i{ 0 }; i < mstatic0.size(); i++) {
-		mstatic0[i]->uploadvboebo(mvkobjs);
-	}
-
-
-	mvkobjs.rduploadtovbotime = muploadtovbotimer.stop();
-
-
-	mplayer->updatemats();
-
-	for (size_t i{ 0 }; i < mpgltf.size(); i++) {
-		mpgltf[i]->updatemats();
-	}
-
-
-
-
-	vkCmdBeginRenderPass(mvkobjs.rdcommandbuffer[0], &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
-
-
-
-
-
-	vkCmdSetViewport(mvkobjs.rdcommandbuffer[0], 0, 1, &viewport);
-	vkCmdSetScissor(mvkobjs.rdcommandbuffer[0], 0, 1, &scissor);
-
-	for (size_t i{ 0 }; i < mstatic0.size(); i++) {
-		mstatic0[i]->draw(mvkobjs);
-	}
-
-	for (size_t i{ 0 }; i < mpgltf.size(); i++) {
-		mpgltf[i]->draw(mvkobjs);
-	}
-
-
-	mplayer->draw(mvkobjs);
-	if (decaying) {
-		mplayer->drawdecays(mvkobjs,decaystart,&decaying);
-	}
-
-
-	muigentimer.start();
-	muidrawtimer.start();
-	modelsettings settings = mpgltf[0]->getinstsettings();
-	//mui.createchat(mvkobjs);
-	//mui.render(mvkobjs,mvkobjs.rdcommandbuffer[0]);
-	mui.createdbgframe(mvkobjs, settings);
-	mui.render(mvkobjs, mvkobjs.rdcommandbuffer[0]);
-	mvkobjs.rduigeneratetime = muigentimer.stop();
-	mvkobjs.rduidrawtime = muidrawtimer.stop();
-
-
-
-	vkCmdEndRenderPass(mvkobjs.rdcommandbuffer[0]);
-
-
-
-	muploadtoubotimer.start();
-
-	mplayer->uploadubossbo(mvkobjs, mpersviewmats);
-
-
-	for (size_t i{ 0 }; i < mpgltf.size(); i++) {
-		mpgltf[i]->uploadubossbo(mvkobjs, mpersviewmats);
-	}
-
-	for (size_t i{ 0 }; i < mstatic0.size(); i++) {
-		mstatic0[i]->uploadubossbo(mvkobjs, mpersviewmats);
-	}
-
-	mvkobjs.rduploadtoubotime = muploadtoubotimer.stop();
-
-
-	if (vkEndCommandBuffer(mvkobjs.rdcommandbuffer[0]) != VK_SUCCESS)return false;
-
-
-
-
-	VkSubmitInfo submitinfo{};
-	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	submitinfo.pWaitDstStageMask = &waitstage;
-
-	submitinfo.waitSemaphoreCount = 1;
-	submitinfo.pWaitSemaphores = &mvkobjs.rdpresentsemaphore;
-
-	submitinfo.signalSemaphoreCount = 1;
-	submitinfo.pSignalSemaphores = &mvkobjs.rdrendersemaphore;
-
-	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer.at(0);
-
-
-mvkobjs.mtx2->lock();
-	if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
-		return false;
-	}
-mvkobjs.mtx2->unlock();
-
-	VkPresentInfoKHR presentinfo{};
-	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentinfo.waitSemaphoreCount = 1;
-	presentinfo.pWaitSemaphores = &mvkobjs.rdrendersemaphore;
-
-	presentinfo.swapchainCount = 1;
-	presentinfo.pSwapchains = &mvkobjs.rdvkbswapchain.swapchain;
-
-	presentinfo.pImageIndices = &imgidx;
-
-
-mvkobjs.mtx2->lock();
-	res = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
-
-mvkobjs.mtx2->unlock();
-
-	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
-		return recreateswapchain();
-	}
-	else {
-		if (res != VK_SUCCESS) {
-			return false;
-		}
-	}
-	mlasttick = tick;
-
-
+bool vkrenderer::checkphp() {
+	if (playerhp < 0.0f)return false;
 	return true;
 }
+bool vkrenderer::draw() {
+
+	if (!paused) {
+
+		if (!checkphp())paused = true;
+
+		double tick = glfwGetTime();
+		mvkobjs.rdtickdiff = tick - mlasttick;
+		mvkobjs.rdframetime = mframetimer.stop();
+		mframetimer.start();
+
+
+		if (vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
+			return false;
+		}
+		if (vkResetFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence) != VK_SUCCESS)return false;
+
+		uint32_t imgidx = 0;
+		VkResult res = vkAcquireNextImageKHR(mvkobjs.rdvkbdevice.device, mvkobjs.rdvkbswapchain.swapchain, UINT64_MAX, mvkobjs.rdpresentsemaphore, VK_NULL_HANDLE, &imgidx);
+		if (res == VK_ERROR_OUT_OF_DATE_KHR) {
+			return recreateswapchain();
+		} else {
+			if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) {
+				return false;
+			}
+		}
+
+
+
+		VkClearValue colorclearvalue;
+		colorclearvalue.color = { {0.12f,0.12f,0.12f,1.0f } };
+
+		VkClearValue depthvalue;
+		depthvalue.depthStencil.depth = 1.0f;
+
+		VkClearValue clearvals[] = { colorclearvalue,depthvalue };
+
+
+		VkRenderPassBeginInfo rpinfo{};
+		rpinfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		rpinfo.renderPass = mvkobjs.rdrenderpass;
+
+		rpinfo.renderArea.offset.x = 0;
+		rpinfo.renderArea.offset.y = 0;
+		rpinfo.renderArea.extent = mvkobjs.rdvkbswapchain.extent;
+		rpinfo.framebuffer = mvkobjs.rdframebuffers[imgidx];
+
+		rpinfo.clearValueCount = 2;
+		rpinfo.pClearValues = clearvals;
+
+		VkViewport viewport{};
+		viewport.x = 0.0f;
+		viewport.y = static_cast<float>(mvkobjs.rdvkbswapchain.extent.height);
+		viewport.width = static_cast<float>(mvkobjs.rdvkbswapchain.extent.width);
+		viewport.height = -static_cast<float>(mvkobjs.rdvkbswapchain.extent.height);
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		VkRect2D scissor{};
+		scissor.offset = { 0,0 };
+		scissor.extent = mvkobjs.rdvkbswapchain.extent;
+
+
+
+
+
+		mmatgentimer.start();
+
+
+		mvkobjs.rdiktime = 0.0f;
+
+
+
+		mplayer->updateanims();
+
+		for (size_t i{ 0 }; i < mpgltf.size(); i++) {
+			mpgltf[i]->updateanims();
+		}
+
+
+		int selectedInstance = 0;
+
+		mvkobjs.rdmatrixgeneratetime = mmatgentimer.stop();
+
+
+
+
+		if (vkResetCommandBuffer(mvkobjs.rdcommandbuffer[0], 0) != VK_SUCCESS)return false;
+
+		VkCommandBufferBeginInfo cmdbgninfo{};
+		cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		if (vkBeginCommandBuffer(mvkobjs.rdcommandbuffer[0], &cmdbgninfo) != VK_SUCCESS)return false;
+
+		muploadtovbotimer.start();
+
+		mplayer->uploadvboebo(mvkobjs);
+
+		for (size_t i{ 0 }; i < mpgltf.size(); i++) {
+			mpgltf[i]->uploadvboebo(mvkobjs);
+		}
+
+		for (size_t i{ 0 }; i < mstatic0.size(); i++) {
+			mstatic0[i]->uploadvboebo(mvkobjs);
+		}
+		mground->uploadvboebo(mvkobjs);
+
+		lifebar->uploadvboebo(mvkobjs);
+
+		mvkobjs.rduploadtovbotime = muploadtovbotimer.stop();
+
+
+		mplayer->updatemats();
+
+		for (size_t i{ 0 }; i < mpgltf.size(); i++) {
+			mpgltf[i]->updatemats();
+		}
+
+
+
+
+
+
+		vkCmdBeginRenderPass(mvkobjs.rdcommandbuffer[0], &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
+
+
+
+
+
+		vkCmdSetViewport(mvkobjs.rdcommandbuffer[0], 0, 1, &viewport);
+		vkCmdSetScissor(mvkobjs.rdcommandbuffer[0], 0, 1, &scissor);
+
+		mground->draw(mvkobjs);
+
+		for (size_t i{ 0 }; i < mstatic0.size(); i++) {
+			mstatic0[i]->draw(mvkobjs);
+		}
+
+		for (size_t i{ 0 }; i < mpgltf.size(); i++) {
+			mpgltf[i]->draw(mvkobjs);
+		}
+
+		mplayer->draw(mvkobjs);
+
+		if (decaying) {
+			decaytime = glfwGetTime() - decaystart-pausetime;
+			mplayer->drawdecays(mvkobjs, decaytime, &decaying);
+		}
+		if (!decaying)pausetime = 0.0;
+
+		lifetime = glfwGetTime();
+		lifetime2 = glfwGetTime();
+
+		lifebar->draw(mvkobjs,lifetime, lifetime2,playerhp);
+
+		muigentimer.start();
+		muidrawtimer.start();
+		modelsettings settings = mplayer->getinstsettings();
+		//mui.createchat(mvkobjs);
+		//mui.render(mvkobjs,mvkobjs.rdcommandbuffer[0]);
+		mui.createdbgframe(mvkobjs, settings, mnobjs);
+		mplayer->getinst(0)->setinstancesettings(settings);
+		mplayer->getinst(0)->checkforupdates();
+		mui.render(mvkobjs, mvkobjs.rdcommandbuffer[0]);
+		mvkobjs.rduigeneratetime = muigentimer.stop();
+		mvkobjs.rduidrawtime = muidrawtimer.stop();
+
+
+
+		vkCmdEndRenderPass(mvkobjs.rdcommandbuffer[0]);
+
+
+
+		muploadtoubotimer.start();
+
+		mplayer->uploadubossbo(mvkobjs, mpersviewmats);
+
+
+		for (size_t i{ 0 }; i < mpgltf.size(); i++) {
+			mpgltf[i]->uploadubossbo(mvkobjs, mpersviewmats);
+		}
+
+		for (size_t i{ 0 }; i < mstatic0.size(); i++) {
+			mstatic0[i]->uploadubossbo(mvkobjs, mpersviewmats);
+		}
+
+		mground->uploadubossbo(mvkobjs, mpersviewmats);
+
+
+		mvkobjs.rduploadtoubotime = muploadtoubotimer.stop();
+
+
+		if (vkEndCommandBuffer(mvkobjs.rdcommandbuffer[0]) != VK_SUCCESS)return false;
+
+
+		movecam();//////////////////////////////////////
+		moveenemies();
+
+		if (playermoving)moveplayer();
+
+
+		VkSubmitInfo submitinfo{};
+		submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+		VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		submitinfo.pWaitDstStageMask = &waitstage;
+
+		submitinfo.waitSemaphoreCount = 1;
+		submitinfo.pWaitSemaphores = &mvkobjs.rdpresentsemaphore;
+
+		submitinfo.signalSemaphoreCount = 1;
+		submitinfo.pSignalSemaphores = &mvkobjs.rdrendersemaphore;
+
+		submitinfo.commandBufferCount = 1;
+		submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer.at(0);
+
+
+		mvkobjs.mtx2->lock();
+		if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
+			return false;
+		}
+		mvkobjs.mtx2->unlock();
+
+		VkPresentInfoKHR presentinfo{};
+		presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		presentinfo.waitSemaphoreCount = 1;
+		presentinfo.pWaitSemaphores = &mvkobjs.rdrendersemaphore;
+
+		presentinfo.swapchainCount = 1;
+		presentinfo.pSwapchains = &mvkobjs.rdvkbswapchain.swapchain;
+
+		presentinfo.pImageIndices = &imgidx;
+
+
+		mvkobjs.mtx2->lock();
+		res = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
+
+		mvkobjs.mtx2->unlock();
+
+		if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
+			return recreateswapchain();
+		} else {
+			if (res != VK_SUCCESS) {
+				return false;
+			}
+		}
+		mlasttick = tick;
+
+		return true;
+		} 
+	else {
+
+
+		if (vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
+			return false;
+		}
+		if (vkResetFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence) != VK_SUCCESS)return false;
+
+		uint32_t imgidx = 0;
+		VkResult res = vkAcquireNextImageKHR(mvkobjs.rdvkbdevice.device, mvkobjs.rdvkbswapchain.swapchain, UINT64_MAX, mvkobjs.rdpresentsemaphore, VK_NULL_HANDLE, &imgidx);
+		if (res == VK_ERROR_OUT_OF_DATE_KHR) {
+			return recreateswapchain();
+		} else {
+			if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) {
+				return false;
+			}
+		}
+
+
+
+
+			VkClearValue colorclearvalue;
+			colorclearvalue.color = { {0.0048f,0.0048f,0.0048f,1.0f } };
+
+			VkClearValue depthvalue;
+			depthvalue.depthStencil.depth = 1.0f;
+
+			VkClearValue clearvals[] = { colorclearvalue,depthvalue };
+
+
+			VkRenderPassBeginInfo rpinfo{};
+			rpinfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			rpinfo.renderPass = mvkobjs.rdrenderpass;
+
+			rpinfo.renderArea.offset.x = 0;
+			rpinfo.renderArea.offset.y = 0;
+			rpinfo.renderArea.extent = mvkobjs.rdvkbswapchain.extent;
+			rpinfo.framebuffer = mvkobjs.rdframebuffers[imgidx];
+
+			rpinfo.clearValueCount = 2;
+			rpinfo.pClearValues = clearvals;
+
+			VkViewport viewport{};
+			viewport.x = 0.0f;
+			viewport.y = static_cast<float>(mvkobjs.rdvkbswapchain.extent.height);
+			viewport.width = static_cast<float>(mvkobjs.rdvkbswapchain.extent.width);
+			viewport.height = -static_cast<float>(mvkobjs.rdvkbswapchain.extent.height);
+			viewport.minDepth = 0.0f;
+			viewport.maxDepth = 1.0f;
+
+			VkRect2D scissor{};
+			scissor.offset = { 0,0 };
+			scissor.extent = mvkobjs.rdvkbswapchain.extent;
+
+
+
+
+			if (vkResetCommandBuffer(mvkobjs.rdcommandbuffer[0], 0) != VK_SUCCESS)return false;
+
+			VkCommandBufferBeginInfo cmdbgninfo{};
+			cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+			if (vkBeginCommandBuffer(mvkobjs.rdcommandbuffer[0], &cmdbgninfo) != VK_SUCCESS)return false;
+
+
+			mplayer->uploadvboebo(mvkobjs);
+
+			for (size_t i{ 0 }; i < mpgltf.size(); i++) {
+				mpgltf[i]->uploadvboebo(mvkobjs);
+			}
+
+			for (size_t i{ 0 }; i < mstatic0.size(); i++) {
+				mstatic0[i]->uploadvboebo(mvkobjs);
+			}
+			mground->uploadvboebo(mvkobjs);
+
+
+			vkCmdBeginRenderPass(mvkobjs.rdcommandbuffer[0], &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
+
+
+
+
+
+			vkCmdSetViewport(mvkobjs.rdcommandbuffer[0], 0, 1, &viewport);
+			vkCmdSetScissor(mvkobjs.rdcommandbuffer[0], 0, 1, &scissor);
+
+
+
+
+
+			mground->draw(mvkobjs);
+
+			for (size_t i{ 0 }; i < mstatic0.size(); i++) {
+				mstatic0[i]->draw(mvkobjs);
+			}
+
+			for (size_t i{ 0 }; i < mpgltf.size(); i++) {
+				mpgltf[i]->draw(mvkobjs);
+			}
+
+			mplayer->draw(mvkobjs);
+
+			if (decaying) {
+				decaytime = glfwGetTime() - decaystart-pausetime;
+				mplayer->drawdecays(mvkobjs, decaytime, &decaying);
+			}
+
+			lifetime = glfwGetTime() - pausetime;
+			lifetime2 = glfwGetTime();
+
+			lifebar->draw(mvkobjs,lifetime, lifetime2,playerhp);
+
+
+
+
+
+
+
+			if(mui.createpausebuttons(mvkobjs))paused=false;
+			mui.render(mvkobjs, mvkobjs.rdcommandbuffer[0]);
+
+
+
+
+
+			vkCmdEndRenderPass(mvkobjs.rdcommandbuffer[0]);
+
+
+			mplayer->uploadubossbo(mvkobjs, mpersviewmats);
+
+
+			for (size_t i{ 0 }; i < mpgltf.size(); i++) {
+				mpgltf[i]->uploadubossbo(mvkobjs, mpersviewmats);
+			}
+
+			for (size_t i{ 0 }; i < mstatic0.size(); i++) {
+				mstatic0[i]->uploadubossbo(mvkobjs, mpersviewmats);
+			}
+
+			mground->uploadubossbo(mvkobjs, mpersviewmats);
+
+
+
+
+
+			if (vkEndCommandBuffer(mvkobjs.rdcommandbuffer[0]) != VK_SUCCESS)return false;
+
+
+
+
+			VkSubmitInfo submitinfo{};
+			submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+			VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			submitinfo.pWaitDstStageMask = &waitstage;
+
+			submitinfo.waitSemaphoreCount = 1;
+			submitinfo.pWaitSemaphores = &mvkobjs.rdpresentsemaphore;
+
+			submitinfo.signalSemaphoreCount = 1;
+			submitinfo.pSignalSemaphores = &mvkobjs.rdrendersemaphore;
+
+			submitinfo.commandBufferCount = 1;
+			submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer[0];
+
+			mvkobjs.mtx2->lock();
+			if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
+				return false;
+			}
+			mvkobjs.mtx2->unlock();
+
+
+			VkPresentInfoKHR presentinfo{};
+			presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+			presentinfo.waitSemaphoreCount = 1;
+			presentinfo.pWaitSemaphores = &mvkobjs.rdrendersemaphore;
+
+			presentinfo.swapchainCount = 1;
+			presentinfo.pSwapchains = &mvkobjs.rdvkbswapchain.swapchain;
+
+			presentinfo.pImageIndices = &imgidx;
+
+			mvkobjs.mtx2->lock();
+			res = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
+			mvkobjs.mtx2->unlock();
+			if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
+				return recreateswapchain();
+			} else {
+				if (res != VK_SUCCESS) {
+					return false;
+				}
+			}
+			pausetime = glfwGetTime() - pausebgntime;
+
+
+			return true;
+	}
+}
+
 
 bool vkrenderer::drawmainmenu() {
 
@@ -934,9 +1409,12 @@ bool vkrenderer::drawmainmenu() {
 
 
 	mbackground->draw(mvkobjs);
-	mmenubg->draw(mvkobjs);
 
-	rdscene = mui.createmainmenuframe(mvkobjs);
+	lifetime = glfwGetTime();
+
+	mmenubg->draw(mvkobjs,lifetime,lifetime2,playerhp);
+
+	rdscene = mui.createmainmenuframe(mvkobjs,mnobjs);
 	mui.render(mvkobjs, mvkobjs.rdcommandbuffer[0]);
 
 

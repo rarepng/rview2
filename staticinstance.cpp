@@ -6,11 +6,11 @@
 #include "staticinstance.hpp"
 staticinstance::~staticinstance() {}
 
-staticinstance::staticinstance(std::shared_ptr<vkgltfstatic> model, glm::vec2 worldpos, bool randomize) {
+staticinstance::staticinstance(std::shared_ptr<vkgltfstatic> model, glm::vec3 worldpos, bool randomize) {
 
 	if (!model)return;
 	mgltfmodel = model;
-	mmodelsettings.msworldpos = glm::vec3(worldpos.x,-120.0f,worldpos.y);
+	mmodelsettings.msworldpos = worldpos;
 
 	//if (randomize) {
 	//	float initrotation = std::rand() % 360 - 180;

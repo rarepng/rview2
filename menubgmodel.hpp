@@ -10,7 +10,7 @@
 class menubgmodel {
 public:
 	bool loadmodel(vkobjs& objs);
-	void draw(vkobjs& objs, VkPipelineLayout& vkplayout);
+	void draw(vkobjs& objs, VkPipelineLayout& vkplayout, double& time, double& time2, double& life);
 	void cleanup(vkobjs& objs);
 	void uploadvertexbuffers(vkobjs& objs);
 	void uploadindexbuffers(vkobjs& objs);

@@ -5,6 +5,8 @@
 
 #include "vkobjs.hpp"
 #include "modelsettings.hpp"
+#include "netclient.hpp"
+#include "netserver.hpp"
 
 enum struct ppick {
 	rock,
@@ -21,17 +23,22 @@ enum struct gstate{
 class ui {
 public:
 	bool init(vkobjs& mvkobjs);
-	void createdbgframe(vkobjs& mvkobjs, modelsettings& settings);
-	bool createmainmenuframe(vkobjs& mvkobjs);
+	void createdbgframe(vkobjs& mvkobjs, modelsettings& settings, netobjs& nobjs);
+	bool createmainmenuframe(vkobjs& mvkobjs, netobjs& nobjs);
 	bool createloadingscreen(vkobjs& mvkobjs);
+	bool createpausebuttons(vkobjs& mvkobjs);
+	void addchat(std::string s);
 	void render(vkobjs& mvkobjs,VkCommandBuffer& cbuffer);
 	void cleanup(vkobjs& mvkobjs);
+	bool setnetwork{ false };
+	void backspace();
+	bool chatfocus{ false };
 private:
 	std::string inputxt{};
 	std::vector<std::string> chattxts;
 
-	unsigned int playerscore;
-	unsigned int aiscore;
+	unsigned int playerwave;
+	unsigned int playergold;
 
 	ppick mpick;
 	ppick aipick;
@@ -40,6 +47,13 @@ private:
 	unsigned int nframes{ 0 };
 
 	bool aipicking{ false };
+
+
+	int selectednetwork{ 0 };
+
+	bool offline{ true };
+	bool hosting{ false };
+	bool connectingtohost{ false };
 
 	float mfps = 0.0f;
 	float mavgalpha = 0.96f;

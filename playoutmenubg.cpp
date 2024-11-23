@@ -46,7 +46,7 @@ bool playoutmenubg::loadmodel(vkobjs& objs) {
 bool playoutmenubg::createplayout(vkobjs& objs) {
 	//std::vector<vktexdata> texdata0 = mgltf->gettexdata();
 	//desclayouts.insert(desclayouts.begin(), texdata0[0].texdescriptorlayout);
-	if (!playout::init(objs, rdgltfpipelinelayout, desclayouts, sizeof(float)))return false;
+	if (!playout::init(objs, rdgltfpipelinelayout, desclayouts, 3*sizeof(double)))return false;
 	return true;
 }
 
@@ -87,13 +87,13 @@ void playoutmenubg::cleanupmodels(vkobjs& objs) {
 
 
 
-void playoutmenubg::draw(vkobjs& objs) {
+void playoutmenubg::draw(vkobjs& objs, double& time, double& time2, double& life) {
 
 
 	//vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1, &rdperspviewmatrixubo[0].rdubodescriptorset, 0, nullptr);
 	//vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1, &rdmodelmatsssbo.rdssbodescriptorset, 0, nullptr);
 
 	vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfgpupipeline);
-	mmenu.draw(objs, rdgltfpipelinelayout);
+	mmenu.draw(objs, rdgltfpipelinelayout, time, time2, life);
 
 }

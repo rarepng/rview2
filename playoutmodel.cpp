@@ -32,8 +32,10 @@ bool playoutmodel::loadmodel(vkobjs& objs, std::string fname){
 bool playoutmodel::createinstances(vkobjs& objs,int count, bool rand){
 	int numTriangles{};
 	for (int i = 0; i < count; ++i) {
-		int xPos = std::rand() % 999;
-		int zPos = std::rand() % 999;
+		int xPos = std::rand() % 5999;
+		int zPos = std::rand() % 5999;
+		xPos -= 3000;
+		zPos -= 3000;
 		minstances.emplace_back(std::make_shared<vkgltfinstance>(mgltf,	glm::vec3(static_cast<float>(xPos),0.0f, static_cast<float>(zPos)), rand));
 		numTriangles += mgltf->gettricount(0,0);
 	}
@@ -116,6 +118,10 @@ std::shared_ptr<vkgltfinstance> playoutmodel::getinst(int i){
 modelsettings playoutmodel::getinstsettings()
 {
 	return minstances.at(0)->getinstancesettings();
+}
+
+unsigned int playoutmodel::getnuminstances(){
+	return numinstancess;
 }
 
 void playoutmodel::updatemats() {

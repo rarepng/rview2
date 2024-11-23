@@ -244,6 +244,7 @@ void vkgltfinstance::checkforupdates() {
 
 void vkgltfinstance::updateanimation() {
 	if (mmodelsettings.msplayanimation) {
+		mmodelsettings.msanimendtime = getanimendtime(mmodelsettings.msanimclip);
 		if (mmodelsettings.msblendingmode == blendmode::crossfade ||
 			mmodelsettings.msblendingmode == blendmode::additive) {
 			playanimation(mmodelsettings.msanimclip,
@@ -290,22 +291,18 @@ void vkgltfinstance::solveik() {
 
 
 
-void vkgltfinstance::playanimation(int animNum, float speedDivider, float blendFactor,
-	replaydirection direction) {
+void vkgltfinstance::playanimation(int animNum, float speedDivider, float blendFactor, replaydirection direction) {
 	double currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+	mmodelsettings.msanimtimepos = std::fmod(currentTime / 1000.0 * speedDivider, manimclips.at(animNum)->getEndTime());
 	if (direction == replaydirection::backward) {
-		blendanimationframe(animNum, manimclips.at(animNum)->getEndTime() -
-			std::fmod(currentTime / 1000.0 * speedDivider,
-				manimclips.at(animNum)->getEndTime()), blendFactor);
+		blendanimationframe(animNum, mmodelsettings.msanimtimepos, blendFactor);
 	}
 	else {
-		blendanimationframe(animNum, std::fmod(currentTime / 1000.0 * speedDivider,
-			manimclips.at(animNum)->getEndTime()), blendFactor);
+		blendanimationframe(animNum, mmodelsettings.msanimtimepos, blendFactor);
 	}
 }
 
-void vkgltfinstance::playanimation(int sourceAnimNumber, int destAnimNumber,
-	float speedDivider, float blendFactor, replaydirection direction) {
+void vkgltfinstance::playanimation(int sourceAnimNumber, int destAnimNumber, float speedDivider, float blendFactor, replaydirection direction) {
 	double currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 
 	if (direction == replaydirection::backward) {

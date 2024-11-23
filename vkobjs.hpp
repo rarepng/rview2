@@ -10,6 +10,8 @@
 #include <thread>
 #include <future>
 #include <shared_mutex>
+#include "netclient.hpp"
+#include "netserver.hpp"
 
 struct vkvert {
 	glm::vec3 pos;
@@ -90,8 +92,22 @@ struct vkpushconstants {
 	int pkmodelstride;
 	unsigned int texidx;
 	float t{ 0.0f };
+	bool decaying{ false };
 };
 
+struct gobjs{
+	unsigned int wave{ 0 };
+};
+
+
+struct netobjs {
+	bool offlineplay{ true };
+	bool rdserverclient{ false };
+	netclient* nclient = nullptr;
+	netserver* nserver = nullptr;
+	std::string serveraddress{ "127.0.0.1:21122" };
+	int port{21122};
+};
 
 struct vkobjs {
 
@@ -101,7 +117,7 @@ struct vkobjs {
 	GLFWwindow* rdwind = nullptr;
 	GLFWmonitor* rdmonitor = nullptr;
 	const GLFWvidmode* rdmode;
-	bool rdfullscreen{ true };
+	bool rdfullscreen{ false };
 	int rdwidth = 0;
 	int rdheight = 0;
 	unsigned int rdtricount = 0;
@@ -116,9 +132,9 @@ struct vkobjs {
 	float rduigeneratetime{ 0.0f };
 	float rduidrawtime{ 0.0f };
 
+	bool* decaying;
 
-
-
+	float loadingprog{ 0.0f };
 
 	// CAM
 

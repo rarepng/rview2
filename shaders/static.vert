@@ -1,6 +1,4 @@
 #version 460
-#extension GL_EXT_scalar_block_layout : enable
-#extension GL_EXT_shader_explicit_arithmetic_types:require
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aTexCoord;
@@ -15,6 +13,7 @@ layout (push_constant) uniform Constants {
   int aModelStride;
   uint txid;
   float t;
+  bool decaying;
 };
 
 layout (set = 1, binding = 0) uniform Matrices {

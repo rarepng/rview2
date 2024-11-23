@@ -9,7 +9,7 @@
 #include <glm/gtx/matrix_decompose.hpp>
 
 #include "vkvbo.hpp"
-#include "indexbuffer.hpp"
+#include "vkebo.hpp"
 #include "vkgltfstatic.hpp"
 
 bool vkgltfstatic::loadmodel(vkobjs& objs, std::string fname)
@@ -103,7 +103,7 @@ void vkgltfstatic::createindexbuffers(vkobjs& objs) {
 
             size_t newbytelength{ sizeof(unsigned short) * acc.count };
 
-            indexbuffer::init(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j), newbytelength);
+            vkebo::init(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j), newbytelength);
         }
     }
 }
@@ -135,7 +135,7 @@ void vkgltfstatic::uploadindexbuffers(vkobjs& objs) {
             const tinygltf::BufferView& bview = mmodel->bufferViews.at(acc.bufferView);
             const tinygltf::Buffer& buff = mmodel->buffers.at(bview.buffer);
 
-            indexbuffer::upload(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j), buff, bview, acc);
+            vkebo::upload(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j), buff, bview, acc);
         }
     }
 
@@ -228,7 +228,7 @@ void vkgltfstatic::cleanup(vkobjs& objs) {
     }
     for (int i{ 0 }; i < mgltfobjs.rdgltfindexbufferdata.size(); i++) {
         for (int j{ 0 }; j < mgltfobjs.rdgltfindexbufferdata.at(i).size(); j++) {
-            indexbuffer::cleanup(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j));
+            vkebo::cleanup(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j));
         }
     }
     for (int i{ 0 }; i < mgltfobjs.rdgltfmodeltex.size(); i++) {

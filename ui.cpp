@@ -10,6 +10,7 @@
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_vulkan.h>
 #include <imgui/imgui_stdlib.h>
+
 #include <memory>
 #include <thread>
 #include <future>
@@ -67,6 +68,7 @@ bool ui::init(vkobjs& renderData) {
     imguiIinitInfo.ImageCount = renderData.rdswapchainimages.size();
     imguiIinitInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
     imguiIinitInfo.RenderPass = renderData.rdrenderpass;
+    
     //imguiIinitInfo.UseDynamicRendering = true;
 
     ImGui_ImplVulkan_Init(&imguiIinitInfo);
@@ -90,7 +92,9 @@ bool ui::init(vkobjs& renderData) {
         return false;
     }
 
+    renderData.mtx2->lock();
     ImGui_ImplVulkan_CreateFontsTexture();
+    renderData.mtx2->unlock();
 
     if (vkEndCommandBuffer(imguiCommandBuffer) != VK_SUCCESS) {
         return false;
@@ -124,11 +128,11 @@ bool ui::init(vkobjs& renderData) {
     //if (vkWaitForFences(renderData.rdvkbdevice.device, 1, &renderData.rdrenderfence, VK_TRUE, INT64_MAX) != VK_SUCCESS) {
     //    return false;
     //}
-   //renderData.mtx2.lock();
+   renderData.mtx2->lock();
     if (vkQueueSubmit(renderData.rdgraphicsqueue, 1, &submitInfo, imguiBufferFence) != VK_SUCCESS) {
         return false;
     }
-   //renderData.mtx2.unlock();
+   renderData.mtx2->unlock();
 
     if (vkWaitForFences(renderData.rdvkbdevice.device, 1, &imguiBufferFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
         return false;
@@ -138,6 +142,12 @@ bool ui::init(vkobjs& renderData) {
     commandbuffer::cleanup(renderData, renderData.rdcommandpool[1], imguiCommandBuffer);
 
     ImGui::StyleColorsDark();
+
+
+
+
+    //ImGui_ImplGlfw_RestoreCallbacks(renderData.rdwind);
+    //ImGui_ImplGlfw_InstallCallbacks(renderData.rdwind);
     
 
     /* init plot vectors */
@@ -161,16 +171,17 @@ bool ui::init(vkobjs& renderData) {
     return true;
 }
 
-void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
+void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nobjs) {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+
     {
         ImGuiWindowFlags imguiWindowFlags = 0;
 
         ImGui::SetNextWindowBgAlpha(0.8f);
 
-        ImGui::Begin("Control", nullptr, imguiWindowFlags);
+        ImGui::Begin("debug", nullptr, imguiWindowFlags);
 
         static float newFps = 0.0f;
         /* avoid inf values (division by zero) */
@@ -232,7 +243,7 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
         ImGui::BeginGroup();
         ImGui::Text("FPS:");
         ImGui::SameLine();
-        ImGui::Text("%s", std::to_string(mfps).c_str());
+        ImGui::Text("%s", std::to_string(1.0f/renderData.rdframetime).c_str());
         ImGui::EndGroup();
 
         if (ImGui::IsItemHovered()) {
@@ -451,7 +462,8 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
 
             ImGui::Text("Field of View");
             ImGui::SameLine();
-            ImGui::SliderFloat("##FOV", &renderData.rdfov, 40.0f, 150.0f, "%d", flags);
+            ImGui::Text("%s", std::to_string(renderData.rdfov).c_str());
+            //ImGui::SliderFloat("##FOV", &renderData.rdfov, 40.0f, 150.0f, "%f", flags);
         }
 
         if (ImGui::CollapsingHeader("glTF Instances")) {
@@ -489,7 +501,7 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
 
         if (ImGui::CollapsingHeader("glTF Model")) {
             ImGui::Checkbox("Draw Model", &settings.msdrawmodel);
-            ImGui::Checkbox("Draw Skeleton", &settings.msdrawskeleton);
+            //ImGui::Checkbox("Draw Skeleton", &settings.msdrawskeleton);
 
             ImGui::Text("Vertex Skinning:");
             ImGui::SameLine();
@@ -497,11 +509,11 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
                 settings.mvertexskinningmode == skinningmode::linear)) {
                 settings.mvertexskinningmode = skinningmode::linear;
             }
-            ImGui::SameLine();
-            if (ImGui::RadioButton("Dual Quaternion",
-                settings.mvertexskinningmode == skinningmode::dualquat)) {
-                settings.mvertexskinningmode = skinningmode::dualquat;
-            }
+            //ImGui::SameLine();
+            //if (ImGui::RadioButton("Dual Quaternion",
+            //    settings.mvertexskinningmode == skinningmode::dualquat)) {
+            //    settings.mvertexskinningmode = skinningmode::dualquat;
+            //}
         }
 
         if (ImGui::CollapsingHeader("glTF Animation")) {
@@ -698,7 +710,7 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
 
 
     //chatbox
-    {
+    if(!nobjs.offlineplay){
         ImGuiWindowFlags imguiWindowFlags = 0;
         imguiWindowFlags |= ImGuiWindowFlags_NoBackground;
         imguiWindowFlags |= ImGuiWindowFlags_NoResize;
@@ -711,7 +723,8 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
         ImVec2 wsize{ ImGui::GetMainViewport()->Size };
         ImVec2 wpos{ ImGui::GetMainViewport()->Pos };
 
-        ImGui::SetNextWindowPos({ wpos.x + wsize.x * 0.0f , wpos.y + wsize.y * 1.0f - 20.0f }, 1, { 0.0f,1.0f });
+
+        ImGui::SetNextWindowPos({ wpos.x + wsize.x * 0.0f , wpos.y + wsize.y * 1.0f - 140.0f }, 1, { 0.0f,1.0f });
         ImGui::SetNextWindowSizeConstraints({ 600.0f,0.0f }, { 600.0f,400.0f });
 
         ImGui::Begin("chat", nullptr, imguiWindowFlags);
@@ -719,26 +732,36 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
 
 
         for (const std::string& i : chattxts) {
-            std::cout << i << std::endl;
+            //std::cout << i << std::endl;
             ImGui::Text(i.c_str());
         }
 
 
-        ImGui::SetNextWindowPos({ wpos.x + wsize.x * 0.0f , wpos.y + wsize.y * 1.0f }, 1, { 0.0f,1.0f });
+        ImGui::End();
+        ImGui::SetNextWindowPos({ wpos.x + wsize.x * 0.0f , wpos.y + wsize.y * 1.0f -100.0f }, 1, { 0.0f,1.0f });
         ImGui::SetNextWindowSizeConstraints({ 600.0f,0.0f }, { 600.0f,400.0f });
 
         ImGui::Begin("chatinput", nullptr, imguiWindowFlags);
         ImGui::InputText(" ", &inputxt);
         ImGui::SameLine();
-        if (ImGui::Button("send >")) {
-            std::string i2 = inputxt;
-            chattxts.push_back(i2);
+        if ((ImGui::Button("send >")||chatfocus)) {
+            if (!inputxt.empty()) {
+                if (nobjs.rdserverclient) {
+                    const std::string i2 = "SERVER : " + inputxt;
+                    for (const auto i : nobjs.nserver->GetConnectedClients()) {
+                        nobjs.nserver->SendStringToClient(i.first, i2);
+                    }
+                    chattxts.push_back(i2);
+                } else {
+                    const std::string i2 = inputxt;
+                    nobjs.nclient->SendString(i2);
+                }
+            }
             inputxt.clear();
-            ImGui::SetNextWindowScroll({ 1.0f,1.0f });///////////////////////////////////////////////////////////////////////////////////////////////
+            chatfocus = false;
         }
 
 
-        ImGui::End();
         ImGui::End(); 
     }
     {
@@ -757,17 +780,21 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
         ImGui::SetNextWindowPos({ wpos.x + wsize.x * 1.0f, wpos.y + wsize.y * 0.0f }, 1, { 1.0f,0.0f });
 
         ImGui::Begin("Scores", nullptr, imguiWindowFlags);
-        ImGui::Text("player :");
-        ImGui::SameLine();
-        ImGui::Text(std::to_string(playerscore).c_str());
 
-        ImGui::Text("ai :");
+        ImGui::Text("wave :");
+        //ImGui::Text("player :");
         ImGui::SameLine();
-        ImGui::Text(std::to_string(aiscore).c_str());
+        ImGui::Text(std::to_string(playerwave).c_str());
+
+        ImGui::Text("gold :");
+        //ImGui::Text("player :");
+        ImGui::SameLine();
+        ImGui::Text(std::to_string(playergold).c_str());
 
         ImGui::End();
     }
     {
+        //minigame
         ImGuiWindowFlags imguiWindowFlags = 0;
         imguiWindowFlags |= ImGuiWindowFlags_NoBackground;
         imguiWindowFlags |= ImGuiWindowFlags_NoResize;
@@ -782,70 +809,21 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
         ImGui::SetNextWindowPos({ wpos.x + wsize.x * 1.0f, wpos.y + wsize.y * 1.0f}, 1, { 1.0f,1.0f });
 
         ImGui::Begin("controls", nullptr, imguiWindowFlags);
-        if (!aipicking) {
-            if (ImGui::Button("ROCK")) {
-                aipick = static_cast<ppick>(std::rand() % 3);
-                aipicking=true;
-                mpick = ppick::rock;
-                if (aipick == mpick)mstate = gstate::tie;
-                if (aipick == ppick::scissor)mstate = gstate::player;
-                if (aipick == ppick::paper)mstate = gstate::ai;
-            };
-            ImGui::SameLine();
-            if (ImGui::Button("PAPER")) {
-                aipick = static_cast<ppick>(std::rand() % 3);
-                aipicking = true;
-                mpick = ppick::paper;
-                if (aipick == mpick)mstate = gstate::tie;
-                if (aipick == ppick::rock)mstate = gstate::player;
-                if (aipick == ppick::scissor)mstate = gstate::ai;
-            };
-            ImGui::SameLine();
-            if (ImGui::Button("SCISSOR")) {
-                aipick = static_cast<ppick>(std::rand() % 3);
-                aipicking = true;
-                mpick = ppick::scissor;
-                if (aipick == mpick)mstate = gstate::tie;
-                if (aipick == ppick::paper)mstate = gstate::player;
-                if (aipick == ppick::rock)mstate = gstate::ai;
-            };
-        }
-        else {
-            if (nframes < 200) {
-                nframes++;
-                ImGui::Text("ai picking...");
-            }
-            else {
-                if (mstate == gstate::tie) {
-                    ImGui::Text("TIE");
-                }
-                else if (mstate == gstate::ai) {
-                    ImGui::Text("you lose..");
-                }
-                else {
-                    ImGui::Text("you win!");
-                }
-                if (ImGui::Button("play again")) {
-                    if (mstate == gstate::ai) {
-                        aiscore++;
-                    }
-                    else if(mstate==gstate::player) {
-                        playerscore++;
-                    }
-                    aipicking = false;
-                    nframes = 0;
-                }
-            }
-
-        }
-
+        if (*renderData.decaying)
+            ImGui::PushStyleColor(ImGuiCol_Button, { 0.2f,0.2f,0.2f,1.0f });
+        else
+            ImGui::PushStyleColor(ImGuiCol_Button, { 0.8f,0.2f,0.8f,1.0f });
+        if (ImGui::Button("Drop Vessel")) {
+            *renderData.decaying = true;
+        };
+        ImGui::PopStyleColor();
         ImGui::End();
     }
 
 
 }
 
-bool ui::createmainmenuframe(vkobjs& mvkobjs) {
+bool ui::createmainmenuframe(vkobjs& mvkobjs,netobjs& nobjs) {
 
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -905,10 +883,84 @@ bool ui::createmainmenuframe(vkobjs& mvkobjs) {
                     mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
                 }
             }
+            if (ImGui::MenuItem("network settings", "F3")) {
+                setnetwork = !setnetwork;
+                //nobjs.rdserverclient = !nobjs.rdserverclient;
+            }
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
     }
+
+    if (setnetwork) {
+        {
+            ImGuiWindowFlags imguiWindowFlags = 0;
+            //imguiWindowFlags |= ImGuiWindowFlags_NoBackground;
+            imguiWindowFlags |= ImGuiWindowFlags_NoResize;
+            //imguiWindowFlags |= ImGuiWindowFlags_NoMove;
+            imguiWindowFlags |= ImGuiWindowFlags_NoSavedSettings;
+            imguiWindowFlags |= ImGuiWindowFlags_NoCollapse;
+            //imguiWindowFlags |= ImGuiWindowFlags_NoTitleBar;
+            imguiWindowFlags |= ImGuiWindowFlags_AlwaysAutoResize;
+
+            ImVec2 wsize{ ImGui::GetMainViewport()->Size };
+            ImVec2 wpos{ ImGui::GetMainViewport()->Pos };
+
+            ImGui::SetNextWindowScroll({ 1.0f,1.0f });
+
+            ImGui::SetNextWindowPos({ wpos.x + wsize.x * 0.0f , wpos.y + wsize.y * 1.0f - 40.0f }, 1, { 0.0f,1.0f });
+            ImGui::SetNextWindowSizeConstraints({ 600.0f,300.0f }, { 600.0f,300.0f });
+
+            ImGui::Begin("network settings", nullptr, imguiWindowFlags);
+
+
+            if (ImGui::RadioButton("play offline", &selectednetwork, 0)) {
+                offline = true;
+                hosting = false;
+                connectingtohost = false;
+                nobjs.offlineplay = true;
+            }
+            if (ImGui::RadioButton("host server", &selectednetwork, 1)) {
+                offline = false;
+                hosting = true;
+                connectingtohost = false;
+                nobjs.offlineplay = false;
+                nobjs.rdserverclient = true;
+            }
+            if (hosting) {
+                ImGui::Text("port :");
+                ImGui::SameLine();
+                ImGui::InputInt(" ", &nobjs.port);
+            }
+            if (ImGui::RadioButton("connect to a host", &selectednetwork, 2)) {
+                offline = false;
+                hosting = false;
+                connectingtohost = true;
+                nobjs.offlineplay = false;
+                nobjs.rdserverclient = false;
+            }
+            if (connectingtohost) {
+
+                ImGui::Text("please format address_of_host:port_of_host");
+                ImGui::Text("and remember to forward the port!");
+                ImGui::Text("e.g 127.0.0.1:21122");
+                ImGui::Text("host address :");
+                ImGui::SameLine();
+                ImGui::InputText(" ", &nobjs.serveraddress);
+            }
+
+            ImGui::End();
+        }
+    }
+
+
+
+
+
+
+
+
+
     ImGui::PopFont();
 
     ImGui::PushFont(io.Fonts->Fonts[1]);
@@ -956,11 +1008,105 @@ bool ui::createloadingscreen(vkobjs& mvkobjs) {
 
     ImGui::Begin("loading", nullptr, imguiWindowFlags);
 
-    ImGui::ProgressBar(static_cast<float>(std::rand()%100)/100.0f, {600,100});
+    //ImGui::ProgressBar(static_cast<float>(std::rand()%100)/100.0f, {600,100});
+    ImGui::ProgressBar(mvkobjs.loadingprog, {600,100});
 
     ImGui::End();
 
     return true;
+}
+
+bool ui::createpausebuttons(vkobjs& mvkobjs){
+
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    ImGuiIO& io = ImGui::GetIO();
+
+
+    ImGuiWindowFlags imguiWindowFlags = 0;
+    imguiWindowFlags |= ImGuiWindowFlags_MenuBar;
+    imguiWindowFlags |= ImGuiWindowFlags_NoBackground;
+    imguiWindowFlags |= ImGuiWindowFlags_NoResize;
+    imguiWindowFlags |= ImGuiWindowFlags_NoMove;
+    imguiWindowFlags |= ImGuiWindowFlags_NoSavedSettings;
+    imguiWindowFlags |= ImGuiWindowFlags_NoCollapse;
+    imguiWindowFlags |= ImGuiWindowFlags_NoTitleBar;
+    imguiWindowFlags |= ImGuiWindowFlags_AlwaysAutoResize;
+
+
+
+
+    ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), 1, { 0.5f,0.5f });
+
+
+    ImGui::Begin("pause", nullptr, imguiWindowFlags);
+
+
+
+    ImGui::PushStyleColor(ImGuiCol_Button, { 0.0f,0.0f,0.0f,1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.4f,0.4f,0.4f,1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.9f,0.9f,0.9f,1.0f });
+
+
+    ImGui::PushFont(io.Fonts->Fonts[0]);
+
+
+    ImGui::PushStyleColor(ImGuiCol_MenuBarBg, { 0.0f,0.0f,0.0f,0.2f });
+    ImGui::PushStyleColor(ImGuiCol_PopupBg, { 0.0f,0.0f,0.0f,0.2f });
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, { 1.0f,1.0f,1.0f,0.4f });
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, { 1.0f,1.0f,1.0f,1.0f });
+
+    //ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, { 400,600 });
+
+
+
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("settings")) {
+            if (mvkobjs.rdfullscreen) {
+                if (ImGui::MenuItem("windowed", "F4")) {
+                    glfwSetWindowMonitor(mvkobjs.rdwind, nullptr, 100, 200, 900, 600, GLFW_DONT_CARE);
+                    mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
+                }
+            } else {
+                if (ImGui::MenuItem("fullscreen", "F4")) {
+                    glfwSetWindowMonitor(mvkobjs.rdwind, mvkobjs.rdmonitor, 0, 0, mvkobjs.rdmode->width, mvkobjs.rdmode->height, mvkobjs.rdmode->refreshRate);
+                    mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
+                }
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+
+    ImGui::PopFont();
+
+    ImGui::PushFont(io.Fonts->Fonts[1]);
+
+
+    ImGui::BeginGroup();
+
+    bool p = ImGui::Button("continue", { 400,200 });
+    ImGui::PushFont(io.Fonts->Fonts[0]);
+    ImGui::PopFont();
+    if (ImGui::Button("EXIT", { 400,120 }))glfwSetWindowShouldClose(mvkobjs.rdwind, true);
+    ImGui::PopStyleColor(7);
+    ImGui::PopStyleVar(0);
+    ImGui::EndGroup();
+
+    ImGui::PopFont();
+
+    ImGui::End();
+
+    ImGui::EndFrame();
+
+    return p;
+}
+
+void ui::addchat(std::string s){
+    //ImGui::SetNextWindowScroll({10000.0f,10000.0f});
+    chattxts.push_back(s);
 }
 
 void ui::render(vkobjs& renderData,VkCommandBuffer& cbuffer) {
@@ -976,4 +1122,9 @@ void ui::cleanup(vkobjs& renderData) {
     vkDestroyDescriptorPool(renderData.rdvkbdevice.device, renderData.rdimguidescriptorpool, nullptr);
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+}
+
+void ui::backspace(){
+    if(!inputxt.empty())
+    inputxt.pop_back();
 }

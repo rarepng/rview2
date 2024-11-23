@@ -13,7 +13,7 @@
 
 
 #include "vkvbo.hpp"
-#include "indexbuffer.hpp"
+#include "vkebo.hpp"
 #include "vkgltfmodel.hpp"
 
 bool vkgltfmodel::loadmodel(vkobjs& objs, std::string fname)
@@ -292,7 +292,7 @@ void vkgltfmodel::createindexbuffers(vkobjs& objs) {
 
             size_t newbytelength{ sizeof(unsigned short) * acc.count };
 
-            indexbuffer::init(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j), newbytelength);
+            vkebo::init(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j), newbytelength);
         }
     }
 }
@@ -324,7 +324,7 @@ void vkgltfmodel::uploadindexbuffers(vkobjs& objs){
             const tinygltf::BufferView& bview = mmodel->bufferViews.at(acc.bufferView);
             const tinygltf::Buffer& buff = mmodel->buffers.at(bview.buffer);
 
-            indexbuffer::upload(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j), buff, bview, acc);
+            vkebo::upload(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j), buff, bview, acc);
         }
     }
 
@@ -374,6 +374,7 @@ void vkgltfmodel::drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, int in
             pushes[i][j].pkmodelstride = stride;
             pushes[i][j].texidx = mmodel->textures[mmodel->materials[mmodel->meshes.at(i).primitives.at(j).material].pbrMetallicRoughness.baseColorTexture.index].source;
             pushes[i][j].t = (float)glfwGetTime();
+            pushes[i][j].decaying = *objs.decaying;
 
             vkCmdPushConstants(objs.rdcommandbuffer[0], vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants), &pushes.at(i).at(j));
             for (int k{ 0 }; k < mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).size(); k++) {
@@ -387,11 +388,10 @@ void vkgltfmodel::drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, int in
 
 }
 
-void vkgltfmodel::drawinstanced(vkobjs& objs, VkPipelineLayout& vkplayout, int instancecount, int stride, float decaystart, bool* decaying){
+void vkgltfmodel::drawinstanced(vkobjs& objs, VkPipelineLayout& vkplayout, int instancecount, int stride, double& decaytime, bool* decaying){
     VkDeviceSize offset = 0;
     std::vector<std::vector<vkpushconstants>> pushes(mgltfobjs.rdgltfvertexbufferdata.size());
-    float t4 = (float)glfwGetTime() - decaystart;
-    if (t4 > 2.0)*decaying = false;
+    if (decaytime > 0.8)*decaying = false;
     vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1, &mgltfobjs.rdgltfmodeltex[0].texdescriptorset, 0, nullptr);
 
     for (int i{ 0 }; i < mgltfobjs.rdgltfvertexbufferdata.size(); i++) {
@@ -401,7 +401,7 @@ void vkgltfmodel::drawinstanced(vkobjs& objs, VkPipelineLayout& vkplayout, int i
         for (int j{ 0 }; j < mgltfobjs.rdgltfvertexbufferdata.at(i).size(); j++) {
             pushes[i][j].pkmodelstride = stride;
             pushes[i][j].texidx = mmodel->textures[mmodel->materials[mmodel->meshes.at(i).primitives.at(j).material].pbrMetallicRoughness.baseColorTexture.index].source;
-            pushes[i][j].t = t4;
+            pushes[i][j].t = decaytime;
 
             vkCmdPushConstants(objs.rdcommandbuffer[0], vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants), &pushes.at(i).at(j));
             for (int k{ 0 }; k < mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).size(); k++) {
@@ -436,7 +436,7 @@ void vkgltfmodel::cleanup(vkobjs& objs){
     }
     for (int i{ 0 }; i < mgltfobjs.rdgltfindexbufferdata.size(); i++) {
         for (int j{ 0 }; j < mgltfobjs.rdgltfindexbufferdata.at(i).size(); j++) {
-            indexbuffer::cleanup(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j));
+            vkebo::cleanup(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j));
         }
     }
     for (int i{ 0 }; i < mgltfobjs.rdgltfmodeltex.size(); i++) {

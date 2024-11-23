@@ -168,21 +168,21 @@ bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, std::string f
 	fenceinfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 
-rdata.mtx2->lock();
 	if (vkCreateFence(rdata.rdvkbdevice.device, &fenceinfo, nullptr, &stagingbufferfence) != VK_SUCCESS) {
 		return false;
 	}
 	if (vkResetFences(rdata.rdvkbdevice.device, 1, &stagingbufferfence) != VK_SUCCESS) {
 		return false;
 	}
+	rdata.mtx2->lock();
 	if (vkQueueSubmit(rdata.rdgraphicsqueue, 1, &submitinfo, stagingbufferfence) != VK_SUCCESS) {
 		return false;
 	}
+	rdata.mtx2->unlock();
 	if (vkWaitForFences(rdata.rdvkbdevice.device, 1, &stagingbufferfence, VK_TRUE, INT64_MAX) != VK_SUCCESS) {
 		return false;
 	}
 
-rdata.mtx2->unlock();
 
 
 
@@ -582,7 +582,7 @@ bool vktexture::loadtexlayoutpool(vkobjs& rdata, std::vector<vktexdata>& texdata
 
 	VkDescriptorPoolSize poolsize{};
 	poolsize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolsize.descriptorCount = mmodel->images.size()*1024*1024*4;
+	poolsize.descriptorCount = 1;//mmodel->images.size()*1024*1024*4;
 
 	VkDescriptorPoolCreateInfo descriptorpool{};
 	descriptorpool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

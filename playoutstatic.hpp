@@ -7,7 +7,7 @@
 #include <tinygltf/tiny_gltf.h>
 #include "vktexture.hpp"
 #include "vkobjs.hpp"
-#include "modelsettings.hpp"
+#include "staticsettings.hpp"
 #include "ubo.hpp"
 #include "ssbo.hpp"
 #include "vkgltfstatic.hpp"

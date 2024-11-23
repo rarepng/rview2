@@ -28,7 +28,7 @@
 #include "ssbomesh.hpp"
 #include "ssbo.hpp"
 #include "vkvbo.hpp"
-#include "indexbuffer.hpp"
+#include "vkebo.hpp"
 #include "ui.hpp"
 #include "vkcam.hpp"
 
@@ -40,6 +40,7 @@
 #include "playoutmodel.hpp"
 #include "playoutstatic.hpp"
 #include "playoutmenubg.hpp"
+#include "playoutground.hpp"
 
 #include "vkgltfmodel.hpp"
 #include "vkgltfinstance.hpp"
@@ -57,6 +58,7 @@ public:
 	bool init();
 	void setsize(unsigned int w, unsigned int h);
 	bool draw();
+	bool drawpause();
 	bool drawmainmenu();
 	bool drawloading();
 	bool drawblank();
@@ -65,27 +67,59 @@ public:
 	void toggleshader();
 	void cleanup();
 	void handlekey(int key, int scancode, int action, int mods);
+	void handlekeymenu(int key, int scancode, int action, int mods);
 	void handleclick(int key, int action, int mods);
 	void handlemouse(double x, double y);
 	bool initscene();
+	bool getserverclientstatus();
+	ui* getuihandle();
+	void startmoving();
+	void moveplayer();
+	void moveenemies();
+	bool checkphp();
 
-	bool quicksetup();
+
+	bool quicksetup(netclient* nclient);
+	bool quicksetup(netserver* nserver);
+
+	vkobjs& getvkobjs();
+	netobjs& getnetobjs();
+
 
 private:
+
+	std::shared_mutex pausedmtx{};
+
+
 	vkobjs mvkobjs{};
+	netobjs mnobjs{};
+	gobjs mgobjs{};
+
+	double playerhp{ 1.0 };
+	glm::vec<2,double> lastmousexy{};
+
+	glm::vec2 movediff{};
+
+
 
 	double decaystart{};
 	bool decaying{ false };
+	bool inmenu{ true };
+
+
+	bool paused{ false };
 
 	std::chrono::high_resolution_clock::time_point starttime = std::chrono::high_resolution_clock::now();
 
 	vkcam mcam{};
 
 	std::shared_ptr<playoutmenubg> mmenubg;
+	std::shared_ptr<playoutmenubg> lifebar;
 
 	std::shared_ptr<playoutback> mbackground;
 
 	std::shared_ptr<playoutplayer> mplayer;
+	std::shared_ptr<playoutground> mground;
 
 	std::vector<std::shared_ptr<playoutmodel>> mpgltf;
 
@@ -93,9 +127,27 @@ private:
 
 	bool mmodeluploadrequired{ true };
 
+	bool playermoving{ false };
+
+	glm::vec3 playermoveto{ 0.0f };
+	glm::vec3 playerlookto{ 0.0f };
+
+
+
+	glm::vec3 decaypos{ 0.0f };
+
 	float tmpx{}, tmpy{};
 
 	bool rdscene{ true };
+
+
+	double pausebgntime{ 0.0 };
+	double pausetime{ 0.0 };
+
+	double lifetime{ 0.0 };
+	double lifetime2{ 0.0 };
+
+	double decaytime{ 0.0 };
 
 	bool mlock{};
 	int mousex{ 0 };
@@ -108,17 +160,26 @@ private:
 
 	unsigned int playercount{ 1 };
 	unsigned int backgobjs{ 1 };
-	const std::vector<unsigned int> animcounts{ 2,4 };
-	const std::vector<unsigned int> staticcounts{ 2,60,1 };
-	std::string playerfname{ "resources/player.glb" };
-	std::string backfname{ "resources/dontuse3.glb" };
-	const std::vector<std::string> animfname{ "resources/untitled.glb","resources/untitled1.glb" };
-	const std::vector<std::string> staticfname{ "resources/dontuse1.glb","resources/dontuse2.glb","resources/dontuse3.glb" };
+	unsigned int groundobjs{ 200000 };
+	const std::vector<unsigned int> animcounts{ 22 };
+	const std::vector<unsigned int> staticcounts{ };
+	const std::string playerfname{ "resources/player.glb" };
+	const std::string backfname{ "resources/dontuse3.glb" };
+	const std::string groundfname{ "resources/dontuse4.glb" };
+	const std::vector<std::string> animfname{ "resources/untitled.glb" };
+	const std::vector<std::string> staticfname{ };
+	//const std::vector<std::string> menubgshaders{ "shaders/menufog.vert.spv", "shaders/menufog.frag.spv" };
+	//const std::vector<std::string> playershaders{ "shaders/player.vert.spv", "shaders/player.frag.spv" };
+	//const std::vector<std::string> backshaders{ "shaders/static.vert.spv", "shaders/static.frag.spv" };
+	//const std::vector<std::string> animshaders{ "shaders/gltf_gpu.vert.spv", "shaders/gltf_gpu.frag.spv" };
+	//const std::vector<std::string> staticshaders{ "shaders/static.vert.spv", "shaders/static.frag.spv" };
 	const std::vector<std::string> menubgshaders{ "shaders/menufog.vert.spv", "shaders/menufog.frag.spv" };
-	const std::vector<std::string> playershaders{ "shaders/gltf_gpu.vert.spv", "shaders/gltf_gpu.frag.spv" };
+	const std::vector<std::string> lifebarshaders{ "shaders/heart.vert.spv", "shaders/heart.frag.spv" };
+	const std::vector<std::string> playershaders{ "shaders/player.vert.spv", "shaders/player.frag.spv" };
 	const std::vector<std::string> backshaders{ "shaders/static.vert.spv", "shaders/static.frag.spv" };
 	const std::vector<std::string> animshaders{ "shaders/gltf_gpu.vert.spv", "shaders/gltf_gpu.frag.spv" };
 	const std::vector<std::string> staticshaders{ "shaders/static.vert.spv", "shaders/static.frag.spv" };
+	const std::vector<std::string> groundshaders{ "shaders/ground.vert.spv", "shaders/ground.frag.spv" };
 
 
 	ui mui{};
@@ -140,7 +201,12 @@ private:
 
 	bool switchshader{ false };
 
+
+	bool setuplifebar();
+	bool setuplifebar2();
 	bool loadbackground();
+	bool setupground();
+	bool setupground2();
 	bool setupplayer();
 	bool setupplayer2();
 	bool setupmodels();

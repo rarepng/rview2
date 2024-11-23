@@ -1,7 +1,8 @@
 #version 460
 
-layout (location = 0) flat in float t2;
-layout (location = 1) in vec2 pos;
+layout (location = 0) flat in double t2;
+layout (location = 1) flat in double l2;
+layout (location = 2) in vec2 pos;
 
 layout (location = 0) out vec4 f;
 
@@ -41,8 +42,8 @@ void main(){
     
 	vec2 speed = vec2(0.001, 0.52);
 	vec2 p = pos.xy * 0.02;
-	float q = fbm(p - t2 * 0.1);
-	vec2 r = vec2(fbm(p + q + t2 * speed.x - p.x - p.y), fbm(p + q - t2 * speed.y));
+	float q = fbm(p - float(t2) * 0.1);
+	vec2 r = vec2(fbm(p + q + float(t2) * speed.x - p.x - p.y), fbm(p + q - float(t2) * speed.y));
 	vec4 c = mix(c1, c2, fbm(p + r)) + mix(c3, c4, r.x) - mix(c5, c6, r.y);
 	
     c = c * vec4(1.0 - smoothstep(0.1, 0.8, pos.y));
