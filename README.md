@@ -12,10 +12,8 @@ full support for glsl shaders ( compile with glslc for vulkan ).
 * stb_image
 
 ## compiling
-### g++ for opengl
-``g++ -std=c++20 glad.c tiny_gltf.cc *.cpp -lglfw -lOpenGL -o bin``<br>
 ### g++ for vulkan
-``glslc -c shader/*``<br>
+``glslc -c shaders/*``<br>
 ``g++ -std=c++20 tiny_gltf.cc *.cpp imgui/*.cpp -lglfw -lvulakn -o bin``
 
 visual studio can be used too for windows compiling (or mingw) by manually importing all the files or cmake by creating the script for it
