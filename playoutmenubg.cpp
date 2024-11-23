@@ -57,10 +57,9 @@ bool playoutmenubg::createpline(vkobjs& objs, std::string vfile, std::string ffi
 }
 
 
-void playoutmenubg::uploadvboebo(vkobjs& objs) {
+void playoutmenubg::uploadvboebo(vkobjs& objs, VkCommandBuffer& cbuffer) {
 	if (uploadreq) {
-		mmenu.uploadvertexbuffers(objs);
-		mmenu.uploadindexbuffers(objs);
+		mmenu.uploadvboebo(objs,cbuffer);
 		uploadreq = false;
 	}
 }

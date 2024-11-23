@@ -2,6 +2,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <vector>
 #include <memory>
+#include <map>
 #include <string>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -13,6 +14,9 @@ class vknode:public std::enable_shared_from_this<vknode> {
 public:
 	~vknode();
 
+
+	static std::map<int, bool> updated;
+
 	static std::shared_ptr<vknode> createroot(int root);
 	void addchildren(std::vector<int> children);
 	void addchildren(fastgltf::pmr::MaybeSmallVector<size_t,0> children);
@@ -23,13 +27,13 @@ public:
 	void setname(std::string n);
 	std::string getname();
 
-	void setscale(glm::vec<3, float> sca);
-	void settranslation(glm::vec<3, float> tra);
-	void setrotation(glm::qua<float> rot);
+	void setscale(glm::vec3 sca);
+	void settranslation(glm::vec3 tra);
+	void setrotation(glm::quat rot);
 
 	void blendscale(glm::vec3 s, float blendfactor);
 	void blendtrans(glm::vec3 t, float blendfactor);
-	void blendrot(glm::qua<float> r, float blendfactor);
+	void blendrot(glm::quat r, float blendfactor);
 
 
 	glm::qua<float> getlocalrot();

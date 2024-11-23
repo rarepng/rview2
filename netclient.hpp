@@ -14,6 +14,8 @@
 #include <map>
 #include <thread>
 #include <functional>
+#include <glm/glm.hpp>
+
 
 class netclient
 {
@@ -45,7 +47,10 @@ public:
 	// Send Data
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void SendBuffer(netbuffer buffer, bool reliable = true);
-	void SendString(const std::string& string, bool reliable = true);
+	void SendString(std::string string, bool reliable = true);
+	void sendgamestate(int state, bool reliable = true);
+	void sendgamepos(const glm::vec3& pos, bool reliable = true);
+
 
 	template<typename T>
 	void SendData(const T& data, bool reliable = true)

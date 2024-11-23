@@ -14,6 +14,6 @@ layout (std140,set=1,binding=1) uniform texidx{
 };
 
 void main(){
-	vec4 col=texture(tex[0],vec2(texpos.x*0.5+1.0-life,texpos.y));
+	vec4 col=texture(tex[0],vec2(0.5+(texpos.x*0.5)-(life*0.5),texpos.y));
 	f=vec4(col.x,col.y,col.z,0.8);
 }

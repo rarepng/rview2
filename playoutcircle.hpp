@@ -31,7 +31,7 @@ public:
 	void cleanuplines(vkobjs& objs);
 	void cleanupbuffers(vkobjs& objs);
 	void cleanupmodels(vkobjs& objs);
-	void uploadvboebo(vkobjs& objs);
+	void uploadvboebo(vkobjs& objs, VkCommandBuffer& cbuffer);
 	void uploadubossbo(vkobjs& objs, std::vector<glm::mat4>& cammats, const std::vector<double>& enemylifes);
 
 
@@ -56,7 +56,7 @@ private:
 
 
 
-	std::vector<vkuniformbufferdata> mubo{};
+	std::vector<vkubodata> mubo{};
 	vkshaderstoragebufferdata mssbo{};
 	vkshaderstoragebufferdata platessbo{};
 

@@ -28,7 +28,7 @@ public:
 	void cleanup(vkobjs& objs);
 	void uploadvertexbuffers(vkobjs& objs);
 	void uploadindexbuffers(vkobjs& objs);
-	void uploadvboebo(vkobjs& objs);
+	void uploadvboebo(vkobjs& objs, VkCommandBuffer& cbuffer);
 	std::vector<vktexdata> gettexdata();
 	vktexdatapls gettexdatapls();
 	std::string getmodelfname();

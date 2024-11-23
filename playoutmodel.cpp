@@ -90,11 +90,9 @@ void playoutmodel::updateanims(){
 
 }
 
-void playoutmodel::uploadvboebo(vkobjs& objs){
+void playoutmodel::uploadvboebo(vkobjs& objs, VkCommandBuffer& cbuffer){
 	if (uploadreq) {
-		//mgltf->uploadvertexbuffers(objs);
-		//mgltf->uploadindexbuffers(objs);
-		mgltf->uploadvboebo(objs);
+		mgltf->uploadvboebo(objs,cbuffer);
 		uploadreq = false;
 	}
 }
@@ -137,7 +135,7 @@ void playoutmodel::updatemats() {
 	nummats = 0;
 
 	for (const auto& i : minstances) {
-		modelsettings settings = i->getinstancesettings();
+		modelsettings& settings = i->getinstancesettings();
 		if (!settings.msdrawmodel)continue;
 		if (settings.mvertexskinningmode == skinningmode::dualquat) {
 			std::vector<glm::mat2x4> quats = i->getjointdualquats();

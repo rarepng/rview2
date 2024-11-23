@@ -40,7 +40,7 @@ public:
 	void cleanuplines(vkobjs& objs);
 	void cleanupbuffers(vkobjs& objs);
 	void cleanupmodels(vkobjs& objs);
-	void uploadvboebo(vkobjs& objs);
+	void uploadvboebo(vkobjs& objs, VkCommandBuffer& cbuffer);
 	void uploadubossbo(vkobjs& objs, std::vector<glm::mat4>& cammats);
 
 	std::shared_ptr<animinstance> getinst(int i);
@@ -48,6 +48,8 @@ public:
 
 
 	unsigned int getnuminstances();
+
+	bool ready{ false };
 
 
 private:
@@ -66,7 +68,7 @@ private:
 
 
 
-	std::vector<vkuniformbufferdata> rdperspviewmatrixubo{};
+	std::vector<vkubodata> rdperspviewmatrixubo{};
 	vkshaderstoragebufferdata rdjointmatrixssbo{};
 	vkshaderstoragebufferdata uintssbo{};
 	vkshaderstoragebufferdata rdjointdualquatssbo{};

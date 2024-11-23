@@ -12,6 +12,7 @@
 #include <map>
 #include <thread>
 #include <functional>
+#include <glm/glm.hpp>
 
 using ClientID = HSteamNetConnection;
 
@@ -51,7 +52,10 @@ public:
 	void SendBufferToClient(ClientID clientID, netbuffer buffer, bool reliable = true);
 	void SendBufferToAllClients(netbuffer buffer, ClientID excludeClientID = 0, bool reliable = true);
 
-	void SendStringToClient(ClientID clientID, const std::string& string, bool reliable = true);
+	void SendStringToClient(const ClientID clientID, ClientID clientID2, std::string string, bool reliable = true);
+	void sendgamestate(const ClientID clientID, ClientID clientID2, int state, bool reliable = true);
+	void sendgamepos(const ClientID clientID, ClientID clientID2, const glm::vec3& pos, bool reliable = true);
+	void sendconnections(const ClientID clientID,const std::vector<ClientID>& clientIDs, bool reliable = true);
 	void SendStringToAllClients(const std::string& string, ClientID excludeClientID = 0, bool reliable = true);
 
 	template<typename T>

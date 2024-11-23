@@ -129,7 +129,7 @@ bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, vktexdatapls&
 
 
 	VkCommandBuffer stagingcommandbuffer;
-	if (!commandbuffer::init(rdata,rdata.rdcommandpool[0], stagingcommandbuffer)) {
+	if (!commandbuffer::init(rdata,rdata.rdcommandpool[2], stagingcommandbuffer)) {
 		logger::log(0,"crashed in texture at commandbuffer::init");
 		return false;
 	}
@@ -200,7 +200,7 @@ bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, vktexdatapls&
 
 
 	vkDestroyFence(rdata.rdvkbdevice.device, stagingbufferfence, nullptr);
-	commandbuffer::cleanup(rdata, rdata.rdcommandpool[0], stagingcommandbuffer);
+	commandbuffer::cleanup(rdata, rdata.rdcommandpool[2], stagingcommandbuffer);
 	vmaDestroyBuffer(rdata.rdallocator, stagingbuffer, stagingbufferalloc);
 
 	VkImageViewCreateInfo texviewinfo{};
@@ -224,9 +224,9 @@ bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, vktexdatapls&
 	texsamplerinfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	texsamplerinfo.magFilter = VK_FILTER_LINEAR;
 	texsamplerinfo.minFilter = VK_FILTER_LINEAR;
-	texsamplerinfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	texsamplerinfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	texsamplerinfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	texsamplerinfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	texsamplerinfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	texsamplerinfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	texsamplerinfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 	texsamplerinfo.unnormalizedCoordinates = VK_FALSE;
 	texsamplerinfo.compareEnable = VK_FALSE;
@@ -797,7 +797,7 @@ bool vktexture::loadtexture(vkobjs& rdata, std::vector<vktexdata>& texdata, fast
 
 
 		VkCommandBuffer stagingcommandbuffer;
-		if (!commandbuffer::init(rdata, rdata.rdcommandpool[0], stagingcommandbuffer)) {
+		if (!commandbuffer::init(rdata, rdata.rdcommandpool[2], stagingcommandbuffer)) {
 			logger::log(0, "crashed in texture at commandbuffer::init");
 			return false;
 		}
@@ -874,7 +874,7 @@ bool vktexture::loadtexture(vkobjs& rdata, std::vector<vktexdata>& texdata, fast
 
 
 		vkDestroyFence(rdata.rdvkbdevice.device, stagingbufferfence, nullptr);
-		commandbuffer::cleanup(rdata, rdata.rdcommandpool[0], stagingcommandbuffer);
+		commandbuffer::cleanup(rdata, rdata.rdcommandpool[2], stagingcommandbuffer);
 		vmaDestroyBuffer(rdata.rdallocator, stagingbuffer, stagingbufferalloc);
 
 		VkImageViewCreateInfo texviewinfo{};

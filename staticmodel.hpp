@@ -17,7 +17,7 @@ public:
 	void draw(vkobjs& objs);
 	void drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, int instancecount, int stride);
 	void cleanup(vkobjs& objs);
-	void uploadvboebo(vkobjs& objs);
+	void uploadvboebo(vkobjs& objs, VkCommandBuffer& cbuffer);
 	std::vector<vktexdata> gettexdata();
 	vktexdatapls gettexdatapls();
 	std::string getmodelfname();

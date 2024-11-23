@@ -22,9 +22,9 @@ glm::mat4 vkcam::getview(vkobjs& mvkobjs)
     //mup = glm::vec3{ 0.0f,1.0f,0.0f };
 
     mvkobjs.rdcamwpos +=
-        mvkobjs.rdcamforward    * mvkobjs.rdtickdiff * mforward +
-        mvkobjs.rdcamright      * mvkobjs.rdtickdiff * mright +
-        mvkobjs.rdcamup         * mvkobjs.rdtickdiff * mup;
+        mvkobjs.rdcamforward    * static_cast<float>(mvkobjs.tickdiff) * mforward +
+        mvkobjs.rdcamright      * static_cast<float>(mvkobjs.tickdiff) * mright +
+        mvkobjs.rdcamup         * static_cast<float>(mvkobjs.tickdiff) * mup;
 
 
 

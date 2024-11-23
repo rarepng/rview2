@@ -41,9 +41,14 @@ void staticinstance::checkforupdates() {
 }
 
 glm::mat4 staticinstance::calcmat(){
-	glm::mat4 x{ 1.0 };
-	glm::mat4 t = glm::translate(x, mmodelsettings.msworldpos) * glm::scale(x, mmodelsettings.msworldscale) * glm::mat4_cast(glm::quat(glm::radians(mmodelsettings.msworldrot)));
-	return t;
+	glm::mat4 x = glm::scale(glm::mat4{1.0f}, mmodelsettings.msworldscale);
+	x = glm::toMat4(glm::quat(glm::radians(mmodelsettings.msworldrot))) * x;
+	x = glm::translate(glm::mat4{ 1.0f }, mmodelsettings.msworldpos) * x;
+	return x;
+	//glm::mat4 x{ 1.0 };
+	////glm::mat4 t = glm::translate(x, mmodelsettings.msworldpos) * glm::scale(x, mmodelsettings.msworldscale) * glm::rotate(x, glm::radians(mmodelsettings.msworldrot.y), glm::vec3{ 0.0f,1.0f,0.0f });
+	//glm::mat4 t = glm::translate(x, mmodelsettings.msworldpos) * glm::mat4_cast(glm::quat(glm::radians(mmodelsettings.msworldrot))) * glm::scale(x, mmodelsettings.msworldscale);
+	//return t;
 }
 
 

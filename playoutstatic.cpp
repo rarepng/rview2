@@ -78,11 +78,9 @@ bool playoutstatic::createpline(vkobjs& objs, std::string vfile, std::string ffi
 }
 
 
-void playoutstatic::uploadvboebo(vkobjs& objs) {
+void playoutstatic::uploadvboebo(vkobjs& objs, VkCommandBuffer& cbuffer) {
 	if (uploadreq) {
-		//mgltf->uploadvertexbuffers(objs);
-		//mgltf->uploadindexbuffers(objs);
-		mgltf->uploadvboebo(objs);
+		mgltf->uploadvboebo(objs,cbuffer);
 		uploadreq = false;
 	}
 }
@@ -109,7 +107,7 @@ std::vector<std::shared_ptr<staticinstance>>& playoutstatic::getallinstances(){
 void playoutstatic::updatemats(){
 	transmats.clear();
 	for (auto& i : minstances) {
-		staticsettings settings = i->getinstancesettings();
+		staticsettings& settings = i->getinstancesettings();
 		if (!settings.msdrawmodel)continue;
 		glm::mat4 mat = i->calcmat();
 		transmats.push_back(mat);

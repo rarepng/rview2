@@ -212,19 +212,19 @@
 //
 //void vkmodel::createvertexbuffers(vkobjs& objs) {
 //    if ( mmbools.mskeletonanim) {
-//        mgltfobjs.rdgltfvertexbufferdata.reserve(mmodel->meshes.size());
-//        mgltfobjs.rdgltfvertexbufferdata.resize(mmodel->meshes.size());
+//        mgltfobjs.vbodata.reserve(mmodel->meshes.size());
+//        mgltfobjs.vbodata.resize(mmodel->meshes.size());
 //        mattribaccs.reserve(mmodel->meshes.size());
 //        mattribaccs.resize(mmodel->meshes.size());
 //        for (size_t i{ 0 }; i < mmodel->meshes.size(); i++) {
-//            mgltfobjs.rdgltfvertexbufferdata[i].reserve(mmodel->meshes[i].primitives.size());
-//            mgltfobjs.rdgltfvertexbufferdata[i].resize(mmodel->meshes[i].primitives.size());
+//            mgltfobjs.vbodata[i].reserve(mmodel->meshes[i].primitives.size());
+//            mgltfobjs.vbodata[i].resize(mmodel->meshes[i].primitives.size());
 //            mattribaccs[i].reserve(mmodel->meshes[i].primitives.size());
 //            mattribaccs[i].resize(mmodel->meshes[i].primitives.size());
 //            for (size_t j{ 0 }; j < mmodel->meshes[i].primitives.size(); j++) {
 //                const tinygltf::Primitive& prims = mmodel->meshes.at(i).primitives.at(j);
-//                mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).reserve(prims.attributes.size());
-//                mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).resize(prims.attributes.size());
+//                mgltfobjs.vbodata.at(i).at(j).reserve(prims.attributes.size());
+//                mgltfobjs.vbodata.at(i).at(j).resize(prims.attributes.size());
 //                mattribaccs.at(i).at(j).reserve(prims.attributes.size());
 //                mattribaccs.at(i).at(j).resize(prims.attributes.size());
 //                for (const auto& a : prims.attributes) {
@@ -235,14 +235,14 @@
 //                    const tinygltf::Buffer& buff = mmodel->buffers.at(bview.buffer);
 //                    if (atype.compare("POSITION") != 0 && atype.compare("NORMAL") != 0 && atype.compare("TEXCOORD_0") != 0 && atype.compare("JOINTS_0") && atype.compare("WEIGHTS_0") != 0) {
 //                        mattribaccs.at(i).at(j).pop_back();
-//                        mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).pop_back();
+//                        mgltfobjs.vbodata.at(i).at(j).pop_back();
 //                        continue;
 //                    }
 //
 //
 //                    mattribaccs.at(i).at(j).at(atts.at(atype)) = accnum;
 //
-//                    //mgltfobjs.rdgltfvertexbufferdata.at(atts.at(atype));
+//                    //mgltfobjs.vbodata.at(atts.at(atype));
 //                    //sizeof(acc.componentType);
 //                    //size_t newbytelength{ bview.byteStride * acc.count };
 //                    size_t newbytelength{ bview.byteLength };//bview.byteStride * acc.count };
@@ -257,25 +257,25 @@
 //                    //}
 //
 //
-//                    vkvbo::init(objs, mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).at(atts.at(atype)), newbytelength);
+//                    vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(j).at(atts.at(atype)), newbytelength);
 //                }
 //            }
 //        }
 //    } 
 //    else if (mmbools.mgltf) {
-//        mgltfobjs.rdgltfvertexbufferdata.reserve(mmodel->meshes.size());
-//        mgltfobjs.rdgltfvertexbufferdata.resize(mmodel->meshes.size());
+//        mgltfobjs.vbodata.reserve(mmodel->meshes.size());
+//        mgltfobjs.vbodata.resize(mmodel->meshes.size());
 //        mattribaccs.reserve(mmodel->meshes.size());
 //        mattribaccs.resize(mmodel->meshes.size());
 //        for (size_t i{ 0 }; i < mmodel->meshes.size(); i++) {
-//            mgltfobjs.rdgltfvertexbufferdata.at(i).reserve(mmodel->meshes[i].primitives.size());
-//            mgltfobjs.rdgltfvertexbufferdata.at(i).resize(mmodel->meshes[i].primitives.size());
+//            mgltfobjs.vbodata.at(i).reserve(mmodel->meshes[i].primitives.size());
+//            mgltfobjs.vbodata.at(i).resize(mmodel->meshes[i].primitives.size());
 //            mattribaccs.at(i).reserve(mmodel->meshes[i].primitives.size());
 //            mattribaccs.at(i).resize(mmodel->meshes[i].primitives.size());
 //            for (size_t j{ 0 }; j < mmodel->meshes[i].primitives.size(); j++) {
 //                const tinygltf::Primitive& prims = mmodel->meshes.at(i).primitives.at(j);
-//                mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).reserve(prims.attributes.size());
-//                mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).resize(prims.attributes.size());
+//                mgltfobjs.vbodata.at(i).at(j).reserve(prims.attributes.size());
+//                mgltfobjs.vbodata.at(i).at(j).resize(prims.attributes.size());
 //                mattribaccs.at(i).at(j).reserve(prims.attributes.size());
 //                mattribaccs.at(i).at(j).resize(prims.attributes.size());
 //                for (const auto& a : prims.attributes) {
@@ -286,53 +286,53 @@
 //                    const tinygltf::Buffer& buff = mmodel->buffers.at(bview.buffer);
 //                    if (atype.compare("POSITION") != 0 && atype.compare("NORMAL") != 0 && atype.compare("TEXCOORD_0") != 0) {
 //                        mattribaccs.at(i).at(j).pop_back();
-//                        mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).pop_back();
+//                        mgltfobjs.vbodata.at(i).at(j).pop_back();
 //                        continue;
 //                    }
 //
 //
 //                    mattribaccs.at(i).at(j).at(atts.at(atype)) = accnum;
 //
-//                    //mgltfobjs.rdgltfvertexbufferdata.at(atts.at(atype));
+//                    //mgltfobjs.vbodata.at(atts.at(atype));
 //                    //sizeof(acc.componentType);
 //                    //size_t newbytelength{ bview.byteStride * acc.count };
 //                    size_t newbytelength{ bview.byteLength };//bview.byteStride * acc.count };
 //
 //
-//                    vkvbo::init(objs, mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).at(atts.at(atype)), newbytelength);
+//                    vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(j).at(atts.at(atype)), newbytelength);
 //                }
 //            }
 //        }
 //    }
 //    else if (mmbools.mtexturefile) {
-//        mgltfobjs.rdgltfvertexbufferdata.reserve(1);
-//        mgltfobjs.rdgltfvertexbufferdata.resize(1);
-//        mgltfobjs.rdgltfvertexbufferdata.at(0).reserve(1);
-//        mgltfobjs.rdgltfvertexbufferdata.at(0).resize(1);
-//        mgltfobjs.rdgltfvertexbufferdata.at(0).at(0).reserve(2);
-//        mgltfobjs.rdgltfvertexbufferdata.at(0).at(0).resize(2);
-//        vkvbo::init(objs, mgltfobjs.rdgltfvertexbufferdata.at(0).at(0).at(0), mquad.size() * sizeof(glm::vec3));
-//        vkvbo::init(objs, mgltfobjs.rdgltfvertexbufferdata.at(0).at(0).at(1), mquad.size() * sizeof(glm::vec2));
+//        mgltfobjs.vbodata.reserve(1);
+//        mgltfobjs.vbodata.resize(1);
+//        mgltfobjs.vbodata.at(0).reserve(1);
+//        mgltfobjs.vbodata.at(0).resize(1);
+//        mgltfobjs.vbodata.at(0).at(0).reserve(2);
+//        mgltfobjs.vbodata.at(0).at(0).resize(2);
+//        vkvbo::init(objs, mgltfobjs.vbodata.at(0).at(0).at(0), mquad.size() * sizeof(glm::vec3));
+//        vkvbo::init(objs, mgltfobjs.vbodata.at(0).at(0).at(1), mquad.size() * sizeof(glm::vec2));
 //    }
 //    else {
-//        mgltfobjs.rdgltfvertexbufferdata.reserve(1);
-//        mgltfobjs.rdgltfvertexbufferdata.resize(1);
-//        mgltfobjs.rdgltfvertexbufferdata.at(0).reserve(1);
-//        mgltfobjs.rdgltfvertexbufferdata.at(0).resize(1);
-//        mgltfobjs.rdgltfvertexbufferdata.at(0).at(0).reserve(1);
-//        mgltfobjs.rdgltfvertexbufferdata.at(0).at(0).resize(1);
-//        vkvbo::init(objs, mgltfobjs.rdgltfvertexbufferdata.at(0).at(0).at(0), mquad.size() * sizeof(glm::vec3));
+//        mgltfobjs.vbodata.reserve(1);
+//        mgltfobjs.vbodata.resize(1);
+//        mgltfobjs.vbodata.at(0).reserve(1);
+//        mgltfobjs.vbodata.at(0).resize(1);
+//        mgltfobjs.vbodata.at(0).at(0).reserve(1);
+//        mgltfobjs.vbodata.at(0).at(0).resize(1);
+//        vkvbo::init(objs, mgltfobjs.vbodata.at(0).at(0).at(0), mquad.size() * sizeof(glm::vec3));
 //    }
 //}
 //
 //
 //void vkmodel::createindexbuffers(vkobjs& objs) {
 //    if (mmbools.mgltf) {
-//        mgltfobjs.rdgltfindexbufferdata.reserve(mmodel->meshes.size());
-//        mgltfobjs.rdgltfindexbufferdata.resize(mmodel->meshes.size());
+//        mgltfobjs.ebodata.reserve(mmodel->meshes.size());
+//        mgltfobjs.ebodata.resize(mmodel->meshes.size());
 //        for (size_t i{ 0 }; i < mmodel->meshes.size(); i++) {
-//            mgltfobjs.rdgltfindexbufferdata.at(i).reserve(mmodel->meshes[i].primitives.size());
-//            mgltfobjs.rdgltfindexbufferdata.at(i).resize(mmodel->meshes[i].primitives.size());
+//            mgltfobjs.ebodata.at(i).reserve(mmodel->meshes[i].primitives.size());
+//            mgltfobjs.ebodata.at(i).resize(mmodel->meshes[i].primitives.size());
 //            for (size_t j{ 0 }; j < mmodel->meshes[i].primitives.size(); j++) {
 //                const tinygltf::Primitive& prims = mmodel->meshes.at(i).primitives.at(j);
 //                const tinygltf::Accessor& acc = mmodel->accessors.at(prims.indices);
@@ -342,35 +342,35 @@
 //
 //                size_t newbytelength{ sizeof(unsigned short) * acc.count };
 //
-//                vkebo::init(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j), newbytelength);
+//                vkebo::init(objs, mgltfobjs.ebodata.at(i).at(j), newbytelength);
 //            }
 //        }
 //    }
 //    else {
-//        mgltfobjs.rdgltfindexbufferdata.reserve(1);
-//        mgltfobjs.rdgltfindexbufferdata.resize(1);
-//        mgltfobjs.rdgltfindexbufferdata.at(0).reserve(1);
-//        mgltfobjs.rdgltfindexbufferdata.at(0).resize(1);
-//        vkebo::init(objs, mgltfobjs.rdgltfindexbufferdata.at(0).at(0), mindices.size() * sizeof(unsigned short));
+//        mgltfobjs.ebodata.reserve(1);
+//        mgltfobjs.ebodata.resize(1);
+//        mgltfobjs.ebodata.at(0).reserve(1);
+//        mgltfobjs.ebodata.at(0).resize(1);
+//        vkebo::init(objs, mgltfobjs.ebodata.at(0).at(0), mindices.size() * sizeof(unsigned short));
 //    }
 //}
 //
 //
 //void vkmodel::uploadvertexbuffers(vkobjs& objs) {
 //
-//    for (int i{ 0 }; i < mgltfobjs.rdgltfvertexbufferdata.size(); ++i) {
-//        for (int j{ 0 }; j < mgltfobjs.rdgltfvertexbufferdata.at(i).size(); ++j) {
+//    for (int i{ 0 }; i < mgltfobjs.vbodata.size(); ++i) {
+//        for (int j{ 0 }; j < mgltfobjs.vbodata.at(i).size(); ++j) {
 //            if (mmbools.mgltf) {
-//                for (int k{ 0 }; k < mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).size(); ++k) {
+//                for (int k{ 0 }; k < mgltfobjs.vbodata.at(i).at(j).size(); ++k) {
 //                    const tinygltf::Accessor& acc = mmodel->accessors.at(mattribaccs.at(i).at(j).at(k));
 //                    const tinygltf::BufferView& bview = mmodel->bufferViews.at(acc.bufferView);
 //                    const tinygltf::Buffer& buff = mmodel->buffers.at(bview.buffer);
-//                    vkvbo::upload(objs, mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).at(k), buff, bview, acc);
+//                    vkvbo::upload(objs, mgltfobjs.vbodata.at(i).at(j).at(k), buff, bview, acc);
 //                }
 //            } else {
-//                vkvbo::upload(objs, mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).at(0), mquad);
+//                vkvbo::upload(objs, mgltfobjs.vbodata.at(i).at(j).at(0), mquad);
 //                if(mmbools.mtexturefile)
-//                vkvbo::upload(objs, mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).at(1), mtexcoords);
+//                vkvbo::upload(objs, mgltfobjs.vbodata.at(i).at(j).at(1), mtexcoords);
 //            }
 //        }
 //    }
@@ -379,17 +379,17 @@
 //
 //void vkmodel::uploadindexbuffers(vkobjs& objs) {
 //
-//    for (size_t i{ 0 }; i < mgltfobjs.rdgltfindexbufferdata.size(); i++) {
-//        for (size_t j{ 0 }; j < mgltfobjs.rdgltfindexbufferdata.at(i).size(); j++) {
+//    for (size_t i{ 0 }; i < mgltfobjs.ebodata.size(); i++) {
+//        for (size_t j{ 0 }; j < mgltfobjs.ebodata.at(i).size(); j++) {
 //            if (mmbools.mgltf) {
 //                const tinygltf::Primitive& prims = mmodel->meshes.at(i).primitives.at(j);
 //                const tinygltf::Accessor& acc = mmodel->accessors.at(prims.indices);
 //                const tinygltf::BufferView& bview = mmodel->bufferViews.at(acc.bufferView);
 //                const tinygltf::Buffer& buff = mmodel->buffers.at(bview.buffer);
 //
-//                vkebo::upload(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j), buff, bview, acc);
+//                vkebo::upload(objs, mgltfobjs.ebodata.at(i).at(j), buff, bview, acc);
 //            } else {
-//                vkebo::upload(objs, mgltfobjs.rdgltfindexbufferdata.at(0).at(0), mindices);
+//                vkebo::upload(objs, mgltfobjs.ebodata.at(0).at(0), mindices);
 //            }
 //        }
 //    }
@@ -422,16 +422,16 @@
 //
 //void vkmodel::cleanup(vkobjs& objs) {
 //
-//    for (int i{ 0 }; i < mgltfobjs.rdgltfvertexbufferdata.size(); i++) {
-//        for (int j{ 0 }; j < mgltfobjs.rdgltfvertexbufferdata.at(i).size(); j++) {
-//            for (int k{ 0 }; k < mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).size(); k++) {
-//                vkvbo::cleanup(objs, mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).at(k));
+//    for (int i{ 0 }; i < mgltfobjs.vbodata.size(); i++) {
+//        for (int j{ 0 }; j < mgltfobjs.vbodata.at(i).size(); j++) {
+//            for (int k{ 0 }; k < mgltfobjs.vbodata.at(i).at(j).size(); k++) {
+//                vkvbo::cleanup(objs, mgltfobjs.vbodata.at(i).at(j).at(k));
 //            }
 //        }
 //    }
-//    for (int i{ 0 }; i < mgltfobjs.rdgltfindexbufferdata.size(); i++) {
-//        for (int j{ 0 }; j < mgltfobjs.rdgltfindexbufferdata.at(i).size(); j++) {
-//            vkebo::cleanup(objs, mgltfobjs.rdgltfindexbufferdata.at(i).at(j));
+//    for (int i{ 0 }; i < mgltfobjs.ebodata.size(); i++) {
+//        for (int j{ 0 }; j < mgltfobjs.ebodata.at(i).size(); j++) {
+//            vkebo::cleanup(objs, mgltfobjs.ebodata.at(i).at(j));
 //        }
 //    }
 //    for (int i{ 0 }; i < mgltfobjs.tex.size(); i++) {
@@ -460,17 +460,17 @@
 //    if(mmbools.mtexturefile)
 //    vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1, &mgltfobjs.texpls.texdescriptorset, 0, nullptr);
 //    double pushes[] = { time,time2,life };
-//    for (int i{ 0 }; i < mgltfobjs.rdgltfvertexbufferdata.size(); i++) {
+//    for (int i{ 0 }; i < mgltfobjs.vbodata.size(); i++) {
 //
-//        for (int j{ 0 }; j < mgltfobjs.rdgltfvertexbufferdata.at(i).size(); j++) {
+//        for (int j{ 0 }; j < mgltfobjs.vbodata.at(i).size(); j++) {
 //
 //            vkCmdPushConstants(objs.rdcommandbuffer[0], vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 3 * sizeof(double), &pushes);
 //
 //
-//            for (int k{ 0 }; k < mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).size(); k++) {
-//                vkCmdBindVertexBuffers(objs.rdcommandbuffer[0], k, 1, &mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).at(k).rdvertexbuffer, &offset);
+//            for (int k{ 0 }; k < mgltfobjs.vbodata.at(i).at(j).size(); k++) {
+//                vkCmdBindVertexBuffers(objs.rdcommandbuffer[0], k, 1, &mgltfobjs.vbodata.at(i).at(j).at(k).rdvertexbuffer, &offset);
 //            }
-//            vkCmdBindIndexBuffer(objs.rdcommandbuffer[0], mgltfobjs.rdgltfindexbufferdata.at(i).at(j).rdindexbuffer, 0, VK_INDEX_TYPE_UINT16);
+//            vkCmdBindIndexBuffer(objs.rdcommandbuffer[0], mgltfobjs.ebodata.at(i).at(j).bhandle, 0, VK_INDEX_TYPE_UINT16);
 //            vkCmdDrawIndexed(objs.rdcommandbuffer[0], 6, 1, 0, 0, 0);
 //        }
 //    }
@@ -481,25 +481,25 @@
 //
 //void vkmodel::drawgltf(vkobjs& objs, VkPipelineLayout& vkplayout, int instancecount, int stride) {
 //    VkDeviceSize offset = 0;
-//    std::vector<std::vector<vkpushconstants>> pushes(mgltfobjs.rdgltfvertexbufferdata.size());
+//    std::vector<std::vector<vkpushconstants>> pushes(mgltfobjs.vbodata.size());
 //
 //    vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1, &mgltfobjs.texpls.texdescriptorset, 0, nullptr);
 //
-//    for (int i{ 0 }; i < mgltfobjs.rdgltfvertexbufferdata.size(); i++) {
-//        pushes[i].reserve(mgltfobjs.rdgltfvertexbufferdata.at(i).size());
-//        pushes[i].resize(mgltfobjs.rdgltfvertexbufferdata.at(i).size());
+//    for (int i{ 0 }; i < mgltfobjs.vbodata.size(); i++) {
+//        pushes[i].reserve(mgltfobjs.vbodata.at(i).size());
+//        pushes[i].resize(mgltfobjs.vbodata.at(i).size());
 //
-//        for (int j{ 0 }; j < mgltfobjs.rdgltfvertexbufferdata.at(i).size(); j++) {
+//        for (int j{ 0 }; j < mgltfobjs.vbodata.at(i).size(); j++) {
 //            pushes[i][j].pkmodelstride = stride;
 //            pushes[i][j].texidx = mmodel->textures[mmodel->materials[mmodel->meshes.at(i).primitives.at(j).material].pbrMetallicRoughness.baseColorTexture.index].source;
 //            pushes[i][j].t = (float)glfwGetTime();
 //            pushes[i][j].decaying = *objs.decaying;
 //
 //            vkCmdPushConstants(objs.rdcommandbuffer[0], vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants), &pushes.at(i).at(j));
-//            for (int k{ 0 }; k < mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).size(); k++) {
-//                vkCmdBindVertexBuffers(objs.rdcommandbuffer[0], k, 1, &mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).at(k).rdvertexbuffer, &offset);
+//            for (int k{ 0 }; k < mgltfobjs.vbodata.at(i).at(j).size(); k++) {
+//                vkCmdBindVertexBuffers(objs.rdcommandbuffer[0], k, 1, &mgltfobjs.vbodata.at(i).at(j).at(k).rdvertexbuffer, &offset);
 //            }
-//            vkCmdBindIndexBuffer(objs.rdcommandbuffer[0], mgltfobjs.rdgltfindexbufferdata.at(i).at(j).rdindexbuffer, 0, VK_INDEX_TYPE_UINT16);
+//            vkCmdBindIndexBuffer(objs.rdcommandbuffer[0], mgltfobjs.ebodata.at(i).at(j).bhandle, 0, VK_INDEX_TYPE_UINT16);
 //            //ubo::upload(objs, objs.rdperspviewmatrixubo, mmodel->textures[mmodel->materials[i].pbrMetallicRoughness.baseColorTexture.index].source);
 //            vkCmdDrawIndexed(objs.rdcommandbuffer[0], static_cast<uint32_t>(gettricount(i, j) * 3), instancecount, 0, 0, 0);
 //        }
@@ -509,24 +509,24 @@
 //
 //void vkmodel::drawdecay(vkobjs& objs, VkPipelineLayout& vkplayout, int instancecount, int stride, double& decaytime, bool* decaying) {
 //    VkDeviceSize offset = 0;
-//    std::vector<std::vector<vkpushconstants>> pushes(mgltfobjs.rdgltfvertexbufferdata.size());
+//    std::vector<std::vector<vkpushconstants>> pushes(mgltfobjs.vbodata.size());
 //    if (decaytime > 0.8)*decaying = false;
 //    vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1, &mgltfobjs.texpls.texdescriptorset, 0, nullptr);
 //
-//    for (int i{ 0 }; i < mgltfobjs.rdgltfvertexbufferdata.size(); i++) {
-//        pushes[i].reserve(mgltfobjs.rdgltfvertexbufferdata.at(i).size());
-//        pushes[i].resize(mgltfobjs.rdgltfvertexbufferdata.at(i).size());
+//    for (int i{ 0 }; i < mgltfobjs.vbodata.size(); i++) {
+//        pushes[i].reserve(mgltfobjs.vbodata.at(i).size());
+//        pushes[i].resize(mgltfobjs.vbodata.at(i).size());
 //
-//        for (int j{ 0 }; j < mgltfobjs.rdgltfvertexbufferdata.at(i).size(); j++) {
+//        for (int j{ 0 }; j < mgltfobjs.vbodata.at(i).size(); j++) {
 //            pushes[i][j].pkmodelstride = stride;
 //            pushes[i][j].texidx = mmodel->textures[mmodel->materials[mmodel->meshes.at(i).primitives.at(j).material].pbrMetallicRoughness.baseColorTexture.index].source;
 //            pushes[i][j].t = decaytime;
 //
 //            vkCmdPushConstants(objs.rdcommandbuffer[0], vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants), &pushes.at(i).at(j));
-//            for (int k{ 0 }; k < mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).size(); k++) {
-//                vkCmdBindVertexBuffers(objs.rdcommandbuffer[0], k, 1, &mgltfobjs.rdgltfvertexbufferdata.at(i).at(j).at(k).rdvertexbuffer, &offset);
+//            for (int k{ 0 }; k < mgltfobjs.vbodata.at(i).at(j).size(); k++) {
+//                vkCmdBindVertexBuffers(objs.rdcommandbuffer[0], k, 1, &mgltfobjs.vbodata.at(i).at(j).at(k).rdvertexbuffer, &offset);
 //            }
-//            vkCmdBindIndexBuffer(objs.rdcommandbuffer[0], mgltfobjs.rdgltfindexbufferdata.at(i).at(j).rdindexbuffer, 0, VK_INDEX_TYPE_UINT16);
+//            vkCmdBindIndexBuffer(objs.rdcommandbuffer[0], mgltfobjs.ebodata.at(i).at(j).bhandle, 0, VK_INDEX_TYPE_UINT16);
 //            //ubo::upload(objs, objs.rdperspviewmatrixubo, mmodel->textures[mmodel->materials[i].pbrMetallicRoughness.baseColorTexture.index].source);
 //            vkCmdDrawIndexed(objs.rdcommandbuffer[0], static_cast<uint32_t>(gettricount(i, j) * 3), instancecount, 0, 0, 0);
 //        }

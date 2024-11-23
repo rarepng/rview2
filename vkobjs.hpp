@@ -83,19 +83,19 @@ struct vkvertexbufferdata {
 	size_t rdvertexbuffersize{ 0 };
 	VkBuffer rdvertexbuffer = VK_NULL_HANDLE;
 	VmaAllocation rdvertexbufferalloc = nullptr;
-	VkBuffer rdstagingbuffer = VK_NULL_HANDLE;
-	VmaAllocation rdstagingbufferalloc = nullptr;
+	VkBuffer stagingbhandle = VK_NULL_HANDLE;
+	VmaAllocation stagingballoc = nullptr;
 };
 
-struct vkindexbufferdata {
-	size_t rdindexbuffersize{ 0 };
-	VkBuffer rdindexbuffer = VK_NULL_HANDLE;
-	VmaAllocation rdindexbufferalloc = nullptr;
-	VkBuffer rdstagingbuffer = VK_NULL_HANDLE;
-	VmaAllocation rdstagingbufferalloc = nullptr;
+struct vkebodata {
+	size_t bsize{ 0 };
+	VkBuffer bhandle = VK_NULL_HANDLE;
+	VmaAllocation balloc = nullptr;
+	VkBuffer stagingbhandle = VK_NULL_HANDLE;
+	VmaAllocation stagingballoc = nullptr;
 };
 
-struct vkuniformbufferdata {
+struct vkubodata {
 	size_t rduniformbuffersize{ 0 };
 	VkBuffer rdubobuffer = VK_NULL_HANDLE;
 	VmaAllocation rdubobufferalloc = nullptr;
@@ -120,6 +120,7 @@ struct vkpushconstants {
 	unsigned int texidx;
 	float t{ 0.0f };
 	bool decaying{ false };
+	float dmg{ 0.0f };
 };
 
 
@@ -164,6 +165,7 @@ struct netobjs {
 struct vkobjs {
 
 	inline static const std::shared_ptr<std::shared_mutex>  mtx2{ std::make_shared<std::shared_mutex>() };
+	inline static const std::shared_ptr<std::shared_mutex>  uploadmtx{ std::make_shared<std::shared_mutex>() };
 
 
 	GLFWwindow* rdwind = nullptr;
@@ -176,25 +178,34 @@ struct vkobjs {
 	unsigned int rdgltftricount = 0;
 	float rdfov = 1.0472f;
 	bool rdswitchshader{ false };
-	float rdframetime{ 0.0f };
-	float rdmatrixgeneratetime{ 0.0f };
-	float rdiktime{ 0.0f };
-	float rduploadtovbotime{ 0.0f };
-	float rduploadtoubotime{ 0.0f };
+
+
+
+
+
+	float frametime{ 0.0f };
+	float updateanimtime{ 0.0f };
+	float updatemattime{ 0.0f };
+	float uploadubossbotime{ 0.0f };
+	float iksolvetime{ 0.0f };
 	float rduigeneratetime{ 0.0f };
 	float rduidrawtime{ 0.0f };
+
+
+
+
+
 
 	bool* decaying;
 
 	float loadingprog{ 0.0f };
 
-	// CAM
 
 	int rdcamforward{ 0 };
 	int rdcamright{ 0 };
 	int rdcamup{ 0 };
 
-	float rdtickdiff{ 0.0f };
+	double tickdiff{ 0.0f };
 
 	float rdazimuth{ 15.0f };
 	float rdelevation{ -25.0f };
@@ -219,6 +230,7 @@ struct vkobjs {
 	std::vector<VkImage> rdswapchainimages;
 	std::vector<VkImageView> rdswapchainimageviews;
 	std::vector<VkFramebuffer> rdframebuffers;
+	std::vector<VkFramebuffer> rdframebufferrefs;
 
 	VkQueue rdgraphicsqueue = VK_NULL_HANDLE;
 	VkQueue rdpresentqueue = VK_NULL_HANDLE;
@@ -228,19 +240,28 @@ struct vkobjs {
 	VkFormat rddepthformat;
 	VmaAllocation rddepthimagealloc = VK_NULL_HANDLE;
 
-	VkRenderPass rdrenderpass= VK_NULL_HANDLE;
+	VkImage rddepthimageref = VK_NULL_HANDLE;
+	VkImageView rddepthimageviewref = VK_NULL_HANDLE;
+	VkFormat rddepthformatref;
+	VmaAllocation rddepthimageallocref = VK_NULL_HANDLE;
+
+
+
+	VkRenderPass rdrenderpass = VK_NULL_HANDLE;
+	VkRenderPass rdrenderpass2 = VK_NULL_HANDLE;
 
 
 
 
 
 
-	std::vector<VkCommandPool> rdcommandpool = { VK_NULL_HANDLE,VK_NULL_HANDLE };
-	std::vector<VkCommandBuffer> rdcommandbuffer = { VK_NULL_HANDLE,VK_NULL_HANDLE };
+	std::vector<VkCommandPool> rdcommandpool = { VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE };
+	std::vector<VkCommandBuffer> rdcommandbuffer = { VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE };
 
 	VkSemaphore rdpresentsemaphore = VK_NULL_HANDLE;
 	VkSemaphore rdrendersemaphore = VK_NULL_HANDLE;
 	VkFence rdrenderfence = VK_NULL_HANDLE;
+	VkFence rduploadfence = VK_NULL_HANDLE;
 
 
 
@@ -252,8 +273,8 @@ struct vkobjs {
 };
 
 struct vkgltfobjs {
-	std::vector<std::vector<std::vector<vkvertexbufferdata>>> rdgltfvertexbufferdata{};
-	std::vector<std::vector<vkindexbufferdata>> rdgltfindexbufferdata{};
+	std::vector<std::vector<std::vector<vkvertexbufferdata>>> vbodata{};
+	std::vector<std::vector<vkebodata>> ebodata{};
 	std::vector<vktexdata> tex{};
 	vktexdatapls texpls{};
 };

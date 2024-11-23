@@ -46,10 +46,8 @@ std::vector<std::shared_ptr<vknode>> vknode::getchildren() {
 }
 
 void vknode::updatenodeandchildrenmats() {
-    /* update this matrix */
     calculatenodemat();
 
-    /* call recursive for child update */
     for (auto& node : childnodes) {
         if (node) {
             node->updatenodeandchildrenmats();

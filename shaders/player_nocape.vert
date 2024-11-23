@@ -13,7 +13,8 @@ layout (location = 0) out vec3 normal;
 layout (location = 1) out vec2 texCoord;
 layout (location = 2) out vec4 newcolor;
 layout (location = 3) out uint txidx;
-layout (location = 4) out float t2;
+layout (location = 4) flat out float t2;
+layout (location = 5) flat out float dec;
 
 layout (push_constant) uniform Constants {
   int aModelStride;
@@ -33,23 +34,19 @@ layout (std430, set = 2, binding = 0) readonly buffer JointMatrices {
 
 void main() {
   mat4 skinMat =
-    aJointWeight.x * jointMat[aJointNum.x+ gl_InstanceIndex * aModelStride ] +
-    aJointWeight.y * jointMat[aJointNum.y+ gl_InstanceIndex * aModelStride ] +
-    aJointWeight.z * jointMat[aJointNum.z+ gl_InstanceIndex * aModelStride ] +
-    aJointWeight.w * jointMat[aJointNum.w+ gl_InstanceIndex * aModelStride ];
-//  mat4 skinMat =
-//    aJointWeight.x * jointMat[((aJointNum >> 24) & 0xFF) ] +
-//    aJointWeight.y * jointMat[((aJointNum >> 16) & 0xFF) ] +
-//    aJointWeight.z * jointMat[((aJointNum >> 8) & 0xFF) ] +
-//    aJointWeight.w * jointMat[((aJointNum) & 0xFF) ];
+    aJointWeight.x * jointMat[aJointNum.x] +
+    aJointWeight.y * jointMat[aJointNum.y] +
+    aJointWeight.z * jointMat[aJointNum.z] +
+    aJointWeight.w * jointMat[aJointNum.w];
   gl_Position = projection * view * skinMat * vec4(aPos, 1.0);
-  //gl_Position = projection * view * vec4(aPos, 1.0);
-  //normal = vec3(transpose(inverse(skinMat)) * vec4(aNormal, 1.0));
   normal = aNormal;
   texCoord = aTexCoord;
   newcolor = aJointNum;
   txidx=txid;
   t2=t;
-  //newcolor = vec4(((aJointNum >> 24) & 0xFF),((aJointNum >> 16) & 0xFF),((aJointNum >> 8) & 0xFF),((aJointNum) & 0xFF));
+  if(decaying)
+    dec = 1.0;
+  else
+    dec = 0.0;
 }
 

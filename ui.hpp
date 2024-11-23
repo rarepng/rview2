@@ -7,6 +7,7 @@
 #include "modelsettings.hpp"
 #include "netclient.hpp"
 #include "netserver.hpp"
+#include "gamestate.hpp"
 
 enum struct ppick {
 	rock,
@@ -33,12 +34,12 @@ public:
 	bool setnetwork{ false };
 	void backspace();
 	bool chatfocus{ false };
+	std::vector<int> playerwave;
 private:
 	std::string inputxt{};
 	std::vector<std::string> chattxts;
 
-	unsigned int playerwave;
-	unsigned int playergold;
+	//unsigned int playergold;
 
 	ppick mpick;
 	ppick aipick;

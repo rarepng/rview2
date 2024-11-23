@@ -204,27 +204,24 @@ void animinstance::checkforupdates() {
 	if (worldScale != mmodelsettings.msworldscale) {
 		mrootnode->setscale(mmodelsettings.msworldscale);
 		worldScale = mmodelsettings.msworldscale;
-		mmodelsettings.msiktargetworldpos = getwrot() * mmodelsettings.msiktargetpos + glm::vec3(worldPos.x, worldPos.y, worldPos.z);
+		mmodelsettings.msiktargetworldpos = getwrot() * mmodelsettings.msiktargetpos + worldPos;
 	}
 
 	if (worldPos != mmodelsettings.msworldpos) {
-		mrootnode->setwpos(glm::vec3(mmodelsettings.msworldpos.x, mmodelsettings.msworldpos.y, mmodelsettings.msworldpos.z));
+		mrootnode->setwpos(mmodelsettings.msworldpos);
 		worldPos = mmodelsettings.msworldpos;
-		mmodelsettings.msiktargetworldpos = getwrot() *
-			mmodelsettings.msiktargetpos + glm::vec3(worldPos.x, worldPos.y, worldPos.z);
+		mmodelsettings.msiktargetworldpos = getwrot() *	mmodelsettings.msiktargetpos + worldPos;
 	}
 
 	if (worldRot != mmodelsettings.msworldrot) {
 		mrootnode->setwrot(mmodelsettings.msworldrot);
 		worldRot = mmodelsettings.msworldrot;
-		mmodelsettings.msiktargetworldpos = getwrot() *
-			mmodelsettings.msiktargetpos + glm::vec3(worldPos.x, worldPos.y, worldPos.z);
+		mmodelsettings.msiktargetworldpos = getwrot() *	mmodelsettings.msiktargetpos + worldPos;
 	}
 
 	if (ikTargetPos != mmodelsettings.msiktargetpos) {
 		ikTargetPos = mmodelsettings.msiktargetpos;
-		mmodelsettings.msiktargetworldpos = getwrot() *
-			mmodelsettings.msiktargetpos + glm::vec3(worldPos.x, worldPos.y, worldPos.z);
+		mmodelsettings.msiktargetworldpos = getwrot() *	mmodelsettings.msiktargetpos + worldPos;
 	}
 
 	if (lastIkMode != mmodelsettings.msikmode) {

@@ -260,9 +260,36 @@
 		}
 	}
 
-	void netserver::SendStringToClient(ClientID clientID, const std::string& string, bool reliable)
-	{
+	void netserver::SendStringToClient(const ClientID clientID, ClientID clientID2, std::string string, bool reliable){
+		string = "10000" + string;
+		
+		std::memcpy(&string.at(1), &clientID2, 4);
+
 		SendBufferToClient(clientID, netbuffer(string.data(), string.size()), reliable);
+	}
+
+	void netserver::sendgamestate(const ClientID clientID, ClientID clientID2, int state, bool reliable){
+		std::string s = "200000";
+		std::memcpy(&s.at(1), &clientID2, 4);
+		std::memcpy(&s.at(5), &state, 1);
+		SendBufferToClient(clientID, netbuffer(s.data(), s.size()), reliable);
+	}
+
+	void netserver::sendgamepos(const ClientID clientID, ClientID clientID2, const glm::vec3& pos, bool reliable)	{
+		std::string newpos{ "40000000000000000" };
+		std::memcpy(&newpos.at(1), &clientID2, 4);
+		std::memcpy(&newpos.at(5), &pos, 12);
+		SendBufferToClient(clientID, netbuffer(newpos.data(), newpos.size()), reliable);
+	}
+
+	void netserver::sendconnections(const ClientID clientID, const std::vector<ClientID>& clientIDs, bool reliable)	{
+		std::string newpos{ "8" };
+		for (size_t i{ 0 }; i < clientIDs.size(); i++) {
+			newpos.append("0000");
+			std::memcpy(&newpos.at(1+(4*i)), clientIDs.data()+i, 4);
+		}
+		SendBufferToClient(clientID, netbuffer(newpos.data(), newpos.size()), reliable);
+
 	}
 
 	void netserver::SendStringToAllClients(const std::string& string, ClientID excludeClientID, bool reliable)

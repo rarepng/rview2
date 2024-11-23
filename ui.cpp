@@ -185,8 +185,8 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
 
         static float newFps = 0.0f;
         /* avoid inf values (division by zero) */
-        if (renderData.rdframetime > 0.0) {
-            newFps = 1.0f / renderData.rdframetime * 1000.f;
+        if (renderData.frametime > 0.0) {
+            newFps = 1.0f / renderData.frametime * 1000.f;
         }
         /* make an averge value to avoid jumps */
         //mfps = (mavgalpha * mfps) + (1.0f - mavgalpha) * newFps;
@@ -216,19 +216,19 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
             mfpsvalues.at(fpsOffset) = mfps;
             fpsOffset = ++fpsOffset % mnumfpsvalues;
 
-            mframetimevalues.at(frameTimeOffset) = renderData.rdframetime;
+            mframetimevalues.at(frameTimeOffset) = renderData.frametime;
             frameTimeOffset = ++frameTimeOffset % mnumframetimevalues;
 
-            mmodeluploadvalues.at(modelUploadOffset) = renderData.rduploadtovbotime;
+            mmodeluploadvalues.at(modelUploadOffset) = renderData.uploadubossbotime;
             modelUploadOffset = ++modelUploadOffset % mnummodeluploadvalues;
 
-            mmatrixgenvalues.at(matrixGenOffset) = renderData.rdmatrixgeneratetime;
+            mmatrixgenvalues.at(matrixGenOffset) = renderData.updateanimtime;
             matrixGenOffset = ++matrixGenOffset % mnummatrixgenvalues;
 
-            mikvalues.at(ikOffset) = renderData.rdiktime;
+            mikvalues.at(ikOffset) = renderData.updatemattime;
             ikOffset = ++ikOffset % mnumikvalues;
 
-            mmatrixuploadvalues.at(matrixUploadOffset) = renderData.rduploadtoubotime;
+            mmatrixuploadvalues.at(matrixUploadOffset) = renderData.iksolvetime;
             matrixUploadOffset = ++matrixUploadOffset % mnummatrixuploadvalues;
 
             muigenvalues.at(uiGenOffset) = renderData.rduigeneratetime;
@@ -243,25 +243,10 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
         ImGui::BeginGroup();
         ImGui::Text("FPS:");
         ImGui::SameLine();
-        ImGui::Text("%s", std::to_string(1.0f/renderData.rdframetime).c_str());
+        ImGui::Text("%s", std::to_string(1.0f/renderData.frametime).c_str());
         ImGui::EndGroup();
 
-        if (ImGui::IsItemHovered()) {
-            ImGui::BeginTooltip();
-            float averageFPS = 0.0f;
-            for (const auto value : mfpsvalues) {
-                averageFPS += value;
-            }
-            averageFPS /= static_cast<float>(mnumfpsvalues);
-            std::string fpsOverlay = "now:     " + std::to_string(mfps) + "\n30s avg: " + std::to_string(averageFPS);
-            ImGui::Text("FPS");
-            ImGui::SameLine();
-            ImGui::PlotLines("##FrameTimes", mfpsvalues.data(), mfpsvalues.size(), fpsOffset, fpsOverlay.c_str(), 0.0f, FLT_MAX,
-                ImVec2(0, 80));
-            ImGui::EndTooltip();
-        }
-
-        if (ImGui::CollapsingHeader("Info")) {
+        if (ImGui::CollapsingHeader("General")) {
             ImGui::Text("Triangles:");
             ImGui::SameLine();
             ImGui::Text("%s", std::to_string(renderData.rdtricount + renderData.rdgltftricount).c_str());
@@ -281,7 +266,7 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
             ImGui::BeginGroup();
             ImGui::Text("Frame Time:");
             ImGui::SameLine();
-            ImGui::Text("%s", std::to_string(renderData.rdframetime).c_str());
+            ImGui::Text("%s", std::to_string(renderData.frametime).c_str());
             ImGui::SameLine();
             ImGui::Text("ms");
             ImGui::EndGroup();
@@ -293,7 +278,7 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
                     averageFrameTime += value;
                 }
                 averageFrameTime /= static_cast<float>(mnummatrixgenvalues);
-                std::string frameTimeOverlay = "now:     " + std::to_string(renderData.rdframetime)
+                std::string frameTimeOverlay = "now:     " + std::to_string(renderData.frametime)
                     + " ms\n30s avg: " + std::to_string(averageFrameTime) + " ms";
                 ImGui::Text("Frame Time       ");
                 ImGui::SameLine();
@@ -303,9 +288,9 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
             }
 
             ImGui::BeginGroup();
-            ImGui::Text("Model Upload Time:");
+            ImGui::Text("Upload Time:");
             ImGui::SameLine();
-            ImGui::Text("%s", std::to_string(renderData.rduploadtovbotime).c_str());
+            ImGui::Text("%s", std::to_string(renderData.uploadubossbotime).c_str());
             ImGui::SameLine();
             ImGui::Text("ms");
             ImGui::EndGroup();
@@ -317,7 +302,7 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
                     averageModelUpload += value;
                 }
                 averageModelUpload /= static_cast<float>(mnummodeluploadvalues);
-                std::string modelUploadOverlay = "now:     " + std::to_string(renderData.rduploadtovbotime)
+                std::string modelUploadOverlay = "now:     " + std::to_string(renderData.uploadubossbotime)
                     + " ms\n30s avg: " + std::to_string(averageModelUpload) + " ms";
                 ImGui::Text("VBO Upload");
                 ImGui::SameLine();
@@ -327,9 +312,9 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
             }
 
             ImGui::BeginGroup();
-            ImGui::Text("Matrix Generation Time:");
+            ImGui::Text("Update Animations Time:");
             ImGui::SameLine();
-            ImGui::Text("%s", std::to_string(renderData.rdmatrixgeneratetime).c_str());
+            ImGui::Text("%s", std::to_string(renderData.updateanimtime).c_str());
             ImGui::SameLine();
             ImGui::Text("ms");
             ImGui::EndGroup();
@@ -341,7 +326,7 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
                     averageMatGen += value;
                 }
                 averageMatGen /= static_cast<float>(mnummatrixgenvalues);
-                std::string matrixGenOverlay = "now:     " + std::to_string(renderData.rdmatrixgeneratetime)
+                std::string matrixGenOverlay = "now:     " + std::to_string(renderData.updateanimtime)
                     + " ms\n30s avg: " + std::to_string(averageMatGen) + " ms";
                 ImGui::Text("Matrix Generation");
                 ImGui::SameLine();
@@ -351,9 +336,9 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
             }
 
             ImGui::BeginGroup();
-            ImGui::Text("(IK Generation Time)  :");
+            ImGui::Text("Update TRS Mats :");
             ImGui::SameLine();
-            ImGui::Text("%s", std::to_string(renderData.rdiktime).c_str());
+            ImGui::Text("%s", std::to_string(renderData.updatemattime).c_str());
             ImGui::SameLine();
             ImGui::Text("ms");
             ImGui::EndGroup();
@@ -365,7 +350,7 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
                     averageIKTime += value;
                 }
                 averageIKTime /= static_cast<float>(mnumikvalues);
-                std::string ikOverlay = "now:     " + std::to_string(renderData.rdiktime)
+                std::string ikOverlay = "now:     " + std::to_string(renderData.updatemattime)
                     + " ms\n30s avg: " + std::to_string(averageIKTime) + " ms";
                 ImGui::Text("(IK Generation)");
                 ImGui::SameLine();
@@ -377,7 +362,7 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
             ImGui::BeginGroup();
             ImGui::Text("Matrix Upload Time:");
             ImGui::SameLine();
-            ImGui::Text("%s", std::to_string(renderData.rduploadtoubotime).c_str());
+            ImGui::Text("%s", std::to_string(renderData.iksolvetime).c_str());
             ImGui::SameLine();
             ImGui::Text("ms");
             ImGui::EndGroup();
@@ -389,7 +374,7 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
                     averageMatrixUpload += value;
                 }
                 averageMatrixUpload /= static_cast<float>(mnummatrixuploadvalues);
-                std::string matrixUploadOverlay = "now:     " + std::to_string(renderData.rduploadtovbotime)
+                std::string matrixUploadOverlay = "now:     " + std::to_string(renderData.uploadubossbotime)
                     + " ms\n30s avg: " + std::to_string(averageMatrixUpload) + " ms";
                 ImGui::Text("UBO Upload");
                 ImGui::SameLine();
@@ -466,10 +451,10 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
             //ImGui::SliderFloat("##FOV", &renderData.rdfov, 40.0f, 150.0f, "%f", flags);
         }
 
-        if (ImGui::CollapsingHeader("glTF Instances")) {
-            ImGui::Text("Model Instances  : %d", renderData.rdnumberofinstances);
+        if (ImGui::CollapsingHeader("instances")) {
+            ImGui::Text("count  : %d", renderData.rdnumberofinstances);
 
-            ImGui::Text("Selected Instance:");
+            ImGui::Text("selected :");
             ImGui::SameLine();
             ImGui::PushButtonRepeat(true);
             if (ImGui::ArrowButton("##LEFT", ImGuiDir_Left) &&
@@ -488,49 +473,49 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
             }
             ImGui::PopButtonRepeat();
 
-            ImGui::Text("World Pos (X/Z)  :");
+            ImGui::Text("position (x,z)  :");
             ImGui::SameLine();
             ImGui::SliderFloat3("##WORLDPOS", glm::value_ptr(settings.msworldpos),
                 -75.0f, 75.0f, "%.1f", flags);
 
-            ImGui::Text("World Rotation   :");
+            ImGui::Text("rotation - yaw   :");
             ImGui::SameLine();
             ImGui::SliderFloat("##WORLDROT", &settings.msworldrot.y,
                 -180.0f, 180.0f, "%.0f", flags);
         }
 
-        if (ImGui::CollapsingHeader("glTF Model")) {
-            ImGui::Checkbox("Draw Model", &settings.msdrawmodel);
+        if (ImGui::CollapsingHeader("model")) {
+            ImGui::Checkbox("draw", &settings.msdrawmodel);
             //ImGui::Checkbox("Draw Skeleton", &settings.msdrawskeleton);
 
-            ImGui::Text("Vertex Skinning:");
+            ImGui::Text("skinning:");
             ImGui::SameLine();
-            if (ImGui::RadioButton("Linear",
+            if (ImGui::RadioButton("linear",
                 settings.mvertexskinningmode == skinningmode::linear)) {
                 settings.mvertexskinningmode = skinningmode::linear;
             }
             //ImGui::SameLine();
-            //if (ImGui::RadioButton("Dual Quaternion",
+            //if (ImGui::RadioButton("dual quats",
             //    settings.mvertexskinningmode == skinningmode::dualquat)) {
             //    settings.mvertexskinningmode = skinningmode::dualquat;
             //}
         }
 
-        if (ImGui::CollapsingHeader("glTF Animation")) {
-            ImGui::Checkbox("Play Animation", &settings.msplayanimation);
+        if (ImGui::CollapsingHeader("animation")) {
+            ImGui::Checkbox("play", &settings.msplayanimation);
 
             if (!settings.msplayanimation) {
                 ImGui::BeginDisabled();
             }
 
-            ImGui::Text("Animation Direction:");
+            ImGui::Text("playback direction:");
             ImGui::SameLine();
-            if (ImGui::RadioButton("Forward",
+            if (ImGui::RadioButton("forward",
                 settings.msanimationplaydirection == replaydirection::forward)) {
                 settings.msanimationplaydirection = replaydirection::forward;
             }
             ImGui::SameLine();
-            if (ImGui::RadioButton("Backward",
+            if (ImGui::RadioButton("backward",
                 settings.msanimationplaydirection == replaydirection::backward)) {
                 settings.msanimationplaydirection = replaydirection::backward;
             }
@@ -539,7 +524,7 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
                 ImGui::EndDisabled();
             }
 
-            ImGui::Text("Clip   ");
+            ImGui::Text("clip   ");
             ImGui::SameLine();
             if (ImGui::BeginCombo("##ClipCombo",
                 settings.msclipnames.at(settings.msanimclip).c_str())) {
@@ -556,38 +541,38 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
             }
 
             if (settings.msplayanimation) {
-                ImGui::Text("Speed  ");
+                ImGui::Text("speed  ");
                 ImGui::SameLine();
                 ImGui::SliderFloat("##ClipSpeed", &settings.msanimspeed, 0.0f, 2.0f, "%.3f", flags);
             }
             else {
-                ImGui::Text("Timepos");
+                ImGui::Text("timepos");
                 ImGui::SameLine();
                 ImGui::SliderFloat("##ClipPos", &settings.msanimtimepos, 0.0f,
                     settings.msanimendtime, "%.3f", flags);
             }
         }
 
-        if (ImGui::CollapsingHeader("glTF Animation Blending")) {
-            ImGui::Text("Blending Type:");
+        if (ImGui::CollapsingHeader("blending")) {
+            ImGui::Text("blend type:");
             ImGui::SameLine();
             if (ImGui::RadioButton("Fade In/Out",
                 settings.msblendingmode == blendmode::fadeinout)) {
                 settings.msblendingmode = blendmode::fadeinout;
             }
             ImGui::SameLine();
-            if (ImGui::RadioButton("Crossfading",
+            if (ImGui::RadioButton("crossfading",
                 settings.msblendingmode == blendmode::crossfade)) {
                 settings.msblendingmode = blendmode::crossfade;
             }
             ImGui::SameLine();
-            if (ImGui::RadioButton("Additive",
+            if (ImGui::RadioButton("additive",
                 settings.msblendingmode == blendmode::additive)) {
                 settings.msblendingmode = blendmode::additive;
             }
 
             if (settings.msblendingmode == blendmode::fadeinout) {
-                ImGui::Text("Blend Factor");
+                ImGui::Text("factor");
                 ImGui::SameLine();
                 ImGui::SliderFloat("##BlendFactor", &settings.msanimblendfactor, 0.0f, 1.0f, "%.3f",
                     flags);
@@ -638,9 +623,7 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
             }
         }
 
-        if (ImGui::CollapsingHeader("glTF Inverse Kinematic")) {
-            ImGui::Text("Inverse Kinematics");
-            ImGui::SameLine();
+        if (ImGui::CollapsingHeader("inverse kinematics")) {
             if (ImGui::RadioButton("Off",
                 settings.msikmode == ikmode::off)) {
                 settings.msikmode = ikmode::off;
@@ -747,9 +730,9 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
         if ((ImGui::Button("send >")||chatfocus)) {
             if (!inputxt.empty()) {
                 if (nobjs.rdserverclient) {
-                    const std::string i2 = "SERVER : " + inputxt;
+                    std::string i2 = "SERVER : " + inputxt;
                     for (const auto i : nobjs.nserver->GetConnectedClients()) {
-                        nobjs.nserver->SendStringToClient(i.first, i2);
+                        nobjs.nserver->SendStringToClient(i.first,0, i2);
                     }
                     chattxts.push_back(i2);
                 } else {
@@ -780,16 +763,23 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
         ImGui::SetNextWindowPos({ wpos.x + wsize.x * 1.0f, wpos.y + wsize.y * 0.0f }, 1, { 1.0f,0.0f });
 
         ImGui::Begin("Scores", nullptr, imguiWindowFlags);
+        if (!nobjs.offlineplay) {
+            for (const auto& i : gamestate::astages) {
+                ImGui::Text(" ");
+                ImGui::SameLine();
+                ImGui::Text(std::to_string(i.first).c_str());
+                ImGui::Text(" is at ");
+                ImGui::SameLine();
+                ImGui::Text(" wave :");
+                ImGui::SameLine();
+                ImGui::Text(std::to_string(i.second).c_str());
+            }
+        } else {
+            ImGui::Text(" wave :");
+            ImGui::SameLine();
+            ImGui::Text(std::to_string(playerwave[0]).c_str());
+        }
 
-        ImGui::Text("wave :");
-        //ImGui::Text("player :");
-        ImGui::SameLine();
-        ImGui::Text(std::to_string(playerwave).c_str());
-
-        ImGui::Text("gold :");
-        //ImGui::Text("player :");
-        ImGui::SameLine();
-        ImGui::Text(std::to_string(playergold).c_str());
 
         ImGui::End();
     }
@@ -919,6 +909,7 @@ bool ui::createmainmenuframe(vkobjs& mvkobjs,netobjs& nobjs) {
                 hosting = false;
                 connectingtohost = false;
                 nobjs.offlineplay = true;
+                nobjs.rdserverclient = false;
             }
             if (ImGui::RadioButton("host server", &selectednetwork, 1)) {
                 offline = false;
@@ -971,7 +962,7 @@ bool ui::createmainmenuframe(vkobjs& mvkobjs,netobjs& nobjs) {
 
     bool p = ImGui::Button("START", { 400,200 });
     ImGui::PushFont(io.Fonts->Fonts[0]);
-    if (ImGui::IsItemHovered())ImGui::SetTooltip("loading models might take a while, dont fret!");
+    if (ImGui::IsItemHovered())ImGui::SetTooltip("loading models might take a while!");
     ImGui::PopFont();
     if (ImGui::Button("EXIT", { 400,120 }))glfwSetWindowShouldClose(mvkobjs.rdwind, true);
     if (ImGui::IsItemHovered())ImGui::SetTooltip(":(");

@@ -9,6 +9,11 @@ struct netbuffer {
 	void* d;
 	uint64_t s;
 
+	//t:0=string
+	//t:1=state update
+	//t:2=position update
+
+
 	netbuffer() :d(nullptr), s(0) {};
 	netbuffer(const void* d0, uint64_t s0) :d((void*)d0), s(s0) {};
 	static netbuffer copy(const netbuffer& other) {

@@ -67,10 +67,9 @@ bool playoutcircle::createpline(vkobjs& objs, std::string vfile, std::string ffi
 }
 
 
-void playoutcircle::uploadvboebo(vkobjs& objs) {
+void playoutcircle::uploadvboebo(vkobjs& objs, VkCommandBuffer& cbuffer) {
 	if (uploadreq) {
-		mquad->uploadvertexbuffers(objs);
-		mquad->uploadindexbuffers(objs);
+		mquad->uploadvboebo(objs,cbuffer);
 		uploadreq = false;
 	}
 }
@@ -114,7 +113,7 @@ std::vector<std::shared_ptr<texinstance>>& playoutcircle::getallinstances(){
 void playoutcircle::updatemats() {
 	transmats.clear();
 	for (auto& i : minstances) {
-		staticsettings settings = i->getinstancesettings();
+		staticsettings& settings = i->getinstancesettings();
 		if (!settings.msdrawmodel)continue;
 		glm::mat4 mat = i->calcmat();
 		transmats.push_back(mat);

@@ -71,11 +71,9 @@ bool playoutground::createpline(vkobjs& objs, std::string vfile, std::string ffi
 }
 
 
-void playoutground::uploadvboebo(vkobjs& objs) {
+void playoutground::uploadvboebo(vkobjs& objs, VkCommandBuffer& cbuffer) {
 	if (uploadreq) {
-		//mgltf->uploadvertexbuffers(objs);
-		//mgltf->uploadindexbuffers(objs);
-		mgltf->uploadvboebo(objs);
+		mgltf->uploadvboebo(objs,cbuffer);
 		uploadreq = false;
 	}
 }
@@ -96,7 +94,7 @@ std::shared_ptr<staticinstance> playoutground::getinst(int x)
 
 void playoutground::updatemats() {
 	transmats.clear();
-	staticsettings settings = minstances[0]->getinstancesettings();
+	staticsettings& settings = minstances[0]->getinstancesettings();
 	if (settings.msdrawmodel) {
 		glm::mat4 mat = minstances[0]->calcmat();
 		transmats.push_back(mat);

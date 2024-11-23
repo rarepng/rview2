@@ -2,7 +2,7 @@
 #include <vk/VkBootstrap.h>
 
 
-bool ubo::init(vkobjs& mvkobjs, std::vector<vkuniformbufferdata>& ubodata) {
+bool ubo::init(vkobjs& mvkobjs, std::vector<vkubodata>& ubodata) {
 	ubodata.reserve(2);
 	ubodata.resize(2);
 
@@ -89,14 +89,14 @@ bool ubo::init(vkobjs& mvkobjs, std::vector<vkuniformbufferdata>& ubodata) {
 
 	return true;
 }
-void ubo::upload(vkobjs& mvkobjs, std::vector<vkuniformbufferdata>& ubodata, std::vector<glm::mat4> mats,unsigned int texidx){
+void ubo::upload(vkobjs& mvkobjs, std::vector<vkubodata>& ubodata, std::vector<glm::mat4> mats,unsigned int texidx){
 	void* data;
 	vmaMapMemory(mvkobjs.rdallocator, ubodata[0].rdubobufferalloc, &data);
 	std::memcpy(data, mats.data(), ubodata[0].rduniformbuffersize);
 	vmaUnmapMemory(mvkobjs.rdallocator, ubodata[0].rdubobufferalloc);
 }
 
-void ubo::upload(vkobjs& mvkobjs, std::vector<vkuniformbufferdata>& ubodata, unsigned int texidx){
+void ubo::upload(vkobjs& mvkobjs, std::vector<vkubodata>& ubodata, unsigned int texidx){
 	void* data;
 	vmaMapMemory(mvkobjs.rdallocator, ubodata[1].rdubobufferalloc, &data);
 	std::memcpy(data, &texidx, ubodata[1].rduniformbuffersize);
@@ -104,7 +104,7 @@ void ubo::upload(vkobjs& mvkobjs, std::vector<vkuniformbufferdata>& ubodata, uns
 }
 
 
-void ubo::cleanup(vkobjs& mvkobjs, std::vector<vkuniformbufferdata>& ubodata)
+void ubo::cleanup(vkobjs& mvkobjs, std::vector<vkubodata>& ubodata)
 {
 	for (int i{ 0 }; i < ubodata.size(); i++) {
 		vkDestroyDescriptorPool(mvkobjs.rdvkbdevice.device, ubodata[i].rdubodescriptorpool, nullptr);

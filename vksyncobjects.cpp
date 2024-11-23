@@ -11,13 +11,16 @@ bool vksyncobjects::init(vkobjs& rdata) {
 
 	if (vkCreateSemaphore(rdata.rdvkbdevice.device, &semaphoreinfo, nullptr, &rdata.rdpresentsemaphore) != VK_SUCCESS ||
 		vkCreateSemaphore(rdata.rdvkbdevice.device, &semaphoreinfo, nullptr, &rdata.rdrendersemaphore) != VK_SUCCESS ||
-		vkCreateFence(rdata.rdvkbdevice.device, &fenceinfo, nullptr, &rdata.rdrenderfence) != VK_SUCCESS) {
+		vkCreateFence(rdata.rdvkbdevice.device, &fenceinfo, nullptr, &rdata.rdrenderfence) != VK_SUCCESS||
+		vkCreateFence(rdata.rdvkbdevice.device, &fenceinfo, nullptr, &rdata.rduploadfence) != VK_SUCCESS) {
 		return false;
 	}
 	return true;
+	
 }
 void vksyncobjects::cleanup(vkobjs& rdata) {
 	vkDestroySemaphore(rdata.rdvkbdevice.device, rdata.rdpresentsemaphore, nullptr);
 	vkDestroySemaphore(rdata.rdvkbdevice.device, rdata.rdrendersemaphore, nullptr);
 	vkDestroyFence(rdata.rdvkbdevice.device, rdata.rdrenderfence, nullptr);
+	vkDestroyFence(rdata.rdvkbdevice.device, rdata.rduploadfence, nullptr);
 }

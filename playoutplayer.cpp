@@ -19,7 +19,9 @@ bool playoutplayer::setup2(vkobjs& objs, std::string vfile, std::string ffile) {
 	if (!createplayout(objs))return false;
 	if (!createpline(objs, vfile, ffile))return false;
 	if (!createpline2(objs, "shaders/gltf_gpu_dquat.vert.spv", "shaders/gltf_gpu_dquat.frag.spv"))return false;
-	if (!createdecaypline(objs, "shaders/decay.vert.spv", "shaders/decay.frag.spv"))return false;
+	if (!createdecaypline(objs, "shaders/decay_glitch.vert.spv", "shaders/decay_glitch.frag.spv"))return false;
+
+	ready = true;
 	return true;
 }
 
@@ -118,11 +120,9 @@ void playoutplayer::updateanims() {
 
 }
 
-void playoutplayer::uploadvboebo(vkobjs& objs) {
+void playoutplayer::uploadvboebo(vkobjs& objs, VkCommandBuffer& cbuffer) {
 	if (uploadreq) {
-		//mgltf->uploadvertexbuffers(objs);
-		//mgltf->uploadindexbuffers(objs);
-		mgltf->uploadvboebo(objs);
+		mgltf->uploadvboebo(objs,cbuffer);
 		uploadreq = false;
 	}
 }
@@ -160,7 +160,7 @@ void playoutplayer::updatemats() {
 	nummats = 0;
 
 	for (const auto& i : minstances) {
-		modelsettings settings = i->getinstancesettings();
+		modelsettings& settings = i->getinstancesettings();
 		if (!settings.msdrawmodel)continue;
 		if (settings.mvertexskinningmode == skinningmode::dualquat) {
 			std::vector<glm::mat2x4> quats = i->getjointdualquats();

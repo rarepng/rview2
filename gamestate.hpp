@@ -11,11 +11,13 @@
 #include "playoutcircle.hpp"
 #include "playoutmodel.hpp"
 
+#include "netserver.hpp"
+
 class gamestate {
 public:
 	static void tick();
 	static bool intersercthitbox(glm::vec3 x, std::pair<glm::vec3, unsigned int> y);
-	static void init(vkobjs& objs, std::function<void()> mvplayer, std::function<void()> mvenemies , std::shared_ptr<playoutplayer>& p, std::shared_ptr<playoutcircle>& c, std::vector<std::shared_ptr<playoutmodel>>& e, std::vector<std::shared_ptr<spell>>& s);
+	static void init(vkobjs& objs,netobjs& nobjs, std::function<void()> mvplayer, std::function<void()> mvenemies , std::shared_ptr<playoutplayer>& p, std::shared_ptr<playoutcircle>& c, std::vector<std::shared_ptr<playoutmodel>>& e, std::vector<std::shared_ptr<spell>>& s, std::shared_ptr<playoutcircle>& bars, std::unordered_map<ClientID, std::shared_ptr<playoutplayer>>& o);
 	static void wavelogic();
 	static bool checkcooldown(std::shared_ptr<spell>& s);
 	static bool checkactivity(std::shared_ptr<spell>& s);
@@ -27,10 +29,19 @@ public:
 	static void setstate(gamestate0 state);
 	static void setpause(pausestate state);
 
+	static void moveothers();
+
 	static void resetwave();
 
-	
+	inline static std::map<ClientID, int> astages{};
 
+	inline static std::map<ClientID, glm::vec3> aposes{};
+
+
+	static void addplayer(ClientID id);
+
+
+	inline static std::unordered_map<ClientID,int> standingticks{};
 
 
 private:
@@ -57,13 +68,18 @@ private:
 	//		s.msdrawmodel = true;
 	//	}}
 	//};
+
+
 	inline static vkobjs* mvkobjs;
-	inline static std::shared_ptr<playoutplayer> mplayer{};
-	inline static std::shared_ptr<playoutcircle> mcircle;
-	inline static std::vector<std::shared_ptr<playoutmodel>> menemies;
-	inline static std::vector<std::shared_ptr<spell>> spells;
-	inline static std::vector<spell> activespells{};
-	inline static std::vector<spell> coolingdownspells{};
+	inline static netobjs* mnobjs;
+	inline static std::shared_ptr<playoutplayer>* mplayer{};
+	inline static std::unordered_map<ClientID,std::shared_ptr<playoutplayer>>* others{};
+	inline static std::shared_ptr<playoutcircle>* mcircle;
+	inline static std::shared_ptr<playoutcircle>* mbars;
+	inline static std::vector<std::shared_ptr<playoutmodel>>* menemies;
+	inline static std::vector<std::shared_ptr<spell>>* spells;
+	inline static std::vector<spell>* activespells{};
+	inline static std::vector<spell>* coolingdownspells{};
 	inline static size_t gameticknum{ 0 };
 	inline static std::chrono::high_resolution_clock::time_point tickstart{};
 	inline static gamestate0 mstate{ gamestate0::menu };
