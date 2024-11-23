@@ -1,18 +1,33 @@
 [submodule "fastgltf"]
-	path = fastgltf
+	path = sub/fastgltf
 	url = git@png.github.com:spnda/fastgltf
 [submodule "glm"]
-	path = glm
+	path = sub/glm
 	url = git@png.github.com:g-truc/glm
 [submodule "glfw"]
-	path = glfw
+	path = sub/glfw
 	url = git@png.github.com:glfw/glfw
 [submodule "gns"]
-	path = gns
+	path = sub/gns
 	url = git@png.github.com:ValveSoftware/GameNetworkingSockets
 [submodule "protobuf"]
-	path = protobuf
+	path = sub/protobuf
 	url = git@png.github.com:protocolbuffers/protobuf
 [submodule "openssl"]
-	path = openssl
+	path = sub/openssl
 	url = git@png.github.com:openssl/openssl
+[submodule "sub/simdjson"]
+	path = sub/simdjson
+	url = git@png.github.com:simdjson/simdjson
+[submodule "sub/vk_boot"]
+	path = sub/vk_boot
+	url = git@png.github.com:charles-lunarg/vk-bootstrap
+[submodule "sub/vma"]
+	path = sub/vma
+	url = git@png.github.com:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+[submodule "sub/stb"]
+	path = sub/stb
+	url = git@png.github.com:nothings/stb
+[submodule "sub/imgui"]
+	path = sub/imgui
+	url = git@png.github.com:ocornut/imgui

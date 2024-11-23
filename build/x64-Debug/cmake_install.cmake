@@ -34,17 +34,32 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("D:/silver/qtcan/vulkan/build/x64-Debug/fastgltf/cmake_install.cmake")
+  include("D:/silver/qtcan/vulkan/build/x64-Debug/sub/fastgltf/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("D:/silver/qtcan/vulkan/build/x64-Debug/glfw/cmake_install.cmake")
+  include("D:/silver/qtcan/vulkan/build/x64-Debug/sub/glfw/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("D:/silver/qtcan/vulkan/build/x64-Debug/glm/cmake_install.cmake")
+  include("D:/silver/qtcan/vulkan/build/x64-Debug/sub/glm/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("D:/silver/qtcan/vulkan/build/x64-Debug/sub/simdjson/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("D:/silver/qtcan/vulkan/build/x64-Debug/sub/vk_boot/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("D:/silver/qtcan/vulkan/build/x64-Debug/sub/vma/cmake_install.cmake")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT)

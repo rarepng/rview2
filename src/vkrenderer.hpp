@@ -7,8 +7,8 @@
 #include <glm/gtx/quaternion.hpp>
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
-#include <vk/VkBootstrap.h>
-#include <vk/vk_mem_alloc.h>
+#include <VkBootstrap.h>
+#include <vma/vk_mem_alloc.h>
 #include <chrono>
 
 #include <future>

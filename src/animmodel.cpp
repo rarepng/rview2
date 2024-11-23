@@ -210,7 +210,7 @@ void animmodel::getnodedata(std::shared_ptr<vknode> treeNode) {
         [](auto& arg){},
         [&](fastgltf::TRS trs) {
             treeNode->settranslation(glm::make_vec3(trs.translation.data()));
-            treeNode->setrotation(glm::make_quat(trs.rotation.value_ptr()));
+            treeNode->setrotation(glm::make_quat(trs.rotation.data()));
             treeNode->setscale(glm::make_vec3(trs.scale.data()));
 }
         }, node.transform);

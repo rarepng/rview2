@@ -85,7 +85,7 @@ rule CXX_SCAN__fastgltf_Debug
 # Rule to generate ninja dyndep files for CXX.
 
 rule CXX_DYNDEP__fastgltf_Debug
-  command = "D:\smoke\visual cancer\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E cmake_ninja_dyndep --tdi=fastgltf\CMakeFiles\fastgltf.dir\CXXDependInfo.json --lang=CXX --modmapfmt=msvc --dd=$out @$out.rsp
+  command = "D:\smoke\visual cancer\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E cmake_ninja_dyndep --tdi=sub\fastgltf\CMakeFiles\fastgltf.dir\CXXDependInfo.json --lang=CXX --modmapfmt=msvc --dd=$out @$out.rsp
   description = Generating CXX dyndep file $out
   rspfile = $out.rsp
   rspfile_content = $in
@@ -150,7 +150,7 @@ rule CXX_SCAN__glm_Debug
 # Rule to generate ninja dyndep files for CXX.
 
 rule CXX_DYNDEP__glm_Debug
-  command = "D:\smoke\visual cancer\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E cmake_ninja_dyndep --tdi=glm\glm\CMakeFiles\glm.dir\CXXDependInfo.json --lang=CXX --modmapfmt=msvc --dd=$out @$out.rsp
+  command = "D:\smoke\visual cancer\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E cmake_ninja_dyndep --tdi=sub\glm\glm\CMakeFiles\glm.dir\CXXDependInfo.json --lang=CXX --modmapfmt=msvc --dd=$out @$out.rsp
   description = Generating CXX dyndep file $out
   rspfile = $out.rsp
   rspfile_content = $in
@@ -179,6 +179,71 @@ rule CXX_COMPILER__glm_unscanned_Debug
 # Rule for linking CXX static library.
 
 rule CXX_STATIC_LIBRARY_LINKER__glm_Debug
+  command = C:\Windows\system32\cmd.exe /C "$PRE_LINK && "D:\smoke\visual cancer\VC\Tools\MSVC\14.42.34433\bin\Hostx64\x64\lib.exe" /nologo $LINK_FLAGS /out:$TARGET_FILE $in && $POST_BUILD"
+  description = Linking CXX static library $TARGET_FILE
+  restat = $RESTAT
+
+
+#############################################
+# Rule for compiling CXX files.
+
+rule CXX_COMPILER__simdjson_unscanned_Debug
+  deps = msvc
+  command = ${LAUNCHER}${CODE_CHECK}"D:\smoke\visual cancer\VC\Tools\MSVC\14.42.34433\bin\Hostx64\x64\cl.exe"  /nologo /TP $DEFINES $INCLUDES $FLAGS /showIncludes /Fo$out /Fd$TARGET_COMPILE_PDB /FS -c $in
+  description = Building CXX object $out
+
+
+#############################################
+# Rule for linking CXX static library.
+
+rule CXX_STATIC_LIBRARY_LINKER__simdjson_Debug
+  command = C:\Windows\system32\cmd.exe /C "$PRE_LINK && "D:\smoke\visual cancer\VC\Tools\MSVC\14.42.34433\bin\Hostx64\x64\lib.exe" /nologo $LINK_FLAGS /out:$TARGET_FILE $in && $POST_BUILD"
+  description = Linking CXX static library $TARGET_FILE
+  restat = $RESTAT
+
+
+#############################################
+# Rule for generating CXX dependencies.
+
+rule CXX_SCAN__vk-bootstrap_Debug
+  deps = msvc
+  command = "D:\smoke\visual cancer\VC\Tools\MSVC\14.42.34433\bin\Hostx64\x64\cl.exe" $DEFINES $INCLUDES $FLAGS $in -nologo -TP -showIncludes -scanDependencies $DYNDEP_INTERMEDIATE_FILE -Fo$OBJ_FILE
+  description = Scanning $in for CXX dependencies
+
+
+#############################################
+# Rule to generate ninja dyndep files for CXX.
+
+rule CXX_DYNDEP__vk-bootstrap_Debug
+  command = "D:\smoke\visual cancer\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E cmake_ninja_dyndep --tdi=sub\vk_boot\CMakeFiles\vk-bootstrap.dir\CXXDependInfo.json --lang=CXX --modmapfmt=msvc --dd=$out @$out.rsp
+  description = Generating CXX dyndep file $out
+  rspfile = $out.rsp
+  rspfile_content = $in
+  restat = 1
+
+
+#############################################
+# Rule for compiling CXX files.
+
+rule CXX_COMPILER__vk-bootstrap_scanned_Debug
+  deps = msvc
+  command = ${LAUNCHER}${CODE_CHECK}"D:\smoke\visual cancer\VC\Tools\MSVC\14.42.34433\bin\Hostx64\x64\cl.exe"  /nologo /TP $DEFINES $INCLUDES $FLAGS /showIncludes @$DYNDEP_MODULE_MAP_FILE /Fo$out /Fd$TARGET_COMPILE_PDB /FS -c $in
+  description = Building CXX object $out
+
+
+#############################################
+# Rule for compiling CXX files.
+
+rule CXX_COMPILER__vk-bootstrap_unscanned_Debug
+  deps = msvc
+  command = ${LAUNCHER}${CODE_CHECK}"D:\smoke\visual cancer\VC\Tools\MSVC\14.42.34433\bin\Hostx64\x64\cl.exe"  /nologo /TP $DEFINES $INCLUDES $FLAGS /showIncludes /Fo$out /Fd$TARGET_COMPILE_PDB /FS -c $in
+  description = Building CXX object $out
+
+
+#############################################
+# Rule for linking CXX static library.
+
+rule CXX_STATIC_LIBRARY_LINKER__vk-bootstrap_Debug
   command = C:\Windows\system32\cmd.exe /C "$PRE_LINK && "D:\smoke\visual cancer\VC\Tools\MSVC\14.42.34433\bin\Hostx64\x64\lib.exe" /nologo $LINK_FLAGS /out:$TARGET_FILE $in && $POST_BUILD"
   description = Linking CXX static library $TARGET_FILE
   restat = $RESTAT

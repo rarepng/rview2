@@ -1,9 +1,9 @@
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb/stb_image.h>
+#include <stb_image.h>
 #include <cstring>
 #include "commandbuffer.hpp"
 #include "vktexture.hpp"
-#include <vk/VkBootstrap.h>
+#include <VkBootstrap.h>
 #include <future>
 #include <thread>
 #include <mutex>

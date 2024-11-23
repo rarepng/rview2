@@ -4,14 +4,14 @@
 
 //#define _DEBUG
 
-#include <imgui/imgui_impl_glfw.h>
-#include <imgui/imgui.h>
+#include <backends/imgui_impl_glfw.h>
+#include <imgui.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <ctime>
 #include <cstdlib>
 #include <glm/gtx/spline.hpp>
 #include <glm/gtx/rotate_vector.hpp>
-#include <vk/vk_mem_alloc.h>
+#include <vma/vk_mem_alloc.h>
 #include <iostream>
 #include "vkrenderer.hpp"
 #include "vksyncobjects.hpp"

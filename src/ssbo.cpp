@@ -1,6 +1,6 @@
 #include "ssbo.hpp"
 
-#include <vk/VkBootstrap.h>
+#include <VkBootstrap.h>
 
 bool ssbo::init(vkobjs& objs, vkshaderstoragebufferdata& SSBOData, size_t bufferSize) {
     VkBufferCreateInfo bufferInfo{};

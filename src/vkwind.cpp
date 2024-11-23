@@ -5,10 +5,10 @@
 #include <chrono>
 #include <mutex>
 
-#include <imgui/imgui.h>
-#include <imgui/imgui_impl_glfw.h>
-#include <imgui/imgui_impl_vulkan.h>
-#include <imgui/imgui_stdlib.h>
+#include <imgui.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_vulkan.h>
+#include <misc/cpp/imgui_stdlib.h>
 
 bool vkwind::init(std::string title) {
 	if (!glfwInit()) {

@@ -1,6 +1,6 @@
 #include "ssbomesh.hpp"
 
-#include <vk/VkBootstrap.h>
+#include <VkBootstrap.h>
 
 bool ssbomesh::init(vkobjs& objs, vkshaderstoragebufferdata& SSBOData) {
     VkBufferCreateInfo bufferInfo{};
