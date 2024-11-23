@@ -708,6 +708,9 @@ bool ui::createmainmenuframe(vkobjs& mvkobjs) {
     imguiWindowFlags |= ImGuiWindowFlags_NoSavedSettings;
     imguiWindowFlags |= ImGuiWindowFlags_NoCollapse;
     imguiWindowFlags |= ImGuiWindowFlags_NoTitleBar;
+    imguiWindowFlags |= ImGuiWindowFlags_AlwaysAutoResize;
+
+    
 
 
     ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), 1, { 0.5f,0.5f });

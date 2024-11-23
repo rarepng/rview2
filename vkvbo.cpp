@@ -71,24 +71,12 @@ bool vkvbo::upload(vkobjs& mvkobjs, vkvertexbufferdata& vbdata, vkmesh vmesh){
     return true;
 }
 
-bool vkvbo::upload(vkobjs& mvkobjs, vkvertexbufferdata& vbdata,
-    std::vector<glm::vec3> vertexData) {
-    size_t vertexDataSize = vertexData.size() * sizeof(glm::vec3);
-
-    /* buffer too small, resize */
-    if (vbdata.rdvertexbuffersize < vertexDataSize) {
-        cleanup(mvkobjs, vbdata);
-
-        if (!init(mvkobjs, vbdata, vertexDataSize)) {
-            return false;
-        }
-        vbdata.rdvertexbuffersize = vertexDataSize;
-    }
+bool vkvbo::upload(vkobjs& mvkobjs, vkvertexbufferdata& vbdata,std::vector<glm::vec3> vertexData) {
 
     /* copy data to staging buffer*/
     void* data;
     vmaMapMemory(mvkobjs.rdallocator, vbdata.rdstagingbufferalloc, &data);
-    std::memcpy(data, vertexData.data(), vertexDataSize);
+    std::memcpy(data, vertexData.data(), vbdata.rdvertexbuffersize);
     vmaUnmapMemory(mvkobjs.rdallocator, vbdata.rdstagingbufferalloc);
 
     VkBufferMemoryBarrier vertexBufferBarrier{};
@@ -105,17 +93,6 @@ bool vkvbo::upload(vkobjs& mvkobjs, vkvertexbufferdata& vbdata,
     stagingBufferCopy.srcOffset = 0;
     stagingBufferCopy.dstOffset = 0;
     stagingBufferCopy.size = vbdata.rdvertexbuffersize;
-
-
-
-
-
-
-
-
-
-
-
 
 
 

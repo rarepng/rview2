@@ -6,5 +6,6 @@ class indexbuffer {
 public:
 	static bool init(vkobjs& objs, vkindexbufferdata& indexbufferdata, size_t buffersize);
 	static bool upload(vkobjs& objs, vkindexbufferdata& indexbufferdata, const tinygltf::Buffer& buffer, const tinygltf::BufferView& bufferview, const tinygltf::Accessor& acc);
+	static bool upload(vkobjs& objs, vkindexbufferdata& indexbufferdata,std::vector<unsigned short> indicez);
 	static void cleanup(vkobjs& objs, vkindexbufferdata& indexbufferdata);
 };

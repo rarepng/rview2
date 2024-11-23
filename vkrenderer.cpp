@@ -76,8 +76,11 @@ bool vkrenderer::quicksetup() {
 
 bool vkrenderer::loadbackground(){
 	mbackground = std::make_shared<playoutback>();
+	mmenubg = std::make_shared<playoutmenubg>();
 	if (!mbackground->setup(mvkobjs, backfname, backgobjs))return false;
-	if (!mbackground->setup2(mvkobjs, backshaders[0],backshaders[1]))return false;
+	if (!mbackground->setup2(mvkobjs, backshaders[0], backshaders[1]))return false;
+	if (!mmenubg->setup(mvkobjs,1))return false;
+	if (!mmenubg->setup2(mvkobjs, menubgshaders[0], menubgshaders[1]))return false;
 	return true;
 }
 
@@ -808,6 +811,7 @@ bool vkrenderer::drawmainmenu() {
 	if (vkBeginCommandBuffer(mvkobjs.rdcommandbuffer[0], &cmdbgninfo) != VK_SUCCESS)return false;
 
 	mbackground->uploadvboebo(mvkobjs);
+	mmenubg->uploadvboebo(mvkobjs);
 
 	//staticsettings s{};
 	staticsettings s = mbackground->getinst(0)->getinstancesettings();
@@ -827,6 +831,7 @@ bool vkrenderer::drawmainmenu() {
 
 
 	mbackground->draw(mvkobjs);
+	mmenubg->draw(mvkobjs);
 
 	rdscene = mui.createmainmenuframe(mvkobjs);
 	mui.render(mvkobjs, mvkobjs.rdcommandbuffer[0]);
@@ -1182,4 +1187,6 @@ void vkrenderer::cleanmainmenu(){
 	mbackground->cleanupmodels(mvkobjs);
 	mbackground->cleanupbuffers(mvkobjs);
 	mbackground->cleanuplines(mvkobjs);
+	mmenubg->cleanupmodels(mvkobjs);
+	mmenubg->cleanuplines(mvkobjs);
 }

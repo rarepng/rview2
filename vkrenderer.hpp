@@ -35,6 +35,7 @@
 #include "playoutplayer.hpp"
 #include "playoutmodel.hpp"
 #include "playoutstatic.hpp"
+#include "playoutmenubg.hpp"
 
 #include "vkgltfmodel.hpp"
 #include "vkgltfinstance.hpp"
@@ -76,6 +77,8 @@ private:
 
 	vkcam mcam{};
 
+	std::shared_ptr<playoutmenubg> mmenubg;
+
 	std::shared_ptr<playoutback> mbackground;
 
 	std::shared_ptr<playoutplayer> mplayer;
@@ -107,6 +110,7 @@ private:
 	std::string backfname{ "resources/dontuse3.glb" };
 	const std::vector<std::string> animfname{ "resources/untitled.glb","resources/untitled1.glb" };
 	const std::vector<std::string> staticfname{ "resources/dontuse1.glb","resources/dontuse2.glb","resources/dontuse3.glb" };
+	const std::vector<std::string> menubgshaders{ "shaders/menufog.vert.spv", "shaders/menufog.frag.spv" };
 	const std::vector<std::string> playershaders{ "shaders/gltf_gpu.vert.spv", "shaders/gltf_gpu.frag.spv" };
 	const std::vector<std::string> backshaders{ "shaders/static.vert.spv", "shaders/static.frag.spv" };
 	const std::vector<std::string> animshaders{ "shaders/gltf_gpu.vert.spv", "shaders/gltf_gpu.frag.spv" };
