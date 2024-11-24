@@ -88,7 +88,6 @@ void netclient::Shutdown(){
 
 void netclient::SendBuffer(netbuffer buffer, bool reliable){
 	EResult result = m_Interface->SendMessageToConnection(m_Connection, buffer.d, (uint32_t)buffer.s, reliable ? k_nSteamNetworkingSend_Reliable : k_nSteamNetworkingSend_Unreliable, nullptr);
-	// handle result?
 }
 
 void netclient::SendString(std::string string, bool reliable){
@@ -109,7 +108,6 @@ void netclient::sendgamepos(const glm::vec3& pos, bool reliable){
 }
 
 void netclient::PollIncomingMessages(){
-	// Process all messages
 	while (m_Running)	{
 		ISteamNetworkingMessage* incomingMessage = nullptr;
 		int messageCount = m_Interface->ReceiveMessagesOnConnection(m_Connection, &incomingMessage, 1);
@@ -118,14 +116,12 @@ void netclient::PollIncomingMessages(){
 
 		if (messageCount < 0)
 		{
-			// messageCount < 0 means critical error?
 			m_Running = false;
 			return;
 		}
 
 		m_DataReceivedCallback(netbuffer(incomingMessage->m_pData, incomingMessage->m_cbSize));
 
-		// Release when done
 		incomingMessage->Release();
 	}
 }
@@ -137,13 +133,10 @@ void netclient::PollConnectionStateChanges(){
 void netclient::ConnectionStatusChangedCallback(SteamNetConnectionStatusChangedCallback_t* info) { s_Instance->OnConnectionStatusChanged(info); }
 
 void netclient::OnConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t* info){
-	//assert(pInfo->m_hConn == m_hConnection || m_hConnection == k_HSteamNetConnection_Invalid);
 
-	// Handle connection state
 	switch (info->m_info.m_eState)
 	{
 	case k_ESteamNetworkingConnectionState_None:
-		// NOTE: We will get callbacks here when we destroy connections. You can ignore these.
 		break;
 
 	case k_ESteamNetworkingConnectionState_ClosedByPeer:
@@ -153,11 +146,8 @@ void netclient::OnConnectionStatusChanged(SteamNetConnectionStatusChangedCallbac
 		m_ConnectionStatus = ConnectionStatus::FailedToConnect;
 		m_ConnectionDebugMessage = info->m_info.m_szEndDebug;
 
-		// Print an appropriate message
 		if (info->m_eOldState == k_ESteamNetworkingConnectionState_Connecting)
 		{
-			// Note: we could distinguish between a timeout, a rejected connection,
-			// or some other transport problem.
 			std::cout << "Could not connect to remote host. " << info->m_info.m_szEndDebug << std::endl;
 		}
 		else if (info->m_info.m_eState == k_ESteamNetworkingConnectionState_ProblemDetectedLocally)
@@ -166,16 +156,9 @@ void netclient::OnConnectionStatusChanged(SteamNetConnectionStatusChangedCallbac
 		}
 		else
 		{
-			// NOTE: We could check the reason code for a normal disconnection
 			std::cout << "Disconnected from host. " << info->m_info.m_szEndDebug << std::endl;
 		}
 
-		// Clean up the connection.  This is important!
-		// The connection is "closed" in the network sense, but
-		// it has not been destroyed.  We must close it on our end, too
-		// to finish up.  The reason information do not matter in this case,
-		// and we cannot linger because it's already closed on the other end,
-		// so we just pass 0s.
 		m_Interface->CloseConnection(info->m_hConn, 0, nullptr, false);
 		m_Connection = k_HSteamNetConnection_Invalid;
 		m_ConnectionStatus = ConnectionStatus::Disconnected;
@@ -183,8 +166,6 @@ void netclient::OnConnectionStatusChanged(SteamNetConnectionStatusChangedCallbac
 	}
 
 	case k_ESteamNetworkingConnectionState_Connecting:
-		// We will get this callback when we start connecting.
-		// We can ignore this.
 		break;
 
 	case k_ESteamNetworkingConnectionState_Connected:

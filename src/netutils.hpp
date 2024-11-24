@@ -5,9 +5,8 @@
 
 namespace netutils {
 
+	//todo
 	bool IsValidIPAddress(std::string_view ipAddress);
-
-	// Platform-specific implementations
-	std::string ResolveDomainName(std::string_view name);
+	//std::string ResolveDomainName(std::string_view name);
 
 }

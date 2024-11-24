@@ -13,30 +13,28 @@ full support for glsl shaders ( compile with glslc/glslangvalidator for vulkan )
 * gamenetworkingsockets
 
 ## compiling
+
+clone recursively or run ```git submodule --init --update``` to install the dependancy submodules
+
+### cmake
+```cmake -G your_platform -B build_dir``` <br>
+your_platform can be omitted or can be "Visual Studio 17 2022" or ninja for simplicty if u have it.
+
 ### gcc
-``glslc -c shaders/*``<br>
-``g++ -std=c++20 *.cpp */*.cpp -lglfw -lvulkan -lGameNetworkingSockets -o bin``
+``glslc -c shaders/*.frag shaders/*.vert``<br>
+``g++ -std=c++20 *.cpp */*.cpp -lglfw -lvulkan -lfastgltf -lGameNetworkingSockets -o bin``
 
-visual studio can be used too for windows compiling (or mingw) by manually importing all the files or cmake by creating the script for it
+visual studio can be used too for windows compiling.
 
-## samples
+Vulkan SDK has to be installed on the machine for compiling, GameNetworking sockets too and should have the built libraries put in /lib directory so cmake will link them. GameNetworkingSockets will require openssl and protobuf, on windows the dlls are going to be required on path or next to the exe. You can find the pre built dlls in the windows release archive.
 
-
+## old demo
 https://github.com/rarepng/engine/assets/153374928/3d27590c-4bc7-42e4-b4b2-26ca9753ddff
-
-
-
-
 https://github.com/rarepng/engine/assets/153374928/d85023e9-e746-4230-af61-36fb7b283cc4
 
-
-
-
-
-https://github.com/user-attachments/assets/63d6e427-5eb4-4bb6-a07d-62d90d96b0fe
-
-https://github.com/user-attachments/assets/551bdab1-8db9-424e-8017-ecfbf6e85678
-
-https://github.com/user-attachments/assets/21f4966a-4253-433c-8eff-aa960479b978
+## new demo
+https://rarepng.github.io/vidz/0_1.mp4
+https://rarepng.github.io/vidz/0_2.mp4
+https://rarepng.github.io/vidz/0_3.mp4
 
 

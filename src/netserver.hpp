@@ -32,23 +32,13 @@ public:
 	netserver(int port);
 	~netserver();
 
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Start and Stop the server
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void Start();
 	void Stop();
 
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Set callbacks for server events
-	// These callbacks will be called from the server thread
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void SetDataReceivedCallback(const DataReceivedCallback& function);
 	void SetClientConnectedCallback(const ClientConnectedCallback& function);
 	void SetClientDisconnectedCallback(const ClientDisconnectedCallback& function);
 
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Send Data
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void SendBufferToClient(ClientID clientID, netbuffer buffer, bool reliable = true);
 	void SendBufferToAllClients(netbuffer buffer, ClientID excludeClientID = 0, bool reliable = true);
 
@@ -69,6 +59,7 @@ public:
 	{
 		SendBufferToAllClients(Buffer(&data, sizeof(T)), excludeClientID, reliable);
 	}
+
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void KickClient(ClientID clientID);
@@ -76,12 +67,12 @@ public:
 	bool IsRunning() const { return m_Running; }
 	const std::map<HSteamNetConnection, ClientInfo>& GetConnectedClients() const { return m_ConnectedClients; }
 private:
-	void NetworkThreadFunc(); // Server thread
+	void NetworkThreadFunc();
 
 	static void ConnectionStatusChangedCallback(SteamNetConnectionStatusChangedCallback_t* info);
 	void OnConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t* info);
 
-	// Server functionality
+
 	void PollIncomingMessages();
 	void SetClientNick(HSteamNetConnection hConn, const char* nick);
 	void PollConnectionStateChanges();

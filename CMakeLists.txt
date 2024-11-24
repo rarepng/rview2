@@ -1,19 +1,30 @@
 cmake_minimum_required(VERSION 3.22)
 project(raw LANGUAGES CXX)
 
-include(ExternalProject)
+#include(ExternalProject)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 find_package(Vulkan REQUIRED)
+#find_package(Vulkan COMPONENTS glslc REQUIRED)
 #find_package(libprotobuf)
 #find_package(GameNetworkingSockets)
 
 set(submodules_path
         ${PROJECT_SOURCE_DIR}/sub
 )
+
+if(UNIX)
+set(SHELL_CMD bash)
+set(STATIC_LIB_EXT so)
+else()
+set(SHELL_CMD pwsh)
+set(STATIC_LIB_EXT lib)
+endif()
+
+
 
 
 #if(NOT IS_DIRECTORY ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto)
@@ -74,12 +85,59 @@ set(OTHER_SOURCES
     ${submodules_path}/imgui/imgui_draw.cpp
     ${submodules_path}/imgui/imgui_demo.cpp
 )
-#add_subdirectory(raw src)
 
-add_executable(raw ${OTHER_SOURCES} ${PROJECT_SOURCES} )
-link_directories(
-    ${PROJECT_SOURCE_DIR}/lib
+add_executable(raw ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_SOURCE_DIR}/lib/GameNetworkingSockets.${STATIC_LIB_EXT} )
+
+target_link_directories(raw PUBLIC ${PROJECT_SOURCE_DIR}/lib)
+file(GLOB shaders ${PROJECT_BINARY_DIR}/shaders/*)
+list(LENGTH shaders shader_len)
+message(WARNING ${shader_len})
+
+if(shader_len EQUAL 0)
+
+file(GLOB_RECURSE GLSL_SOURCE_FILES
+    "${PROJECT_SOURCE_DIR}/shaders/*.frag"
+    "${PROJECT_SOURCE_DIR}/shaders/*.vert"
+    )
+  set(SHADER_COMMAND)
+  foreach(GLSL ${GLSL_SOURCE_FILES})
+    file(TO_CMAKE_PATH "${GLSL}" GLSL_NATIVE)
+    cmake_path(GET GLSL_NATIVE FILENAME SPIRV_NAME)
+      set(SPIRV "${PROJECT_BINARY_DIR}/shaders/${SPIRV_NAME}.spv")
+      add_custom_command(
+        OUTPUT ${SPIRV}
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders/"
+        COMMAND ${SHELL_CMD} "-c" $ENV{VULKAN_SDK}/Bin/glslc " --target-env=vulkan1.3 --target-spv=spv1.6 -std=460 -c ${GLSL_NATIVE} -o ${SPIRV}"
+        DEPENDS ${GLSL_NATIVE}
+      )
+      list(APPEND SPIRV_BINARY_FILES ${SPIRV})
+  endforeach()
+  add_custom_target(shaders DEPENDS ${SPIRV_BINARY_FILES})
+  add_dependencies(raw shaders)
+endif()
+
+
+set(lib_dir "${PROJECT_BINARY_DIR}/lib")
+add_custom_command(
+    OUTPUT ${lib_dir}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/lib" "${PROJECT_BINARY_DIR}/lib"
+    DEPENDS "${PROJECT_SOURCE_DIR}/lib"
 )
+add_custom_target(libs_static DEPENDS ${PROJECT_SOURCE_DIR}/lib)
+add_dependencies(raw libs_static)
+
+
+
+set(resources_dir "${PROJECT_BINARY_DIR}/resources")
+add_custom_command(
+    OUTPUT ${resources_dir}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/resources" "${PROJECT_BINARY_DIR}/resources"
+    DEPENDS "${PROJECT_SOURCE_DIR}/resources"
+)
+add_custom_target(resources_deps DEPENDS ${PROJECT_SOURCE_DIR}/resources)
+add_dependencies(raw resources_deps)
+
+
 
 target_link_libraries(raw
     PUBLIC
@@ -89,13 +147,12 @@ target_link_libraries(raw
         GameNetworkingSockets
         Vulkan::Vulkan
         vk-bootstrap::vk-bootstrap
+        ${PROJECT_SOURCE_DIR}/lib/GameNetworkingSockets.${STATIC_LIB_EXT}
 )
-
 target_include_directories(raw
     PUBLIC
-        "${VULKAN_SDK}/Include"
+        #"${VULKAN_SDK}/Include"
         "${submodules_path}/gns/include"
         "${submodules_path}/stb"
         "${submodules_path}/imgui"
 )
-
