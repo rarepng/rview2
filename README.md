@@ -36,8 +36,8 @@ Vulkan SDK has to be installed on the machine for compiling, GameNetworking sock
 <video src=https://github.com/rarepng/engine/assets/153374928/d85023e9-e746-4230-af61-36fb7b283cc4></video>
 
 ## new demo
-<video src=https://rarepng.github.io/vidz/0_1.mp4></video>
-<video src=https://rarepng.github.io/vidz/0_2.mp4></video>
-<video src=https://rarepng.github.io/vidz/0_3.mp4></video>
+<video src=https://github.com/user-attachments/assets/de65abb7-434f-45c6-a867-2995c5120fe6>https://rarepng.github.io/vidz/0_1.mp4</video>
+<video src=https://github.com/user-attachments/assets/c01b2221-fbd6-42c1-a831-639ce9b4352b>https://rarepng.github.io/vidz/0_2.mp4</video>
+<video src=https://github.com/user-attachments/assets/6d03127e-c95a-4dc3-931c-8750e5c5f008>https://rarepng.github.io/vidz/0_3.mp4</video>
 
 
