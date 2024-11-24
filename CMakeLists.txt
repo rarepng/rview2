@@ -86,9 +86,8 @@ set(OTHER_SOURCES
     ${submodules_path}/imgui/imgui_demo.cpp
 )
 
-add_executable(raw ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_SOURCE_DIR}/lib/GameNetworkingSockets.${STATIC_LIB_EXT} )
+add_executable(raw ${OTHER_SOURCES} ${PROJECT_SOURCES})
 
-target_link_directories(raw PUBLIC ${PROJECT_SOURCE_DIR}/lib)
 file(GLOB shaders ${PROJECT_BINARY_DIR}/shaders/*)
 list(LENGTH shaders shader_len)
 message(WARNING ${shader_len})
@@ -117,38 +116,27 @@ file(GLOB_RECURSE GLSL_SOURCE_FILES
 endif()
 
 
-set(lib_dir "${PROJECT_BINARY_DIR}/lib")
-add_custom_command(
-    OUTPUT ${lib_dir}
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/lib" "${PROJECT_BINARY_DIR}/lib"
-    DEPENDS "${PROJECT_SOURCE_DIR}/lib"
-)
-add_custom_target(libs_static DEPENDS ${PROJECT_SOURCE_DIR}/lib)
-add_dependencies(raw libs_static)
-
-
-
-set(resources_dir "${PROJECT_BINARY_DIR}/resources")
+set(resources_dir "${PROJECT_SOURCE_DIR}/resources")
 add_custom_command(
     OUTPUT ${resources_dir}
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/resources" "${PROJECT_BINARY_DIR}/resources"
-    DEPENDS "${PROJECT_SOURCE_DIR}/resources"
 )
 add_custom_target(resources_deps DEPENDS ${PROJECT_SOURCE_DIR}/resources)
 add_dependencies(raw resources_deps)
 
 
+target_link_directories(raw PUBLIC ${PROJECT_SOURCE_DIR}/lib)
 
 target_link_libraries(raw
     PUBLIC
         glfw
         fastgltf
         glm
-        GameNetworkingSockets
         Vulkan::Vulkan
         vk-bootstrap::vk-bootstrap
-        ${PROJECT_SOURCE_DIR}/lib/GameNetworkingSockets.${STATIC_LIB_EXT}
+        GameNetworkingSockets
 )
+
 target_include_directories(raw
     PUBLIC
         #"${VULKAN_SDK}/Include"
