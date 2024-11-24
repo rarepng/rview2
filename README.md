@@ -3,6 +3,9 @@
 vulkan 1.3 simple cross platform online multiplayer game.
 can load any gltf model, pbr materials, textures, alpha blending, fk and ik animations, actions and non-linear animations
 full support for glsl shaders ( compile with glslc/glslangvalidator for vulkan ).
+
+[Drive to resources](https://drive.google.com/file/d/1ZwYuB17yq-yRpswRISuvSG-_R7j5GKM9/view?usp=sharing)
+
 ## build requirements
 * c++20 compiler
 * vulkan( vulkan 1.3, vkbootstrap and vma_mem_alloc)
@@ -15,6 +18,7 @@ full support for glsl shaders ( compile with glslc/glslangvalidator for vulkan )
 ## compiling
 - install/make sure vulkan sdk is installed and make sure VULKAN_SDK is set and glslc is under VULKAN_SDK/Bin/
 - build GameNetworkingSockets and place the library in lib directory
+- make sure resources are in resources directory 
 - clone recursively or run ```git submodule --init --update``` to install the dependancy submodules
 - if on windows place {GameNetworkingSockets.dll, libcrypto-3-x64.dll,libprotobuf.dll } next to exe
 - if on linux make sure openssl, protobuf and gamenetworkingsockets are installed and/or their shared libraries are in lib path, you can run `ldconfig` after installation
