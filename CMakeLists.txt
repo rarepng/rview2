@@ -106,8 +106,8 @@ file(GLOB_RECURSE GLSL_SOURCE_FILES
       add_custom_command(
         OUTPUT ${SPIRV}
         COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders/"
-        #COMMAND ${SHELL_CMD} "-c" "\"$ENV{VULKAN_SDK}/bin/glslc --target-env=vulkan1.3 --target-spv=spv1.6 -std=460 -c ${GLSL_NATIVE} -o ${SPIRV}\""
-        COMMAND "\\\\`$ENV{VULKAN_SDK}/bin/glslc --target-env=vulkan1.3 --target-spv=spv1.6 -std=460 -c ${GLSL_NATIVE} -o ${SPIRV}\\\\`"
+        COMMAND ${SHELL_CMD} "-c" "\"$ENV{VULKAN_SDK}/bin/glslc --target-env=vulkan1.3 --target-spv=spv1.6 -std=460 -c ${GLSL_NATIVE} -o ${SPIRV}\""
+        #COMMAND "$ENV{VULKAN_SDK}/bin/glslc --target-env=vulkan1.3 --target-spv=spv1.6 -std=460 -c ${GLSL_NATIVE} -o ${SPIRV}"
         DEPENDS ${GLSL_NATIVE}
       )
       list(APPEND SPIRV_BINARY_FILES ${SPIRV})
