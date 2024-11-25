@@ -24,6 +24,7 @@ jobs:
     steps:
     - name: ssh config
       run: |
+        mkdir ~/.ssh
         touch ~/.ssh/config
         echo "Host png.github.com
                     HostName github.com" >> ~/.ssh/config
