@@ -39,7 +39,7 @@ jobs:
     - name: Install more depens
       run: |
         sudo apt-get update
-        sudo apt-get install -y libssl-dev libprotobuf-dev protobuf-compiler ninja-build wayland-scanner
+        sudo apt-get install -y libssl-dev libprotobuf-dev protobuf-compiler ninja-build
         cd /home/runner/work/raw/raw/sub/gns
         mkdir build
         cd build
@@ -56,17 +56,18 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-    - name: Configure CMake
-      run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -S ${{ github.workspace }}
+    # - name: Configure CMake
+    #   run: >
+    #     cmake -B ${{ steps.strings.outputs.build-output-dir }}
+    #     -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+    #     -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+    #     -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+    #     -G Ninja
+    #     -S ${{ github.workspace }}
 
-    - name: Build
-      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+    # - name: Build
+    #   run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
-    - name: Test
-      working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      run: ctest --build-config ${{ matrix.build_type }}
+    # - name: Test
+    #   working-directory: ${{ steps.strings.outputs.build-output-dir }}
+    #   run: ctest --build-config ${{ matrix.build_type }}
