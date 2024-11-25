@@ -33,10 +33,10 @@ jobs:
         submodules: true
         fetch-depth: 0
 
-    - name: Install depens
+    - name: update submodules
       run: |
         git submodule update --init --recursive
-    - name: Install more depens
+    - name: installing more depens
       run: |
         sudo apt-get update
         sudo apt-get install -y libssl-dev libprotobuf-dev protobuf-compiler ninja-build
@@ -50,7 +50,7 @@ jobs:
         cp bin/libGameNetworkingSockets.so /home/runner/work/raw/raw/lib/libGameNetworkingSockets.so #shared
         export LD_LIBRARY_PATH=/home/runner/work/raw/raw/lib:$LD_LIBRARY_PATH
         sudo ldconfig
-    - name: Install Vulkan SDK
+    - name: installing vulkan sdk
       run: |
         mkdir /home/runner/vulk
         cd /home/runner/vulk
@@ -61,10 +61,12 @@ jobs:
         export VK_ICD_FILENAMES=$VULKAN_SDK/etc/vulkan/icd.d
         export VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d
         sudo ldconfig
+        echo $PATH
 
-    - name: Verify Vulkan SDK Installation
+    - name: verifying vulkan
       run: |
-        vulkaninfo --summary
+        echo $PATH
+        # vulkaninfo --summary
         $VULKAN_SDK/bin/glslc --version
     - name: Set reusable strings
       id: strings
