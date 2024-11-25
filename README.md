@@ -24,7 +24,7 @@ full support for glsl shaders ( compile with glslc/glslangvalidator for vulkan )
 - if on linux make sure openssl, protobuf and gamenetworkingsockets are installed and/or their shared libraries are in lib path, you can run `ldconfig` after installation
 
 ### cmake
-```cmake .``` <br>
+```cmake -B build``` <br>
 ```make``` if linux, compile with visual studio if windows or if you passed argument to -G do that.
 
 ### gcc

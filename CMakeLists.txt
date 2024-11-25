@@ -92,7 +92,7 @@ file(GLOB shaders ${PROJECT_BINARY_DIR}/shaders/*)
 list(LENGTH shaders shader_len)
 message(WARNING ${shader_len})
 
-#if(shader_len EQUAL 0)
+if(shader_len EQUAL 0)
 
 file(GLOB_RECURSE GLSL_SOURCE_FILES
     "${PROJECT_SOURCE_DIR}/shaders/*.frag"
@@ -113,7 +113,7 @@ file(GLOB_RECURSE GLSL_SOURCE_FILES
   endforeach()
   add_custom_target(shaders DEPENDS ${SPIRV_BINARY_FILES})
   add_dependencies(raw shaders)
-#endif()
+endif()
 
 
 set(resources_dir "${PROJECT_SOURCE_DIR}/resources")
