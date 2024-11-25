@@ -46,7 +46,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: true
+        fetch-depth: 0
 
+    - name: Install dependencies
+      run: |
+        git submodule update --init --recursive
     - name: VulkanCI
       uses: NcStudios/VulkanCI@v1.1
     - name: Set reusable strings
