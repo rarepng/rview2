@@ -154,3 +154,7 @@ target_include_directories(raw
         "${submodules_path}/stb"
         "${submodules_path}/imgui"
 )
+
+
+
+set_property(TARGET raw APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/resources)
