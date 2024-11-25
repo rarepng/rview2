@@ -6,6 +6,20 @@ full support for glsl shaders ( compile with glslc/glslangvalidator for vulkan )
 
 [Drive to resources](https://drive.google.com/file/d/1ZwYuB17yq-yRpswRISuvSG-_R7j5GKM9/view?usp=sharing)
 
+
+
+## Game controls:
+
+left click - move to location<br>
+right click - toggle camera rotation with mouse<br>
+R - teleporting ability<br>
+F - damaging ability<br>
+F4 - fullscreen/window<br>
+F3 - network settings, only in main menu<br>
+ESC - pause in game, exit in main menu<br>
+wasdeq - camera controls, for debugging<br>
+
+
 ## build requirements
 * c++20 compiler
 * vulkan( vulkan 1.3, vkbootstrap and vma_mem_alloc)
