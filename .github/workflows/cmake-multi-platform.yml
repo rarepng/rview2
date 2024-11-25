@@ -22,15 +22,15 @@ jobs:
             cpp_compiler: g++
 
     steps:
+    - name: ssh config
+      run: |
+        echo "Host png.github.com
+                    HostName github.com" >> ~/.ssh/config
     - uses: actions/checkout@v4
       with:
         submodules: true
         fetch-depth: 0
 
-    - name: ssh config
-      run: |
-        echo "Host png.github.com
-                    HostName github.com" >> ~/.ssh/config
     - name: Install depens
       run: |
         git submodule update --init --recursive
@@ -48,7 +48,6 @@ jobs:
     - name: VulkanCI
       uses: NcStudios/VulkanCI@v1.1
     - name: Set reusable strings
-      # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
       id: strings
       shell: bash
       run: |
@@ -63,11 +62,8 @@ jobs:
         -S ${{ github.workspace }}
 
     - name: Build
-      # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
     - name: Test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest --build-config ${{ matrix.build_type }}
