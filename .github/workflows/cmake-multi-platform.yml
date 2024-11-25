@@ -47,9 +47,25 @@ jobs:
         ninja
         mkdir /home/runner/work/raw/raw/lib
         cp src/libGameNetworkingSockets_s.a /home/runner/work/raw/raw/lib/libGameNetworkingSockets.a
-        sudo ldconfig
-    - name: VulkanCI
-      uses: NcStudios/VulkanCI@v1.1
+        sudo ldconfig- name: Install Vulkan SDK
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget tar
+        wget -qO- https://sdk.lunarg.com/sdk/latest/linux/vulkan-sdk.tar.gz | tar -xz -C /tmp
+        export VULKAN_SDK=/tmp/vulkan-sdk-*/x86_64
+        export PATH=$VULKAN_SDK/bin:$PATH
+        export LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH
+        export VK_ICD_FILENAMES=$VULKAN_SDK/etc/vulkan/icd.d
+        export VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d
+        echo "::add-path::$VULKAN_SDK/bin"
+        echo "::add-path::$VULKAN_SDK/lib"
+        echo "::set-env name=VK_ICD_FILENAMES::$VULKAN_SDK/etc/vulkan/icd.d"
+        echo "::set-env name=VK_LAYER_PATH::$VULKAN_SDK/etc/vulkan/explicit_layer.d"
+
+    - name: Verify Vulkan SDK Installation
+      run: |
+        vulkaninfo --summary
+        glslc --version
     - name: Set reusable strings
       id: strings
       shell: bash
