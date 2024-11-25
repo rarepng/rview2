@@ -25,6 +25,7 @@ full support for glsl shaders ( compile with glslc/glslangvalidator for vulkan )
 
 ### cmake
 ```cmake -B build``` <br>
+```cd build```<br>
 ```make``` if linux, compile with visual studio if windows or if you passed argument to -G do that.
 
 ### gcc
