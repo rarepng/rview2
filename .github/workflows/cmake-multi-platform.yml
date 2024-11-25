@@ -47,7 +47,8 @@ jobs:
         ninja
         mkdir /home/runner/work/raw/raw/lib
         cp src/libGameNetworkingSockets_s.a /home/runner/work/raw/raw/lib/libGameNetworkingSockets.a
-        sudo ldconfig- name: Install Vulkan SDK
+        sudo ldconfig
+    - name: Install Vulkan SDK
       run: |
         sudo apt-get update
         sudo apt-get install -y wget tar
