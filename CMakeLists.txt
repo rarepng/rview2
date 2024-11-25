@@ -125,6 +125,15 @@ add_custom_target(resources_deps DEPENDS ${PROJECT_SOURCE_DIR}/resources)
 add_dependencies(raw resources_deps)
 
 
+set(resources_bin_dir "${PROJECT_BINARY_DIR}/resources")
+add_custom_command(
+    OUTPUT ${resources_bin_dir}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/resources" "${PROJECT_BINARY_DIR}/resources"
+    DEPENDS "${PROJECT_BINARY_DIR}/resources"
+)
+add_custom_target(resources_bin_deps DEPENDS ${PROJECT_SOURCE_DIR}/resources)
+add_dependencies(raw resources_bin_deps)
+
 target_link_directories(raw PUBLIC ${PROJECT_SOURCE_DIR}/lib)
 
 target_link_libraries(raw
