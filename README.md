@@ -41,7 +41,8 @@ wasdeq - camera controls, for debugging<br>
 ```cmake -B build``` <br>
 ```cd build```<br>
 ```make``` if linux, compile with visual studio if windows or ```ninja``` if installed and passed to cmake ```-G Ninja```<br>
-if using make, copy resources folder to build directory manually.
+if using make, copy resources folder to build directory manually.<br>
+sometimes shaders don't get compiled or copied by cmake, you can compile them manually with glslc and copy them to build/shaders/x.spv
 ### gcc
 ``glslc -c shaders/*.frag shaders/*.vert``<br>
 ``g++ -std=c++20 *.cpp */*.cpp -lglfw -lvulkan -lfastgltf -lGameNetworkingSockets -o bin``

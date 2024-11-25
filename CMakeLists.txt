@@ -93,13 +93,11 @@ file(GLOB shaders ${PROJECT_BINARY_DIR}/shaders/*)
 list(LENGTH shaders shader_len)
 #message(WARNING ${shader_len})
 
-#if(shader_len EQUAL 0)
-
+if(shader_len EQUAL 0)
 file(GLOB_RECURSE GLSL_SOURCE_FILES
     "${PROJECT_SOURCE_DIR}/shaders/*.frag"
     "${PROJECT_SOURCE_DIR}/shaders/*.vert"
     )
-  set(SHADER_COMMAND)
   foreach(GLSL ${GLSL_SOURCE_FILES})
     file(TO_CMAKE_PATH "${GLSL}" GLSL_NATIVE)
     cmake_path(GET GLSL_NATIVE FILENAME SPIRV_NAME)
@@ -108,13 +106,17 @@ file(GLOB_RECURSE GLSL_SOURCE_FILES
         OUTPUT ${SPIRV}
         COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders"
         COMMAND ${SHELL_CMD} -c '$ENV{VULKAN_SDK}/bin/glslc --target-env=vulkan1.3 --target-spv=spv1.6 -std=460 -c ${GLSL_NATIVE} -o ${SPIRV}'
+        #COMMAND ${CMAKE_COMMAND} -E copy ${SPIRV} "${PROJECT_BINARY_DIR}/shaders/${SPIRV_NAME}.spv"
         DEPENDS ${GLSL_NATIVE}
+        COMMENT "compiling shaders%"
       )
       list(APPEND SPIRV_BINARY_FILES ${SPIRV})
   endforeach()
+  message(WARNING ${SPIRV_BINARY_FILES})
+    set_source_files_properties(${SPIRV_BINARY_FILES} PROPERTIES GENERATED TRUE)
   add_custom_target(shaders_dep DEPENDS ${SPIRV_BINARY_FILES})
   add_dependencies(raw shaders_dep)
-#endif()
+endif()
 
 
 #set(resources_dir "${PROJECT_SOURCE_DIR}/resources")
