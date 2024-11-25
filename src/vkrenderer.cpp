@@ -309,7 +309,7 @@ bool vkrenderer::deviceinit() {
 	vkb::InstanceBuilder instbuild{};
 
 	//std::lock_guard<std::shared_mutex> lg{ *mvkobjs.mtx2 };
-	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 2, 0).build();
+	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 3, 0).build();
 	
 
 	//instret.value().
@@ -377,7 +377,7 @@ bool vkrenderer::deviceinit() {
 
 
 	//auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).add_required_extension_features(physmeshfeatures).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).add_required_extension("VK_EXT_mesh_shader").select();
-	auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 2).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_11(physfeatures11).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).select();
+	auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_11(physfeatures11).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).select();
 	//auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 0).set_surface(msurface).select();
 
 	//std::cout << "\n\n\n\n\n\n\n\n\n\n mesh shader value: " << secondphysicaldevselret.value().is_extension_present("VK_EXT_mesh_shader") << "\n\n\n\n\n";
