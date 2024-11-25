@@ -1,0 +1,71 @@
+name: CMake CI
+            
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        build_type: [Release]
+        c_compiler: [gcc]
+        include:
+          - os: ubuntu-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+
+    steps:
+    - name: ssh config
+      run: |
+        mkdir ~/.ssh
+        touch ~/.ssh/config
+        echo "Host png.github.com
+                    HostName github.com" >> ~/.ssh/config
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - name: Install depens
+      run: |
+        git submodule update --init --recursive
+    - name: Install more depens
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libssl-dev libprotobuf-dev protobuf-compiler gdown ninja
+        git clone --recursive git@github.com:ValveSoftware/GameNetworkingSockets
+        cd GameNetworkingSockets
+        mkdir build
+        cd build
+        cmake -G Ninja ..
+        ninja
+        sudo ldconfig
+    - name: VulkanCI
+      uses: NcStudios/VulkanCI@v1.1
+    - name: Set reusable strings
+      id: strings
+      shell: bash
+      run: |
+        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+
+    - name: Configure CMake
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -S ${{ github.workspace }}
+
+    - name: Build
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+
+    - name: Test
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: ctest --build-config ${{ matrix.build_type }}
