@@ -18,9 +18,10 @@ set(submodules_path
 
 if(UNIX)
 set(SHELL_CMD bash)
-set(STATIC_LIB_EXT so)
+set(STATIC_LIB_EXT a)
 else()
-set(SHELL_CMD pwsh)
+#set(SHELL_CMD pwsh)  #powershell 7
+set(SHELL_CMD powershell) #default for windows 
 set(STATIC_LIB_EXT lib)
 endif()
 
@@ -90,7 +91,7 @@ add_executable(raw ${OTHER_SOURCES} ${PROJECT_SOURCES})
 
 file(GLOB shaders ${PROJECT_BINARY_DIR}/shaders/*)
 list(LENGTH shaders shader_len)
-message(WARNING ${shader_len})
+#message(WARNING ${shader_len})
 
 if(shader_len EQUAL 0)
 
@@ -106,8 +107,7 @@ file(GLOB_RECURSE GLSL_SOURCE_FILES
       add_custom_command(
         OUTPUT ${SPIRV}
         COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders/"
-        COMMAND ${SHELL_CMD} "-c" "\'$ENV{VULKAN_SDK}/bin/glslc --target-env=vulkan1.3 --target-spv=spv1.6 -std=460 -c ${GLSL_NATIVE} -o ${SPIRV}\'"
-        #COMMAND "$ENV{VULKAN_SDK}/bin/glslc --target-env=vulkan1.3 --target-spv=spv1.6 -std=460 -c ${GLSL_NATIVE} -o ${SPIRV}"
+        COMMAND ${SHELL_CMD} -c '$ENV{VULKAN_SDK}/bin/glslc --target-env=vulkan1.3 --target-spv=spv1.6 -std=460 -c ${GLSL_NATIVE} -o ${SPIRV}'
         DEPENDS ${GLSL_NATIVE}
       )
       list(APPEND SPIRV_BINARY_FILES ${SPIRV})
