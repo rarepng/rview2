@@ -39,12 +39,14 @@ jobs:
     - name: Install more depens
       run: |
         sudo apt-get update
-        sudo apt-get install -y libssl-dev libprotobuf-dev protobuf-compiler ninja-build
+        sudo apt-get install -y libssl-dev libprotobuf-dev protobuf-compiler ninja-build wayland-scanner
         cd /home/runner/work/raw/raw/sub/gns
         mkdir build
         cd build
         cmake -G Ninja ..
         ninja
+        mkdir /home/runner/work/raw/raw/lib
+        cp src/libGameNetworkingSockets_s.a /home/runner/work/raw/raw/lib/libGameNetworkingSockets.a
         sudo ldconfig
     - name: VulkanCI
       uses: NcStudios/VulkanCI@v1.1
