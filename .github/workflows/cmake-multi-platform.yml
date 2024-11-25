@@ -22,12 +22,12 @@ jobs:
             cpp_compiler: g++
 
     steps:
-    - name: ssh config
-      run: |
-        mkdir ~/.ssh
-        touch ~/.ssh/config
-        echo "Host png.github.com
-                    HostName github.com" >> ~/.ssh/config
+    # - name: ssh config
+    #   run: |
+    #     mkdir ~/.ssh
+    #     touch ~/.ssh/config
+    #     echo "Host png.github.com
+    #                 HostName github.com" >> ~/.ssh/config
     - uses: actions/checkout@v4
       with:
         submodules: true
@@ -39,9 +39,8 @@ jobs:
     - name: Install more depens
       run: |
         sudo apt-get update
-        sudo apt-get install -y libssl-dev libprotobuf-dev protobuf-compiler gdown ninja
-        git clone --recursive git@github.com:ValveSoftware/GameNetworkingSockets
-        cd GameNetworkingSockets
+        sudo apt-get install -y libssl-dev libprotobuf-dev protobuf-compiler ninja-build
+        cd /home/runner/work/raw/raw/sub/gns
         mkdir build
         cd build
         cmake -G Ninja ..
