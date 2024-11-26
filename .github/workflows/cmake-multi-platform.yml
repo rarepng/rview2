@@ -102,9 +102,5 @@ jobs:
       run: |
         ls resources
         ls shaders
-    - name: swiftshader test
-      working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      run: |
-        ./raw & echo $! > raw.pid
-        sleep 20
-        kill $(cat raw.pid)
+    - name: ctest
+      run: ctest --build-config ${{ matrix.build_type }}
