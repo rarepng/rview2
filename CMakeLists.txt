@@ -153,6 +153,7 @@ target_include_directories(raw
         "${submodules_path}/gns/include"
         "${submodules_path}/stb"
         "${submodules_path}/imgui"
+        "${submodules_path}/vma/include"
 )
 
 
