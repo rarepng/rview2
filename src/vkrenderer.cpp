@@ -11,7 +11,7 @@
 #include <cstdlib>
 #include <glm/gtx/spline.hpp>
 #include <glm/gtx/rotate_vector.hpp>
-#include <vma/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
 #include <iostream>
 #include "vkrenderer.hpp"
 #include "vksyncobjects.hpp"
