@@ -104,4 +104,7 @@ jobs:
         ls shaders
     - name: swiftshader test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      run: timeout 20s ./raw
+      run: |
+        ./raw & echo $! > raw.pid
+        sleep 20
+        kill $(cat raw.pid)
