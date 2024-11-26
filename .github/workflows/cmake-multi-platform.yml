@@ -33,7 +33,7 @@ jobs:
     - name: installing more depens
       run: |
         sudo apt-get update
-        sudo apt-get install -y libssl-dev libprotobuf-dev protobuf-compiler ninja-build libwayland-dev libxkbcommon-dev xorg-dev p7zip
+        sudo apt-get install -y libssl-dev libprotobuf-dev protobuf-compiler ninja-build libwayland-dev libxkbcommon-dev xorg-dev p7zip xvfb
         cd /home/runner/work/raw/raw/sub/gns
         mkdir build
         cd build
@@ -94,6 +94,11 @@ jobs:
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: ninja
 
+    - name: headless glfw virutal display
+      run: Xvfb :99 -screen 0 1920x1080x24 &
+      env:
+        DISPLAY: :99
+
     - name: Test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: ls -laR
@@ -102,5 +107,13 @@ jobs:
       run: |
         ls resources
         ls shaders
+        
     - name: ctest
       run: ctest --build-config ${{ matrix.build_type }}
+      
+    - name: swiftshader test
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: |
+        ./raw & echo $! > raw.pid
+        sleep 20
+        kill $(cat raw.pid)
