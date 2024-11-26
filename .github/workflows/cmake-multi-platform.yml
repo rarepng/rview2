@@ -22,12 +22,6 @@ jobs:
             cpp_compiler: g++
 
     steps:
-    # - name: ssh config
-    #   run: |
-    #     mkdir ~/.ssh
-    #     touch ~/.ssh/config
-    #     echo "Host png.github.com
-    #                 HostName github.com" >> ~/.ssh/config
     - uses: actions/checkout@v4
       with:
         submodules: true
@@ -46,10 +40,8 @@ jobs:
         cmake -G Ninja ..
         ninja
         mkdir /home/runner/work/raw/raw/lib
-        cp src/libGameNetworkingSockets_s.a /home/runner/work/raw/raw/lib/libGameNetworkingSockets.a #static
+        cp src/libGameNetworkingSockets_s.a /home/runner/work/raw/raw/lib/libGameNetworkingSockets.a #static not needed at runtime
         cp bin/libGameNetworkingSockets.so /home/runner/work/raw/raw/lib/libGameNetworkingSockets.so #shared
-        export LD_LIBRARY_PATH=/home/runner/work/raw/raw/lib:$LD_LIBRARY_PATH
-        sudo ldconfig
     - name: installing vulkan sdk
       run: |
         mkdir /home/runner/vulk
@@ -89,9 +81,10 @@ jobs:
         -G Ninja
         -S ${{ github.workspace }}
 
-    # - name: Build
-    #   run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+    - name: Build
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: ninja
 
-    # - name: Test
-    #   working-directory: ${{ steps.strings.outputs.build-output-dir }}
-    #   run: ctest --build-config ${{ matrix.build_type }}
+    - name: Test
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: ls -la
