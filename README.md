@@ -1,7 +1,7 @@
 ﻿# about
  ![cmake xplatform ci](https://github.com/rarepng/raw/actions/workflows/cmake-multi-platform.yml/badge.svg)<br>
  <br>
- <a href="https://discord.gg/cqhDApzR"><img src="https://img.shields.io/badge/join-discord-%237289DA?style=flat&logo=discord&labelColor=white" height="20"></a>
+ <a href="https://discord.gg/kxRUCKAR3T"><img src="https://img.shields.io/badge/join-discord-%237289DA?style=flat&logo=discord&labelColor=white" height="20"></a>
 ## Random Arena wars 
 vulkan 1.3 simple cross platform online multiplayer game.
 can load any gltf model, pbr materials, textures, alpha blending, fk and ik animations, actions and non-linear animations
