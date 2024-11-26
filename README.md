@@ -1,4 +1,5 @@
 ﻿# about
+ ![cmake xplatform ci](https://github.com/rarepng/raw/actions/workflows/cmake-multi-platform.yml/badge.svg)
 ## Random Arena wars 
 vulkan 1.3 simple cross platform online multiplayer game.
 can load any gltf model, pbr materials, textures, alpha blending, fk and ik animations, actions and non-linear animations
@@ -42,7 +43,8 @@ wasdeq - camera controls, for debugging<br>
 ```cd build```<br>
 ```make``` if linux, compile with visual studio if windows or ```ninja``` if installed and passed to cmake ```-G Ninja```<br>
 if using make, copy resources folder to build directory manually.<br>
-sometimes shaders don't get compiled or copied by cmake, you can compile them manually with glslc and copy them to build/shaders/x.spv
+sometimes shaders don't get compiled or copied by cmake, you can compile them manually with glslc and copy them to build/shaders/x.spv <br>
+sometimes resources don't get copied too.
 ### gcc
 ``glslc -c shaders/*.frag shaders/*.vert``<br>
 ``g++ -std=c++20 *.cpp */*.cpp -lglfw -lvulkan -lfastgltf -lGameNetworkingSockets -o bin``
