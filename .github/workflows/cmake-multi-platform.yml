@@ -114,4 +114,4 @@ jobs:
     - name: swiftshader test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: |
-        ./raw
+        ./raw &
