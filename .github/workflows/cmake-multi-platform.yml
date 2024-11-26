@@ -114,6 +114,4 @@ jobs:
     - name: swiftshader test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: |
-        ./raw & echo $! > raw.pid
-        sleep 20
-        kill $(cat raw.pid)
+        ./raw
