@@ -104,4 +104,4 @@ jobs:
         ls shaders
     - name: swiftshader test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      run: ./raw
+      run: timeout 20s ./raw
