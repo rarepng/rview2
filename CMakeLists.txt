@@ -75,7 +75,7 @@ add_subdirectory(${submodules_path}/simdjson)
 add_subdirectory(${submodules_path}/vk_boot)
 add_subdirectory(${submodules_path}/vma)
 
-file(GLOB PROJECT_SOURCES "src/*.cpp")
+file(GLOB PROJECT_SOURCES "src/*.cpp" "src/*/*.cpp")
 set(OTHER_SOURCES
     ${submodules_path}/imgui/imgui.cpp
     ${submodules_path}/imgui/backends/imgui_impl_vulkan.cpp
@@ -154,6 +154,7 @@ target_include_directories(raw
         "${submodules_path}/stb"
         "${submodules_path}/imgui"
         "${submodules_path}/vma/include"
+        "${PROJECT_SOURCE_DIR}/src"
 )
 
 
