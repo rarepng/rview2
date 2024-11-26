@@ -97,3 +97,10 @@ jobs:
     - name: Test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: ls -laR
+    - name: resources n shaders
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: ls resources
+        ls shaders
+    - name: swiftshader test
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: ./raw
