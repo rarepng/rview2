@@ -44,9 +44,9 @@ jobs:
         echo "OPENSSL_SSL_LIBRARY=C:/Program Files/OpenSSL/lib/libssl.lib" | tee -a $env:GITHUB_ENV
         echo "PATH=C:/Program Files/OpenSSL/bin:$env:PATH" | tee -a $env:GITHUB_ENV
         cd D:/a/raw/raw/sub/protobuf
-        mkdir build
-        cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=c:/sdk/protobuf-amd64 -S ..\cmake
+        mkdir build_dir
+        cd build_dir
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=c:/sdk/protobuf-amd64 -S ../cmake
         ninja
         ninja install
         $env:PATH="c:/sdk/protobuf-amd64/bin;$env:PATH"
@@ -57,6 +57,7 @@ jobs:
         cmake -DCMAKE_BUILD_TYPE=Release -G Ninja ..
         ninja
         mkdir D:/a/raw/raw/lib
+        ls -r
         #cp src/GameNetworkingSockets.lib D:/a/raw/raw/lib/GameNetworkingSockets.lib #static not needed at runtime
         cp bin/GameNetworkingSockets.dll D:/a/raw/raw/lib/GameNetworkingSockets.dll #shared
         $env:PATH="D:/a/work/raw/raw/lib:$env:PATH"
