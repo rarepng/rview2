@@ -34,16 +34,16 @@ jobs:
       run: |
         choco install -y ninja openssl protoc 7zip
         ls -r 'C:/Program Files/OpenSSL'
-        $env:opensslPath = "C:/Program Files/OpenSSL"
-        echo "OPENSSL_ROOT_DIR=$opensslPath" >> $Env:GITHUB_ENV
-        echo "OPENSSL_INCLUDE_DIR=$opensslPath/include" >> $Env:GITHUB_ENV
-        echo "OPENSSL_CRYPTO_LIBRARY=$opensslPath/lib/libcrypto.lib" >> $Env:GITHUB_ENV
-        echo "OPENSSL_SSL_LIBRARY=$opensslPath/lib/libssl.lib" >> $Env:GITHUB_ENV
-        echo "PATH=$opensslPath/bin;$Env:PATH" >> $Env:GITHUB_ENV
+        $Env:opensslPath = "C:/Program Files/OpenSSL"
+        echo "OPENSSL_ROOT_DIR=$opensslPath" | tee -a $Env:GITHUB_ENV
+        echo "OPENSSL_INCLUDE_DIR=$opensslPath/include" | tee -a $Env:GITHUB_ENV
+        echo "OPENSSL_CRYPTO_LIBRARY=$opensslPath/lib/libcrypto.lib" | tee -a $Env:GITHUB_ENV
+        echo "OPENSSL_SSL_LIBRARY=$opensslPath/lib/libssl.lib" | tee -a $Env:GITHUB_ENV
+        echo "PATH=$opensslPath/bin;$Env:PATH" | tee -a $Env:GITHUB_ENV
         cd D:/a/raw/raw/sub/gns
         mkdir build
         cd build
-        cmake -G Ninja ..
+        cmake -DOPENSSL_ROOT_DIR=$Env:OPENSSL_ROOT_DIR -DOPENSSL_INCLUDE_DIR=$Env:OPENSSL_INCLUDE_DIR -DOPENSSL_CRYPTO_LIBRARY=$Env:OPENSSL_CRYPTO_LIBRARY -DOPENSSL_SSL_LIBRARY=$Env:OPENSSL_SSL_LIBRARY --trace-expand  -G Ninja ..
         ninja
         mkdir D:/a/raw/raw/lib
         #cp src/GameNetworkingSockets.lib D:/a/raw/raw/lib/GameNetworkingSockets.lib #static not needed at runtime
