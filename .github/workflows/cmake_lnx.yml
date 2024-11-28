@@ -1,4 +1,4 @@
-name: CMake CI
+name: cmake linux64
             
 on:
   push:
