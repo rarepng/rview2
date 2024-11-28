@@ -50,8 +50,14 @@ jobs:
         cmake -G Ninja -DCMAKE_CXX_STANDARD=20 -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=c:/sdk/protobuf-amd64 -S ..
         ninja
         ninja install
+        ls -r c:/sdk/protobuf-amd64
+        $env:Protobuf_INCLUDE_DIR="c:/sdk/protobuf-amd64/include"
+        echo "Protobuf_INCLUDE_DIR=c:/sdk/protobuf-amd64/include" | tee -a $env:GITHUB_ENV
+        $env:Protobuf_LIB_DIR="c:/sdk/protobuf-amd64/lib"
+        echo "Protobuf_LIB_DIR=c:/sdk/protobuf-amd64/lib" | tee -a $env:GITHUB_ENV
         $env:PATH="c:/sdk/protobuf-amd64/bin;$env:PATH"
         echo "PATH=c:/sdk/protobuf-amd64/bin;$env:PATH" | tee -a $env:GITHUB_ENV
+        ls -r
         cd D:/a/raw/raw/sub/gns
         mkdir build
         cd build
@@ -117,12 +123,6 @@ jobs:
     - name: Build
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: ninja
-
-    - name: headless glfw virutal display
-      run: Xvfb :99 -screen 0 1920x1080x24 &
-      env:
-        DISPLAY: :99
-
     - name: Test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: ls -r
@@ -131,10 +131,8 @@ jobs:
       run: |
         ls resources
         ls shaders
-        
     - name: ctest
       run: ctest --build-config ${{ matrix.build_type }}
-      
     - name: swiftshader test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: |
