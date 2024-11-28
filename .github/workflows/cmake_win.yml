@@ -47,21 +47,21 @@ jobs:
         cd D:/a/raw/raw/sub/protobuf
         mkdir build_dir
         cd build_dir
-        cmake -G Ninja -DCMAKE_CXX_STANDARD=20 -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=c:/sdk/protobuf-amd64 -S ..
+        cmake -G Ninja -DCMAKE_CXX_STANDARD=20 -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=c:/sdk/protobuf -S ../cmake
         ninja
         ninja install
-        ls -r c:/sdk/protobuf-amd64
-        $env:Protobuf_INCLUDE_DIR="c:/sdk/protobuf-amd64/include"
-        echo "Protobuf_INCLUDE_DIR=c:/sdk/protobuf-amd64/include" | tee -a $env:GITHUB_ENV
-        $env:Protobuf_LIB_DIR="c:/sdk/protobuf-amd64/lib"
-        echo "Protobuf_LIB_DIR=c:/sdk/protobuf-amd64/lib" | tee -a $env:GITHUB_ENV
-        $env:PATH="c:/sdk/protobuf-amd64/bin;$env:PATH"
-        echo "PATH=c:/sdk/protobuf-amd64/bin;$env:PATH" | tee -a $env:GITHUB_ENV
+        ls -r C:/sdk/protobuf
+        $env:Protobuf_INCLUDE_DIR="C:/sdk/protobuf/include"
+        echo "Protobuf_INCLUDE_DIR=C:/sdk/protobuf/include" | tee -a $env:GITHUB_ENV
+        $env:Protobuf_LIB_DIR="C:/sdk/protobuf/lib"
+        echo "Protobuf_LIB_DIR=C:/sdk/protobuf/lib" | tee -a $env:GITHUB_ENV
+        $env:PATH="c:/sdk/protobuf/bin;$env:PATH"
+        echo "PATH=c:/sdk/protobuf/bin;$env:PATH" | tee -a $env:GITHUB_ENV
         ls -r
         cd D:/a/raw/raw/sub/gns
         mkdir build
         cd build
-        cmake -DCMAKE_BUILD_TYPE=Release -G Ninja ..
+        cmake -DProtobuf_INCLUDE_DIR="C:/sdk/protobuf/include" -DCMAKE_BUILD_TYPE=Release -G Ninja ..
         ninja
         mkdir D:/a/raw/raw/lib
         ls -r
