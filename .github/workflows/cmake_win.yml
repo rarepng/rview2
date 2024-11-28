@@ -15,11 +15,11 @@ jobs:
       matrix:
         os: [windows-latest]
         build_type: [Release]
-        c_compiler: [cl]
+        c_compiler: [gcc]
         include:
           - os: windows-latest
-            c_compiler: cl
-            cpp_compiler: cl
+            c_compiler: gcc
+            cpp_compiler: gcc
 
     steps:
     - uses: actions/checkout@v4
@@ -32,8 +32,11 @@ jobs:
         git submodule update --init --recursive
     - name: installing more depens
       run: |
-        choco install -y ninja openssl protoc 7zip
+        choco install -y ninja openssl protoc 7zip mingw
         choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --apply-install-arguments-to-dependencies
+        refreshenv
+        $env:PATH="C:\tools\mingw64\bin:$env:PATH"
+        echo "C:\tools\mingw64\bin:$env:PATH" >> $env:GITHUB_ENV
         $env:OPENSSL_ROOT_DIR="C:/Program Files/OpenSSL"
         $env:OPENSSL_INCLUDE_DIR="C:/Program Files/OpenSSL/include"
         $env:OPENSSL_CRYPTO_LIBRARY="C:/Program Files/OpenSSL/lib/libcrypto.lib"
@@ -47,7 +50,7 @@ jobs:
         cd D:/a/raw/raw/sub/protobuf
         mkdir build_dir
         cd build_dir
-        cmake -G Ninja -DCMAKE_CXX_STANDARD=20 -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=C:/sdk/protobuf -S ..
+        cmake -G Ninja -DCMAKE_CXX_COMPILER=g++ -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_STANDARD=20 -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=C:/sdk/protobuf -S ..
         ninja
         ninja install
         ls -r C:/sdk/protobuf
@@ -61,7 +64,7 @@ jobs:
         cd D:/a/raw/raw/sub/gns
         mkdir build
         cd build
-        cmake -DProtobuf_INCLUDE_DIR="C:/sdk/protobuf/include" -DProtobuf_LIB_DIR="C:/sdk/protobuf/lib" -DCMAKE_BUILD_TYPE=Release -G Ninja ..
+        cmake -DCMAKE_CXX_COMPILER=g++ -DCMAKE_C_COMPILER=gcc -DProtobuf_INCLUDE_DIR="C:/sdk/protobuf/include" -DProtobuf_LIB_DIR="C:/sdk/protobuf/lib" -DCMAKE_BUILD_TYPE=Release -G Ninja ..
         ninja
         mkdir D:/a/raw/raw/lib
         ls -r
