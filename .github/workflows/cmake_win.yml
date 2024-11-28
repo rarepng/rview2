@@ -17,7 +17,7 @@ jobs:
         build_type: [Release]
         c_compiler: [cl]
         include:
-          - os: ubuntu-latest
+          - os: windows-latest
             c_compiler: cl
             cpp_compiler: cl
 
@@ -33,45 +33,42 @@ jobs:
     - name: installing more depens
       run: |
         choco install ninja openssl protoc 7zip
-        cd /home/runner/work/raw/raw/sub/gns
+        cd D:/a/raw/raw/sub/gns
         mkdir build
         cd build
         cmake -G Ninja ..
         ninja
-        mkdir /home/runner/work/raw/raw/lib
-        #cp src/GameNetworkingSockets.lib /home/runner/work/raw/raw/lib/GameNetworkingSockets.lib #static not needed at runtime
-        cp bin/GameNetworkingSockets.dll /home/runner/work/raw/raw/lib/libGameNetworkingSockets.dll #shared
-        echo PATH=/home/runner/work/raw/raw/lib:$PATH >> $GITHUB_ENV
+        mkdir D:/a/raw/raw/lib
+        #cp src/GameNetworkingSockets.lib D:/a/raw/raw/lib/GameNetworkingSockets.lib #static not needed at runtime
+        cp bin/GameNetworkingSockets.dll D:/a/raw/raw/lib/libGameNetworkingSockets.dll #shared
+        echo PATH=D:/a/work/raw/raw/lib:$PATH >> $GITHUB_ENV
     - name: installing vulkan sdk
       run: |
-        mkdir /home/runner/vulk
-        cd /home/runner/vulk
+        mkdir D:/a/vulk
+        cd D:/a/vulk
         wget -q -O - https://sdk.lunarg.com/sdk/download/latest/windows/vulkan_sdk.exe
         powershell $(ls *.exe | head -n 1) --da --al -c --am --verbose
-        export VULKAN_SDK=/home/runner/vulk/1.3.296.0/x86_64
-        export PATH=$VULKAN_SDK/bin:$PATH
-        export LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH
-        export VK_ICD_FILENAMES=$VULKAN_SDK/etc/vulkan/icd.d
-        export VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d
         echo VULKAN_SDK=$VULKAN_SDK >> $GITHUB_ENV
         echo PATH=$VULKAN_SDK/bin:$PATH >> $GITHUB_ENV
         echo LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
         echo VK_ICD_FILENAMES=$VULKAN_SDK/etc/vulkan/icd.d >> $GITHUB_ENV
         echo VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d >> $GITHUB_ENV
-        echo LD_LIBRARY_PATH=/home/runner/work/raw/raw/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
+        echo LD_LIBRARY_PATH=D:/a/work/raw/raw/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
         sudo ldconfig
-    - name: vulkan_ci
-      uses: NcStudios/VulkanCI@v1.1
+    # - name: vulkan_ci
+    #   uses: NcStudios/VulkanCI@v1.1
     - name: verifying vulkan
       run: |
-        mkdir $VULKAN_SDK/bin
-        cp /home/runner/vulk/1.3.296.0/x86_64/bin/glslc.exe $VULKAN_SDK/bin/glslc
+        # mkdir $VULKAN_SDK/bin
+        # cp D:/a/vulk/bin/glslc.exe $VULKAN_SDK/bin/glslc
         $VULKAN_SDK/bin/glslc --version
+        echo $VULKAN_SDK
+        ls -laR $VULKAN_SDK
     - name: downloading resources
       run: |
         #todo compress with tar pipe to 7z to un/compress without saving file
-        mkdir /home/runner/work/raw/raw/resources
-        cd /home/runner/work/raw/raw/resources
+        mkdir D:/a/raw/raw/resources
+        cd D:/a/raw/raw/resources
         curl -L "https://drive.google.com/uc?export=download&id=1ZwYuB17yq-yRpswRISuvSG-_R7j5GKM9" -o x.7z
         7z x x.7z -aoa
         rm x.7z
