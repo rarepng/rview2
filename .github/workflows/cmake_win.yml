@@ -15,11 +15,11 @@ jobs:
       matrix:
         os: [windows-latest]
         build_type: [Release]
-        c_compiler: [cl]
+        c_compiler: [gcc]
         include:
           - os: windows-latest
-            c_compiler: cl
-            cpp_compiler: cl
+            c_compiler: gcc
+            cpp_compiler: g++
 
     steps:
     - uses: actions/checkout@v4
@@ -47,7 +47,7 @@ jobs:
         cd D:/a/raw/raw/sub/protobuf
         mkdir build_dir
         cd build_dir
-        cmake -G Ninja -DCMAKE_CXX_STANDARD=20 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=C:/sdk/protobuf -S ..
+        cmake -G Ninja -DCMAKE_CXX_COMPILER=g++ -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_STANDARD=20 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=C:/sdk/protobuf -S ..
         ninja
         ninja install
         $env:Protobuf_INCLUDE_DIR="C:/sdk/protobuf/include"
@@ -59,7 +59,7 @@ jobs:
         cd D:/a/raw/raw/sub/gns
         mkdir build
         cd build
-        cmake -G Ninja -S ..
+        cmake -G Ninja -DCMAKE_CXX_FLAGS="-IC:/Program Files (x86)/Windows Kits/10/Include/$((ls 'C:/Program Files (x86)/Windows Kits/10/Include')[0].name)/um" DCMAKE_LIBRARY_PATH="C:/Program Files (x86)/Windows Kits/10/Lib/$((ls 'C:/Program Files (x86)/Windows Kits/10/Include')[0].name)/um" -DCMAKE_CXX_STANDARD=20 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_BUILD_TYPE=Release -DProtobuf_INCLUDE_DIR="C:/sdk/protobuf/include" -DProtobuf_LIB_DIR="C:/sdk/protobuf/lib" -S ..
         ninja
         mkdir D:/a/raw/raw/lib
         ls -r
