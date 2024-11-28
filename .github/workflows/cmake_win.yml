@@ -59,7 +59,7 @@ jobs:
         cd D:/a/raw/raw/sub/gns
         mkdir build
         cd build
-        cmake -G Ninja-DCMAKE_CXX_STANDARD=20 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_BUILD_TYPE=Release -DProtobuf_INCLUDE_DIR="C:/sdk/protobuf/include" -DProtobuf_LIB_DIR="C:/sdk/protobuf/lib" -S ..
+        cmake -G Ninja -DCMAKE_CXX_STANDARD=20 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_BUILD_TYPE=Release -DProtobuf_INCLUDE_DIR="C:/sdk/protobuf/include" -DProtobuf_LIB_DIR="C:/sdk/protobuf/lib" -S ..
         ninja
         mkdir D:/a/raw/raw/lib
         ls -r
