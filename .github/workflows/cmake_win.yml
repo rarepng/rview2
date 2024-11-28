@@ -19,7 +19,7 @@ jobs:
         include:
           - os: windows-latest
             c_compiler: gcc
-            cpp_compiler: gcc
+            cpp_compiler: g++
 
     steps:
     - uses: actions/checkout@v4
@@ -35,8 +35,8 @@ jobs:
         choco install -y ninja openssl protoc 7zip mingw
         choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --apply-install-arguments-to-dependencies
         refreshenv
-        $env:PATH="C:\tools\mingw64\bin:$env:PATH"
-        echo "C:\tools\mingw64\bin:$env:PATH" >> $env:GITHUB_ENV
+        $env:PATH="C:\tools\mingw64\bin;$env:PATH"
+        echo "C:\tools\mingw64\bin;$env:PATH" >> $env:GITHUB_ENV
         $env:OPENSSL_ROOT_DIR="C:/Program Files/OpenSSL"
         $env:OPENSSL_INCLUDE_DIR="C:/Program Files/OpenSSL/include"
         $env:OPENSSL_CRYPTO_LIBRARY="C:/Program Files/OpenSSL/lib/libcrypto.lib"
@@ -46,7 +46,7 @@ jobs:
         echo "OPENSSL_INCLUDE_DIR=C:/Program Files/OpenSSL/include" | tee -a $env:GITHUB_ENV
         echo "OPENSSL_CRYPTO_LIBRARY=C:/Program Files/OpenSSL/lib/libcrypto.lib" | tee -a $env:GITHUB_ENV
         echo "OPENSSL_SSL_LIBRARY=C:/Program Files/OpenSSL/lib/libssl.lib" | tee -a $env:GITHUB_ENV
-        echo "PATH=C:/Program Files/OpenSSL/bin:$env:PATH" | tee -a $env:GITHUB_ENV
+        echo "PATH=C:/Program Files/OpenSSL/bin;$env:PATH" | tee -a $env:GITHUB_ENV
         cd D:/a/raw/raw/sub/protobuf
         mkdir build_dir
         cd build_dir
@@ -61,17 +61,22 @@ jobs:
         $env:PATH="c:/sdk/protobuf/bin;$env:PATH"
         echo "PATH=c:/sdk/protobuf/bin;$env:PATH" | tee -a $env:GITHUB_ENV
         ls -r
+    - name: visual studio cmd
+      shell: cmd
+      run: |
+        call "C:\Program Files (x86)\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
+        cl /?
         cd D:/a/raw/raw/sub/gns
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=g++ -DCMAKE_C_COMPILER=gcc -DProtobuf_INCLUDE_DIR="C:/sdk/protobuf/include" -DProtobuf_LIB_DIR="C:/sdk/protobuf/lib" -DCMAKE_BUILD_TYPE=Release -G Ninja ..
+        cmake -DProtobuf_INCLUDE_DIR="C:/sdk/protobuf/include" -DProtobuf_LIB_DIR="C:/sdk/protobuf/lib" -DCMAKE_BUILD_TYPE=Release -G Ninja ..
         ninja
         mkdir D:/a/raw/raw/lib
         ls -r
         #cp src/GameNetworkingSockets.lib D:/a/raw/raw/lib/GameNetworkingSockets.lib #static not needed at runtime
         cp bin/GameNetworkingSockets.dll D:/a/raw/raw/lib/GameNetworkingSockets.dll #shared
-        $env:PATH="D:/a/work/raw/raw/lib:$env:PATH"
-        echo PATH=D:/a/work/raw/raw/lib:$env:PATH >> $GITHUB_ENV
+        $env:PATH="D:/a/work/raw/raw/lib;$env:PATH"
+        echo PATH=D:/a/work/raw/raw/lib;$env:PATH >> $GITHUB_ENV
     - name: installing vulkan sdk
       run: |
         mkdir D:/a/vulk
@@ -80,16 +85,16 @@ jobs:
         powershell $(ls *.exe | head -n 1) --da --al -c --am --verbose
         $env:VULKAN_SDK=$(pwd).path
         $env:PATH="$env:VULKAN_SDK/bin;$env:PATH"
-        $env:LD_LIBRARY_PATH="$env:VULKAN_SDK/lib:$env:LD_LIBRARY_PATH"
+        $env:LD_LIBRARY_PATH="$env:VULKAN_SDK/lib;$env:LD_LIBRARY_PATH"
         $env:VK_ICD_FILENAMES="$env:VULKAN_SDK/etc/vulkan/icd.d"
         $env:VK_LAYER_PATH="$env:VULKAN_SDK/etc/vulkan/explicit_layer.d"
-        $env:LD_LIBRARY_PATH="D:/a/work/raw/raw/lib:$env:LD_LIBRARY_PATH"
+        $env:LD_LIBRARY_PATH="D:/a/work/raw/raw/lib;$env:LD_LIBRARY_PATH"
         echo VULKAN_SDK=$env:VULKAN_SDK >> $env:GITHUB_ENV
-        echo PATH=$VULKAN_SDK/bin:$PATH >> $env:GITHUB_ENV
-        echo LD_LIBRARY_PATH=$env:VULKAN_SDK/lib:$env:LD_LIBRARY_PATH >> $env:GITHUB_ENV
+        echo PATH=$VULKAN_SDK/bin;$env:PATH >> $env:GITHUB_ENV
+        echo LD_LIBRARY_PATH=$env:VULKAN_SDK/lib;$env:LD_LIBRARY_PATH >> $env:GITHUB_ENV
         echo VK_ICD_FILENAMES=$env:VULKAN_SDK/etc/vulkan/icd.d >> $env:GITHUB_ENV
         echo VK_LAYER_PATH=$env:VULKAN_SDK/etc/vulkan/explicit_layer.d >> $env:GITHUB_ENV
-        echo LD_LIBRARY_PATH=D:/a/work/raw/raw/lib:$env:LD_LIBRARY_PATH >> $env:GITHUB_ENV
+        echo LD_LIBRARY_PATH=D:/a/work/raw/raw/lib;$env:LD_LIBRARY_PATH >> $env:GITHUB_ENV
     # - name: vulkan_ci
     #   uses: NcStudios/VulkanCI@v1.1
     - name: verifying vulkan
