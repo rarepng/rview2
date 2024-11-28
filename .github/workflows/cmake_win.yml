@@ -59,7 +59,7 @@ jobs:
         cd D:/a/raw/raw/sub/gns
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_CXX_STANDARD=20 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_BUILD_TYPE=Release -DProtobuf_INCLUDE_DIR="C:/sdk/protobuf/include" -DProtobuf_LIB_DIR="C:/sdk/protobuf/lib" -S ..
+        cmake -G Ninja -DCMAKE_CXX_FLAGS="-IC:/Program Files (x86)/Windows Kits/10/Include/$((ls)[0].name)/um" -DCMAKE_CXX_STANDARD=20 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_BUILD_TYPE=Release -DProtobuf_INCLUDE_DIR="C:/sdk/protobuf/include" -DProtobuf_LIB_DIR="C:/sdk/protobuf/lib" -S ..
         ninja
         mkdir D:/a/raw/raw/lib
         ls -r
@@ -72,7 +72,7 @@ jobs:
         mkdir D:/a/vulk
         cd D:/a/vulk
         wget -q -O - https://sdk.lunarg.com/sdk/download/latest/windows/vulkan_sdk.exe
-        powershell $(ls *.exe | head -n 1) --da --al -c --am --verbose
+        powershell $((ls)[0].name) --da --al -c --am --verbose
         $env:VULKAN_SDK=$(pwd).path
         $env:PATH="$env:VULKAN_SDK/bin;$env:PATH"
         $env:LD_LIBRARY_PATH="$env:VULKAN_SDK/lib;$env:LD_LIBRARY_PATH"
