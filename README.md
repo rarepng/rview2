@@ -1,5 +1,6 @@
 ﻿# about
- ![cmake xplatform ci](https://github.com/rarepng/raw/actions/workflows/cmake-multi-platform.yml/badge.svg)<br>
+ ![cmake linux ci](https://github.com/rarepng/raw/actions/workflows/cmake_lnx_.yml/badge.svg)<br>
+ ![cmake windows ci](https://github.com/rarepng/raw/actions/workflows/cmake_win_.yml/badge.svg)<br>
  <br>
  <a href="https://discord.gg/kxRUCKAR3T"><img src="https://img.shields.io/badge/join-discord-%237289DA?style=flat&logo=discord&labelColor=white" height="20"></a>
 ## Random Arena wars 

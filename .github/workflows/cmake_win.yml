@@ -32,7 +32,13 @@ jobs:
         git submodule update --init --recursive
     - name: installing more depens
       run: |
-        choco install ninja openssl protoc 7zip
+        choco install -y ninja openssl protoc 7zip
+        $opensslPath = 'C:/Program Files/OpenSSL-Win64'
+        echo "OPENSSL_ROOT_DIR=$opensslPath" >> $Env:GITHUB_ENV
+        echo "OPENSSL_INCLUDE_DIR=$opensslPath/include" >> $Env:GITHUB_ENV
+        echo "OPENSSL_CRYPTO_LIBRARY=$opensslPath/lib/libcrypto.lib" >> $Env:GITHUB_ENV
+        echo "OPENSSL_SSL_LIBRARY=$opensslPath/lib/libssl.lib" >> $Env:GITHUB_ENV
+        echo "PATH=$opensslPath/bin;$Env:PATH" >> $Env:GITHUB_ENV
         cd D:/a/raw/raw/sub/gns
         mkdir build
         cd build
