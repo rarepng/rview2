@@ -47,7 +47,7 @@ jobs:
         cd D:/a/raw/raw/sub/protobuf
         mkdir build_dir
         cd build_dir
-        cmake -G Ninja -DCMAKE_CXX_STANDARD=20 -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=c:/sdk/protobuf -S ../cmake
+        cmake -G Ninja -DCMAKE_CXX_STANDARD=20 -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=C:/sdk/protobuf -S ..
         ninja
         ninja install
         ls -r C:/sdk/protobuf
@@ -61,7 +61,7 @@ jobs:
         cd D:/a/raw/raw/sub/gns
         mkdir build
         cd build
-        cmake -DProtobuf_INCLUDE_DIR="C:/sdk/protobuf/include" -DCMAKE_BUILD_TYPE=Release -G Ninja ..
+        cmake -DProtobuf_INCLUDE_DIR="C:/sdk/protobuf/include" -DProtobuf_LIB_DIR="C:/sdk/protobuf/lib" -DCMAKE_BUILD_TYPE=Release -G Ninja ..
         ninja
         mkdir D:/a/raw/raw/lib
         ls -r
