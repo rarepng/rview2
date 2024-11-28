@@ -33,8 +33,8 @@ jobs:
     - name: installing more depens
       run: |
         choco install -y ninja openssl protoc 7zip
-        ls -r C:/Program Files/OpenSSL-Win64
-        $opensslPath = 'C:/Program Files/OpenSSL-Win64'
+        ls -r 'C:/Program Files/OpenSSL'
+        $opensslPath = 'C:/Program Files/OpenSSL'
         echo "OPENSSL_ROOT_DIR=$opensslPath" >> $Env:GITHUB_ENV
         echo "OPENSSL_INCLUDE_DIR=$opensslPath/include" >> $Env:GITHUB_ENV
         echo "OPENSSL_CRYPTO_LIBRARY=$opensslPath/lib/libcrypto.lib" >> $Env:GITHUB_ENV
