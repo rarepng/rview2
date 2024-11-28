@@ -1,0 +1,119 @@
+name: CMake CI
+            
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        build_type: [Release]
+        c_compiler: [gcc]
+        include:
+          - os: ubuntu-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - name: update submodules
+      run: |
+        git submodule update --init --recursive
+    - name: installing more depens
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libssl-dev libprotobuf-dev protobuf-compiler ninja-build libwayland-dev libxkbcommon-dev xorg-dev p7zip xvfb
+        cd /home/runner/work/raw/raw/sub/gns
+        mkdir build
+        cd build
+        cmake -G Ninja ..
+        ninja
+        mkdir /home/runner/work/raw/raw/lib
+        cp src/libGameNetworkingSockets_s.a /home/runner/work/raw/raw/lib/libGameNetworkingSockets.a #static not needed at runtime
+        cp bin/libGameNetworkingSockets.so /home/runner/work/raw/raw/lib/libGameNetworkingSockets.so #shared
+    - name: installing vulkan sdk
+      run: |
+        mkdir /home/runner/vulk
+        cd /home/runner/vulk
+        curl -L https://sdk.lunarg.com/sdk/download/latest/linux/vulkan_sdk.tar.xz | tar -xJ -C .
+        mv $(ls | head -n 1)/x86_64/* .
+        rm -r $(ls | head -n 1)
+        export VULKAN_SDK=/home/runner/vulk
+        export PATH=$VULKAN_SDK/bin:$PATH
+        export LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH
+        export VK_ICD_FILENAMES=$VULKAN_SDK/etc/vulkan/icd.d
+        export VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d
+        echo VULKAN_SDK=/home/runner/vulk >> $GITHUB_ENV
+        echo PATH=$VULKAN_SDK/bin:$PATH >> $GITHUB_ENV
+        echo LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
+        echo VK_ICD_FILENAMES=$VULKAN_SDK/etc/vulkan/icd.d >> $GITHUB_ENV
+        echo VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d >> $GITHUB_ENV
+        echo LD_LIBRARY_PATH=/home/runner/work/raw/raw/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
+        sudo ldconfig
+    - name: vulkan_ci
+      uses: NcStudios/VulkanCI@v1.1
+    - name: verifying vulkan
+      run: |
+        mkdir $VULKAN_SDK/bin
+        cp /home/runner/vulk/bin/glslc $VULKAN_SDK/bin/glslc
+        $VULKAN_SDK/bin/glslc --version
+    - name: downloading resources
+      run: |
+        #todo compress with tar pipe to 7z to un/compress without saving file
+        mkdir /home/runner/work/raw/raw/resources
+        cd /home/runner/work/raw/raw/resources
+        curl -L "https://drive.google.com/uc?export=download&id=1ZwYuB17yq-yRpswRISuvSG-_R7j5GKM9" -o x.7z
+        7z x x.7z -aoa
+        rm x.7z
+
+    - name: Set reusable strings
+      id: strings
+      shell: bash
+      run: |
+        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+
+    - name: Configure CMake
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -G Ninja
+        -S ${{ github.workspace }}
+
+    - name: Build
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: ninja
+
+    - name: headless glfw virutal display
+      run: Xvfb :99 -screen 0 1920x1080x24 &
+      env:
+        DISPLAY: :99
+
+    - name: Test
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: ls -laR
+    - name: resources n shaders
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: |
+        ls resources
+        ls shaders
+        
+    - name: ctest
+      run: ctest --build-config ${{ matrix.build_type }}
+      
+    - name: swiftshader test
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: |
+        ./raw &
