@@ -55,12 +55,6 @@ visual studio can be used too for windows compiling.
 
 Vulkan SDK has to be installed on the machine for compiling, GameNetworking sockets too and should have the built libraries put in /lib directory so cmake will link them. GameNetworkingSockets will require openssl and protobuf, on windows the dlls are going to be required on path or next to the exe. You can find the pre built dlls in the windows release archive.
 
-## old demo
-### outline and screen space shaders
-<video src=https://github.com/rarepng/engine/assets/153374928/3d27590c-4bc7-42e4-b4b2-26ca9753ddff></video>
-### instancing
-<video src=https://github.com/rarepng/engine/assets/153374928/d85023e9-e746-4230-af61-36fb7b283cc4></video>
-
 ## new demo
 ### 3 part multiplayer<br>
 <video src=https://github.com/user-attachments/assets/6d03127e-c95a-4dc3-931c-8750e5c5f008>https://rarepng.github.io/vidz/0_1.mp4</video>
@@ -68,3 +62,9 @@ Vulkan SDK has to be installed on the machine for compiling, GameNetworking sock
 <video src=https://github.com/user-attachments/assets/de65abb7-434f-45c6-a867-2995c5120fe6>https://rarepng.github.io/vidz/0_3.mp4</video>
 
 
+
+## old demo
+### outline and screen space shaders
+<video src=https://github.com/rarepng/engine/assets/153374928/3d27590c-4bc7-42e4-b4b2-26ca9753ddff></video>
+### instancing
+<video src=https://github.com/rarepng/engine/assets/153374928/d85023e9-e746-4230-af61-36fb7b283cc4></video>
