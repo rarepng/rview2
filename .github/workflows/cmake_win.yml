@@ -33,17 +33,22 @@ jobs:
     - name: installing more depens
       run: |
         choco install -y ninja openssl protoc 7zip
-        ls -r 'C:/Program Files/OpenSSL'
-        $Env:opensslPath = "C:/Program Files/OpenSSL"
-        echo "OPENSSL_ROOT_DIR=$opensslPath" | tee -a $Env:GITHUB_ENV
-        echo "OPENSSL_INCLUDE_DIR=$opensslPath/include" | tee -a $Env:GITHUB_ENV
-        echo "OPENSSL_CRYPTO_LIBRARY=$opensslPath/lib/libcrypto.lib" | tee -a $Env:GITHUB_ENV
-        echo "OPENSSL_SSL_LIBRARY=$opensslPath/lib/libssl.lib" | tee -a $Env:GITHUB_ENV
-        echo "PATH=$opensslPath/bin;$Env:PATH" | tee -a $Env:GITHUB_ENV
+        echo "OPENSSL_ROOT_DIR=C:/Program Files/OpenSSL" | tee -a $Env:GITHUB_ENV
+        echo "OPENSSL_INCLUDE_DIR=C:/Program Files/OpenSSL/include" | tee -a $Env:GITHUB_ENV
+        echo "OPENSSL_CRYPTO_LIBRARY=C:/Program Files/OpenSSL/lib/libcrypto.lib" | tee -a $Env:GITHUB_ENV
+        echo "OPENSSL_SSL_LIBRARY=C:/Program Files/OpenSSL/lib/libssl.lib" | tee -a $Env:GITHUB_ENV
+        echo "PATH=C:/Program Files/OpenSSL/bin;$Env:PATH" | tee -a $Env:GITHUB_ENV
+        cd D:/a/raw/raw/sub/protobuf
+        mkdir build
+        cd build
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=c:\sdk\protobuf-amd64 ..\cmake
+        ninja
+        ninja install
+        echo "PATH=c:/sdk/protobuf-amd64/bin;$Env:PATH" | tee -a $Env:GITHUB_ENV
         cd D:/a/raw/raw/sub/gns
         mkdir build
         cd build
-        cmake -DOPENSSL_ROOT_DIR=$Env:OPENSSL_ROOT_DIR -DOPENSSL_INCLUDE_DIR=$Env:OPENSSL_INCLUDE_DIR -DOPENSSL_CRYPTO_LIBRARY=$Env:OPENSSL_CRYPTO_LIBRARY -DOPENSSL_SSL_LIBRARY=$Env:OPENSSL_SSL_LIBRARY --trace-expand  -G Ninja ..
+        cmake -G Ninja ..
         ninja
         mkdir D:/a/raw/raw/lib
         #cp src/GameNetworkingSockets.lib D:/a/raw/raw/lib/GameNetworkingSockets.lib #static not needed at runtime
