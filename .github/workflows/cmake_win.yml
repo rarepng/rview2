@@ -82,7 +82,7 @@ jobs:
         curl -L https://sdk.lunarg.com/sdk/download/latest/windows/vulkan_sdk.exe -o sdk.exe
         ./sdk.exe --root D:/a/vulk --accept-licenses --default-answer --confirm-command install
         rm sdk.exe
-        $env:VULKAN_SDK=D:/a/vulk
+        $env:VULKAN_SDK="D:/a/vulk"
         $env:PATH="$env:VULKAN_SDK/bin;$env:PATH"
         $env:LD_LIBRARY_PATH="$env:VULKAN_SDK/lib;$env:LD_LIBRARY_PATH"
         $env:VK_ICD_FILENAMES="$env:VULKAN_SDK/etc/vulkan/icd.d"
