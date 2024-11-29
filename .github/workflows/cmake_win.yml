@@ -73,7 +73,7 @@ jobs:
         cp GameNetworkingSockets.lib D:/a/raw/raw/lib/GameNetworkingSockets.lib
         cp GameNetworkingSockets.dll D:/a/raw/raw/lib/GameNetworkingSockets.dll
         $env:PATH="D:/a/work/raw/raw/lib;$env:PATH"
-        echo PATH=$env:PATH  | tee -a $GITHUB_ENV
+        echo PATH=$env:PATH  | tee -a $env:GITHUB_ENV
     - name: installing vulkan sdk
       run: |
         mkdir D:/a/vulk_inst
