@@ -73,7 +73,7 @@ jobs:
         cp GameNetworkingSockets.lib D:/a/raw/raw/lib/GameNetworkingSockets.lib
         cp GameNetworkingSockets.dll D:/a/raw/raw/lib/GameNetworkingSockets.dll
         $env:PATH="D:/a/work/raw/raw/lib;$env:PATH"
-        echo PATH=D:/a/work/raw/raw/lib;$env:PATH >> $GITHUB_ENV
+        echo PATH=$env:PATH  | tee -a $GITHUB_ENV
     - name: installing vulkan sdk
       run: |
         mkdir D:/a/vulk_inst
@@ -88,24 +88,23 @@ jobs:
         $env:VK_ICD_FILENAMES="$env:VULKAN_SDK/etc/vulkan/icd.d"
         $env:VK_LAYER_PATH="$env:VULKAN_SDK/etc/vulkan/explicit_layer.d"
         $env:LD_LIBRARY_PATH="D:/a/work/raw/raw/lib;$env:LD_LIBRARY_PATH"
-        echo VULKAN_SDK=$env:VULKAN_SDK >> $env:GITHUB_ENV
-        echo PATH=$env:PATH >> $env:GITHUB_ENV
-        echo LD_LIBRARY_PATH=$env:LD_LIBRARY_PATH >> $env:GITHUB_ENV
-        echo VK_ICD_FILENAMES=$env:VULKAN_SDK/etc/vulkan/icd.d >> $env:GITHUB_ENV
-        echo VK_LAYER_PATH=$env:VULKAN_SDK/etc/vulkan/explicit_layer.d >> $env:GITHUB_ENV
-        echo LD_LIBRARY_PATH=$env:LD_LIBRARY_PATH >> $env:GITHUB_ENV
+        echo VULKAN_SDK=$env:VULKAN_SDK  | tee -a $env:GITHUB_ENV
+        echo PATH=$env:PATH  | tee -a $env:GITHUB_ENV
+        echo LD_LIBRARY_PATH=$env:LD_LIBRARY_PATH  | tee -a $env:GITHUB_ENV
+        echo VK_ICD_FILENAMES=$env:VULKAN_SDK/etc/vulkan/icd.d  | tee -a $env:GITHUB_ENV
+        echo VK_LAYER_PATH=$env:VULKAN_SDK/etc/vulkan/explicit_layer.d  | tee -a $env:GITHUB_ENV
+        echo LD_LIBRARY_PATH=$env:LD_LIBRARY_PATH  | tee -a $env:GITHUB_ENV
     # - name: vulkan_ci
     #   uses: NcStudios/VulkanCI@v1.1
     - name: verifying vulkan
       run: |
         # mkdir $VULKAN_SDK/bin
         # cp D:/a/vulk/bin/glslc.exe $VULKAN_SDK/bin/glslc
-        $VULKAN_SDK/bin/glslc --version
+        powershell -c "$VULKAN_SDK/bin/glslc --version"
         echo $VULKAN_SDK
         ls -laR $VULKAN_SDK
     - name: downloading resources
       run: |
-        #todo compress with tar pipe to 7z to un/compress without saving file
         mkdir D:/a/raw/raw/resources
         cd D:/a/raw/raw/resources
         curl -L "https://drive.google.com/uc?export=download&id=1ZwYuB17yq-yRpswRISuvSG-_R7j5GKM9" -o x.7z
