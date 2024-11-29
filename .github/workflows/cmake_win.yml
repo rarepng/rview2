@@ -100,9 +100,9 @@ jobs:
       run: |
         # mkdir $VULKAN_SDK/bin
         # cp D:/a/vulk/bin/glslc.exe $VULKAN_SDK/bin/glslc
-        powershell -c "$VULKAN_SDK/bin/glslc --version"
+        powershell -c "$env:VULKAN_SDK/bin/glslc --version"
         echo $VULKAN_SDK
-        ls -laR $VULKAN_SDK
+        ls -r $VULKAN_SDK
     - name: downloading resources
       run: |
         mkdir D:/a/raw/raw/resources
