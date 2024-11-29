@@ -43,7 +43,7 @@ jobs:
         echo "OPENSSL_INCLUDE_DIR=C:/Program Files/OpenSSL/include" | tee -a $env:GITHUB_ENV
         echo "OPENSSL_CRYPTO_LIBRARY=C:/Program Files/OpenSSL/lib/libcrypto.lib" | tee -a $env:GITHUB_ENV
         echo "OPENSSL_SSL_LIBRARY=C:/Program Files/OpenSSL/lib/libssl.lib" | tee -a $env:GITHUB_ENV
-        echo "PATH=C:/Program Files/OpenSSL/bin;$env:PATH" | tee -a $env:GITHUB_ENV
+        echo "PATH=$env:PATH" | tee -a $env:GITHUB_ENV
         cd D:/a/raw/raw/sub/protobuf
         mkdir build_dir
         cd build_dir
@@ -55,7 +55,7 @@ jobs:
         $env:Protobuf_LIB_DIR="C:/sdk/protobuf/lib"
         echo "Protobuf_LIB_DIR=C:/sdk/protobuf/lib" | tee -a $env:GITHUB_ENV
         $env:PATH="c:/sdk/protobuf/bin;$env:PATH"
-        echo "PATH=c:/sdk/protobuf/bin;$env:PATH" | tee -a $env:GITHUB_ENV
+        echo "PATH=$env:PATH" | tee -a $env:GITHUB_ENV
         cd D:/a/raw/raw/sub/gns
         mkdir build
         cd build
@@ -81,19 +81,19 @@ jobs:
         cd D:/a/vulk_inst
         curl -L https://sdk.lunarg.com/sdk/download/latest/windows/vulkan_sdk.exe -o sdk.exe
         powershell $((ls)[0].name) --root D:/a/vulk --accept-licenses --default-answer --confirm-command install
-        cd D:/a/vulk
-        $env:VULKAN_SDK=$(pwd).path
+        rm sdk.exe
+        $env:VULKAN_SDK=D:/a/vulk
         $env:PATH="$env:VULKAN_SDK/bin;$env:PATH"
         $env:LD_LIBRARY_PATH="$env:VULKAN_SDK/lib;$env:LD_LIBRARY_PATH"
         $env:VK_ICD_FILENAMES="$env:VULKAN_SDK/etc/vulkan/icd.d"
         $env:VK_LAYER_PATH="$env:VULKAN_SDK/etc/vulkan/explicit_layer.d"
         $env:LD_LIBRARY_PATH="D:/a/work/raw/raw/lib;$env:LD_LIBRARY_PATH"
         echo VULKAN_SDK=$env:VULKAN_SDK >> $env:GITHUB_ENV
-        echo PATH=$VULKAN_SDK/bin;$env:PATH >> $env:GITHUB_ENV
-        echo LD_LIBRARY_PATH=$env:VULKAN_SDK/lib;$env:LD_LIBRARY_PATH >> $env:GITHUB_ENV
+        echo PATH=$env:PATH >> $env:GITHUB_ENV
+        echo LD_LIBRARY_PATH=$env:LD_LIBRARY_PATH >> $env:GITHUB_ENV
         echo VK_ICD_FILENAMES=$env:VULKAN_SDK/etc/vulkan/icd.d >> $env:GITHUB_ENV
         echo VK_LAYER_PATH=$env:VULKAN_SDK/etc/vulkan/explicit_layer.d >> $env:GITHUB_ENV
-        echo LD_LIBRARY_PATH=D:/a/work/raw/raw/lib;$env:LD_LIBRARY_PATH >> $env:GITHUB_ENV
+        echo LD_LIBRARY_PATH=$env:LD_LIBRARY_PATH >> $env:GITHUB_ENV
     # - name: vulkan_ci
     #   uses: NcStudios/VulkanCI@v1.1
     - name: verifying vulkan
