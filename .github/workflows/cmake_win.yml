@@ -79,7 +79,7 @@ jobs:
         mkdir D:/a/vulk_inst
         mkdir D:/a/vulk
         cd D:/a/vulk_inst
-        wget -q -O - https://sdk.lunarg.com/sdk/download/latest/windows/vulkan_sdk.exe
+        curl -L https://sdk.lunarg.com/sdk/download/latest/windows/vulkan_sdk.exe -o sdk.exe
         powershell $((ls)[0].name) --root D:/a/vulk --accept-licenses --default-answer --confirm-command install
         cd D:/a/vulk
         $env:VULKAN_SDK=$(pwd).path
