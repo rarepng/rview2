@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Vulkan REQUIRED)
 #find_package(Vulkan COMPONENTS glslc REQUIRED)
-#find_package(libprotobuf)
+#find_package(Protobuf)
 #find_package(GameNetworkingSockets)
 
 set(submodules_path
@@ -27,43 +27,67 @@ endif()
 
 
 
-
-#if(NOT IS_DIRECTORY ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto)
-#execute_process(COMMAND pwsh "-c" "mkdir ${PROJECT_SOURCE_DIR}/cmake_more_cache")
-#execute_process(COMMAND pwsh "-c" "mkdir ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto_build")
-#execute_process(COMMAND pwsh "-c" "mkdir ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto")
-#execute_process(COMMAND pwsh "-c" "mkdir ${PROJECT_SOURCE_DIR}/cmake_more_cache/gns")
-#execute_process(COMMAND pwsh "-c" "cd ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto_build & cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto ${submodules_path}/protobuf/cmake")
-#execute_process(COMMAND pwsh "-c" "cd ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto_build & ninja")
-#execute_process(COMMAND pwsh "-c" "cd ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto_build & ninja install")
-#execute_process(COMMAND pwsh "-c" "set PATH=%PATH%;${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin & cd ${PROJECT_SOURCE_DIR}/cmake_more_cache/gns_build & cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ${submodules_path}/gns")
-#execute_process(COMMAND pwsh "-c" "set PATH=%PATH%;${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin & cd ${PROJECT_SOURCE_DIR}/cmake_more_cache/gns_build & ninja")
-#execute_process(COMMAND pwsh "-c" "pwsh "-c" cd ${PROJECT_SOURCE_DIR}")
-#endif()
-
-#ExternalProject_Add()
-#ExternalProject_Add(proto
-#    SOURCE_DIR ${submodules_path}/protobuf/cmake
+#ExternalProject_Add(protoEX
+#    SOURCE_DIR ${submodules_path}/protobuf
 #    CMAKE_ARGS
-#        #${GLOBAL_DEFAULT_ARGS}
+#        ${GLOBAL_DEFAULT_ARGS}
 #        -G Ninja
 #        -DCMAKE_BUILD_TYPE=Release
 #        -Dprotobuf_BUILD_TESTS=OFF
 #        -Dprotobuf_BUILD_SHARED_LIBS=ON
 #        -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto
+#        -DCMAKE_CXX_STANDARD=20
+#        -DCMAKE_CXX_STANDARD_REQUIRED=ON
 #        -B ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto_build
-#    BUILD_COMMAND pwsh "-c" "cd ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto_build & ninja & ninja install"
+#    BUILD_COMMAND ninja
+#    INSTALL_COMMAND ninja install
 #)
-
-#ExternalProject_Add(gns
+#
+#set_property(GLOBAL PROPERTY Protobuf_LIBRARIES ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib)
+#set_property(GLOBAL PROPERTY IMPORTED_LOCATION ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include)
+#list(APPEND PATH ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin)
+#ExternalProject_Add(gnsEX
 #    SOURCE_DIR ${submodules_path}/gns
 #    CMAKE_ARGS
-#        #${GLOBAL_DEFAULT_ARGS}
+#        ${GLOBAL_DEFAULT_ARGS}
 #        -G Ninja
 #        -DCMAKE_BUILD_TYPE=Release
-#        -B ${PROJECT_SOURCE_DIR}/cmake_more_cache/gns
-#    BUILD_COMMAND pwsh "-c" "ninja"
+#        -DProtobuf_LIBRARIES=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib
+#        -DProtobuf_INCLUDE_DIR=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include
+#        -B "${PROJECT_SOURCE_DIR}/cmake_more_cache/gns"
+#    BUILD_COMMAND ninja
 #)
+#ExternalProject_Add_StepTargets()
+#target_link_libraries(gnsTAR GLOBAL protobuf::libprotobuf)
+#add_library(protobuf::libprotobuf SHARED IMPORTED)
+#target_link_libraries(GameNetworkingSockets protobuf::libprotobuf)
+#set_property(TARGET protobuf::libprotobuf PROPERTY IMPORTED_LOCATION ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin)
+#set_property(TARGET protobuf::libprotobuf PROPERTY IMPORTED_IMPLIB ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib)
+#ExternalProject_Add_StepDependencies(gnsEX configure protobuf::libprotobuf)
+#ExternalProject_Add_Step(gnsEX prebuild
+#    #COMMAND ${CMAKE_COMMAND} -E env PATH="$ENV{PATH};${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin"
+#    #COMMAND ${CMAKE_COMMAND} set(PATH "$ENV{PATH};${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin")
+#    COMMAND ${SHELL_CMD} -c "cd ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto"
+#    COMMAND ${SHELL_CMD} -c "ninja install"
+#    DEPENDERS configure
+#)
+#ExternalProject_Add_Step(gnsEX prebuild
+#    #COMMAND ${CMAKE_COMMAND} -E env PATH="$ENV{PATH};${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin"
+#    #COMMAND ${CMAKE_COMMAND} set(PATH "$ENV{PATH};${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin")
+#    #COMMAND ${SHELL_CMD} -c "cd ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto"
+#    #COMMAND ${SHELL_CMD} -c "ninja install"
+#    DEPENDEES install
+#)
+
+#ExternalProject_Add_Step(gnsEX postbuild
+#    #COMMAND ${CMAKE_COMMAND} -E env PATH="$ENV{PATH};${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin"
+#    COMMAND ${SHELL_CMD} -c "cd ${PROJECT_SOURCE_DIR}/cmake_more_cache/gns/build"
+#    COMMAND ${SHELL_CMD} -c "cp GameNetworkingSockets ${PROJECT_SOURCE_DIR}/lib"
+#    DEPENDEES build
+#)
+#target_link_libraries(gnsEX PRIVATE protobuf::libprotobuf)
+#target_link_directories(gnsEX "${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib")
+#target_include_directories(gnsEX "${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include")
 
 add_subdirectory(${submodules_path}/fastgltf)
 add_subdirectory(${submodules_path}/glfw)
@@ -92,6 +116,8 @@ add_executable(raw ${OTHER_SOURCES} ${PROJECT_SOURCES})
 file(GLOB shaders ${PROJECT_BINARY_DIR}/shaders/*)
 list(LENGTH shaders shader_len)
 #message(WARNING ${shader_len})
+#set(Protobuf_LIBRARIES ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib)
+#set(Protobuf_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include)
 
 if(shader_len EQUAL 0)
 file(GLOB_RECURSE GLSL_SOURCE_FILES
@@ -127,7 +153,10 @@ add_custom_command(
 add_custom_target(resources_bin_deps DEPENDS ${PROJECT_BINARY_DIR}/resources)
 add_dependencies(raw resources_bin_deps)
 
+#target_link_directories(raw PUBLIC ${PROJECT_SOURCE_DIR}/lib ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin)
 target_link_directories(raw PUBLIC ${PROJECT_SOURCE_DIR}/lib)
+
+#add_dependencies(raw gnsEX)
 
 target_link_libraries(raw
     PUBLIC
@@ -147,8 +176,12 @@ target_include_directories(raw
         "${submodules_path}/imgui"
         "${submodules_path}/vma/include"
         "${PROJECT_SOURCE_DIR}/src"
+        #${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include
 )
-
+#target_include_directories(${submodules_path}/gns
+#PUBLIC
+#${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include)
 
 
 set_property(TARGET raw APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/resources)
+set_property(TARGET raw APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/shaders)
