@@ -13,7 +13,7 @@
 	url = https://github.com/rarepng/GameNetworkingSockets
 [submodule "protobuf"]
 	path = sub/protobuf
-	url = https://github.com/protocolbuffers/protobuf
+	url = https://github.com/rarepng/protobuf
 [submodule "openssl"]
 	path = sub/openssl
 	url = https://github.com/openssl/openssl
