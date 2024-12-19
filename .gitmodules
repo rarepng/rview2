@@ -31,3 +31,7 @@
 [submodule "sub/imgui"]
 	path = sub/imgui
 	url = https://github.com/ocornut/imgui
+[submodule "sub/absl"]
+	path = sub/absl
+	url = https://github.com/abseil/abseil-cpp
+	branch = lts_2024_07_22
