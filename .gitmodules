@@ -4,12 +4,13 @@
 [submodule "glm"]
 	path = sub/glm
 	url = https://github.com/rarepng/glm
+	branch = master
 [submodule "glfw"]
 	path = sub/glfw
 	url = https://github.com/glfw/glfw
 [submodule "gns"]
 	path = sub/gns
-	url = https://github.com/ValveSoftware/GameNetworkingSockets
+	url = https://github.com/rarepng/GameNetworkingSockets
 [submodule "protobuf"]
 	path = sub/protobuf
 	url = https://github.com/protocolbuffers/protobuf
@@ -35,7 +36,3 @@
 	path = sub/absl
 	url = https://github.com/abseil/abseil-cpp
 	branch = lts_2024_07_22
-[submodule "sub/glm"]
-	path = sub/glm
-	url = https://github.com/rarepng/glm
-	branch = master
