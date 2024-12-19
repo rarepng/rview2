@@ -3,7 +3,7 @@
 	url = https://github.com/spnda/fastgltf
 [submodule "glm"]
 	path = sub/glm
-	url = https://github.com/g-truc/glm
+	url = https://github.com/rarepng/glm
 [submodule "glfw"]
 	path = sub/glfw
 	url = https://github.com/glfw/glfw
