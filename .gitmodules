@@ -35,3 +35,7 @@
 	path = sub/absl
 	url = https://github.com/abseil/abseil-cpp
 	branch = lts_2024_07_22
+[submodule "sub/glm"]
+	path = sub/glm
+	url = https://github.com/rarepng/glm
+	branch = master
