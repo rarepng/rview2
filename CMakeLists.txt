@@ -9,16 +9,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 find_package(Vulkan REQUIRED)
-#find_package(Vulkan COMPONENTS glslc REQUIRED)
-list(APPEND CMAKE_PREFIX_PATH "E:/silver/qtcan/raw/cmake_more_cache/gns/lib/cmake/GameNetworkingSockets")
-list(APPEND CMAKE_PREFIX_PATH "E:/silver/qtcan/raw/cmake_more_cache/proto/lib/cmake/protobuf")
-list(APPEND CMAKE_PREFIX_PATH "E:/silver/qtcan/raw/cmake_more_cache/proto/lib/cmake/utf8_range")
-list(APPEND CMAKE_PREFIX_PATH "E:/silver/qtcan/raw/cmake_more_cache/absl/lib/cmake/absl")
-set(Protobuf_LIBRARIES "E:/silver/qtcan/raw/cmake_more_cache/proto/lib/cmake/protobuf")
-set(Protobuf_INCLUDE_DIR "E:/silver/qtcan/raw/cmake_more_cache/proto/include")
-#find_package(absl REQUIRED)
-#find_package(protobuf REQUIRED)
-#find_package(GameNetworkingSockets REQUIRED)
 
 set(OPENSSL_USE_STATIC_LIBS ON)
 find_package(OpenSSL REQUIRED)
@@ -56,8 +46,8 @@ ExternalProject_Add(abslEX
         -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/cmake_more_cache/absl
         -DCMAKE_CXX_STANDARD=20
         -DCMAKE_CXX_STANDARD_REQUIRED=ON
-        -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++
-        -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc
+        -DCMAKE_CXX_COMPILER=g++
+        -DCMAKE_C_COMPILER=gcc
         -DBUILD_SHARED_LIB=OFF
         -DBUILD_SHARED_LIBS=OFF
         -DABSL_OPTION_USE_STD_ORDERING=0
@@ -73,8 +63,8 @@ ExternalProject_Add(protoEX
     CMAKE_ARGS
         ${GLOBAL_DEFAULT_ARGS}
         -G Ninja
-        -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++
-        -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc
+        -DCMAKE_CXX_COMPILER=g++
+        -DCMAKE_C_COMPILER=gcc
         -DCMAKE_BUILD_TYPE=Release
         -Dprotobuf_BUILD_TESTS=OFF
         -Dprotobuf_BUILD_SHARED_LIBS=OFF
@@ -93,14 +83,13 @@ ExternalProject_Add(protoEX
 )
 
 
-
 ExternalProject_Add(gnsEX
     SOURCE_DIR ${submodules_path}/gns
     CMAKE_ARGS
         ${GLOBAL_DEFAULT_ARGS}
         -G Ninja
-        -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++
-        -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc
+        -DCMAKE_CXX_COMPILER=g++
+        -DCMAKE_C_COMPILER=gcc
         -DCMAKE_BUILD_TYPE=Release
         -DProtobuf_USE_STATIC_LIBS=ON
         -Dprotobuf_BUILD_TESTS=OFF
@@ -108,9 +97,7 @@ ExternalProject_Add(gnsEX
         -DCMAKE_CXX_STANDARD=20
         -DCMAKE_CXX_STANDARD_REQUIRED=ON
         -DOPENSSL_USE_STATIC_LIBS=ON
-        -Dprotobuf_BUILD_TESTS=OFF
-        -Dprotobuf_BUILD_SHARED_LIBS=OFF
-        -DProtobuf_LIBRARIES=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib/cmake/protobuf
+        -DProtobuf_LIBRARIES=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib
         -DProtobuf_INCLUDE_DIR=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include
         -DBUILD_SHARED_LIB=OFF
         -DBUILD_STATIC_LIB=ON
@@ -118,12 +105,11 @@ ExternalProject_Add(gnsEX
         -DBUILD_STATIC_LIBS=ON
         #-DProtobuf_PROTOC_EXECUTABLE=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin/protoc
         -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/cmake_more_cache/gns
-        -DCMAKE_PREFIX_PATH=E:/silver/qtcan/raw/cmake_more_cache/proto/bin";"E:/silver/qtcan/raw/cmake_more_cache/proto/lib/cmake/protobuf
-        #-DCMAKE_PREFIX_PATH=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib/cmake/protobuf
+        -DCMAKE_PREFIX_PATH=E:/silver/qtcan/raw/cmake_more_cache/proto/bin"${SEP}"E:/silver/qtcan/raw/cmake_more_cache/proto/lib/cmake/protobuf
         -Dprotobuf_DIR=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto
         -DSTEAMNETWORKINGSOCKETS_STATIC_LINK=1
         #-DCMAKE_CXX_FLAGS='-D\ STEAMNETWORKINGSOCKETS_STATIC_LINK=1\ --static\ -static\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/absl\ -lprotobuf\ -lprotoc\ -lutf8_range\ -labsl_synchronization\ -labsl_symbolize\ -labsl_strings\ -labsl_str_format_internal\ -labsl_strings_internal\ -labsl_log_initialize\ -labsl_log_entry\ -labsl_log_flags\ -labsl_log_severity\ -labsl_log_internal_check_op\ -labsl_log_internal_conditions\ -labsl_log_internal_message\ -labsl_log_internal_nullguard\ -labsl_log_internal_proto\ -labsl_log_internal_format\ -labsl_log_internal_globals\ -labsl_log_internal_log_sink_set\ -labsl_log_sink\ -labsl_raw_logging_internal\ -labsl_log_globals\ -labsl_cord\ -labsl_cordz_info\ -labsl_cordz_handle\ -labsl_cordz_functions\ -labsl_cord_internal\ -labsl_crc_cord_state\ -labsl_crc32c\ -labsl_crc_internal\ -labsl_exponential_biased\ -labsl_synchronization\ -labsl_time\ -labsl_time_zone\ -labsl_int128\ -labsl_examine_stack\ -labsl_stacktrace\ -labsl_symbolize\ -labsl_demangle_internal\ -labsl_debugging_internal\ -labsl_malloc_internal\ -labsl_throw_delegate\ -labsl_strerror\ -labsl_raw_hash_set\ -labsl_hash\ -labsl_city\ -labsl_low_level_hash\ -labsl_base\ -labsl_spinlock_wait\ -labsl_status\ -std=c++20\ -lstdc++'
-        -DCMAKE_CXX_FLAGS='--static\ -static\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/absl\ -lprotobuf\ -lprotoc\ -lutf8_range\ -std=c++20\ -lstdc++'
+        -DCMAKE_CXX_FLAGS='--static\ -static\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include\ -LJ:/openssl-3.4.0/dist/lib64\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/absl\ -lprotobuf-lite\ -lprotobuf\ -lprotoc\ -lutf8_range\ -std=c++20\ -lstdc++\ -lws2_32\ -lpthread\ -lupb\ -lutf8_validity\ -lcrypto\ -lssl'
         -B "${PROJECT_SOURCE_DIR}/cmake_more_cache/gns_build"
     BUILD_COMMAND ninja
     INSTALL_COMMAND ninja install
@@ -156,8 +142,12 @@ set(OTHER_SOURCES
 add_executable(raw ${OTHER_SOURCES} ${PROJECT_SOURCES})
 
 
-#set_target_properties(raw PROPERTIES CMAKE_CXX_FLAGS '-static\ -l${PROJECT_SOURCE_DIR}/cmake_more_cache/gns/lib/GameNetworkingSockets_s')
 
+if(UNIX)
+set_target_properties(raw PROPERTIES CMAKE_CXX_FLAGS '-static')
+else()
+set_target_properties(raw PROPERTIES CMAKE_CXX_FLAGS '-static\ -mwindows')
+endif()
 
 file(GLOB shaders ${PROJECT_BINARY_DIR}/shaders/*)
 list(LENGTH shaders shader_len)
@@ -199,7 +189,8 @@ add_dependencies(raw resources_bin_deps)
 target_link_directories(raw PRIVATE
 ${PROJECT_SOURCE_DIR}/cmake_more_cache/gns/lib
 ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib
-
+${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/lib
+#${OPENSSL_ROOT}/lib64
 )
 
 
@@ -208,81 +199,130 @@ add_dependencies(protoEX abslEX)
 add_dependencies(gnsEX protoEX)
 add_dependencies(raw gnsEX)
 
-#add_library(absl::strings ALIAS absl_strings)
-
 target_link_libraries(raw
     PRIVATE
         glfw
         fastgltf
         glm
         Vulkan::Vulkan
+        OpenSSL::SSL
+        OpenSSL::Crypto
         vk-bootstrap::vk-bootstrap
-        protobuf
-        #absl::any
-        #GameNetworkingSockets
         GameNetworkingSockets_s
-        #${PROJECT_SOURCE_DIR}/cmake_more_cache/gns/lib/cmake/GameNetworkingSockets
-        #utf8_range
-        #OpenSSL::SSL
-        #OpenSSL::Crypto
-        #protobuf
-        #absl_synchronization
-        #absl_symbolize
-        #absl_strings              
-        #absl_str_format_internal    
-        #absl_strings_internal         
-        #absl_log_initialize           
-        #absl_log_entry                
-        #absl_log_flags                
-        #absl_log_severity             
-        #absl_log_internal_check_op    
-        #absl_log_internal_conditions  
-        #absl_log_internal_message     
-        #absl_log_internal_nullguard   
-        #absl_log_internal_proto       
-        #absl_log_internal_format      
-        #absl_log_internal_globals     
-        #absl_log_internal_log_sink_set
-        #absl_log_sink                 
-        #absl_raw_logging_internal     
-        #absl_log_globals              
-        ##utf8_validity                 
-        #absl_cord                     
-        #absl_cordz_info               
-        #absl_cordz_handle             
-        #absl_cordz_functions          
-        #absl_cord_internal            
-        #absl_crc_cord_state           
-        #absl_crc32c                   
-        #absl_crc_internal             
-        #absl_exponential_biased       
-        #absl_synchronization          
-        #absl_time                     
-        #absl_time_zone                
-        #absl_int128                   
-        #absl_examine_stack            
-        #absl_stacktrace               
-        #absl_symbolize                
-        #absl_demangle_internal        
-        #absl_debugging_internal       
-        #absl_malloc_internal          
-        #absl_throw_delegate           
-        #absl_strerror                 
-        #absl_raw_hash_set             
-        #absl_hash                     
-        #absl_city                     
-        #absl_low_level_hash           
-        #absl_base                     
-        #absl_spinlock_wait
-        #absl_status
-        ##abls_synchronization_internal
-
+        protobuf
+        protoc
+        upb
+        protobuf-lite
+        utf8_range
+        utf8_validity
+        OpenSSL::SSL
+        OpenSSL::Crypto
+        protobuf
+        absl_bad_any_cast_impl
+        absl_bad_optional_access
+        absl_bad_variant_access
+        absl_base
+        absl_city
+        absl_civil_time
+        absl_cord
+        absl_cord_internal
+        absl_cordz_functions
+        absl_cordz_handle
+        absl_cordz_info
+        absl_cordz_sample_token
+        absl_crc_cord_state
+        absl_crc_cpu_detect
+        absl_crc_internal
+        absl_crc32c
+        absl_debugging_internal
+        absl_decode_rust_punycode
+        absl_demangle_internal
+        absl_demangle_rust
+        absl_die_if_null
+        absl_examine_stack
+        absl_exponential_biased
+        absl_failure_signal_handler
+        absl_flags_commandlineflag
+        absl_flags_commandlineflag_internal
+        absl_flags_config
+        absl_flags_internal
+        absl_flags_marshalling
+        absl_flags_parse
+        absl_flags_private_handle_accessor
+        absl_flags_program_name
+        absl_flags_reflection
+        absl_flags_usage
+        absl_flags_usage_internal
+        absl_graphcycles_internal
+        absl_hash
+        absl_hashtablez_sampler
+        absl_int128
+        absl_kernel_timeout_internal
+        absl_leak_check
+        absl_log_entry
+        absl_log_flags
+        absl_log_globals
+        absl_log_initialize
+        absl_log_internal_check_op
+        absl_log_internal_conditions
+        absl_log_internal_fnmatch
+        absl_log_internal_format
+        absl_log_internal_globals
+        absl_log_internal_log_sink_set
+        absl_log_internal_message
+        absl_log_internal_nullguard
+        absl_log_internal_proto
+        absl_log_severity
+        absl_log_sink
+        absl_low_level_hash
+        absl_malloc_internal
+        absl_periodic_sampler
+        absl_poison
+        absl_random_distributions
+        absl_random_internal_distribution_test_util
+        absl_random_internal_platform
+        absl_random_internal_pool_urbg
+        absl_random_internal_randen
+        absl_random_internal_randen_hwaes
+        absl_random_internal_randen_hwaes_impl
+        absl_random_internal_randen_slow
+        absl_random_internal_seed_material
+        absl_random_seed_gen_exception
+        absl_random_seed_sequences
+        absl_raw_hash_set
+        absl_raw_logging_internal
+        absl_scoped_set_env
+        absl_spinlock_wait
+        absl_stacktrace
+        absl_status
+        absl_statusor
+        absl_str_format_internal
+        absl_strerror
+        absl_string_view
+        absl_strings
+        absl_strings_internal
+        absl_symbolize
+        absl_synchronization
+        absl_throw_delegate
+        absl_time
+        absl_time_zone
+        absl_utf8_for_code_point
+        absl_vlog_config_internal
 )
+if(NOT UNIX)
+target_link_libraries(raw
+    PRIVATE
+        #ws2_32                               #windows
+        #pthread                              #windows
+        DbgHelp                               #windows
+        winmm                                 #windows
+        iphlpapi                              #windows
+)
+endif()
 
 target_include_directories(raw
     PUBLIC
         "${PROJECT_SOURCE_DIR}/cmake_more_cache/gns/include/GameNetworkingSockets"
-        #"${submodules_path}/gns/include"
         "${submodules_path}/stb"
         "${submodules_path}/imgui"
         "${submodules_path}/vma/include"
