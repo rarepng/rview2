@@ -52,6 +52,7 @@ ExternalProject_Add(abslEX
         -DBUILD_SHARED_LIBS=OFF
         -DABSL_OPTION_USE_STD_ORDERING=0
         -DCMAKE_CXX_FLAGS='-static\ -D\ ABSL_OPTION_USE_STD_ORDERING=0\ -D\ ABSL_USES_STD_ORDERING=0'
+        -DCMAKE_C_FLAGS='-static\ -D\ ABSL_OPTION_USE_STD_ORDERING=0\ -D\ ABSL_USES_STD_ORDERING=0'
         -B ${PROJECT_SOURCE_DIR}/cmake_more_cache/absl_build
     BUILD_COMMAND ninja
     INSTALL_COMMAND ninja install
@@ -74,6 +75,8 @@ ExternalProject_Add(protoEX
         -DCMAKE_CXX_STANDARD_REQUIRED=ON
         -DABSL_OPTION_USE_STD_ORDERING=0
         -DCMAKE_CXX_FLAGS='-static\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include'
+        -DCMAKE_C_FLAGS='-static\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include'
+        -Dprotobuf_WITH_ZLIB=OFF
         -Dprotobuf_ABSL_PROVIDER=package
         -DCMAKE_PREFIX_PATH=${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/lib/cmake/absl
         -DABSL_ROOT_DIR=${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/lib/cmake/absl
@@ -103,13 +106,13 @@ ExternalProject_Add(gnsEX
         -DBUILD_STATIC_LIB=ON
         -DBUILD_SHARED_LIBS=OFF
         -DBUILD_STATIC_LIBS=ON
-        #-DProtobuf_PROTOC_EXECUTABLE=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin/protoc
+        -DProtobuf_PROTOC_EXECUTABLE=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin/protoc
         -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/cmake_more_cache/gns
-        -DCMAKE_PREFIX_PATH=E:/silver/qtcan/raw/cmake_more_cache/proto/bin"${SEP}"E:/silver/qtcan/raw/cmake_more_cache/proto/lib/cmake/protobuf
+        -DCMAKE_PREFIX_PATH=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin
         -Dprotobuf_DIR=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto
         -DSTEAMNETWORKINGSOCKETS_STATIC_LINK=1
         #-DCMAKE_CXX_FLAGS='-D\ STEAMNETWORKINGSOCKETS_STATIC_LINK=1\ --static\ -static\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/absl\ -lprotobuf\ -lprotoc\ -lutf8_range\ -labsl_synchronization\ -labsl_symbolize\ -labsl_strings\ -labsl_str_format_internal\ -labsl_strings_internal\ -labsl_log_initialize\ -labsl_log_entry\ -labsl_log_flags\ -labsl_log_severity\ -labsl_log_internal_check_op\ -labsl_log_internal_conditions\ -labsl_log_internal_message\ -labsl_log_internal_nullguard\ -labsl_log_internal_proto\ -labsl_log_internal_format\ -labsl_log_internal_globals\ -labsl_log_internal_log_sink_set\ -labsl_log_sink\ -labsl_raw_logging_internal\ -labsl_log_globals\ -labsl_cord\ -labsl_cordz_info\ -labsl_cordz_handle\ -labsl_cordz_functions\ -labsl_cord_internal\ -labsl_crc_cord_state\ -labsl_crc32c\ -labsl_crc_internal\ -labsl_exponential_biased\ -labsl_synchronization\ -labsl_time\ -labsl_time_zone\ -labsl_int128\ -labsl_examine_stack\ -labsl_stacktrace\ -labsl_symbolize\ -labsl_demangle_internal\ -labsl_debugging_internal\ -labsl_malloc_internal\ -labsl_throw_delegate\ -labsl_strerror\ -labsl_raw_hash_set\ -labsl_hash\ -labsl_city\ -labsl_low_level_hash\ -labsl_base\ -labsl_spinlock_wait\ -labsl_status\ -std=c++20\ -lstdc++'
-        -DCMAKE_CXX_FLAGS='--static\ -static\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include\ -LJ:/openssl-3.4.0/dist/lib64\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/absl\ -lprotobuf-lite\ -lprotobuf\ -lprotoc\ -lutf8_range\ -std=c++20\ -lstdc++\ -lws2_32\ -lpthread\ -lupb\ -lutf8_validity\ -lcrypto\ -lssl'
+        -DCMAKE_CXX_FLAGS='--static\ -static\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include\ -LJ:/openssl-3.4.0/dist/lib64\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/absl\ -lprotobuf-lite\ -lprotobuf\ -lprotoc\ -lutf8_range\ -std=c++20\ -lstdc++\ -lpthread\ -lupb\ -lutf8_validity'
         -B "${PROJECT_SOURCE_DIR}/cmake_more_cache/gns_build"
     BUILD_COMMAND ninja
     INSTALL_COMMAND ninja install
@@ -234,12 +237,13 @@ target_link_libraries(raw
         absl_crc_cpu_detect
         absl_crc_internal
         absl_crc32c
-        absl_debugging_internal
-        absl_decode_rust_punycode
+        absl_examine_stack
+        absl_symbolize
         absl_demangle_internal
         absl_demangle_rust
+        absl_debugging_internal
+        absl_decode_rust_punycode
         absl_die_if_null
-        absl_examine_stack
         absl_exponential_biased
         absl_failure_signal_handler
         absl_flags_commandlineflag
@@ -301,7 +305,6 @@ target_link_libraries(raw
         absl_string_view
         absl_strings
         absl_strings_internal
-        absl_symbolize
         absl_synchronization
         absl_throw_delegate
         absl_time
@@ -309,7 +312,13 @@ target_link_libraries(raw
         absl_utf8_for_code_point
         absl_vlog_config_internal
 )
-if(NOT UNIX)
+if(UNIX)
+target_link_libraries(raw
+    PRIVATE
+        c
+        pthread
+)
+else()
 target_link_libraries(raw
     PRIVATE
         #ws2_32                               #windows
