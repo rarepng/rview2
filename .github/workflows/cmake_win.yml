@@ -46,7 +46,7 @@ jobs:
     - shell: msys2 {0}
       run: |
         cd /d/a/raw/raw/openssl-3.4.0
-        pacman -S make
+        # echo y | pacman -S make
         export OPENSSL_USE_STATIC_LIBS=ON
         ./Configure --prefix=$PWD/dist no-idea no-mdc2 no-rc5 no-shared mingw64
         make depend && make && make install
