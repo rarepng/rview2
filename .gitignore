@@ -1,0 +1,10 @@
+build
+build_static
+cmake_more_cache
+resources
+vsbuild
+gbuild
+.vs
+vs
+CMakeSettings.json
+.gitignore

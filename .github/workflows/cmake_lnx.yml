@@ -34,14 +34,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y libssl-dev libprotobuf-dev protobuf-compiler ninja-build libwayland-dev libxkbcommon-dev xorg-dev p7zip xvfb
-        cd /home/runner/work/raw/raw/sub/gns
-        mkdir build
-        cd build
-        cmake -G Ninja ..
-        ninja
-        mkdir /home/runner/work/raw/raw/lib
-        cp src/libGameNetworkingSockets_s.a /home/runner/work/raw/raw/lib/libGameNetworkingSockets.a #static not needed at runtime
-        cp bin/libGameNetworkingSockets.so /home/runner/work/raw/raw/lib/libGameNetworkingSockets.so #shared
     - name: installing vulkan sdk
       run: |
         mkdir /home/runner/vulk

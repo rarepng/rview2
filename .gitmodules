@@ -3,16 +3,17 @@
 	url = https://github.com/spnda/fastgltf
 [submodule "glm"]
 	path = sub/glm
-	url = https://github.com/g-truc/glm
+	url = https://github.com/rarepng/glm
+	branch = master
 [submodule "glfw"]
 	path = sub/glfw
 	url = https://github.com/glfw/glfw
 [submodule "gns"]
 	path = sub/gns
-	url = https://github.com/ValveSoftware/GameNetworkingSockets
+	url = https://github.com/rarepng/GameNetworkingSockets
 [submodule "protobuf"]
 	path = sub/protobuf
-	url = https://github.com/protocolbuffers/protobuf
+	url = https://github.com/rarepng/protobuf
 [submodule "openssl"]
 	path = sub/openssl
 	url = https://github.com/openssl/openssl
@@ -31,3 +32,7 @@
 [submodule "sub/imgui"]
 	path = sub/imgui
 	url = https://github.com/ocornut/imgui
+[submodule "sub/absl"]
+	path = sub/absl
+	url = https://github.com/abseil/abseil-cpp
+	branch = lts_2024_07_22

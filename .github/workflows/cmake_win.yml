@@ -1,5 +1,4 @@
 name: cmake win64 
-#i give up
 on:
   push:
     branches: [ "master" ]
@@ -26,54 +25,49 @@ jobs:
       with:
         submodules: true
         fetch-depth: 0
-
+    - uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        install: >-
+            make
+            mingw-w64-x86_64-gcc
     - name: update submodules
       run: |
         git submodule update --init --recursive
     - name: installing more depens
       run: |
-        choco install -y ninja openssl 7zip
+        choco install -y ninja 7zip
+        # choco install -y ninja openssl 7zip
         choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --apply-install-arguments-to-dependencies
-        $env:OPENSSL_ROOT_DIR="C:/Program Files/OpenSSL"
-        $env:OPENSSL_INCLUDE_DIR="C:/Program Files/OpenSSL/include"
-        $env:OPENSSL_CRYPTO_LIBRARY="C:/Program Files/OpenSSL/lib/libcrypto.lib"
-        $env:OPENSSL_SSL_LIBRARY="C:/Program Files/OpenSSL/lib/libssl.lib"
-        $env:PATH="C:/Program Files/OpenSSL/bin;$env:PATH"
-        echo "OPENSSL_ROOT_DIR=C:/Program Files/OpenSSL" | tee -a $env:GITHUB_ENV
-        echo "OPENSSL_INCLUDE_DIR=C:/Program Files/OpenSSL/include" | tee -a $env:GITHUB_ENV
-        echo "OPENSSL_CRYPTO_LIBRARY=C:/Program Files/OpenSSL/lib/libcrypto.lib" | tee -a $env:GITHUB_ENV
-        echo "OPENSSL_SSL_LIBRARY=C:/Program Files/OpenSSL/lib/libssl.lib" | tee -a $env:GITHUB_ENV
+        cd D:/a/raw/raw
+        # curl -L "https://github.com/openssl/openssl/releases/download/openssl-3.4.0/openssl-3.4.0.tar.gz" | tar -xz     #doesnt work on runner
+        pwsh -c 'curl -L "https://github.com/openssl/openssl/releases/download/openssl-3.4.0/openssl-3.4.0.tar.gz" -o ossl.tar.gz'
+        tar -xvzf ossl.tar.gz
+    - shell: msys2 {0}
+      run: |
+        cd /d/a/raw/raw/openssl-3.4.0
+        # echo y | pacman -S make
+        export OPENSSL_USE_STATIC_LIBS=ON
+        ./Configure --prefix=$PWD/dist no-idea no-mdc2 no-rc5 no-shared mingw64
+        make depend && make && make install
+    - name: set openssl
+      run: |
+        $env:OPENSSL_ROOT_DIR="D:/a/raw/raw/openssl-3.4.0/dist"
+        $env:PATH="D:/a/raw/raw/openssl-3.4.0/dist/bin;$env:PATH"
+        echo "OPENSSL_ROOT_DIR=D:/a/raw/raw/openssl-3.4.0/dist" | tee -a $env:GITHUB_ENV
         echo "PATH=$env:PATH" | tee -a $env:GITHUB_ENV
-        cd D:/a/raw/raw/sub/protobuf
-        mkdir build_dir
-        cd build_dir
-        cmake -G Ninja -DCMAKE_CXX_COMPILER=g++ -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_STANDARD=20 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=C:/sdk/protobuf -S ..
-        ninja
-        ninja install
-        $env:Protobuf_INCLUDE_DIR="C:/sdk/protobuf/include"
-        echo "Protobuf_INCLUDE_DIR=C:/sdk/protobuf/include" | tee -a $env:GITHUB_ENV
-        $env:Protobuf_LIB_DIR="C:/sdk/protobuf/lib"
-        echo "Protobuf_LIB_DIR=C:/sdk/protobuf/lib" | tee -a $env:GITHUB_ENV
-        $env:PATH="c:/sdk/protobuf/bin;$env:PATH"
-        echo "PATH=$env:PATH" | tee -a $env:GITHUB_ENV
-        cd D:/a/raw/raw/sub/gns
-        mkdir build
-        cd build
-        ##$winsdkinclude=C:/Program" "Files" "(x86)/Windows" "Kits/10/Include/$((ls 'C:/Program Files (x86)/Windows Kits/10/Include')[0].name)/um
-        #cmake -G Ninja -DCMAKE_CXX_FLAGS='-IC:/Program" "Files" "(x86)/Windows" "Kits/10/Include/10.0.26100.0/um' DCMAKE_LIBRARY_PATH='C:/Program" "Files" "(x86)/Windows" "Kits/10/Lib/10.0.26100.0/um' -DCMAKE_CXX_STANDARD=20 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_BUILD_TYPE=Release -DProtobuf_INCLUDE_DIR="C:/sdk/protobuf/include" -DProtobuf_LIB_DIR="C:/sdk/protobuf/lib" -S ..
-        #ninja
-        #mkdir D:/a/raw/raw/lib
-        #ls -r
-        #cp lib/GameNetworkingSockets.lib D:/a/raw/raw/lib/GameNetworkingSockets.lib
-        #cp bin/GameNetworkingSockets.dll D:/a/raw/raw/lib/GameNetworkingSockets.dll
-        curl -L "https://drive.google.com/uc?export=download&id=18hd-S5mgjD-D00zf2AFR5rk6dan1sVSZ" -o x.7z
-        7z x x.7z -aoa
-        rm x.7z
-        mkdir D:/a/raw/raw/lib
-        cp GameNetworkingSockets.lib D:/a/raw/raw/lib/GameNetworkingSockets.lib
-        cp GameNetworkingSockets.dll D:/a/raw/raw/lib/GameNetworkingSockets.dll
-        $env:PATH="D:/a/work/raw/raw/lib;$env:PATH"
-        echo PATH=$env:PATH  | tee -a $env:GITHUB_ENV
+    # - name: set openssl
+    #   run: |
+    #     $env:OPENSSL_ROOT_DIR="C:/Program Files/OpenSSL"
+    #     $env:OPENSSL_INCLUDE_DIR="C:/Program Files/OpenSSL/include"
+    #     $env:OPENSSL_CRYPTO_LIBRARY="C:/Program Files/OpenSSL/lib/libcrypto.lib"
+    #     $env:OPENSSL_SSL_LIBRARY="C:/Program Files/OpenSSL/lib/libssl.lib"
+    #     $env:PATH="C:/Program Files/OpenSSL/bin;$env:PATH"
+    #     echo "OPENSSL_ROOT_DIR=C:/Program Files/OpenSSL" | tee -a $env:GITHUB_ENV
+    #     echo "OPENSSL_INCLUDE_DIR=C:/Program Files/OpenSSL/include" | tee -a $env:GITHUB_ENV
+    #     echo "OPENSSL_CRYPTO_LIBRARY=C:/Program Files/OpenSSL/lib/libcrypto.lib" | tee -a $env:GITHUB_ENV
+    #     echo "OPENSSL_SSL_LIBRARY=C:/Program Files/OpenSSL/lib/libssl.lib" | tee -a $env:GITHUB_ENV
+    #     echo "PATH=$env:PATH" | tee -a $env:GITHUB_ENV
     - name: installing vulkan sdk
       run: |
         mkdir D:/a/vulk_inst
