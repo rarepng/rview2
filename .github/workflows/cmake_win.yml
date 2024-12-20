@@ -37,13 +37,14 @@ jobs:
         choco install -y ninja msys2 7zip
         choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --apply-install-arguments-to-dependencies
         cd D:/a/raw/raw
-        curl -L https://github.com/openssl/openssl/releases/download/openssl-3.4.0/openssl-3.4.0.tar.gz | tar -xz
+        curl -L "https://github.com/openssl/openssl/releases/download/openssl-3.4.0/openssl-3.4.0.tar.gz" | tar -xz
     - shell: msys2 {0}
       run: |
         cd D:/a/raw/raw/openssl-3.4.0
         pacman -S make
         export OPENSSL_USE_STATIC_LIBS=ON
         ./Configure --prefix=$PWD/dist no-idea no-mdc2 no-rc5 no-shared mingw64
+        make depend && make && make install
     - name: set openssl
       run: |
         $env:OPENSSL_ROOT_DIR="D:/a/raw/raw/openssl-3.4.0/dist"
