@@ -28,12 +28,15 @@ jobs:
     - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW64
+        install: >-
+            make
+            mingw-w64-x86_64-gcc
     - name: update submodules
       run: |
         git submodule update --init --recursive
     - name: installing more depens
       run: |
-        choco install -y ninja msys2 7zip
+        choco install -y ninja 7zip
         # choco install -y ninja openssl 7zip
         choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --apply-install-arguments-to-dependencies
         cd D:/a/raw/raw
