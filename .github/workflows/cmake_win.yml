@@ -44,36 +44,6 @@ jobs:
         echo "OPENSSL_CRYPTO_LIBRARY=C:/Program Files/OpenSSL/lib/libcrypto.lib" | tee -a $env:GITHUB_ENV
         echo "OPENSSL_SSL_LIBRARY=C:/Program Files/OpenSSL/lib/libssl.lib" | tee -a $env:GITHUB_ENV
         echo "PATH=$env:PATH" | tee -a $env:GITHUB_ENV
-        cd D:/a/raw/raw/sub/protobuf
-        mkdir build_dir
-        cd build_dir
-        cmake -G Ninja -DCMAKE_CXX_COMPILER=g++ -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_STANDARD=20 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=C:/sdk/protobuf -S ..
-        ninja
-        ninja install
-        $env:Protobuf_INCLUDE_DIR="C:/sdk/protobuf/include"
-        echo "Protobuf_INCLUDE_DIR=C:/sdk/protobuf/include" | tee -a $env:GITHUB_ENV
-        $env:Protobuf_LIB_DIR="C:/sdk/protobuf/lib"
-        echo "Protobuf_LIB_DIR=C:/sdk/protobuf/lib" | tee -a $env:GITHUB_ENV
-        $env:PATH="c:/sdk/protobuf/bin;$env:PATH"
-        echo "PATH=$env:PATH" | tee -a $env:GITHUB_ENV
-        cd D:/a/raw/raw/sub/gns
-        mkdir build
-        cd build
-        ##$winsdkinclude=C:/Program" "Files" "(x86)/Windows" "Kits/10/Include/$((ls 'C:/Program Files (x86)/Windows Kits/10/Include')[0].name)/um
-        #cmake -G Ninja -DCMAKE_CXX_FLAGS='-IC:/Program" "Files" "(x86)/Windows" "Kits/10/Include/10.0.26100.0/um' DCMAKE_LIBRARY_PATH='C:/Program" "Files" "(x86)/Windows" "Kits/10/Lib/10.0.26100.0/um' -DCMAKE_CXX_STANDARD=20 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_BUILD_TYPE=Release -DProtobuf_INCLUDE_DIR="C:/sdk/protobuf/include" -DProtobuf_LIB_DIR="C:/sdk/protobuf/lib" -S ..
-        #ninja
-        #mkdir D:/a/raw/raw/lib
-        #ls -r
-        #cp lib/GameNetworkingSockets.lib D:/a/raw/raw/lib/GameNetworkingSockets.lib
-        #cp bin/GameNetworkingSockets.dll D:/a/raw/raw/lib/GameNetworkingSockets.dll
-        curl -L "https://drive.google.com/uc?export=download&id=18hd-S5mgjD-D00zf2AFR5rk6dan1sVSZ" -o x.7z
-        7z x x.7z -aoa
-        rm x.7z
-        mkdir D:/a/raw/raw/lib
-        cp GameNetworkingSockets.lib D:/a/raw/raw/lib/GameNetworkingSockets.lib
-        cp GameNetworkingSockets.dll D:/a/raw/raw/lib/GameNetworkingSockets.dll
-        $env:PATH="D:/a/work/raw/raw/lib;$env:PATH"
-        echo PATH=$env:PATH  | tee -a $env:GITHUB_ENV
     - name: installing vulkan sdk
       run: |
         mkdir D:/a/vulk_inst
