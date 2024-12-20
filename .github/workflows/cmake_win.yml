@@ -54,8 +54,14 @@ jobs:
     - name: set openssl
       run: |
         $env:OPENSSL_ROOT_DIR="C:/Program Files/OpenSSL"
+        $env:OPENSSL_INCLUDE_DIR="C:/Program Files/OpenSSL/include"
+        $env:OPENSSL_CRYPTO_LIBRARY="C:/Program Files/OpenSSL/lib/libcrypto.lib"
+        $env:OPENSSL_SSL_LIBRARY="C:/Program Files/OpenSSL/lib/libssl.lib"
         $env:PATH="C:/Program Files/OpenSSL/bin;$env:PATH"
         echo "OPENSSL_ROOT_DIR=C:/Program Files/OpenSSL" | tee -a $env:GITHUB_ENV
+        echo "OPENSSL_INCLUDE_DIR=C:/Program Files/OpenSSL/include" | tee -a $env:GITHUB_ENV
+        echo "OPENSSL_CRYPTO_LIBRARY=C:/Program Files/OpenSSL/lib/libcrypto.lib" | tee -a $env:GITHUB_ENV
+        echo "OPENSSL_SSL_LIBRARY=C:/Program Files/OpenSSL/lib/libssl.lib" | tee -a $env:GITHUB_ENV
         echo "PATH=$env:PATH" | tee -a $env:GITHUB_ENV
     - name: installing vulkan sdk
       run: |
