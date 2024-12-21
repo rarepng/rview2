@@ -14,9 +14,6 @@
 [submodule "protobuf"]
 	path = sub/protobuf
 	url = https://github.com/rarepng/protobuf
-[submodule "openssl"]
-	path = sub/openssl
-	url = https://github.com/openssl/openssl
 [submodule "sub/simdjson"]
 	path = sub/simdjson
 	url = https://github.com/simdjson/simdjson

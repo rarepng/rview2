@@ -1,4 +1,4 @@
-name: cmakewin64 
+name: windows x64 
 on:
   push:
     branches: [ "master" ]

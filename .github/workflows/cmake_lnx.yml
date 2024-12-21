@@ -1,4 +1,4 @@
-name: cmakelnx64
+name: linux x64
             
 on:
   push:
