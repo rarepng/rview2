@@ -1,4 +1,4 @@
-name: cmake win64 
+name: cmakewin64 
 on:
   push:
     branches: [ "master" ]
@@ -37,7 +37,6 @@ jobs:
     - name: installing more depens
       run: |
         choco install -y ninja 7zip
-        # choco install -y ninja openssl 7zip
         choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --apply-install-arguments-to-dependencies
         cd D:/a/raw/raw
         # curl -L "https://github.com/openssl/openssl/releases/download/openssl-3.4.0/openssl-3.4.0.tar.gz" | tar -xz     #doesnt work on runner
@@ -56,18 +55,6 @@ jobs:
         $env:PATH="D:/a/raw/raw/openssl-3.4.0/dist/bin;$env:PATH"
         echo "OPENSSL_ROOT_DIR=D:/a/raw/raw/openssl-3.4.0/dist" | tee -a $env:GITHUB_ENV
         echo "PATH=$env:PATH" | tee -a $env:GITHUB_ENV
-    # - name: set openssl
-    #   run: |
-    #     $env:OPENSSL_ROOT_DIR="C:/Program Files/OpenSSL"
-    #     $env:OPENSSL_INCLUDE_DIR="C:/Program Files/OpenSSL/include"
-    #     $env:OPENSSL_CRYPTO_LIBRARY="C:/Program Files/OpenSSL/lib/libcrypto.lib"
-    #     $env:OPENSSL_SSL_LIBRARY="C:/Program Files/OpenSSL/lib/libssl.lib"
-    #     $env:PATH="C:/Program Files/OpenSSL/bin;$env:PATH"
-    #     echo "OPENSSL_ROOT_DIR=C:/Program Files/OpenSSL" | tee -a $env:GITHUB_ENV
-    #     echo "OPENSSL_INCLUDE_DIR=C:/Program Files/OpenSSL/include" | tee -a $env:GITHUB_ENV
-    #     echo "OPENSSL_CRYPTO_LIBRARY=C:/Program Files/OpenSSL/lib/libcrypto.lib" | tee -a $env:GITHUB_ENV
-    #     echo "OPENSSL_SSL_LIBRARY=C:/Program Files/OpenSSL/lib/libssl.lib" | tee -a $env:GITHUB_ENV
-    #     echo "PATH=$env:PATH" | tee -a $env:GITHUB_ENV
     - name: installing vulkan sdk
       run: |
         mkdir D:/a/vulk_inst
@@ -92,8 +79,6 @@ jobs:
     #   uses: NcStudios/VulkanCI@v1.1
     - name: verifying vulkan
       run: |
-        # mkdir $VULKAN_SDK/bin
-        # cp D:/a/vulk/bin/glslc.exe $VULKAN_SDK/bin/glslc
         powershell -c "$env:VULKAN_SDK/bin/glslc --version"
         echo $VULKAN_SDK
         ls -r $VULKAN_SDK
