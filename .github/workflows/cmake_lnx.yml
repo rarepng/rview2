@@ -1,4 +1,4 @@
-name: cmake lnx64 
+name: cmakelnx64
             
 on:
   push:
@@ -62,7 +62,6 @@ jobs:
         $VULKAN_SDK/bin/glslc --version
     - name: downloading resources
       run: |
-        #todo compress with tar pipe to 7z to un/compress without saving file
         mkdir /home/runner/work/raw/raw/resources
         cd /home/runner/work/raw/raw/resources
         curl -L "https://drive.google.com/uc?export=download&id=1ZwYuB17yq-yRpswRISuvSG-_R7j5GKM9" -o x.7z

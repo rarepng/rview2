@@ -122,6 +122,13 @@ ExternalProject_Add(gnsEX
 )
 
 
+
+
+set(FASTGLTF_COMPILE_AS_CPP20 ON CACHE BOOL "set" FORCE)
+
+####set not necessary simdjson&glm libraries SIMDJSON_CXX_STANDARD 20 SIMDJSON_BUILD_STATIC_LIB ON GLM_ENABLE_SIMD_SSSE3 ON GLM_BUILD_DOCS OFF
+
+
 #target_compile_definitions(gnsEX PUBLIC STEAMNETWORKINGSOCKETS_STATIC_LINK)
 
 add_subdirectory(${submodules_path}/simdjson)

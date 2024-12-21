@@ -8,9 +8,12 @@ vulkan 1.3 simple cross platform online multiplayer game.
 can load any gltf model, pbr materials, textures, alpha blending, fk and ik animations, actions and non-linear animations
 full support for glsl shaders ( compile with glslc/glslangvalidator for vulkan ).
 
+## Downloads
+
 [Drive to resources](https://drive.google.com/file/d/1ZwYuB17yq-yRpswRISuvSG-_R7j5GKM9/view?usp=sharing)
-
-
+### Download latest binaries
+[windows](https://github.com/rarepng/raw/releases/download/alpha/raw.7z)
+[linux](https://github.com/rarepng/raw/releases/download/alpha/rawl.7z)
 
 ## Game controls:
 
@@ -24,6 +27,10 @@ ESC - pause in game, exit in main menu<br>
 wasdeq - camera controls, for debugging<br>
 
 
+## notes:
+I am no longer maintaing MSVC builds for the time being. it's buggy and slow. windows builds are compiled with mingw.
+The binary is only linked to the libraries statically for the time being (minimal/no so/dlls).
+
 ## build requirements
 * c++20 compiler
 * vulkan( vulkan 1.3, vkbootstrap and vma_mem_alloc)
@@ -31,30 +38,53 @@ wasdeq - camera controls, for debugging<br>
 * glm
 * 🌟 fastgltf -> simdJSON
 * stb
-* GameNetworkingSockets -> OpenSSL and Protobuf
+* GameNetworkingSockets -> OpenSSL and Protobuf -> abseil
 
 ## compiling
+
+### requirements
+- ninja (not required but highly preferred)
+- cmake
+- vulkan sdk
+- gcc | mingw (windows or cross compiling)
+- openssl | openssl compiled with mingw -> msys/strawberry perl (windows)
 - install/make sure vulkan sdk is installed and make sure VULKAN_SDK is set and glslc is under VULKAN_SDK/Bin/
-- build GameNetworkingSockets and place the library in lib directory
+- install openssl on linux or build OpenSSL and ensure it's compiled and configured with mingw64 with no-shared and make sure OPENSSL_ROOT_DIR is set, msys2 can be used to make it easier, instructions follow if needed.
 - make sure resources are in resources directory 
 - clone recursively or run ```git submodule --init --update``` to install the dependancy submodules
-- if on windows place {GameNetworkingSockets.dll, libcrypto-3-x64.dll,libprotobuf.dll } next to exe
-- if on linux make sure openssl, protobuf and gamenetworkingsockets are installed and/or their shared libraries are in lib path, you can run `ldconfig` after installation
+- ~~if on windows place {GameNetworkingSockets.dll, libcrypto-3-x64.dll,libprotobuf.dll } next to exe~~
+- ~~if on linux make sure openssl, protobuf and gamenetworkingsockets are installed and/or their shared libraries are in lib path, you can run `ldconfig` after installation~~
+- previous 2 points useless for now because no shared/dynamic builds at the time being only links statically to these libraries.
 
-### cmake
-```cmake -B build``` <br>
-```cd build```<br>
-```make``` if linux, compile with visual studio if windows or ```ninja``` if installed and passed to cmake ```-G Ninja```<br>
-if using make, copy resources folder to build directory manually.<br>
-sometimes shaders don't get compiled or copied by cmake, you can compile them manually with glslc and copy them to build/shaders/ <br>
+## linux
+- download resources and extract to resources directory in project root
+- install vulkan sdk
+- install openssl 
+- configure cmake from project source e.g: 
+	- cmake -G Ninja -S . -B build -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
+- build the project:
+	- cmake --build build
+
+	
+## windows
+- download resources and extract to resources directory in project root
+- install vulkan sdk
+- use msys2 to build openssl from source
+	- cd /path/to/openssl
+	- export PATH="/path/to/mingw/bin:$PATH"
+	- export OPENSSL_USE_STATIC_LIBS=ON
+	- ./Configure --prefix=$PWD/dist no-idea no-mdc2 no-rc5 no-shared mingw64
+	- make depend && make && make install
+- configure cmake from project source e.g: 
+	- cmake -G Ninja -S . -B build -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
+- compilers have to match, if u build with mingw, then openssl has to be built with mingw too and the other external projects in cmake
+- build the project:
+	- cmake --build build
+
+
+### cmake notes
+on rare occasions shaders don't get compiled or copied by cmake, you can compile them manually with glslc and copy them to build/shaders/ <br>
 sometimes resources don't get copied too. copy to build/resources/
-### gcc
-``glslc -c shaders/*.frag shaders/*.vert``<br>
-``g++ -std=c++20 *.cpp */*.cpp -lglfw -lvulkan -lfastgltf -lGameNetworkingSockets -o bin``
-
-visual studio can be used too for windows compiling.
-
-Vulkan SDK has to be installed on the machine for compiling, GameNetworking sockets too and should have the built libraries put in /lib directory so cmake will link them. GameNetworkingSockets will require openssl and protobuf, on windows the dlls are going to be required on path or next to the exe. You can find the pre built dlls in the windows release archive.
 
 ## new demo
 ### 3 part multiplayer<br>
