@@ -51,7 +51,7 @@ The binary is only linked to the libraries statically for the time being (minima
 - install/make sure vulkan sdk is installed and make sure VULKAN_SDK is set and glslc is under VULKAN_SDK/Bin/
 - install openssl on linux or build OpenSSL and ensure it's compiled and configured with mingw64 with no-shared and make sure OPENSSL_ROOT_DIR is set, msys2 can be used to make it easier, instructions follow if needed.
 - make sure resources are in resources directory 
-- clone recursively or run ```git submodule --init --update``` to install the dependancy submodules
+- clone recursively```git clone --recursive``` or run either ```git pull --recurse-submodules``` or ```git submodule update --init --recursive``` after cloning to install the dependancy submodules
 - ~~if on windows place {GameNetworkingSockets.dll, libcrypto-3-x64.dll,libprotobuf.dll } next to exe~~
 - ~~if on linux make sure openssl, protobuf and gamenetworkingsockets are installed and/or their shared libraries are in lib path, you can run `ldconfig` after installation~~
 - previous 2 points useless for now because no shared/dynamic builds at the time being only links statically to these libraries.
