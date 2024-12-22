@@ -14,6 +14,7 @@
 [submodule "protobuf"]
 	path = sub/protobuf
 	url = https://github.com/rarepng/protobuf
+	branch = 29.x
 [submodule "sub/simdjson"]
 	path = sub/simdjson
 	url = https://github.com/simdjson/simdjson
