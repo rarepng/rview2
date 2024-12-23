@@ -92,7 +92,7 @@ The binary is only linked to the libraries statically for the time being (minima
 on rare occasions shaders don't get compiled or copied by cmake, you can compile them manually with glslc and copy them to build/shaders/ <br>
 sometimes resources don't get copied too. copy to build/resources/
 
-#### feel free to contact me anywhere
+#### feel free to contact me if u need help
 
 ## new demo
 ### 3 part multiplayer<br>
