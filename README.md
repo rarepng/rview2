@@ -114,3 +114,4 @@ sometimes resources don't get copied too. copy to build/resources/
 - integrating slang in cmake
 - migrate to sdl3 in place of glfw3
 - hot reload for gamestate as shared object
+- reflection renderpass
