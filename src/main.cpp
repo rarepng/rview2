@@ -1,19 +1,18 @@
 
-#define _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR
+#define _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR //cause of msvc
 #include <string>
 #include <memory>
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>	
 #include <thread>
 #include <mutex>
-#include "vkwind.hpp"
 #include <iostream>
+#include "vkwind.hpp"
 
-//building for windows only
+//if building for windows ( msvc )
 //#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
 
 
-//std::unique_ptr<std::mutex> mtx2;
 
 
 int main() {
