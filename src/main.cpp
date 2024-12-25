@@ -3,7 +3,7 @@
 #include <string>
 #include <memory>
 #include <vulkan/vulkan.h>
-#include <GLFW/glfw3.h>	
+#include <SDL3/SDL.h>	
 #include <thread>
 #include <mutex>
 #include <iostream>

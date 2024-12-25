@@ -30,5 +30,5 @@ private:
 
 	vkgltfobjs mgltfobjs{};
 
-	const std::map<std::string, GLint> atts = { {"POSITION",0},{"NORMAL",1},{"TEXCOORD_0",2} };
+    const std::map<std::string, unsigned int> atts = { {"POSITION",0},{"NORMAL",1},{"TEXCOORD_0",2} };
 };

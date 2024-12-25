@@ -34,3 +34,9 @@
 	path = sub/absl
 	url = https://github.com/abseil/abseil-cpp
 	branch = lts_2024_07_22
+[submodule "sub/sdl"]
+	path = sub/sdl
+	url = https://github.com/libsdl-org/SDL
+[submodule "sub/sdlimg"]
+	path = sub/sdlimg
+	url = https://github.com/libsdl-org/SDL_image

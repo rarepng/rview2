@@ -6,7 +6,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <vulkan/vulkan.h>
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL.h>
 #include <VkBootstrap.h>
 #include <vk_mem_alloc.h>
 #include <chrono>
@@ -52,7 +52,7 @@
 
 class vkrenderer {
 public:
-	vkrenderer(GLFWwindow* wind,GLFWmonitor* mont,const GLFWvidmode* mode);
+    vkrenderer(SDL_Window* wind,const SDL_DisplayMode* mode,bool mshutdown);
 	bool init();
 	void setsize(unsigned int w, unsigned int h);
 	bool uploadfordraw();
@@ -263,7 +263,7 @@ private:
 	timer muigentimer{};
 	timer muidrawtimer{};
 
-	VkSurfaceKHR msurface = VK_NULL_HANDLE;
+    VkSurfaceKHR msurface{};
 
 	VkDeviceSize mminuniformbufferoffsetalignment = 0;
 

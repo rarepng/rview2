@@ -1,11 +1,11 @@
 #pragma once
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL.h>
 #include <string>
 #include <stb_image.h>
 class mouse {
 public:
 	mouse(std::string filename);
-	GLFWcursor* cursor;
+    SDL_Cursor* cursor;
 private:
-	GLFWimage image;
+    SDL_Surface* image;
 };

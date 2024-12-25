@@ -93,5 +93,5 @@ private:
 
 
 
-	std::map<std::string, GLint> atts = { {"POSITION",0},{"NORMAL",1},{"TEXCOORD_0",2},{"JOINTS_0",3},{"WEIGHTS_0",4} };
+    std::map<std::string, unsigned int> atts = { {"POSITION",0},{"NORMAL",1},{"TEXCOORD_0",2},{"JOINTS_0",3},{"WEIGHTS_0",4} };
 };

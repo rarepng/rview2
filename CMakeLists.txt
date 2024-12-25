@@ -131,19 +131,27 @@ set(FASTGLTF_COMPILE_AS_CPP20 ON CACHE BOOL "set" FORCE)
 
 #target_compile_definitions(gnsEX PUBLIC STEAMNETWORKINGSOCKETS_STATIC_LINK)
 
+
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "set" FORCE)
+
+
+
+
 add_subdirectory(${submodules_path}/simdjson)
 add_subdirectory(${submodules_path}/fastgltf)
-add_subdirectory(${submodules_path}/glfw)
+add_subdirectory(${submodules_path}/sdl)
+add_subdirectory(${submodules_path}/sdlimg)
 add_subdirectory(${submodules_path}/glm)
 add_subdirectory(${submodules_path}/vk_boot)
 add_subdirectory(${submodules_path}/vma)
 
 
-file(GLOB PROJECT_SOURCES "src/*.cpp" "src/*/*.cpp")
+file(GLOB PROJECT_HEADERS "include/*.hpp")
+file(GLOB PROJECT_SOURCES "src/main.cpp" "src/*/*.cpp")
 set(OTHER_SOURCES
     ${submodules_path}/imgui/imgui.cpp
     ${submodules_path}/imgui/backends/imgui_impl_vulkan.cpp
-    ${submodules_path}/imgui/backends/imgui_impl_glfw.cpp
+    ${submodules_path}/imgui/backends/imgui_impl_sdl3.cpp
     ${submodules_path}/imgui/misc/cpp/imgui_stdlib.cpp
     ${submodules_path}/imgui/imgui_tables.cpp
     ${submodules_path}/imgui/imgui_widgets.cpp
@@ -151,7 +159,7 @@ set(OTHER_SOURCES
     ${submodules_path}/imgui/imgui_demo.cpp
 )
 
-add_executable(raw ${OTHER_SOURCES} ${PROJECT_SOURCES})
+add_executable(raw ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_HEADERS})
 
 
 
@@ -213,7 +221,8 @@ add_dependencies(raw gnsEX)
 
 target_link_libraries(raw
     PRIVATE
-        glfw
+        SDL3-static
+        SDL3_image-static
         fastgltf
         glm
         Vulkan::Vulkan
@@ -344,6 +353,7 @@ target_include_directories(raw
         "${submodules_path}/stb"
         "${submodules_path}/imgui"
         "${submodules_path}/vma/include"
+        "${submodules_path}/sdl/include"
         "${PROJECT_SOURCE_DIR}/include"
 )
 

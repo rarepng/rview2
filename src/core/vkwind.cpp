@@ -1,4 +1,5 @@
 #include "vkwind.hpp"
+#include "backends/imgui_impl_sdl3.h"
 #include <iostream>
 #include <future>
 #include <thread>
@@ -6,69 +7,77 @@
 #include <mutex>
 
 #include <imgui.h>
-#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_vulkan.h>
 #include <misc/cpp/imgui_stdlib.h>
 
 bool vkwind::init(std::string title) {
-	if (!glfwInit()) {
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
 		return false;
 	}
-	if (!glfwVulkanSupported()) {
-		glfwTerminate();
-		std::cout << "vulkan not supported";
-		return false;
-	}
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	mmonitor = glfwGetPrimaryMonitor();
-	static const GLFWvidmode* mode = glfwGetVideoMode(mmonitor);
-	mh = mode->height;
-	mw = mode->width;
+
+    // if (!glfwVulkanSupported()) {
+    // 	glfwTerminate();
+    // 	std::cout << "vulkan not supported";
+    // 	return false;
+    // }
+    // glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    //mmonitor = glfwGetPrimaryMonitor();
+    //static const GLFWvidmode* mode = glfwGetVideoMode(mmonitor);
+
+    static const SDL_DisplayMode* mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay()); // wrong time
+    //mh = mode->h;
+    //mw = mode->w;
+    //std::cout << mode->displayID;
 	//mwind = glfwCreateWindow(mw, mh, title.c_str(), mmonitor, nullptr);
-	mwind = glfwCreateWindow(900, 600, title.c_str(), nullptr, nullptr);
+    mwind = SDL_CreateWindow(title.c_str(),900, 600,SDL_WINDOW_BORDERLESS | SDL_WINDOW_VULKAN | SDL_WINDOW_TRANSPARENT | SDL_WINDOW_RESIZABLE);
 
 	if (!mwind) {
-		glfwTerminate();
+        // glfwTerminate();
+        SDL_Quit();
 		return false;
 	}
 
-	mvkrenderer = std::make_unique<vkrenderer>(mwind,mmonitor,mode);
-	glfwSetWindowUserPointer(mwind, mvkrenderer.get());
+    mvkrenderer = std::make_unique<vkrenderer>(mwind,mode,shutdown);
+
+    // glfwSetWindowUserPointer(mwind, mvkrenderer.get());
 	//glfwSetWindowUserPointer(mwind, this);
 
 
-	//glfwSetWindowCloseCallback();
-	glfwSetWindowSizeCallback(mwind, [](GLFWwindow* win, int width, int height) {
-		auto renderer = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
-		renderer->setsize(width, height);
-	});
-
-	//glfwSetWindowMonitor(mwind, mmonitor, 0, 0, mw, mh, mode->refreshRate);
-
-	glfwSetKeyCallback(mwind, [](GLFWwindow* win, int key, int scancode, int action, int mods) {
-		auto r = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
-		r->handlekeymenu(key, scancode, action, mods);
-	});
+    ////glfwSetWindowCloseCallback();
+    //// glfwSetWindowMonitor(mwind, mmonitor, 0, 0, mw, mh, mode->refreshRate);
 
 
+    // glfwSetWindowSizeCallback(mwind, [](GLFWwindow* win, int width, int height) {
+        // auto renderer = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
+        // renderer->setsize(width, height);
+    // });
 
 
-	glfwSetCursorPosCallback(mwind, [](GLFWwindow* win, double x, double y) {
-		auto r = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
-		r->handlemouse( x, y);
-	});
+    // glfwSetKeyCallback(mwind, [](GLFWwindow* win, int key, int scancode, int action, int mods) {
+        // auto r = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
+        // r->handlekeymenu(key, scancode, action, mods);
+    // });
+
+
+
+
+    // glfwSetCursorPosCallback(mwind, [](GLFWwindow* win, double x, double y) {
+        // auto r = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
+        // r->handlemouse( x, y);
+    // });
 
 
 	//mouse
 	mouse mmouse{ "resources/mouser.png" };
-	GLFWimage iconer{};
-	iconer.pixels = stbi_load("resources/icon0.png", &iconer.width, &iconer.height, nullptr, 4);
-	glfwSetCursor(mwind,mmouse.cursor);
-	glfwSetWindowIcon(mwind, 1, &iconer);
+    SDL_Surface iconer{};
+    iconer.pixels = stbi_load("resources/icon0.png", &iconer.w, &iconer.h, nullptr, 4);
+    SDL_SetCursor(mmouse.cursor);
+    SDL_SetWindowIcon(mwind, &iconer);
 
 
 	if (!mvkrenderer->init()) {
-		glfwTerminate();
+        SDL_Quit();
 		return false;
 	}
 	mvkrenderer->setsize(900, 600);
@@ -81,7 +90,7 @@ bool vkwind::init(std::string title) {
 }
 
 void vkwind::framemainmenuupdate(){
-	while (!glfwWindowShouldClose(mwind)) {
+    while (!shutdown) {
 		if (!mvkrenderer->drawmainmenu()) {
 			auto f = std::async(std::launch::async, [&]{
 				return mvkrenderer->initscene();
@@ -106,19 +115,25 @@ void vkwind::framemainmenuupdate(){
 				}
 			while (f.wait_for(std::chrono::milliseconds(0))!=std::future_status::ready) {
 				mvkrenderer->drawloading();
-				glfwPollEvents();
+                SDL_PollEvent(e);
 			}
 			break;
 		}
-		glfwPollEvents();
+        SDL_PollEvent(e);
+
+        //temporary
+        if(e!=nullptr)
+        if(e->type==SDL_EVENT_KEY_DOWN)
+            if(e->key.key==SDLK_ESCAPE)
+                SDL_Quit();
+
+
 	}
-	mvkrenderer->drawblank();
-	ImGui_ImplGlfw_RestoreCallbacks(mwind);
-	glfwSetMouseButtonCallback(mwind, [](GLFWwindow* win, int key, int action, int mods) {
-		auto r = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
-		r->handleclick(key, action, mods);
-	});
-	ImGui_ImplGlfw_InstallCallbacks(mwind);
+    mvkrenderer->drawblank();
+    // glfwSetMouseButtonCallback(mwind, [](GLFWwindow* win, int key, int action, int mods) {
+        // auto r = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
+        // r->handleclick(key, action, mods);
+    // });
 	auto f = std::async(std::launch::async, [&] {
 		mvkrenderer->cleanmainmenu();
 		mvkrenderer->cleanloading();
@@ -127,7 +142,7 @@ void vkwind::framemainmenuupdate(){
 }
 
 void vkwind::frameupdate() {
-	if (!glfwWindowShouldClose(mwind)) {
+    if (!shutdown) {
 		if (mvkrenderer->getserverclientstatus())
 			mvkrenderer->quicksetup(nserver);
 		else
@@ -136,7 +151,7 @@ void vkwind::frameupdate() {
 		std::thread gamelogic = std::thread([&] { mvkrenderer->gametick(); });
 		//std::thread gameanimation = std::thread([&] { mvkrenderer->updateanims(); });
 		//std::thread checkgameanimation = std::thread([&] { mvkrenderer->checkforanimupdates(); });
-		while (!glfwWindowShouldClose(mwind)) {
+        while (!shutdown) {
 			if (!mvkrenderer->getnetobjs().offlineplay){
 				if (mvkrenderer->getserverclientstatus()) {
 					if (gamestate::getstate() == gamestate0::normal) {
@@ -215,7 +230,7 @@ void vkwind::frameupdate() {
 						mvkrenderer->drawshop();
 					}
 				}
-			glfwPollEvents();
+            SDL_PollEvent(e);
 		}
 		gamelogic.join();
 		//gameanimation.join();
@@ -224,9 +239,9 @@ void vkwind::frameupdate() {
 }
 
 void vkwind::cleanup() {
-	mvkrenderer->cleanup();
-	glfwDestroyWindow(mwind);
-	glfwTerminate();
+        mvkrenderer->cleanup();
+    SDL_DestroyWindow(mwind);
+    SDL_Quit();
 }
 
 bool vkwind::initgame(){

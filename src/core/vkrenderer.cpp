@@ -18,16 +18,18 @@
 //#ifdef _DEBUG
 #include "logger.hpp"
 //#endif
+#include <sdl3/SDL_vulkan.h>
 
 float map2(glm::vec3 x) {
 	return std::max(x.y, 0.0f);
 }
-vkrenderer::vkrenderer(GLFWwindow* wind,GLFWmonitor* mont,const GLFWvidmode* mode) {
+vkrenderer::vkrenderer(SDL_Window* wind,const SDL_DisplayMode* mode,bool mshutdown) {
 	mvkobjs.rdwind = wind;
-	mvkobjs.rdmonitor = mont;
+    //mvkobjs.rdmonitor = mont;
 	mvkobjs.rdmode = mode;
 	mvkobjs.decaying = &mspells[1]->active;
 
+    mvkobjs.mshutdown = &mshutdown;
 
 	mpersviewmats.emplace_back(glm::mat4{ 1.0f });
 	mpersviewmats.emplace_back(glm::mat4{ 1.0f });
@@ -224,13 +226,12 @@ vkobjs& vkrenderer::getvkobjs() {
 }
 bool vkrenderer::quicksetup(netclient* nclient){
 	mnobjs.nclient = nclient;
-	ImGui_ImplGlfw_RestoreCallbacks(mvkobjs.rdwind);
-	glfwSetKeyCallback(mvkobjs.rdwind, [](GLFWwindow* win, int key, int scancode, int action, int mods) {
-		auto r = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
-		r->handlekey(key, scancode, action, mods);
-	});
-	ImGui_ImplGlfw_InstallCallbacks(mvkobjs.rdwind);
-	//ImGui_ImplGlfw_RestoreCallbacks(mvkobjs.rdwind);
+    // ImGui_ImplGlfw_RestoreCallbacks(mvkobjs.rdwind);
+    // glfwSetKeyCallback(mvkobjs.rdwind, [](GLFWwindow* win, int key, int scancode, int action, int mods) {
+        // auto r = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
+        // r->handlekey(key, scancode, action, mods);
+    // });
+    // ImGui_ImplGlfw_InstallCallbacks(mvkobjs.rdwind);
 	playerlocation = mplayer->getinst(0)->getinstpos();
 	inmenu = false;
 
@@ -251,13 +252,12 @@ bool vkrenderer::quicksetup(netclient* nclient){
 }
 bool vkrenderer::quicksetup(netserver* nserver) {
 	mnobjs.nserver = nserver;
-	ImGui_ImplGlfw_RestoreCallbacks(mvkobjs.rdwind);
-	glfwSetKeyCallback(mvkobjs.rdwind, [](GLFWwindow* win, int key, int scancode, int action, int mods) {
-		auto r = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
-		r->handlekey(key, scancode, action, mods);
-	});
-	ImGui_ImplGlfw_InstallCallbacks(mvkobjs.rdwind);
-	//ImGui_ImplGlfw_RestoreCallbacks(mvkobjs.rdwind);
+    // ImGui_ImplGlfw_RestoreCallbacks(mvkobjs.rdwind);
+    // glfwSetKeyCallback(mvkobjs.rdwind, [](GLFWwindow* win, int key, int scancode, int action, int mods) {
+    // 	auto r = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
+    // 	r->handlekey(key, scancode, action, mods);
+    // });
+    // ImGui_ImplGlfw_InstallCallbacks(mvkobjs.rdwind);
 	playerlocation = mplayer->getinst(0)->getinstpos();
 	inmenu = false;
 	modelsettings& s = mplayer->getinst(0)->getinstancesettings();
@@ -316,13 +316,13 @@ bool vkrenderer::deviceinit() {
 
 	mvkobjs.rdvkbinstance = instret.value();
 
-	VkResult res = VK_ERROR_UNKNOWN;
-	res = glfwCreateWindowSurface(mvkobjs.rdvkbinstance, mvkobjs.rdwind, nullptr, &msurface);
+    bool res{false};
+    res=SDL_Vulkan_CreateSurface(mvkobjs.rdwind,mvkobjs.rdvkbinstance, nullptr, &msurface);
 
-	
+    std::cout << res;
 
 	vkb::PhysicalDeviceSelector physicaldevsel{ mvkobjs.rdvkbinstance };
-	auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1,2).select();
+    auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1,3).select();
 
 	//VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT x;
 	//x.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT;
@@ -472,10 +472,10 @@ bool vkrenderer::createswapchain() {
 	return true;
 }
 bool vkrenderer::recreateswapchain() {
-	glfwGetFramebufferSize(mvkobjs.rdwind, &mvkobjs.rdwidth, &mvkobjs.rdheight);
+    SDL_GetWindowSize(mvkobjs.rdwind, &mvkobjs.rdwidth, &mvkobjs.rdheight);
 	while (mvkobjs.rdwidth == 0 || mvkobjs.rdheight == 0) {
-		glfwGetFramebufferSize(mvkobjs.rdwind, &mvkobjs.rdwidth, &mvkobjs.rdheight);
-		glfwWaitEvents();
+        SDL_GetWindowSize(mvkobjs.rdwind, &mvkobjs.rdwidth, &mvkobjs.rdheight);
+        //glfwWaitEvents();
 	}
 	vkDeviceWaitIdle(mvkobjs.rdvkbdevice.device);
 	framebuffer::cleanup(mvkobjs);
@@ -871,19 +871,19 @@ void vkrenderer::uploadforshop(){
 
 void vkrenderer::handlekeymenu(int key, int scancode, int action, int mods) {
 
-	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_F4) == GLFW_PRESS) {
-		if (mvkobjs.rdfullscreen)glfwSetWindowMonitor(mvkobjs.rdwind, nullptr, 100, 200, 900, 600, GLFW_DONT_CARE);
-		else {
-			glfwSetWindowMonitor(mvkobjs.rdwind, mvkobjs.rdmonitor, 0, 0, mvkobjs.rdmode->width, mvkobjs.rdmode->height, mvkobjs.rdmode->refreshRate);
-		}
+    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_F4]) {
+        // if (mvkobjs.rdfullscreen)glfwSetWindowMonitor(mvkobjs.rdwind, nullptr, 100, 200, 900, 600, GLFW_DONT_CARE);
+        // else {
+        // 	glfwSetWindowMonitor(mvkobjs.rdwind, mvkobjs.rdmonitor, 0, 0, mvkobjs.rdmode->width, mvkobjs.rdmode->height, mvkobjs.rdmode->refreshRate);
+        // }
 		mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
 	}
-	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_F3) == GLFW_PRESS) {
+    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_F3]) {
 		mui.setnetwork = !mui.setnetwork;
 	}
 
-	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-		glfwSetWindowShouldClose(mvkobjs.rdwind, true);
+    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_ESCAPE]) {
+        *mvkobjs.mshutdown=true;
 	}
 	//if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_ENTER) == GLFW_PRESS) {
 	//	ImGui_ImplGlfw_InstallCallbacks(mvkobjs.rdwind);
@@ -891,24 +891,24 @@ void vkrenderer::handlekeymenu(int key, int scancode, int action, int mods) {
 
 }
 void vkrenderer::handlekey(int key, int scancode, int action, int mods){
-	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_SPACE) == GLFW_PRESS) {
+    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_SPACE]) {
 		switchshader = !switchshader;
 	}
-	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_BACKSPACE) == GLFW_PRESS) {
+    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_BACKSPACE]) {
 		mui.backspace();
 	}
 	//if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_ENTER) == GLFW_PRESS) {
 	//}
-	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_F4) == GLFW_PRESS) {
-		if (mvkobjs.rdfullscreen)glfwSetWindowMonitor(mvkobjs.rdwind, nullptr, 100, 200, 900, 600, GLFW_DONT_CARE);
-		else {
-			glfwSetWindowMonitor(mvkobjs.rdwind, mvkobjs.rdmonitor, 0, 0, mvkobjs.rdmode->width, mvkobjs.rdmode->height, mvkobjs.rdmode->refreshRate);
-		}
+    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_F4]) {
+        // if (mvkobjs.rdfullscreen)glfwSetWindowMonitor(mvkobjs.rdwind, nullptr, 100, 200, 900, 600, GLFW_DONT_CARE);
+        // else {
+        // 	glfwSetWindowMonitor(mvkobjs.rdwind, mvkobjs.rdmonitor, 0, 0, mvkobjs.rdmode->width, mvkobjs.rdmode->height, mvkobjs.rdmode->refreshRate);
+        // }
 		mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
 	}
 
 
-	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_ESCAPE]) {
 		if (gamestate::getstate() == gamestate0::menu) {
 			gamestate::setstate(gamestate0::normal);
 		}
@@ -916,16 +916,16 @@ void vkrenderer::handlekey(int key, int scancode, int action, int mods){
 			gamestate::setpause(pausestate::resumed);
 		} else {
 			gamestate::setpause(pausestate::paused);
-			pausebgntime = glfwGetTime();
+            pausebgntime = static_cast<double>(SDL_GetTicks())/1000.0;
 		}
 		//glfwSetWindowShouldClose(mvkobjs.rdwind, true);
 	}
 
-	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_F) == GLFW_PRESS) {
-		if (mspells[0]->ready) {
-			double x;
-			double y;
-			glfwGetCursorPos(mvkobjs.rdwind, &x, &y);
+    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_F]) {
+        if (mspells[0]->ready) {
+            float x;
+            float y;
+            SDL_GetMouseState( &x, &y);
 			lastmousexy = glm::vec<2, double>{ x,y };
 			x = (2.0 * (x / (double)mvkobjs.rdwidth)) - 1.0;
 			y = (2.0 * (y / (double)mvkobjs.rdheight)) - 1.0;
@@ -947,13 +947,13 @@ void vkrenderer::handlekey(int key, int scancode, int action, int mods){
 			}
 		}
 	}
-	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_R) == GLFW_PRESS) {
+    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_R]) {
 		if (mspells[1]->ready) {
-			decaystart = glfwGetTime();
+            decaystart = static_cast<double>(SDL_GetTicks())/1000.0;
 			{
-				double x;
-				double y;
-				glfwGetCursorPos(mvkobjs.rdwind, &x, &y);
+                float x;
+                float y;
+                SDL_GetMouseState( &x, &y);
 				lastmousexy = glm::vec<2, double>{ x,y };
 				x = (2.0 * (x / (double)mvkobjs.rdwidth)) - 1.0;
 				y = (2.0 * (y / (double)mvkobjs.rdheight)) - 1.0;
@@ -1058,21 +1058,18 @@ void vkrenderer::handleclick(int key, int action, int mods)
 {
 	ImGuiIO& io = ImGui::GetIO();
 	if (key >= 0 && key < ImGuiMouseButton_COUNT) {
-		io.AddMouseButtonEvent(key, action == GLFW_PRESS);
+        io.AddMouseButtonEvent(key, action);
 	}
 	if (io.WantCaptureMouse)return;
 	
 
 
-	if (key == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+    if ((SDL_GetMouseState(nullptr,nullptr) & SDL_BUTTON_MASK(SDL_BUTTON_RIGHT))) {
 		mlock = !mlock;
-		if (mlock) {
-			glfwSetInputMode(mvkobjs.rdwind, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-			if (glfwRawMouseMotionSupported()) {
-				glfwSetInputMode(mvkobjs.rdwind, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-			}
-		} else {
-			glfwSetInputMode(mvkobjs.rdwind, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        if (mlock) {
+            SDL_SetWindowRelativeMouseMode(mvkobjs.rdwind,true);
+        } else {
+            SDL_SetWindowRelativeMouseMode(mvkobjs.rdwind,false);
 		}
 	}
 
@@ -1125,7 +1122,7 @@ void vkrenderer::handlemouse(double x, double y){
 		}
 	}
 
-	if (gamestate::getstate() == gamestate0::menu && glfwGetMouseButton(mvkobjs.rdwind,GLFW_MOUSE_BUTTON_LEFT) != GLFW_RELEASE) {
+    if (gamestate::getstate() == gamestate0::menu && (SDL_GetMouseState(nullptr,nullptr) & SDL_BUTTON_MASK(SDL_BUTTON_LEFT))) {
 		std::cout << x << " x " << std::endl;
 	}
 
@@ -1144,32 +1141,33 @@ void vkrenderer::movecam() {
 	mpersviewmats.at(0) = mcam.getview(mvkobjs);
 
 	mvkobjs.rdcamforward = 0;
-	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_W) == GLFW_PRESS) {
+
+    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_W]) {
 		mvkobjs.rdcamforward += 200;
 	}
-	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_S) == GLFW_PRESS) {
+    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_S]) {
 		mvkobjs.rdcamforward -= 200;
 	}
 	mvkobjs.rdcamright = 0;
-	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_A) == GLFW_PRESS) {
+    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_A]) {
 		mvkobjs.rdcamright += 200;
 	}
-	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_D) == GLFW_PRESS) {
+    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_D]) {
 		mvkobjs.rdcamright -= 200;
 	}
 	mvkobjs.rdcamup = 0;
-	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_E) == GLFW_PRESS) {
+    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_E]) {
 		mvkobjs.rdcamup += 200;
 	}
-	if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_Q) == GLFW_PRESS) {
+    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_Q]) {
 		mvkobjs.rdcamup -= 200;
 	}
 
-	if (glfwGetMouseButton(mvkobjs.rdwind, GLFW_MOUSE_BUTTON_LEFT) != GLFW_RELEASE) {
+    if (SDL_GetMouseState(nullptr,nullptr) & SDL_BUTTON_MASK(SDL_BUTTON_LEFT)) {
 		if (gamestate::getstate() == gamestate0::normal) {
-			double x;
-			double y;
-			glfwGetCursorPos(mvkobjs.rdwind, &x, &y);
+            float x;
+            float y;
+            SDL_GetMouseState(&x, &y);
 			lastmousexy = glm::vec<2, double>{ x,y };
 			x = (2.0 * (x / (double)mvkobjs.rdwidth)) - 1.0;
 			y = (2.0 * (y / (double)mvkobjs.rdheight)) - 1.0;
@@ -1212,7 +1210,7 @@ void vkrenderer::movecam() {
 
 void vkrenderer::checkforanimupdates() {
 
-	while (!glfwWindowShouldClose(mvkobjs.rdwind)) {
+    while (!*mvkobjs.mshutdown) {
 		if (gamestate::getstate() == gamestate0::dead) break;
 
 		if (gamestate::getpause() == pausestate::resumed && gamestate::getstate() == gamestate0::normal) {
@@ -1244,7 +1242,7 @@ void vkrenderer::checkforanimupdates() {
 void vkrenderer::updateanims(){
 
 
-	while (!glfwWindowShouldClose(mvkobjs.rdwind)) {
+    while (!*mvkobjs.mshutdown) {
 		if (gamestate::getstate() == gamestate0::dead) break;
 
 		if (gamestate::getpause() == pausestate::resumed && gamestate::getstate() == gamestate0::normal) {
@@ -1280,7 +1278,7 @@ void vkrenderer::animateshop(){
 }
 
 void vkrenderer::gametick() {
-	while (!glfwWindowShouldClose(mvkobjs.rdwind)) {
+    while (!*mvkobjs.mshutdown) {
 
 		if (gamestate::getstate() == gamestate0::dead) break;
 
@@ -1304,7 +1302,7 @@ bool vkrenderer::draw() {
 
 
 
-		double tick = glfwGetTime();
+        double tick = static_cast<double>(SDL_GetTicks())/1000.0;
 		mvkobjs.tickdiff = tick - mlasttick;
 		mvkobjs.frametime = mframetimer.stop();
 		mframetimer.start();
@@ -1511,14 +1509,14 @@ bool vkrenderer::draw() {
 
 
 		if (mspells[1]->active) {
-			decaytime = glfwGetTime() - decaystart-pausetime;
+            decaytime = static_cast<double>(SDL_GetTicks())/1000.0 - decaystart-pausetime;
 			mplayer->drawdecays(mvkobjs, decaytime, &mspells[1]->active);
 		}
 		if (!mspells[1]->active)pausetime = 0.0;
 
 
-		lifetime = glfwGetTime();
-		lifetime2 = glfwGetTime();
+        lifetime = static_cast<double>(SDL_GetTicks())/1000.0;
+        lifetime2 = static_cast<double>(SDL_GetTicks())/1000.0;
 
 		lifebar->draw(mvkobjs,lifetime, lifetime2,*playerhp);
 
@@ -1747,12 +1745,12 @@ bool vkrenderer::draw() {
 			mplayer->draw(mvkobjs);
 
 			if (mspells[1]->active) {
-				decaytime = glfwGetTime() - decaystart-pausetime;
+                decaytime = static_cast<double>(SDL_GetTicks())/1000.0 - decaystart-pausetime;
 				mplayer->drawdecays(mvkobjs, decaytime, &mspells[1]->active);
 			}
 
-			lifetime = glfwGetTime() - pausetime;
-			lifetime2 = glfwGetTime();
+            lifetime = static_cast<double>(SDL_GetTicks())/1000.0 - pausetime;
+            lifetime2 = static_cast<double>(SDL_GetTicks())/1000.0;
 
 			lifebar->draw(mvkobjs,lifetime, lifetime2,*playerhp);
 
@@ -1836,7 +1834,7 @@ bool vkrenderer::draw() {
 					return false;
 				}
 			}
-			pausetime = glfwGetTime() - pausebgntime;
+            pausetime = static_cast<double>(SDL_GetTicks())/1000.0 - pausebgntime;
 
 
 			return true;
@@ -1930,7 +1928,7 @@ bool vkrenderer::drawmainmenu() {
 
 	mbackground->draw(mvkobjs);
 
-	lifetime = glfwGetTime();
+    lifetime = static_cast<double>(SDL_GetTicks())/1000.0;
 
 	mmenubg->draw(mvkobjs,lifetime,lifetime2,dummy);
 
@@ -2370,8 +2368,8 @@ void vkrenderer::drawshop() {
 
 
 
-	lifetime = glfwGetTime();
-	lifetime2 = glfwGetTime();
+    lifetime = static_cast<double>(SDL_GetTicks())/1000.0;
+    lifetime2 = static_cast<double>(SDL_GetTicks())/1000.0;
 
 
 	for (size_t i{ 0 }; i < mchoices.size(); i++) {

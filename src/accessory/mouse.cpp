@@ -1,6 +1,6 @@
 #include "mouse.hpp"
+#include <SDL3_image/SDL_image.h>
 mouse::mouse(std::string filename) {
-	image.pixels = stbi_load(filename.c_str(), &image.width, &image.height, nullptr, 4);
-	cursor = glfwCreateCursor(&image, 0, 0);
-	stbi_image_free(image.pixels);
+    image = IMG_Load(filename.c_str());
+    cursor =  SDL_CreateColorCursor(image, 0, 0);
 }

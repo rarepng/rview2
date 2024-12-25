@@ -7,7 +7,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <imgui.h>
-#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_vulkan.h>
 #include <misc/cpp/imgui_stdlib.h>
 
@@ -55,8 +55,7 @@ bool ui::init(vkobjs& renderData) {
     if (vkCreateDescriptorPool(renderData.rdvkbdevice.device, &imguiPoolInfo, nullptr, &renderData.rdimguidescriptorpool)) {
         return false;
     }
-
-    ImGui_ImplGlfw_InitForVulkan(renderData.rdwind, true);
+    ImGui_ImplSDL3_InitForVulkan(renderData.rdwind);
 
     ImGui_ImplVulkan_InitInfo imguiIinitInfo{};
     imguiIinitInfo.Instance = renderData.rdvkbinstance.instance;
@@ -148,7 +147,14 @@ bool ui::init(vkobjs& renderData) {
 
     //ImGui_ImplGlfw_RestoreCallbacks(renderData.rdwind);
     //ImGui_ImplGlfw_InstallCallbacks(renderData.rdwind);
-    
+
+
+
+
+    //ImGui_ImplSDL3_ProcessEvent(ev);
+
+
+
 
     /* init plot vectors */
     mfpsvalues.reserve(mnumfpsvalues);
@@ -173,7 +179,7 @@ bool ui::init(vkobjs& renderData) {
 
 void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nobjs) {
     ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
 
     {
@@ -816,7 +822,7 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
 bool ui::createmainmenuframe(vkobjs& mvkobjs,netobjs& nobjs) {
 
     ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
 
     ImGuiIO& io = ImGui::GetIO();
@@ -863,13 +869,13 @@ bool ui::createmainmenuframe(vkobjs& mvkobjs,netobjs& nobjs) {
         if (ImGui::BeginMenu("settings")) {
             if (mvkobjs.rdfullscreen) {
                 if (ImGui::MenuItem("windowed", "F4")) {
-                    glfwSetWindowMonitor(mvkobjs.rdwind, nullptr, 100, 200, 900, 600, GLFW_DONT_CARE);
+                    // glfwSetWindowMonitor(mvkobjs.rdwind, nullptr, 100, 200, 900, 600, GLFW_DONT_CARE);
                     mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
                 }
             }
             else {
                 if (ImGui::MenuItem("fullscreen", "F4")) {
-                    glfwSetWindowMonitor(mvkobjs.rdwind, mvkobjs.rdmonitor, 0, 0, mvkobjs.rdmode->width, mvkobjs.rdmode->height, mvkobjs.rdmode->refreshRate);
+                    // glfwSetWindowMonitor(mvkobjs.rdwind, mvkobjs.rdmonitor, 0, 0, mvkobjs.rdmode->width, mvkobjs.rdmode->height, mvkobjs.rdmode->refreshRate);
                     mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
                 }
             }
@@ -964,7 +970,7 @@ bool ui::createmainmenuframe(vkobjs& mvkobjs,netobjs& nobjs) {
     ImGui::PushFont(io.Fonts->Fonts[0]);
     if (ImGui::IsItemHovered())ImGui::SetTooltip("loading models might take a while!");
     ImGui::PopFont();
-    if (ImGui::Button("EXIT", { 400,120 }))glfwSetWindowShouldClose(mvkobjs.rdwind, true);
+    if (ImGui::Button("EXIT", { 400,120 }))*mvkobjs.mshutdown=true;
     if (ImGui::IsItemHovered())ImGui::SetTooltip(":(");
     ImGui::PopStyleColor(7);
     ImGui::PopStyleVar(0);
@@ -979,7 +985,7 @@ bool ui::createmainmenuframe(vkobjs& mvkobjs,netobjs& nobjs) {
 bool ui::createloadingscreen(vkobjs& mvkobjs) {
 
     ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
 
     ImGuiIO& io = ImGui::GetIO();
@@ -1010,7 +1016,7 @@ bool ui::createloadingscreen(vkobjs& mvkobjs) {
 bool ui::createpausebuttons(vkobjs& mvkobjs){
 
     ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
 
     ImGuiIO& io = ImGui::GetIO();
@@ -1057,12 +1063,12 @@ bool ui::createpausebuttons(vkobjs& mvkobjs){
         if (ImGui::BeginMenu("settings")) {
             if (mvkobjs.rdfullscreen) {
                 if (ImGui::MenuItem("windowed", "F4")) {
-                    glfwSetWindowMonitor(mvkobjs.rdwind, nullptr, 100, 200, 900, 600, GLFW_DONT_CARE);
+                    // glfwSetWindowMonitor(mvkobjs.rdwind, nullptr, 100, 200, 900, 600, GLFW_DONT_CARE);
                     mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
                 }
             } else {
                 if (ImGui::MenuItem("fullscreen", "F4")) {
-                    glfwSetWindowMonitor(mvkobjs.rdwind, mvkobjs.rdmonitor, 0, 0, mvkobjs.rdmode->width, mvkobjs.rdmode->height, mvkobjs.rdmode->refreshRate);
+                    // glfwSetWindowMonitor(mvkobjs.rdwind, mvkobjs.rdmonitor, 0, 0, mvkobjs.rdmode->width, mvkobjs.rdmode->height, mvkobjs.rdmode->refreshRate);
                     mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
                 }
             }
@@ -1081,7 +1087,7 @@ bool ui::createpausebuttons(vkobjs& mvkobjs){
     bool p = ImGui::Button("continue", { 400,200 });
     ImGui::PushFont(io.Fonts->Fonts[0]);
     ImGui::PopFont();
-    if (ImGui::Button("EXIT", { 400,120 }))glfwSetWindowShouldClose(mvkobjs.rdwind, true);
+    if (ImGui::Button("EXIT", { 400,120 }))*mvkobjs.mshutdown=true;
     ImGui::PopStyleColor(7);
     ImGui::PopStyleVar(0);
     ImGui::EndGroup();
@@ -1111,7 +1117,7 @@ void ui::render(vkobjs& renderData,VkCommandBuffer& cbuffer) {
 void ui::cleanup(vkobjs& renderData) {
     ImGui_ImplVulkan_Shutdown();
     vkDestroyDescriptorPool(renderData.rdvkbdevice.device, renderData.rdimguidescriptorpool, nullptr);
-    ImGui_ImplGlfw_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
 }
 

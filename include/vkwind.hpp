@@ -3,12 +3,12 @@
 #include <memory>
 #include <map>
 #include <vulkan/vulkan.h>
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL.h>
 #include "vkrenderer.hpp"
-#include "mouse.hpp"
 #include "netclient.hpp"
 #include "netserver.hpp"
 #include "ui.hpp"
+#include "mouse.hpp"
 #include "gamestate.hpp"
 
 class vkwind {
@@ -28,13 +28,15 @@ public:
 	void connectedtoservercallback();
 	void disconnectedfromservercallback();
 	void clientreceiveddatacallback(const netbuffer& buffer);
-	GLFWmonitor* mmonitor;
+	//GLFWmonitor* mmonitor;
 	int mh;
 	int mw;
+    SDL_Event* e{};
+    bool shutdown{false};
 private:
 	//void handlekeymenu(int key, int scancode, int action, int mods);
-	GLFWwindow* mwind = nullptr;
-	GLFWvidmode* mmode = nullptr;
+	SDL_Window* mwind = nullptr;
+    //SDL_DisplayMode* mmode = nullptr;
 	netserver* nserver = nullptr;
 	netclient* nclient = nullptr;
 	std::unique_ptr<vkrenderer> mvkrenderer;

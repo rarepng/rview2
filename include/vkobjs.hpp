@@ -3,7 +3,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL.h>
 #include <VkBootstrap.h>
 #include <vk_mem_alloc.h>
 #include <memory>
@@ -168,9 +168,9 @@ struct vkobjs {
 	inline static const std::shared_ptr<std::shared_mutex>  uploadmtx{ std::make_shared<std::shared_mutex>() };
 
 
-	GLFWwindow* rdwind = nullptr;
-	GLFWmonitor* rdmonitor = nullptr;
-	const GLFWvidmode* rdmode;
+    SDL_Window* rdwind = nullptr;
+    // GLFWmonitor* rdmonitor = nullptr;
+    const SDL_DisplayMode* rdmode;
 	bool rdfullscreen{ false };
 	int rdwidth = 0;
 	int rdheight = 0;
@@ -192,7 +192,7 @@ struct vkobjs {
 	float rduidrawtime{ 0.0f };
 
 
-
+    bool* mshutdown{nullptr};
 
 
 

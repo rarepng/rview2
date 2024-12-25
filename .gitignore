@@ -8,3 +8,4 @@ gbuild
 vs
 CMakeSettings.json
 .gitignore
+CMakeLists.txt.user

@@ -154,7 +154,7 @@ void staticmodel::drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, int in
         for (int j{ 0 }; j < mgltfobjs.vbodata.at(i).size(); j++) {
             pushes[i][j].pkmodelstride = stride;
             pushes[i][j].texidx = static_cast<unsigned int>(mmodel.textures[mmodel.materials[mmodel.meshes.at(i).primitives.at(j).materialIndex.value()].pbrData.baseColorTexture->textureIndex].imageIndex.value());
-            pushes[i][j].t = (float)glfwGetTime();
+            pushes[i][j].t = static_cast<float>(SDL_GetTicks())/1000.0f;
 
             vkCmdPushConstants(objs.rdcommandbuffer[0], vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants), &pushes.at(i).at(j));
 

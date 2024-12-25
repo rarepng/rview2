@@ -369,7 +369,7 @@ void animmodel::drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, VkPipeli
         for (int j{ 0 }; j < mgltfobjs.vbodata.at(i).size(); j++) {
             pushes[i][j].pkmodelstride = stride;
             pushes[i][j].texidx = static_cast<unsigned int>(mmodel2.textures[mmodel2.materials[mmodel2.meshes.at(i).primitives.at(j).materialIndex.value_or(0)].pbrData.baseColorTexture->textureIndex].imageIndex.value_or(0));
-            pushes[i][j].t = (float)glfwGetTime();
+            pushes[i][j].t = static_cast<float>(SDL_GetTicks())/1000.0f;
             pushes[i][j].decaying = *objs.decaying;
 
             vkCmdPushConstants(objs.rdcommandbuffer[0], vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants), &pushes.at(i).at(j));
