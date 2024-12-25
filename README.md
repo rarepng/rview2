@@ -50,7 +50,7 @@ The binary is only linked to the libraries statically for the time being (minima
 ### requirements
 - ninja (not required but highly preferred)
 - cmake
-- vulkan sdk ( with glslc or 🌟slangc ) | **slang** is standalone and doesn't come with the vulkan sdk but it's much more flexible.
+- vulkan sdk ( with glslc or 🌟slangc ) | **slang** comes with the vulkan sdk since version 1.3.296.0.
 - gcc | mingw (for windows or cross compiling)
 - openssl | openssl compiled with mingw -> msys/strawberry perl (windows)
 - install/make sure vulkan sdk is installed and make sure VULKAN_SDK is set and glslc is under VULKAN_SDK/Bin/
@@ -114,3 +114,4 @@ sometimes resources don't get copied too. copy to build/resources/
 - integrating slang in cmake
 - migrate to sdl3 in place of glfw3
 - hot reload for gamestate as shared object
+- reflection renderpass
