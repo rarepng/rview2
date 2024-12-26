@@ -4,6 +4,7 @@
 #include <map>
 #include <vulkan/vulkan.h>
 #include <SDL3/SDL.h>
+#include <SDL3_image/SDL_image.h>
 #include "vkrenderer.hpp"
 #include "netclient.hpp"
 #include "netserver.hpp"
@@ -31,7 +32,7 @@ public:
 	//GLFWmonitor* mmonitor;
 	int mh;
 	int mw;
-    SDL_Event* e{};
+    SDL_Event* e{new SDL_Event()};
     bool shutdown{false};
 private:
 	//void handlekeymenu(int key, int scancode, int action, int mods);

@@ -20,7 +20,7 @@ bool framebuffer::init(vkobjs& rdata) {
 		fbinfo.pAttachments = a;
 		fbinfo.width = rdata.rdvkbswapchain.extent.width;
 		fbinfo.height = rdata.rdvkbswapchain.extent.height;
-		fbinfo.layers = 1;
+        fbinfo.layers = 1;
 
 		if (vkCreateFramebuffer(rdata.rdvkbdevice.device, &fbinfo, nullptr, &rdata.rdframebuffers[i]) != VK_SUCCESS) {
 			return false;

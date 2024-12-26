@@ -15,6 +15,6 @@ layout (std140,set=1,binding=1) uniform texidx{
 };
 
 void main() {
-  
+
   FragColor = texture(tex[txidx], texCoord);
 }

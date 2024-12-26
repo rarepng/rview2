@@ -16,19 +16,19 @@
 #include "vkrenderer.hpp"
 #include "vksyncobjects.hpp"
 //#ifdef _DEBUG
-#include "logger.hpp"
+//#include "logger.hpp"
 //#endif
 #include <sdl3/SDL_vulkan.h>
 
 float map2(glm::vec3 x) {
 	return std::max(x.y, 0.0f);
 }
-vkrenderer::vkrenderer(SDL_Window* wind,const SDL_DisplayMode* mode,bool mshutdown) {
+vkrenderer::vkrenderer(SDL_Window* wind,const SDL_DisplayMode* mode,bool mshutdown,SDL_Event* e) {
 	mvkobjs.rdwind = wind;
     //mvkobjs.rdmonitor = mont;
 	mvkobjs.rdmode = mode;
 	mvkobjs.decaying = &mspells[1]->active;
-
+    mvkobjs.e=e;
     mvkobjs.mshutdown = &mshutdown;
 
 	mpersviewmats.emplace_back(glm::mat4{ 1.0f });
@@ -277,11 +277,11 @@ void vkrenderer::wavesetup(){
 	for (size_t i{ 0 }; i < mpgltf.size(); i++) {
 		for (size_t j{ 0 }; j < mpgltf[i]->getnuminstances(); j++) {
 			staticsettings& s = mplates->getinst(k++)->getinstancesettings();
-			//s.msworldpos.x = mpgltf[i]->getinst(j)->getinstancesettings().msworldpos.x + glm::vec3{ 0.0f,200.0f,0.0f };
+            //s.msworldpos.x = mpgltf[i]->getinst(j)->getinstancesettings().msworldpos.x + glm::vec3{ 0.0f,200.0f,0.0f };
 			s.msworldpos.x = mpgltf[i]->getinst(j)->getinstancesettings().msworldpos.x;
 			s.msworldpos.z = mpgltf[i]->getinst(j)->getinstancesettings().msworldpos.z;
 			s.msworldscale = glm::vec3{ 100.0f,28.0f,100.0f };
-			//s.msworldrot = mpgltf[i]->getinst(j)->getinstancesettings().msworldrot;
+            //s.msworldrot = mpgltf[i]->getinst(j)->getinstancesettings().msworldrot;
 			glm::vec3 diff = glm::normalize(mvkobjs.rdcamwpos - s.msworldpos);
 			s.msworldrot.y = glm::degrees(glm::atan(diff.x,diff.z));
 		}
@@ -308,36 +308,38 @@ bool vkrenderer::loadbackground(){
 bool vkrenderer::deviceinit() {
 	vkb::InstanceBuilder instbuild{};
 
-	//std::lock_guard<std::shared_mutex> lg{ *mvkobjs.mtx2 };
-	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 3, 0).build();
+    // std::lock_guard<std::shared_mutex> lg{ *mvkobjs.mtx2 };
+    auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 3, 0).build();
 	
 
-	//instret.value().
+    // instret.value().
 
 	mvkobjs.rdvkbinstance = instret.value();
 
     bool res{false};
     res=SDL_Vulkan_CreateSurface(mvkobjs.rdwind,mvkobjs.rdvkbinstance, nullptr, &msurface);
 
+
+
     std::cout << res;
 
 	vkb::PhysicalDeviceSelector physicaldevsel{ mvkobjs.rdvkbinstance };
     auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1,3).select();
 
-	//VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT x;
-	//x.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT;
-	//x.swapchainMaintenance1 = VK_FALSE;
-	//x.pNext = VK_NULL_HANDLE;
+    // VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT x;
+    // x.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT;
+    // x.swapchainMaintenance1 = VK_FALSE;
+    // x.pNext = VK_NULL_HANDLE;
 
-	//VkPhysicalDeviceMeshShaderFeaturesEXT physmeshfeatures;
+    //VkPhysicalDeviceMeshShaderFeaturesEXT physmeshfeatures;
 	VkPhysicalDeviceVulkan13Features physfeatures13;
 
-	//VkPhysicalDevice8BitStorageFeatures b8storagefeature;
+    //VkPhysicalDevice8BitStorageFeatures b8storagefeature;
 	VkPhysicalDeviceVulkan12Features physfeatures12;
 	VkPhysicalDeviceVulkan11Features physfeatures11;
 	//VkPhysicalDeviceVulkan11Features physfeatures11;
 	VkPhysicalDeviceFeatures2 physfeatures;
-	//b8storagefeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES;
+    //b8storagefeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES;
 	//physmeshfeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
 	physfeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 	physfeatures11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
@@ -346,10 +348,20 @@ bool vkrenderer::deviceinit() {
 	//physmeshfeatures.pNext = &physfeatures12;
 	physfeatures.pNext = &physfeatures11;
 	physfeatures11.pNext = &physfeatures12;
-	physfeatures12.pNext = &physfeatures13;
-	physfeatures13.pNext = VK_NULL_HANDLE;
+    physfeatures12.pNext = &physfeatures13;
+
+
+    // VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT x;
+    // x.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_REPLICATED_COMPOSITES_FEATURES_EXT;
+    // x.shaderReplicatedComposites=true;
+    // x.pNext=VK_NULL_HANDLE;
+
+
+    // physfeatures13.pNext = &x;
+    physfeatures13.pNext = VK_NULL_HANDLE;
+
 	//b8storagefeature.pNext = VK_NULL_HANDLE;
-	vkGetPhysicalDeviceFeatures2(firstphysicaldevselret.value(), &physfeatures);
+    vkGetPhysicalDeviceFeatures2(firstphysicaldevselret.value(), &physfeatures);
 	//std::cout << "\n\n\n\n" << physfeatures12.runtimeDescriptorArray << std::endl;
 	//if (physmeshfeatures.meshShader == VK_FALSE) {
 	//	std::cout << "NO mesh shader support"  << std::endl;
@@ -376,8 +388,9 @@ bool vkrenderer::deviceinit() {
 
 
 
+
 	//auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).add_required_extension_features(physmeshfeatures).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).add_required_extension("VK_EXT_mesh_shader").select();
-	auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_11(physfeatures11).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).select();
+    auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_11(physfeatures11).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).select();
 	//auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 0).set_surface(msurface).select();
 
 	//std::cout << "\n\n\n\n\n\n\n\n\n\n mesh shader value: " << secondphysicaldevselret.value().is_extension_present("VK_EXT_mesh_shader") << "\n\n\n\n\n";
@@ -389,9 +402,16 @@ bool vkrenderer::deviceinit() {
 
 	mminuniformbufferoffsetalignment = mvkobjs.rdvkbphysdev.properties.limits.minUniformBufferOffsetAlignment;
 
+
+
 	vkb::DeviceBuilder devbuilder{ mvkobjs.rdvkbphysdev };
 	auto devbuilderret = devbuilder.build();
 	mvkobjs.rdvkbdevice = devbuilderret.value();
+
+    VkSurfaceCapabilitiesKHR surcap;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mvkobjs.rdvkbdevice.physical_device,mvkobjs.rdvkbphysdev.surface,&surcap);
+
+    std::cout << surcap.supportedCompositeAlpha;/////////////////////////
 
 	return true;
 }
@@ -462,8 +482,19 @@ bool vkrenderer::createdepthbuffer() {
 	return true;
 }
 bool vkrenderer::createswapchain() {
-	vkb::SwapchainBuilder swapchainbuild{ mvkobjs.rdvkbdevice };
-	auto swapchainbuilret = swapchainbuild.set_old_swapchain(mvkobjs.rdvkbswapchain).set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR).build();
+    vkb::SwapchainBuilder swapchainbuild{ mvkobjs.rdvkbdevice };
+
+    VkSurfaceCapabilitiesKHR surcap;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mvkobjs.rdvkbdevice.physical_device,msurface,&surcap);
+
+    std::cout << surcap.supportedCompositeAlpha;/////////////////////////
+
+
+
+    // swapchainbuild.set_composite_alpha_flags((VkCompositeAlphaFlagBitsKHR)4);
+    swapchainbuild.set_composite_alpha_flags(VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR);
+    swapchainbuild.set_desired_format({VK_FORMAT_B8G8R8A8_SRGB,VK_COLOR_SPACE_SRGB_NONLINEAR_KHR  });
+    auto swapchainbuilret = swapchainbuild.set_old_swapchain(mvkobjs.rdvkbswapchain).set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR).build();
 	if (!swapchainbuilret) {
 		return false;
 	}
@@ -1423,7 +1454,7 @@ bool vkrenderer::draw() {
 
 
 		VkClearValue colorclearvalue;
-		colorclearvalue.color = { {0.12f,0.12f,0.12f,1.0f } };
+        colorclearvalue.color = { {0.99f,0.0f,0.0f,0.0f } };
 
 		VkClearValue depthvalue;
 		depthvalue.depthStencil.depth = 1.0f;
@@ -1674,7 +1705,7 @@ bool vkrenderer::draw() {
 
 
 			VkClearValue colorclearvalue;
-			colorclearvalue.color = { {0.0048f,0.0048f,0.0048f,1.0f } };
+            colorclearvalue.color = { {0.0048f,0.0048f,0.0048f,0.0f } };
 
 			VkClearValue depthvalue;
 			depthvalue.depthStencil.depth = 1.0f;
@@ -1861,7 +1892,7 @@ bool vkrenderer::drawmainmenu() {
 
 
 	VkClearValue colorclearvalue;
-	colorclearvalue.color = { {0.012f,0.012f,0.012f,1.0f } };
+    colorclearvalue.color = { {1.0f,0.0f,1.0f,0.02f } };//test
 
 	VkClearValue depthvalue;
 	depthvalue.depthStencil.depth = 1.0f;
@@ -1890,7 +1921,7 @@ bool vkrenderer::drawmainmenu() {
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor{};
-	scissor.offset = { 0,0 };
+    scissor.offset = { 0,0 };
 	scissor.extent = mvkobjs.rdvkbswapchain.extent;
 
 
@@ -2019,7 +2050,7 @@ bool vkrenderer::drawloading() {
 
 
 	VkClearValue colorclearvalue;
-	colorclearvalue.color = { {0.0048f,0.0048f,0.0048f,1.0f } };
+    colorclearvalue.color = { {0.0048f,0.0048f,0.0048f,0.0f } };
 
 	VkClearValue depthvalue;
 	depthvalue.depthStencil.depth = 1.0f;
@@ -2164,7 +2195,7 @@ bool vkrenderer::drawblank(){
 
 
 	VkClearValue colorclearvalue;
-	colorclearvalue.color = { {0.012f,0.012f,0.012f,1.0f } };
+    colorclearvalue.color = { {0.012f,0.012f,0.012f,0.0f } };
 
 	VkClearValue depthvalue;
 	depthvalue.depthStencil.depth = 1.0f;
@@ -2304,7 +2335,7 @@ void vkrenderer::drawshop() {
 
 
 	VkClearValue colorclearvalue;
-	colorclearvalue.color = { {0.12f,0.12f,0.12f,1.0f } };
+    colorclearvalue.color = { {0.12f,0.12f,0.12f,0.0f } };
 
 	VkClearValue depthvalue;
 	depthvalue.depthStencil.depth = 1.0f;

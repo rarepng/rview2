@@ -181,7 +181,7 @@ struct vkobjs {
 
 
 
-
+    SDL_Event* e;
 
 	float frametime{ 0.0f };
 	float updateanimtime{ 0.0f };

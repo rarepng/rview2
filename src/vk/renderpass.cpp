@@ -24,8 +24,8 @@ bool renderpass::init(vkobjs& rdata) {
 	deptha.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	deptha.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	deptha.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	deptha.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	deptha.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    deptha.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    deptha.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentReference deptharef{};
 	deptharef.attachment = 1;

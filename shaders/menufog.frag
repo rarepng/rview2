@@ -32,23 +32,23 @@ float plot(vec2 st, float pct){
 }
 
 void main(){
+    discard;
+ //    const vec4 c1 = vec4(0.002);
+        // const vec4 c2 = vec4(0.3);
+        // const vec4 c3 = vec4(0.005);
+        // const vec4 c4 = vec4(0.7);
+        // const vec4 c5 = vec4(0.004);
+        // const vec4 c6 = vec4(0.07);
     
-    const vec4 c1 = vec4(0.002);
-	const vec4 c2 = vec4(0.3);
-	const vec4 c3 = vec4(0.005);
-	const vec4 c4 = vec4(0.7);
-	const vec4 c5 = vec4(0.004);
-	const vec4 c6 = vec4(0.07);
-    
-	vec2 speed = vec2(0.001, 0.52);
-	vec2 p = pos.xy * 0.02;
-	float q = fbm(p - float(t2) * 0.1);
-	vec2 r = vec2(fbm(p + q + float(t2) * speed.x - p.x - p.y), fbm(p + q - float(t2) * speed.y));
-	vec4 c = mix(c1, c2, fbm(p + r)) + mix(c3, c4, r.x) - mix(c5, c6, r.y);
+        // vec2 speed = vec2(0.001, 0.52);
+        // vec2 p = pos.xy * 0.02;
+        // float q = fbm(p - float(t2) * 0.1);
+        // vec2 r = vec2(fbm(p + q + float(t2) * speed.x - p.x - p.y), fbm(p + q - float(t2) * speed.y));
+        // vec4 c = mix(c1, c2, fbm(p + r)) + mix(c3, c4, r.x) - mix(c5, c6, r.y);
 	
-    c = c * vec4(1.0 - smoothstep(0.1, 0.8, pos.y));
+ //    c = c * vec4(1.0 - smoothstep(0.1, 0.8, pos.y));
 
     
-    f = c/2.8;
+ //    f = c/2.8;
 
 }

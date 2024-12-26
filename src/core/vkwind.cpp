@@ -38,7 +38,7 @@ bool vkwind::init(std::string title) {
 		return false;
 	}
 
-    mvkrenderer = std::make_unique<vkrenderer>(mwind,mode,shutdown);
+    mvkrenderer = std::make_unique<vkrenderer>(mwind,mode,shutdown,e);
 
     // glfwSetWindowUserPointer(mwind, mvkrenderer.get());
 	//glfwSetWindowUserPointer(mwind, this);
@@ -70,10 +70,9 @@ bool vkwind::init(std::string title) {
 
 	//mouse
 	mouse mmouse{ "resources/mouser.png" };
-    SDL_Surface iconer{};
-    iconer.pixels = stbi_load("resources/icon0.png", &iconer.w, &iconer.h, nullptr, 4);
+    SDL_Surface* iconer{IMG_Load("resources/icon0.png")};
     SDL_SetCursor(mmouse.cursor);
-    SDL_SetWindowIcon(mwind, &iconer);
+    SDL_SetWindowIcon(mwind, iconer);
 
 
 	if (!mvkrenderer->init()) {
@@ -122,10 +121,9 @@ void vkwind::framemainmenuupdate(){
         SDL_PollEvent(e);
 
         //temporary
-        if(e!=nullptr)
         if(e->type==SDL_EVENT_KEY_DOWN)
             if(e->key.key==SDLK_ESCAPE)
-                SDL_Quit();
+                shutdown=!shutdown;
 
 
 	}

@@ -151,7 +151,7 @@ bool ui::init(vkobjs& renderData) {
 
 
 
-    //ImGui_ImplSDL3_ProcessEvent(ev);
+    ImGui_ImplSDL3_ProcessEvent(renderData.e);
 
 
 
@@ -181,6 +181,8 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings,netobjs& nob
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
+
+    ImGui_ImplSDL3_ProcessEvent(renderData.e);
 
     {
         ImGuiWindowFlags imguiWindowFlags = 0;
@@ -827,6 +829,7 @@ bool ui::createmainmenuframe(vkobjs& mvkobjs,netobjs& nobjs) {
 
     ImGuiIO& io = ImGui::GetIO();
 
+    ImGui_ImplSDL3_ProcessEvent(mvkobjs.e);
 
     ImGuiWindowFlags imguiWindowFlags = 0;
     imguiWindowFlags |= ImGuiWindowFlags_MenuBar;
@@ -990,6 +993,7 @@ bool ui::createloadingscreen(vkobjs& mvkobjs) {
 
     ImGuiIO& io = ImGui::GetIO();
 
+    ImGui_ImplSDL3_ProcessEvent(mvkobjs.e);
 
     ImGuiWindowFlags imguiWindowFlags = 0;
     imguiWindowFlags |= ImGuiWindowFlags_NoBackground;
@@ -1021,6 +1025,7 @@ bool ui::createpausebuttons(vkobjs& mvkobjs){
 
     ImGuiIO& io = ImGui::GetIO();
 
+    ImGui_ImplSDL3_ProcessEvent(mvkobjs.e);
 
     ImGuiWindowFlags imguiWindowFlags = 0;
     imguiWindowFlags |= ImGuiWindowFlags_MenuBar;
