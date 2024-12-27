@@ -490,9 +490,9 @@ bool vkrenderer::createswapchain() {
     std::cout << surcap.supportedCompositeAlpha;/////////////////////////
 
 
-
-    // swapchainbuild.set_composite_alpha_flags((VkCompositeAlphaFlagBitsKHR)4);
-    swapchainbuild.set_composite_alpha_flags(VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR);
+    swapchainbuild.set_composite_alpha_flags((VkCompositeAlphaFlagBitsKHR)surcap.supportedCompositeAlpha);
+    // swapchainbuild.set_composite_alpha_flags((VkCompositeAlphaFlagBitsKHR)1);
+    // swapchainbuild.set_composite_alpha_flags(VK_COMPOSITE_ALPHA_FLAG_BITS_MAX_ENUM_KHR);
     swapchainbuild.set_desired_format({VK_FORMAT_B8G8R8A8_SRGB,VK_COLOR_SPACE_SRGB_NONLINEAR_KHR  });
     auto swapchainbuilret = swapchainbuild.set_old_swapchain(mvkobjs.rdvkbswapchain).set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR).build();
 	if (!swapchainbuilret) {
