@@ -100,7 +100,8 @@ sometimes resources don't get copied too. copy to build/resources/
 <video src=https://github.com/user-attachments/assets/c01b2221-fbd6-42c1-a831-639ce9b4352b>https://rarepng.github.io/vidz/0_2.mp4</video>
 <video src=https://github.com/user-attachments/assets/de65abb7-434f-45c6-a867-2995c5120fe6>https://rarepng.github.io/vidz/0_3.mp4</video>
 
-
+### invisible window/surface<br>
+<video src=https://github.com/user-attachments/assets/0938a768-0667-4380-956e-6ef949bd083e>invisible</video>
 
 ## old demo
 ### outline and screen space shaders
@@ -115,3 +116,7 @@ sometimes resources don't get copied too. copy to build/resources/
 - migrate to sdl3 in place of glfw3
 - hot reload for gamestate as shared object
 - reflection renderpass
+
+
+
+
