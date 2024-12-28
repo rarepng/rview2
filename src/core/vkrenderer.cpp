@@ -18,7 +18,7 @@
 //#ifdef _DEBUG
 //#include "logger.hpp"
 //#endif
-#include <sdl3/SDL_vulkan.h>
+#include <SDL3/SDL_vulkan.h>
 
 float map2(glm::vec3 x) {
 	return std::max(x.y, 0.0f);
