@@ -357,13 +357,14 @@ bool vkrenderer::deviceinit() {
     // x.shaderReplicatedComposites=true;
     // x.pNext=VK_NULL_HANDLE;
 
-    VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT replicatedCompositesFeatures = {};
-    replicatedCompositesFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_REPLICATED_COMPOSITES_FEATURES_EXT;
-    replicatedCompositesFeatures.shaderReplicatedComposites = VK_TRUE; // Enable the feature
-    replicatedCompositesFeatures.pNext = VK_NULL_HANDLE;
+    // VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT replicatedCompositesFeatures = {};
+    // replicatedCompositesFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_REPLICATED_COMPOSITES_FEATURES_EXT;
+    // replicatedCompositesFeatures.shaderReplicatedComposites = VK_TRUE; // !!hardcoded
+    // replicatedCompositesFeatures.pNext = VK_NULL_HANDLE;
 
     // physfeatures13.pNext = &x;
-    physfeatures13.pNext = &replicatedCompositesFeatures;
+    // physfeatures13.pNext = &replicatedCompositesFeatures;
+    physfeatures13.pNext = VK_NULL_HANDLE;
 
 	//b8storagefeature.pNext = VK_NULL_HANDLE;
     vkGetPhysicalDeviceFeatures2(firstphysicaldevselret.value(), &physfeatures);
@@ -393,8 +394,9 @@ bool vkrenderer::deviceinit() {
 
 // replicatedCompositesFeatures.
 
-	//auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).add_required_extension_features(physmeshfeatures).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).add_required_extension("VK_EXT_mesh_shader").select();
-    auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_11(physfeatures11).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).add_required_extension("VK_EXT_shader_replicated_composites").add_required_extension_features(replicatedCompositesFeatures).select();
+    //auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).add_required_extension_features(physmeshfeatures).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).add_required_extension("VK_EXT_mesh_shader").select();
+    // auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_11(physfeatures11).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).add_required_extension("VK_EXT_shader_replicated_composites").add_required_extension_features(replicatedCompositesFeatures).select();
+    auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_11(physfeatures11).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).select();
 	//auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 0).set_surface(msurface).select();
 
 	//std::cout << "\n\n\n\n\n\n\n\n\n\n mesh shader value: " << secondphysicaldevselret.value().is_extension_present("VK_EXT_mesh_shader") << "\n\n\n\n\n";
@@ -507,9 +509,6 @@ bool vkrenderer::createswapchain() {
     std::cout << surcap.supportedCompositeAlpha;/////////////////////////
 
     swapchainbuild.set_composite_alpha_flags((VkCompositeAlphaFlagBitsKHR)(surcap.supportedCompositeAlpha & 8 ? 8:1));
-    // swapchainbuild.set_composite_alpha_flags((VkCompositeAlphaFlagBitsKHR)(0));
-    // swapchainbuild.set_composite_alpha_flags((VkCompositeAlphaFlagBitsKHR)1);
-    // swapchainbuild.set_composite_alpha_flags(VK_COMPOSITE_ALPHA_FLAG_BITS_MAX_ENUM_KHR);
     swapchainbuild.set_desired_format({VK_FORMAT_B8G8R8A8_SRGB,VK_COLOR_SPACE_SRGB_NONLINEAR_KHR  });
     auto swapchainbuilret = swapchainbuild.set_old_swapchain(mvkobjs.rdvkbswapchain).set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR).build();
 	if (!swapchainbuilret) {
