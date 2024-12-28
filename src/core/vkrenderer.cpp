@@ -309,12 +309,13 @@ bool vkrenderer::deviceinit() {
 	vkb::InstanceBuilder instbuild{};
 
     // std::lock_guard<std::shared_mutex> lg{ *mvkobjs.mtx2 };
+    // auto instret = instbuild.use_default_debug_messenger().request_validation_layers().enable_extension("VK_EXT_shader_replicated_composites").require_api_version(1, 3, 0).build();
     auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 3, 0).build();
 	
 
     // instret.value().
 
-	mvkobjs.rdvkbinstance = instret.value();
+    mvkobjs.rdvkbinstance = instret.value();
 
     bool res{false};
     res=SDL_Vulkan_CreateSurface(mvkobjs.rdwind,mvkobjs.rdvkbinstance, nullptr, &msurface);
@@ -356,9 +357,13 @@ bool vkrenderer::deviceinit() {
     // x.shaderReplicatedComposites=true;
     // x.pNext=VK_NULL_HANDLE;
 
+    VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT replicatedCompositesFeatures = {};
+    replicatedCompositesFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_REPLICATED_COMPOSITES_FEATURES_EXT;
+    replicatedCompositesFeatures.shaderReplicatedComposites = VK_TRUE; // Enable the feature
+    replicatedCompositesFeatures.pNext = VK_NULL_HANDLE;
 
     // physfeatures13.pNext = &x;
-    physfeatures13.pNext = VK_NULL_HANDLE;
+    physfeatures13.pNext = &replicatedCompositesFeatures;
 
 	//b8storagefeature.pNext = VK_NULL_HANDLE;
     vkGetPhysicalDeviceFeatures2(firstphysicaldevselret.value(), &physfeatures);
@@ -382,15 +387,14 @@ bool vkrenderer::deviceinit() {
 
 
 	}
+    // vkph
 
+            // VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT;
 
-
-
-
-
+// replicatedCompositesFeatures.
 
 	//auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).add_required_extension_features(physmeshfeatures).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).add_required_extension("VK_EXT_mesh_shader").select();
-    auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_11(physfeatures11).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).select();
+    auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_11(physfeatures11).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).add_required_extension("VK_EXT_shader_replicated_composites").add_required_extension_features(replicatedCompositesFeatures).select();
 	//auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 0).set_surface(msurface).select();
 
 	//std::cout << "\n\n\n\n\n\n\n\n\n\n mesh shader value: " << secondphysicaldevselret.value().is_extension_present("VK_EXT_mesh_shader") << "\n\n\n\n\n";
@@ -404,14 +408,27 @@ bool vkrenderer::deviceinit() {
 
 
 
-	vkb::DeviceBuilder devbuilder{ mvkobjs.rdvkbphysdev };
-	auto devbuilderret = devbuilder.build();
+    vkb::DeviceBuilder devbuilder{ mvkobjs.rdvkbphysdev };
+    auto devbuilderret = devbuilder.build();
 	mvkobjs.rdvkbdevice = devbuilderret.value();
 
     VkSurfaceCapabilitiesKHR surcap;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mvkobjs.rdvkbdevice.physical_device,mvkobjs.rdvkbphysdev.surface,&surcap);
 
-    std::cout << surcap.supportedCompositeAlpha;/////////////////////////
+    // std::cout << surcap.supportedCompositeAlpha;/////////////////////////
+
+    unsigned int excount{};
+
+    vkEnumerateDeviceExtensionProperties(mvkobjs.rdvkbdevice.physical_device,nullptr,&excount,nullptr);
+    std::vector<VkExtensionProperties> exvec(excount);
+
+    vkEnumerateDeviceExtensionProperties(mvkobjs.rdvkbdevice.physical_device,nullptr,&excount,nullptr);
+
+    // VK_EXT_SHADER_REPLICATED_COMPOSITES_EXTENSION_NAME;
+
+    // for(const auto& i:exvec){
+    //     std::cout << std::string(i.extensionName) << std::endl;
+    // }
 
 	return true;
 }
@@ -489,12 +506,12 @@ bool vkrenderer::createswapchain() {
 
     std::cout << surcap.supportedCompositeAlpha;/////////////////////////
 
-
-    swapchainbuild.set_composite_alpha_flags((VkCompositeAlphaFlagBitsKHR)surcap.supportedCompositeAlpha);
+    swapchainbuild.set_composite_alpha_flags((VkCompositeAlphaFlagBitsKHR)(surcap.supportedCompositeAlpha & 8 ? 8:1));
+    // swapchainbuild.set_composite_alpha_flags((VkCompositeAlphaFlagBitsKHR)(0));
     // swapchainbuild.set_composite_alpha_flags((VkCompositeAlphaFlagBitsKHR)1);
     // swapchainbuild.set_composite_alpha_flags(VK_COMPOSITE_ALPHA_FLAG_BITS_MAX_ENUM_KHR);
     swapchainbuild.set_desired_format({VK_FORMAT_B8G8R8A8_SRGB,VK_COLOR_SPACE_SRGB_NONLINEAR_KHR  });
-    auto swapchainbuilret = swapchainbuild.set_old_swapchain(mvkobjs.rdvkbswapchain).set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR).build();
+    auto swapchainbuilret = swapchainbuild.set_old_swapchain(mvkobjs.rdvkbswapchain).set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR).build();
 	if (!swapchainbuilret) {
 		return false;
 	}
@@ -1454,7 +1471,7 @@ bool vkrenderer::draw() {
 
 
 		VkClearValue colorclearvalue;
-        colorclearvalue.color = { {0.99f,0.0f,0.0f,0.0f } };
+        colorclearvalue.color = { {0.0f,0.0f,0.0f,0.0f } };
 
 		VkClearValue depthvalue;
 		depthvalue.depthStencil.depth = 1.0f;
@@ -1704,8 +1721,8 @@ bool vkrenderer::draw() {
 
 
 
-			VkClearValue colorclearvalue;
-            colorclearvalue.color = { {0.0048f,0.0048f,0.0048f,0.0f } };
+            VkClearValue colorclearvalue;
+        colorclearvalue.color = { {0.0f,0.0f,0.0f,0.0f } };
 
 			VkClearValue depthvalue;
 			depthvalue.depthStencil.depth = 1.0f;
@@ -1891,8 +1908,8 @@ bool vkrenderer::drawmainmenu() {
 
 
 
-	VkClearValue colorclearvalue;
-    colorclearvalue.color = { {1.0f,0.0f,1.0f,0.02f } };//test
+    VkClearValue colorclearvalue;
+    colorclearvalue.color = { {0.0f,0.0f,0.0f,0.0f } };
 
 	VkClearValue depthvalue;
 	depthvalue.depthStencil.depth = 1.0f;
@@ -2049,8 +2066,8 @@ bool vkrenderer::drawloading() {
 
 
 
-	VkClearValue colorclearvalue;
-    colorclearvalue.color = { {0.0048f,0.0048f,0.0048f,0.0f } };
+    VkClearValue colorclearvalue;
+    colorclearvalue.color = { {0.0f,0.0f,0.0f,0.0f } };
 
 	VkClearValue depthvalue;
 	depthvalue.depthStencil.depth = 1.0f;
@@ -2194,8 +2211,8 @@ bool vkrenderer::drawblank(){
 
 
 
-	VkClearValue colorclearvalue;
-    colorclearvalue.color = { {0.012f,0.012f,0.012f,0.0f } };
+    VkClearValue colorclearvalue;
+    colorclearvalue.color = { {0.0f,0.0f,0.0f,0.0f } };
 
 	VkClearValue depthvalue;
 	depthvalue.depthStencil.depth = 1.0f;
@@ -2334,8 +2351,8 @@ void vkrenderer::drawshop() {
 
 
 
-	VkClearValue colorclearvalue;
-    colorclearvalue.color = { {0.12f,0.12f,0.12f,0.0f } };
+    VkClearValue colorclearvalue;
+    colorclearvalue.color = { {0.0f,0.0f,0.0f,0.0f } };
 
 	VkClearValue depthvalue;
 	depthvalue.depthStencil.depth = 1.0f;
