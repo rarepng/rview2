@@ -1,12 +1,7 @@
 #pragma once
-#include <string>
 #include <vector>
-#include <memory>
-#include <map>
 #include <vulkan/vulkan.h>
-#include "vktexture.hpp"
 #include "vkobjs.hpp"
-#include "playoutmodel.hpp"
 
 class texmodel {
 public:

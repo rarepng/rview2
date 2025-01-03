@@ -1,6 +1,5 @@
 #include <cstring>
 #include "vkebo.hpp"
-#include "commandbuffer.hpp"
 
 bool vkebo::init(vkobjs& objs, vkebodata& indexbufferdata, size_t buffersize)
 {

@@ -1,6 +1,12 @@
 #include "playoutcircle.hpp"
 
 
+#include "vktexture.hpp"
+#include "staticsettings.hpp"
+#include "ubo.hpp"
+#include "ssbo.hpp"
+#include "playout.hpp"
+#include "pline.hpp"
 
 
 bool playoutcircle::setup(vkobjs& objs, int count) {

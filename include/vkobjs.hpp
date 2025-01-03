@@ -7,8 +7,6 @@
 #include <VkBootstrap.h>
 #include <vk_mem_alloc.h>
 #include <memory>
-#include <thread>
-#include <future>
 #include <shared_mutex>
 #include "netclient.hpp"
 #include "netserver.hpp"

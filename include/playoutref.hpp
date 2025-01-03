@@ -1,14 +1,8 @@
 #pragma once
 #include <string>
 #include <vector>
-#include <memory>
-#include <map>
 #include <vulkan/vulkan.h>
 #include "vkobjs.hpp"
-#include "ubo.hpp"
-#include "ssbo.hpp"
-#include "playout.hpp"
-#include "pline.hpp"
 
 class playoutref {
 public:

@@ -1,10 +1,6 @@
 #pragma once
-#include <string>
-#include <vector>
-#include <memory>
-#include <map>
 #include <vulkan/vulkan.h>
-#include "vktexture.hpp"
+#include <vector>
 #include "vkobjs.hpp"
 
 class quadmodel {

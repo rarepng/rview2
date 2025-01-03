@@ -5,9 +5,6 @@
 
 #include "vkobjs.hpp"
 #include "modelsettings.hpp"
-#include "netclient.hpp"
-#include "netserver.hpp"
-#include "gamestate.hpp"
 
 enum struct ppick {
 	rock,

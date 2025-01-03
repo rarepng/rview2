@@ -13,6 +13,17 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include <vk_mem_alloc.h>
 #include <iostream>
+
+#include "renderpass.hpp"
+#include "framebuffer.hpp"
+#include "commandpool.hpp"
+#include "commandbuffer.hpp"
+#include "gamestate.hpp"
+#include "vksyncobjects.hpp"
+
+
+
+
 #include "vkrenderer.hpp"
 #include "vksyncobjects.hpp"
 //#ifdef _DEBUG
@@ -23,13 +34,13 @@
 float map2(glm::vec3 x) {
 	return std::max(x.y, 0.0f);
 }
-vkrenderer::vkrenderer(SDL_Window* wind,const SDL_DisplayMode* mode,bool mshutdown,SDL_Event* e) {
+vkrenderer::vkrenderer(SDL_Window* wind,const SDL_DisplayMode* mode,bool* mshutdown,SDL_Event* e) {
 	mvkobjs.rdwind = wind;
     //mvkobjs.rdmonitor = mont;
 	mvkobjs.rdmode = mode;
 	mvkobjs.decaying = &mspells[1]->active;
     mvkobjs.e=e;
-    mvkobjs.mshutdown = &mshutdown;
+    mvkobjs.mshutdown = mshutdown;
 
 	mpersviewmats.emplace_back(glm::mat4{ 1.0f });
 	mpersviewmats.emplace_back(glm::mat4{ 1.0f });
@@ -916,7 +927,7 @@ void vkrenderer::uploadforshop(){
 
 }
 
-void vkrenderer::handlekeymenu(int key, int scancode, int action, int mods) {
+void vkrenderer::handlekeymenu() {
 
     if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_F4]) {
         // if (mvkobjs.rdfullscreen)glfwSetWindowMonitor(mvkobjs.rdwind, nullptr, 100, 200, 900, 600, GLFW_DONT_CARE);
@@ -937,7 +948,7 @@ void vkrenderer::handlekeymenu(int key, int scancode, int action, int mods) {
 	//}
 
 }
-void vkrenderer::handlekey(int key, int scancode, int action, int mods){
+void vkrenderer::handlekey(){
     if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_SPACE]) {
 		switchshader = !switchshader;
 	}
@@ -1101,11 +1112,11 @@ void vkrenderer::moveenemies(){
 	//	}
 	//}
 }
-void vkrenderer::handleclick(int key, int action, int mods)
+void vkrenderer::handleclick()
 {
 	ImGuiIO& io = ImGui::GetIO();
-	if (key >= 0 && key < ImGuiMouseButton_COUNT) {
-        io.AddMouseButtonEvent(key, action);
+    if (SDL_GetMouseState(nullptr,nullptr) >= 0 && SDL_GetMouseState(nullptr,nullptr) < ImGuiMouseButton_COUNT) {
+        io.AddMouseButtonEvent(SDL_GetMouseState(nullptr,nullptr), SDL_GetMouseState(nullptr,nullptr));
 	}
 	if (io.WantCaptureMouse)return;
 	
@@ -1520,6 +1531,15 @@ bool vkrenderer::draw() {
 
 
 		if (mspells[0]->active)mcircle->uploadvboebo(mvkobjs, mvkobjs.rdcommandbuffer[0]);
+
+
+
+
+
+        handlekey();
+
+
+
 
 
 
@@ -1964,6 +1984,21 @@ bool vkrenderer::drawmainmenu() {
 	//mbackground->getinst(0)->setinstancesettings(s);
 	mbackground->updatemats();
 
+
+
+
+    handlekeymenu();
+
+
+
+
+
+
+
+
+
+
+
 	vkCmdBeginRenderPass(mvkobjs.rdcommandbuffer[0], &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
 
 
@@ -2399,6 +2434,17 @@ void vkrenderer::drawshop() {
 	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
 	vkBeginCommandBuffer(mvkobjs.rdcommandbuffer[0], &cmdbgninfo);
+
+
+
+
+
+
+
+    handlekeymenu();
+
+
+
 
 
 

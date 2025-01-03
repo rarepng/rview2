@@ -3,9 +3,7 @@
 #include <string>
 #include <memory>
 #include <vulkan/vulkan.h>
-#include <SDL3/SDL.h>	
-#include <thread>
-#include <mutex>
+#include <SDL3/SDL.h>
 #include <iostream>
 #include "vkwind.hpp"
 

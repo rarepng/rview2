@@ -4,7 +4,6 @@
 #include <vector>
 #include <memory>
 #include <functional>
-#include <thread>
 
 #include "vkobjs.hpp"
 #include "playoutplayer.hpp"

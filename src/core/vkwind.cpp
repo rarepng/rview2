@@ -4,12 +4,13 @@
 #include <future>
 #include <thread>
 #include <chrono>
-#include <mutex>
 
 #include <imgui.h>
 #include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_vulkan.h>
 #include <misc/cpp/imgui_stdlib.h>
+#include "mouse.hpp"
+#include "gamestate.hpp"
 
 bool vkwind::init(std::string title) {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -38,7 +39,7 @@ bool vkwind::init(std::string title) {
 		return false;
 	}
 
-    mvkrenderer = std::make_unique<vkrenderer>(mwind,mode,shutdown,e);
+    mvkrenderer = std::make_unique<vkrenderer>(mwind,mode,&shutdown,e);
 
     // glfwSetWindowUserPointer(mwind, mvkrenderer.get());
 	//glfwSetWindowUserPointer(mwind, this);
@@ -119,7 +120,6 @@ void vkwind::framemainmenuupdate(){
 			break;
 		}
         SDL_PollEvent(e);
-
         //temporary
         if(e->type==SDL_EVENT_KEY_DOWN)
             if(e->key.key==SDLK_ESCAPE)

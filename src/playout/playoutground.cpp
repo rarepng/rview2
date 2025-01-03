@@ -1,6 +1,11 @@
 #include "playoutground.hpp"
 
 
+#include "staticsettings.hpp"
+#include "ubo.hpp"
+#include "ssbo.hpp"
+#include "playout.hpp"
+#include "pline.hpp"
 
 
 bool playoutground::setup(vkobjs& objs, std::string fname, int count) {

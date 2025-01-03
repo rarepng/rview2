@@ -1,6 +1,11 @@
 #include "playoutstatic.hpp"
 
 
+#include "staticsettings.hpp"
+#include "ubo.hpp"
+#include "ssbo.hpp"
+#include "playout.hpp"
+#include "pline.hpp"
 
 
 bool playoutstatic::setup(vkobjs& objs, std::string fname, int count) {

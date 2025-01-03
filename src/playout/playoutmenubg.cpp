@@ -1,5 +1,7 @@
 #include "playoutmenubg.hpp"
 
+#include "playout.hpp"
+#include "pline.hpp"
 
 
 

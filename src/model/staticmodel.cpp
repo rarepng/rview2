@@ -1,7 +1,5 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
-#include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -11,6 +9,7 @@
 #include "vkvbo.hpp"
 #include "vkebo.hpp"
 #include "staticmodel.hpp"
+#include "vktexture.hpp"
 
 bool staticmodel::loadmodel(vkobjs& objs, std::string fname)
 {

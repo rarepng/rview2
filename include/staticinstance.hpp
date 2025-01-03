@@ -1,13 +1,10 @@
 #pragma once
-#define GLM_ENABLE_EXPIREMENTAL
-#include <string>
-#include <vector>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <memory>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 
 #include "staticmodel.hpp"
-#include "vkobjs.hpp"
 #include "staticsettings.hpp"
 
 class staticinstance {

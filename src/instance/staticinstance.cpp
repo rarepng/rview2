@@ -4,6 +4,7 @@
 #include <glm/gtx/matrix_decompose.hpp>
 #include <cstdlib>
 #include "staticinstance.hpp"
+#include "vkobjs.hpp"
 staticinstance::~staticinstance() {}
 
 staticinstance::staticinstance(std::shared_ptr<staticmodel> model, glm::vec3 worldpos, bool randomize) {

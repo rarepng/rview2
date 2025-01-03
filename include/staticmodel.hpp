@@ -1,15 +1,12 @@
 #pragma once
 #include <string>
 #include <vector>
-#include <memory>
 #include <map>
 #include <vulkan/vulkan.h>
 #include <fastgltf/core.hpp>
 #include <fastgltf/types.hpp>
 #include <fastgltf/tools.hpp>
-#include "vktexture.hpp"
 #include "vkobjs.hpp"
-#include "modelsettings.hpp"
 
 class staticmodel {
 public:

@@ -1,6 +1,10 @@
 #include "playoutmodel.hpp"
 
 
+#include "ubo.hpp"
+#include "ssbo.hpp"
+#include "playout.hpp"
+#include "pline.hpp"
 
 
 bool playoutmodel::setup(vkobjs& objs, std::string fname,int count) {

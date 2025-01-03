@@ -13,7 +13,6 @@ find_package(Vulkan REQUIRED)
 set(OPENSSL_USE_STATIC_LIBS ON)
 find_package(OpenSSL REQUIRED)
 
-#find_package(Protobuf REQUIRED)
 
 set(submodules_path
         ${PROJECT_SOURCE_DIR}/sub

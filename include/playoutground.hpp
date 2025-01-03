@@ -2,19 +2,12 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <map>
 #include <vulkan/vulkan.h>
 //#include <tinygltf/tiny_gltf.h>
-#include "vktexture.hpp"
 #include "vkobjs.hpp"
-#include "staticsettings.hpp"
-#include "ubo.hpp"
-#include "ssbo.hpp"
+
 #include "staticmodel.hpp"
 #include "staticinstance.hpp"
-#include "playout.hpp"
-#include "pline.hpp"
-
 
 class playoutground {
 public:

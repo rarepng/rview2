@@ -1,4 +1,9 @@
 #include "playoutplayer.hpp"
+#include "modelsettings.hpp"
+#include "ubo.hpp"
+#include "ssbo.hpp"
+#include "playout.hpp"
+#include "pline.hpp"
 
 bool playoutplayer::setup(vkobjs& objs, std::string fname, int count) {
 	if (!createubo(objs))return false;

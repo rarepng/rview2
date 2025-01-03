@@ -11,28 +11,14 @@
 #include <vk_mem_alloc.h>
 #include <chrono>
 
-#include <future>
-#include <thread>
 #include <mutex>
 
 #include <numeric>
 
 #include "timer.hpp"
-#include "renderpass.hpp"
-#include "playout.hpp"
-#include "framebuffer.hpp"
-#include "commandpool.hpp"
-#include "commandbuffer.hpp"
-#include "vktexture.hpp"
-#include "ubo.hpp"
-#include "ssbomesh.hpp"
-#include "ssbo.hpp"
-#include "vkvbo.hpp"
-#include "vkebo.hpp"
 #include "ui.hpp"
 #include "vkcam.hpp"
 
-#include "gamestate.hpp"
 
 #include "playoutback.hpp"
 #include "playoutplayer.hpp"
@@ -45,14 +31,13 @@
 
 #include "vkobjs.hpp"
 
-#include "vksyncobjects.hpp"
 
 
 
 
 class vkrenderer {
 public:
-    vkrenderer(SDL_Window* wind,const SDL_DisplayMode* mode,bool mshutdown,SDL_Event* e);
+    vkrenderer(SDL_Window* wind,const SDL_DisplayMode* mode,bool* mshutdown,SDL_Event* e);
 	bool init();
 	void setsize(unsigned int w, unsigned int h);
 	bool uploadfordraw();
@@ -67,9 +52,9 @@ public:
 	void cleanmainmenu();
 	void toggleshader();
 	void cleanup();
-	void handlekey(int key, int scancode, int action, int mods);
-	void handlekeymenu(int key, int scancode, int action, int mods);
-	void handleclick(int key, int action, int mods);
+    void handlekey();
+    void handlekeymenu();
+    void handleclick();
 	void handlemouse(double x, double y);
 	bool initscene();
 	void initshop();

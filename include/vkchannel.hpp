@@ -1,8 +1,6 @@
 #pragma once
 #define GLM_ENABLE_EXPERIMENTAL
-#include <string>
 #include <vector>
-#include <memory>
 //#include <tinygltf/tiny_gltf.h>
 #include <fastgltf/core.hpp>
 #include <glm/glm.hpp>

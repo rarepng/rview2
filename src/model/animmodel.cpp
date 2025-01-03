@@ -1,7 +1,5 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
-#include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -11,6 +9,7 @@
 
 
 
+#include "vktexture.hpp"
 
 
 #include "vkvbo.hpp"

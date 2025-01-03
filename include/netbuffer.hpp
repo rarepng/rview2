@@ -2,7 +2,6 @@
 #define _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR
 
 #include <memory>
-#include <string>
 #include <cstring>
 
 struct netbuffer {

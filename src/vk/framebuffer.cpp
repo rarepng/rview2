@@ -1,4 +1,5 @@
 #include "framebuffer.hpp"
+#include <vector>
 
 bool framebuffer::init(vkobjs& rdata) {
 	rdata.rdswapchainimages = rdata.rdvkbswapchain.get_images().value();

@@ -1,11 +1,10 @@
 #define GLM_ENABLE_EXPERIMENTAL
-#include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/dual_quaternion.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
+#include "vktexture.hpp"
 
 #include "vkvbo.hpp"
 #include "vkebo.hpp"

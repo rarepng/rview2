@@ -1,5 +1,6 @@
 
 #pragma once
+#include "vkobjs.hpp"
 #include <vector>
 #include <string>
 #include <glm/glm.hpp>

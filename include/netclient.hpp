@@ -11,7 +11,6 @@
 #endif
 
 #include <string>
-#include <map>
 #include <thread>
 #include <functional>
 #include <glm/glm.hpp>

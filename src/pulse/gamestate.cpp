@@ -1,7 +1,7 @@
 #include "gamestate.hpp"
 
 
-#include <iostream>
+#include <thread>
 
 void gamestate::tick(){
 	tickstart = std::chrono::high_resolution_clock::now();

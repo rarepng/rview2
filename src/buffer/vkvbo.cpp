@@ -1,5 +1,4 @@
 #include "vkvbo.hpp"
-#include "commandbuffer.hpp"
 
 bool vkvbo::init(vkobjs& mvkobjs, vkvertexbufferdata& vbdata, size_t bsize)
 {

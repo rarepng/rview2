@@ -5,16 +5,14 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <iostream>
 #include <imgui.h>
 #include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_vulkan.h>
 #include <misc/cpp/imgui_stdlib.h>
 
-#include <memory>
-#include <thread>
-#include <future>
-#include <mutex>
+#include "netclient.hpp"
+#include "netserver.hpp"
+#include "gamestate.hpp"
 
 
 #include "ui.hpp"
@@ -870,21 +868,12 @@ bool ui::createmainmenuframe(vkobjs& mvkobjs,netobjs& nobjs) {
 
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("settings")) {
-            if (mvkobjs.rdfullscreen) {
                 if (ImGui::MenuItem("windowed", "F4")) {
-                    // glfwSetWindowMonitor(mvkobjs.rdwind, nullptr, 100, 200, 900, 600, GLFW_DONT_CARE);
                     mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
-                }
-            }
-            else {
-                if (ImGui::MenuItem("fullscreen", "F4")) {
-                    // glfwSetWindowMonitor(mvkobjs.rdwind, mvkobjs.rdmonitor, 0, 0, mvkobjs.rdmode->width, mvkobjs.rdmode->height, mvkobjs.rdmode->refreshRate);
-                    mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
-                }
+                    SDL_SetWindowFullscreen(mvkobjs.rdwind,mvkobjs.rdfullscreen);
             }
             if (ImGui::MenuItem("network settings", "F3")) {
                 setnetwork = !setnetwork;
-                //nobjs.rdserverclient = !nobjs.rdserverclient;
             }
             ImGui::EndMenu();
         }
@@ -1066,16 +1055,9 @@ bool ui::createpausebuttons(vkobjs& mvkobjs){
 
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("settings")) {
-            if (mvkobjs.rdfullscreen) {
-                if (ImGui::MenuItem("windowed", "F4")) {
-                    // glfwSetWindowMonitor(mvkobjs.rdwind, nullptr, 100, 200, 900, 600, GLFW_DONT_CARE);
-                    mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
-                }
-            } else {
-                if (ImGui::MenuItem("fullscreen", "F4")) {
-                    // glfwSetWindowMonitor(mvkobjs.rdwind, mvkobjs.rdmonitor, 0, 0, mvkobjs.rdmode->width, mvkobjs.rdmode->height, mvkobjs.rdmode->refreshRate);
-                    mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
-                }
+            if (ImGui::MenuItem("windowed", "F4")) {
+                mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
+                SDL_SetWindowFullscreen(mvkobjs.rdwind,mvkobjs.rdfullscreen);
             }
             ImGui::EndMenu();
         }

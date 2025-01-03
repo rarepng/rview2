@@ -4,9 +4,6 @@
 #include "commandbuffer.hpp"
 #include "vktexture.hpp"
 #include <VkBootstrap.h>
-#include <future>
-#include <thread>
-#include <mutex>
 #include "logger.hpp"
 
 bool vktexture::loadtexturefile(vkobjs& rdata, vktexdata& texdata, vktexdatapls& texdatapls, std::string filename) {

@@ -2,20 +2,12 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <map>
 #include <vulkan/vulkan.h>
 //#include <tinygltf/tiny_gltf.h>
-#include "vktexture.hpp"
-#include "vknode.hpp"
-#include "vkclip.hpp"
 #include "vkobjs.hpp"
 #include "modelsettings.hpp"
-#include "ubo.hpp"
-#include "ssbo.hpp"
 #include "animmodel.hpp"
 #include "animinstance.hpp"
-#include "playout.hpp"
-#include "pline.hpp"
 
 
 class playoutmodel {

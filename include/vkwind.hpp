@@ -1,7 +1,6 @@
 #pragma once
 #include <string>
 #include <memory>
-#include <map>
 #include <vulkan/vulkan.h>
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
@@ -9,8 +8,6 @@
 #include "netclient.hpp"
 #include "netserver.hpp"
 #include "ui.hpp"
-#include "mouse.hpp"
-#include "gamestate.hpp"
 
 class vkwind {
 public:
@@ -32,7 +29,7 @@ public:
 	//GLFWmonitor* mmonitor;
 	int mh;
 	int mw;
-    SDL_Event* e{new SDL_Event()};
+    SDL_Event* e{new SDL_Event{}};
     bool shutdown{false};
 private:
 	//void handlekeymenu(int key, int scancode, int action, int mods);

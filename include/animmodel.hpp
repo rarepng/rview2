@@ -7,12 +7,9 @@
 #include <fastgltf/core.hpp>
 #include <fastgltf/types.hpp>
 #include <fastgltf/tools.hpp>
-#include "vktexture.hpp"
 #include "vknode.hpp"
 #include "vkclip.hpp"
 #include "vkobjs.hpp"
-#include "modelsettings.hpp"
-#include "ubo.hpp"
 
 struct gltfnodedata {
 	std::shared_ptr<vknode> rootnode;

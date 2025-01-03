@@ -1,6 +1,5 @@
 #pragma once
-#define GLM_ENABLE_EXPIREMENTAL
-#include <string>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <vector>
 #include <memory>
 #include <glm/glm.hpp>

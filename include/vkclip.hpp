@@ -3,7 +3,6 @@
 #include <vector>
 #include <memory>
 //#include <tinygltf/tiny_gltf.h>
-#include "../fastgltf/include/fastgltf/core.hpp"
 #include "vkchannel.hpp"
 #include "vknode.hpp"
 
