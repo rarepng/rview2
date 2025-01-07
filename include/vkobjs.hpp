@@ -8,19 +8,12 @@
 #include <vk_mem_alloc.h>
 #include <memory>
 #include <shared_mutex>
-#include "netclient.hpp"
-#include "netserver.hpp"
 
 struct vkvert {
 	glm::vec3 pos;
 	glm::vec3 col;
 	glm::vec2 uv;
 };
-
-
-
-
-
 
 
 struct vkmesh {
@@ -146,19 +139,6 @@ enum struct wavetype {
 	event0
 };
 
-struct gobjs{
-	unsigned int wave{ 0 };
-};
-
-
-struct netobjs {
-	bool offlineplay{ true };
-	bool rdserverclient{ false };
-	netclient* nclient = nullptr;
-	netserver* nserver = nullptr;
-	std::string serveraddress{ "127.0.0.1:21122" };
-	int port{21122};
-};
 
 struct vkobjs {
 

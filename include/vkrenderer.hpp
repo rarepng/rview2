@@ -42,14 +42,11 @@ public:
 	void setsize(unsigned int w, unsigned int h);
 	bool uploadfordraw();
 	void uploadforshop();
-	bool draw();
-	void drawshop();
-	bool drawpause();
-	bool drawmainmenu();
+    bool draw();
+    bool drawpause();
 	bool drawloading();
 	bool drawblank();
-	void cleanloading();
-	void cleanmainmenu();
+    void cleanloading();
 	void toggleshader();
 	void cleanup();
     void handlekey();
@@ -57,8 +54,7 @@ public:
     void handleclick();
 	void handlemouse(double x, double y);
 	bool initscene();
-	void initshop();
-	bool getserverclientstatus();
+    void initshop();
 	ui* getuihandle();
 	void startmoving();
 	void moveplayer();
@@ -87,11 +83,9 @@ public:
 	bool checkcooldown(unsigned int x);
 
 
-	bool quicksetup(netclient* nclient);
-	bool quicksetup(netserver* nserver);
+    bool quicksetup();
 
-	vkobjs& getvkobjs();
-	netobjs& getnetobjs();
+    vkobjs& getvkobjs();
 
 	bool newconnection{ false };
 
@@ -115,9 +109,7 @@ private:
 	std::mutex getinstsettingsmtx{};
 
 
-	vkobjs mvkobjs{};
-	netobjs mnobjs{};
-	gobjs mgobjs{};
+    vkobjs mvkobjs{};
 
 	double* playerhp{ nullptr };
 
@@ -147,8 +139,7 @@ private:
 
 	std::shared_ptr<playoutback> mbackground;
 
-	std::shared_ptr<playoutplayer> mplayer;
-	std::unordered_map<ClientID, std::shared_ptr<playoutplayer>> motherplayers{ {0,std::make_shared<playoutplayer>()}};
+    std::shared_ptr<playoutplayer> mplayer;
 	std::shared_ptr<playoutground> mground;
 	std::shared_ptr<playoutcircle> mcircle;
 	std::shared_ptr<playoutcircle> mplates;

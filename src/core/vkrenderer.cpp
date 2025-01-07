@@ -18,7 +18,6 @@
 #include "framebuffer.hpp"
 #include "commandpool.hpp"
 #include "commandbuffer.hpp"
-#include "gamestate.hpp"
 #include "vksyncobjects.hpp"
 
 
@@ -104,8 +103,6 @@ bool vkrenderer::init() {
 	return true;
 }
 bool vkrenderer::initscene() {
-	gamestate::init(mvkobjs, mnobjs, [&]() { moveplayer(); }, [&]() { moveenemies(); }, mplayer, mcircle, mpgltf, mspells, mplates, motherplayers);
-
 	mpgltf.reserve(animfname.size());
 	mpgltf.resize(animfname.size());
 	mstatic0.reserve(staticfname.size());
@@ -122,15 +119,8 @@ bool vkrenderer::initscene() {
 	mvkobjs.loadingprog += 0.1f;
 
 
-	if(mnobjs.offlineplay)
-		mplayer = std::make_shared<playoutplayer>();
-	else if(mnobjs.rdserverclient) {
-		mplayer = motherplayers[0];
-		gamestate::aposes[0] = glm::vec3{ 0.0f };
-	} else {
-		mplayer = motherplayers[0];///////////////////////////////////////////////////todo
-		gamestate::aposes[0] = glm::vec3{ 0.0f };
-	}
+    mplayer = std::make_shared<playoutplayer>();
+
 	if (!mplayer->setup(mvkobjs, playerfname, playercount))return false;
 
 	mvkobjs.loadingprog += 0.1f;
@@ -180,102 +170,25 @@ bool vkrenderer::initscene() {
 
 	mvkobjs.loadingprog += 0.1f;
 
-	gamestate::setstate(gamestate0::normal);
 
 	return true;
-}
-void vkrenderer::initshop(){
-	mchoices.reserve(1);
-	mchoices.resize(1);
-	mstaticchoices.reserve(staticshopfname.size());
-	mstaticchoices.resize(staticshopfname.size());
-
-	mchoices[0] = std::make_shared<playoutcircle>();
-	mchoices[0]->setup(mvkobjs, 2);
-	mchoices[0]->setup2(mvkobjs,shopbacktextures[0], shopbgshaders[0], shopbgshaders[1]);
-
-	mstaticchoices.front() = std::make_shared<playoutstatic>();
-	mstaticchoices.back() = std::make_shared<playoutstatic>();
-	mstaticchoices.front()->setup(mvkobjs, staticshopfname.front(), shopcounts.front());
-	mstaticchoices.back()->setup(mvkobjs, staticshopfname.back(), shopcounts.back());
-	mstaticchoices.front()->setup2(mvkobjs, staticshopshaders[0], staticshopshaders[1]);
-	mstaticchoices.back()->setup2(mvkobjs, staticshopshaders[0], staticshopshaders[1]);
-	//for (size_t i{ 0 }; i < mchoices.size(); i++) {
-	//	for (const auto& j : mchoices[i]->getallinstances()) {
-	//	}
-	//}
-	//for (size_t i{ 0 }; i < mstaticchoices.size(); i++) {
-	//for (const auto& j : mstaticchoices[0]->getallinstances()) {
-	//	j->getinstancesettings().msworldpos = glm::vec3(static_cast<float>(std::rand() % 100) / 200.0f - 1.0f, static_cast<float>(std::rand() % 100) / 120.0f - 1.0f, 0.5f);
-	//	j->getinstancesettings().msworldrot = glm::vec3(static_cast<float>(std::rand() % 360), static_cast<float>(std::rand() % 360), static_cast<float>(std::rand() % 360));
-	//	j->getinstancesettings().msworldscale = glm::vec3(0.2f, 0.2f, 0.2f);
-	//}
-	for (const auto& j : mstaticchoices[0]->getallinstances()) {
-		j->getinstancesettings().msworldpos =glm::vec3(-0.5f, 0.0f, 0.4f);
-		j->getinstancesettings().msworldrot = glm::vec3(-90.0f,0.0f, -90.0f);
-		j->getinstancesettings().msworldscale = glm::vec3(0.4f, 0.4f, 0.4f);
-	}
-	for (const auto& j : mstaticchoices[1]->getallinstances()) {
-		j->getinstancesettings().msworldpos = glm::vec3( 0.5f, 0.0f , 0.4f);
-		j->getinstancesettings().msworldrot = glm::vec3(-90.0f, 0.0f, 0.0f);
-		j->getinstancesettings().msworldscale = glm::vec3(0.2f, 0.2f, 0.2f);
-	}
-	//}
-
-}
-bool vkrenderer::getserverclientstatus(){
-	return mnobjs.rdserverclient;
 }
 ui* vkrenderer::getuihandle(){
 	return &mui;
 }
-netobjs& vkrenderer::getnetobjs() {
-	return mnobjs;
-}
 vkobjs& vkrenderer::getvkobjs() {
 	return mvkobjs;
 }
-bool vkrenderer::quicksetup(netclient* nclient){
-	mnobjs.nclient = nclient;
-    // ImGui_ImplGlfw_RestoreCallbacks(mvkobjs.rdwind);
-    // glfwSetKeyCallback(mvkobjs.rdwind, [](GLFWwindow* win, int key, int scancode, int action, int mods) {
-        // auto r = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
-        // r->handlekey(key, scancode, action, mods);
-    // });
-    // ImGui_ImplGlfw_InstallCallbacks(mvkobjs.rdwind);
+bool vkrenderer::quicksetup(){
 	playerlocation = mplayer->getinst(0)->getinstpos();
 	inmenu = false;
 
 
-	modelsettings& s = mplayer->getinst(0)->getinstancesettings();
-	//s.msworldscale = glm::vec3{ 60.0f };
+    modelsettings& s = mplayer->getinst(0)->getinstancesettings();
 
-	playerhp = &s.hp;
+    playerhp = &s.hp;
 
-
-	//offline
 	mui.playerwave.push_back(1);
-
-	std::for_each(mplates->getallinstances().begin(), mplates->getallinstances().end(), [&](std::shared_ptr<texinstance>& x) { x->getinstancesettings().msworldpos.y = 200; });
-
-
-	return true;
-}
-bool vkrenderer::quicksetup(netserver* nserver) {
-	mnobjs.nserver = nserver;
-    // ImGui_ImplGlfw_RestoreCallbacks(mvkobjs.rdwind);
-    // glfwSetKeyCallback(mvkobjs.rdwind, [](GLFWwindow* win, int key, int scancode, int action, int mods) {
-    // 	auto r = static_cast<vkrenderer*>(glfwGetWindowUserPointer(win));
-    // 	r->handlekey(key, scancode, action, mods);
-    // });
-    // ImGui_ImplGlfw_InstallCallbacks(mvkobjs.rdwind);
-	playerlocation = mplayer->getinst(0)->getinstpos();
-	inmenu = false;
-	modelsettings& s = mplayer->getinst(0)->getinstancesettings();
-	//s.msworldscale = glm::vec3{ 60.0f };
-
-	playerhp = &s.hp;
-
 
 	std::for_each(mplates->getallinstances().begin(), mplates->getallinstances().end(), [&](std::shared_ptr<texinstance>& x) { x->getinstancesettings().msworldpos.y = 200; });
 
@@ -601,12 +514,7 @@ void vkrenderer::cleanup() {
 	for (size_t i{ 0 }; i < mstatic0.size(); i++) {
 		mstatic0[i]->cleanupmodels(mvkobjs);
 	}
-	if (!mnobjs.offlineplay) {
-		for (const auto& i : motherplayers) {
-			if(i.second->ready)
-			i.second->cleanupmodels(mvkobjs);
-		}
-	}else if (mplayer)
+    if (mplayer)
 		mplayer->cleanupmodels(mvkobjs);
 	if (mground)
 		mground->cleanupmodels(mvkobjs);
@@ -648,12 +556,7 @@ void vkrenderer::cleanup() {
 		mstatic0[i]->cleanuplines(mvkobjs);
 	}
 
-	if (!mnobjs.offlineplay) {
-		for (const auto& i : motherplayers) {
-			if (i.second->ready)
-			i.second->cleanuplines(mvkobjs);
-		}
-	}else if (mplayer)
+    if (mplayer)
 		mplayer->cleanuplines(mvkobjs);
 	if (mground)
 		mground->cleanuplines(mvkobjs);
@@ -685,12 +588,7 @@ void vkrenderer::cleanup() {
 		mstatic0[i]->cleanupbuffers(mvkobjs);
 	}
 
-	if (!mnobjs.offlineplay) {
-		for (const auto& i : motherplayers) {
-			if (i.second->ready)
-				i.second->cleanupbuffers(mvkobjs);
-		}
-	}else if (mplayer)
+    if (mplayer)
 		mplayer->cleanupbuffers(mvkobjs);
 	if (mground)
 		mground->cleanupbuffers(mvkobjs);
@@ -727,13 +625,7 @@ void vkrenderer::cleanloading() {
 	//commandbuffer::cleanup(mvkobjs, mvkobjs.rdcommandpool[1], mvkobjs.rdcommandbuffer[1]);
 	//commandpool::cleanup(mvkobjs, mvkobjs.rdcommandpool[1]);
 }
-void vkrenderer::cleanmainmenu() {
-	mbackground->cleanupmodels(mvkobjs);
-	mbackground->cleanupbuffers(mvkobjs);
-	mbackground->cleanuplines(mvkobjs);
-	mmenubg->cleanupmodels(mvkobjs);
-	mmenubg->cleanuplines(mvkobjs);
-}
+
 void vkrenderer::setsize(unsigned int w, unsigned int h) {
 	mvkobjs.rdwidth = w;
 	mvkobjs.rdheight = h;
@@ -770,15 +662,8 @@ bool vkrenderer::uploadfordraw(){
 
 	manimupdatetimer.start();
 
-	
-	if (!mnobjs.offlineplay) {
-		for (const auto& i : motherplayers) {
-			if(i.second->ready)
-			i.second->uploadvboebo(mvkobjs, mvkobjs.rdcommandbuffer[0]);
-		}
-	} else {
-		mplayer->uploadvboebo(mvkobjs, mvkobjs.rdcommandbuffer[0]);
-	}
+
+    mplayer->uploadvboebo(mvkobjs, mvkobjs.rdcommandbuffer[0]);
 	for (size_t i{ 0 }; i < mpgltf.size(); i++) {
 		mpgltf[i]->uploadvboebo(mvkobjs, mvkobjs.rdcommandbuffer[0]);
 	}
@@ -954,29 +839,14 @@ void vkrenderer::handlekey(){
 	}
     if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_BACKSPACE]) {
 		mui.backspace();
-	}
-	//if (glfwGetKey(mvkobjs.rdwind, GLFW_KEY_ENTER) == GLFW_PRESS) {
-	//}
+    }
     if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_F4]) {
-        // if (mvkobjs.rdfullscreen)glfwSetWindowMonitor(mvkobjs.rdwind, nullptr, 100, 200, 900, 600, GLFW_DONT_CARE);
-        // else {
-        // 	glfwSetWindowMonitor(mvkobjs.rdwind, mvkobjs.rdmonitor, 0, 0, mvkobjs.rdmode->width, mvkobjs.rdmode->height, mvkobjs.rdmode->refreshRate);
-        // }
 		mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
 	}
 
 
     if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_ESCAPE]) {
-		if (gamestate::getstate() == gamestate0::menu) {
-			gamestate::setstate(gamestate0::normal);
-		}
-		if (gamestate::getpause()==pausestate::paused) {
-			gamestate::setpause(pausestate::resumed);
-		} else {
-			gamestate::setpause(pausestate::paused);
-            pausebgntime = static_cast<double>(SDL_GetTicks())/1000.0;
-		}
-		//glfwSetWindowShouldClose(mvkobjs.rdwind, true);
+        //pause
 	}
 
     if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_F]) {
@@ -1148,7 +1018,7 @@ void vkrenderer::handlemouse(double x, double y){
 	//}
 
 
-	if (gamestate::getstate() == gamestate0::normal) {
+    if (true) { //resumed
 		if (mlock) {
 
 			mpersviewmats.at(0) = mcam.getview(mvkobjs);
@@ -1180,7 +1050,7 @@ void vkrenderer::handlemouse(double x, double y){
 		}
 	}
 
-    if (gamestate::getstate() == gamestate0::menu && (SDL_GetMouseState(nullptr,nullptr) & SDL_BUTTON_MASK(SDL_BUTTON_LEFT))) {
+    if ( (SDL_GetMouseState(nullptr,nullptr) & SDL_BUTTON_MASK(SDL_BUTTON_LEFT))) {//paused
 		std::cout << x << " x " << std::endl;
 	}
 
@@ -1222,7 +1092,7 @@ void vkrenderer::movecam() {
 	}
 
     if (SDL_GetMouseState(nullptr,nullptr) & SDL_BUTTON_MASK(SDL_BUTTON_LEFT)) {
-		if (gamestate::getstate() == gamestate0::normal) {
+        if (true) { //resumed
             float x;
             float y;
             SDL_GetMouseState(&x, &y);
@@ -1269,9 +1139,7 @@ void vkrenderer::movecam() {
 void vkrenderer::checkforanimupdates() {
 
     while (!*mvkobjs.mshutdown) {
-		if (gamestate::getstate() == gamestate0::dead) break;
-
-		if (gamestate::getpause() == pausestate::resumed && gamestate::getstate() == gamestate0::normal) {
+        if (true) {//resumed
 
 			muidrawtimer.start();
 			//updatemtx.lock();
@@ -1301,50 +1169,21 @@ void vkrenderer::updateanims(){
 
 
     while (!*mvkobjs.mshutdown) {
-		if (gamestate::getstate() == gamestate0::dead) break;
 
-		if (gamestate::getpause() == pausestate::resumed && gamestate::getstate() == gamestate0::normal) {
+        if (true) { //resumed
 
 
 				manimupdatetimer.start();
 
-				//animmtx.lock();
 				mplayer->updateanims();
 				for (size_t i{ 0 }; i < mpgltf.size(); i++) {
 					mpgltf[i]->updateanims();
-				}
-				//updatemtx.lock();
-				//animmtx.unlock();
-				//updatemtx.unlock();
-				//std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
+                }
 				mvkobjs.updateanimtime = manimupdatetimer.stop();
 
 
 
 		}
-	}
-}
-
-void vkrenderer::animateshop(){
-		for (const auto& j : mstaticchoices[0]->getallinstances()) {
-			j->getinstancesettings().msworldrot.x += 0.4f;
-		}
-		for (const auto& j : mstaticchoices[1]->getallinstances()) {
-			j->getinstancesettings().msworldrot.y += 0.2f;
-		}
-}
-
-void vkrenderer::gametick() {
-    while (!*mvkobjs.mshutdown) {
-
-		if (gamestate::getstate() == gamestate0::dead) break;
-
-		if(gamestate::getpause() == pausestate::resumed){
-			if(gamestate::getstate()== gamestate0::normal)
-				gamestate::tick();
-		}
-
 	}
 }
 
@@ -1355,7 +1194,7 @@ bool vkrenderer::draw() {
 		uploadfordraw();
 	}
 
-	if (gamestate::getpause() == pausestate::resumed) {
+    if (true) { //resumed
 
 
 
@@ -1386,12 +1225,6 @@ bool vkrenderer::draw() {
 		//joint anims
 		if (dummytick / 2) {
 
-			///////////////////////////////////////////
-			if(!mnobjs.offlineplay)
-			for (const auto& i : motherplayers) {
-				if(i.second->ready)
-				i.second->updateanims();
-			}
 			mplayer->updateanims();
 			for (size_t i{ 0 }; i < mpgltf.size(); i++) {
 				mpgltf[i]->updateanims();
@@ -1408,14 +1241,6 @@ bool vkrenderer::draw() {
 
 		mplates->updatemats();
 
-
-
-
-		if (!mnobjs.offlineplay)
-			for (const auto& i : motherplayers) {
-				if (i.second->ready)
-				i.second->updatemats();
-			}
 
 
 
@@ -1437,11 +1262,7 @@ bool vkrenderer::draw() {
 				}
 			}
 
-			if (!mnobjs.offlineplay)
-				for (const auto& i : motherplayers) {
-					if (i.second->ready)
-					i.second->getinst(0)->checkforupdates();
-				}
+
 
 		}
 
@@ -1567,11 +1388,6 @@ bool vkrenderer::draw() {
 		mplayer->draw(mvkobjs);
 
 
-		if (!mnobjs.offlineplay)
-			for (const auto& i : motherplayers) {
-				if (i.second->ready)
-				i.second->draw(mvkobjs);
-			}
 
 
 
@@ -1592,7 +1408,7 @@ bool vkrenderer::draw() {
 		mplates->draw(mvkobjs, lifetime,decaytime, *playerhp);
 
 		modelsettings& settings = mplayer->getinst(0)->getinstancesettings();
-		mui.createdbgframe(mvkobjs, settings, mnobjs);
+        mui.createdbgframe(mvkobjs, settings);
 
 		mui.render(mvkobjs, mvkobjs.rdcommandbuffer[0]);
 
@@ -1606,11 +1422,7 @@ bool vkrenderer::draw() {
 
 		mplayer->uploadubossbo(mvkobjs, mpersviewmats);
 
-		if (!mnobjs.offlineplay)
-			for (const auto& i : motherplayers) {
-				if (i.second->ready)
-				i.second->uploadubossbo(mvkobjs, mpersviewmats);
-			}
+
 
 		for (size_t i{ 0 }; i < mpgltf.size(); i++) {
 			mpgltf[i]->uploadubossbo(mvkobjs, mpersviewmats);
@@ -1626,37 +1438,7 @@ bool vkrenderer::draw() {
 
 		mplates->uploadubossbo(mvkobjs, mpersviewmats, enemyhps);
 
-		mvkobjs.uploadubossbotime = muploadubossbotimer.stop();
-		//animmtx.unlock();
-		//updatemtx.unlock();
-
-
-
-
-
-
-
-		//VkRenderPassBeginInfo rpinfo2{};
-		//rpinfo2.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		//rpinfo2.renderPass = mvkobjs.rdrenderpass2;
-		//rpinfo2.renderArea.offset.x = 0;
-		//rpinfo2.renderArea.offset.y = 0;
-		//rpinfo2.renderArea.extent = mvkobjs.rdvkbswapchain.extent;
-		//rpinfo2.framebuffer = mvkobjs.rdframebuffers[imgidx];
-		//rpinfo2.clearValueCount = 2;
-		//rpinfo2.pClearValues = clearvals;
-
-		//vkCmdBeginRenderPass(mvkobjs.rdcommandbuffer[0], &rpinfo2, VK_SUBPASS_CONTENTS_INLINE);
-
-
-
-
-
-		//vkCmdEndRenderPass(mvkobjs.rdcommandbuffer[0]);
-
-
-
-
+        mvkobjs.uploadubossbotime = muploadubossbotimer.stop();
 
 
 
@@ -1719,7 +1501,7 @@ bool vkrenderer::draw() {
 
 		return true;
 		} 
-	else {
+    else { //paused
 
 
 		if (vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
@@ -1827,7 +1609,7 @@ bool vkrenderer::draw() {
 
 
 
-			if(mui.createpausebuttons(mvkobjs))gamestate::setpause(pausestate::resumed);
+            if(mui.createpausebuttons(mvkobjs))std::cout << "resume";
 			mui.render(mvkobjs, mvkobjs.rdcommandbuffer[0]);
 
 
@@ -1907,179 +1689,7 @@ bool vkrenderer::draw() {
 			return true;
 	}
 }
-bool vkrenderer::drawmainmenu() {
 
-	if (vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-		return false;
-	}
-	if (vkResetFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence) != VK_SUCCESS)return false;
-
-	uint32_t imgidx = 0;
-	VkResult res = vkAcquireNextImageKHR(mvkobjs.rdvkbdevice.device, mvkobjs.rdvkbswapchain.swapchain, UINT64_MAX, mvkobjs.rdpresentsemaphore, VK_NULL_HANDLE, &imgidx);
-	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
-		return recreateswapchain();
-	}
-	else {
-		if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) {
-			return false;
-		}
-	}
-
-
-
-    VkClearValue colorclearvalue;
-    colorclearvalue.color = { {0.0f,0.0f,0.0f,0.0f } };
-
-	VkClearValue depthvalue;
-	depthvalue.depthStencil.depth = 1.0f;
-
-	VkClearValue clearvals[] = { colorclearvalue,depthvalue };
-
-
-	VkRenderPassBeginInfo rpinfo{};
-	rpinfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	rpinfo.renderPass = mvkobjs.rdrenderpass;
-
-	rpinfo.renderArea.offset.x = 0;
-	rpinfo.renderArea.offset.y = 0;
-	rpinfo.renderArea.extent = mvkobjs.rdvkbswapchain.extent;
-	rpinfo.framebuffer = mvkobjs.rdframebuffers[imgidx];
-
-	rpinfo.clearValueCount = 2;
-	rpinfo.pClearValues = clearvals;
-
-	VkViewport viewport{};
-	viewport.x = 0.0f;
-	viewport.y = static_cast<float>(mvkobjs.rdvkbswapchain.extent.height);
-	viewport.width = static_cast<float>(mvkobjs.rdvkbswapchain.extent.width);
-	viewport.height = -static_cast<float>(mvkobjs.rdvkbswapchain.extent.height);
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor{};
-    scissor.offset = { 0,0 };
-	scissor.extent = mvkobjs.rdvkbswapchain.extent;
-
-
-
-	//mbackground->updateanims();
-
-
-	if (vkResetCommandBuffer(mvkobjs.rdcommandbuffer[0], 0) != VK_SUCCESS)return false;
-
-	VkCommandBufferBeginInfo cmdbgninfo{};
-	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	if (vkBeginCommandBuffer(mvkobjs.rdcommandbuffer[0], &cmdbgninfo) != VK_SUCCESS)return false;
-
-	mbackground->uploadvboebo(mvkobjs, mvkobjs.rdcommandbuffer[0]);
-	mmenubg->uploadvboebo(mvkobjs, mvkobjs.rdcommandbuffer[0]);
-
-	//staticsettings s{};
-	mbackground->getinst(0)->getinstancesettings().msworldrot.y += 0.022f;
-	//s.msworldpos.y = -20.0f;
-	//s.msworldrot.y -= 1.57f;
-	
-	//mbackground->getinst(0)->setinstancesettings(s);
-	mbackground->updatemats();
-
-
-
-
-    handlekeymenu();
-
-
-
-
-
-
-
-
-
-
-
-	vkCmdBeginRenderPass(mvkobjs.rdcommandbuffer[0], &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
-
-
-
-
-	vkCmdSetViewport(mvkobjs.rdcommandbuffer[0], 0, 1, &viewport);
-	vkCmdSetScissor(mvkobjs.rdcommandbuffer[0], 0, 1, &scissor);
-
-
-	mbackground->draw(mvkobjs);
-
-    lifetime = static_cast<double>(SDL_GetTicks())/1000.0;
-
-	mmenubg->draw(mvkobjs,lifetime,lifetime2,dummy);
-
-	rdscene = mui.createmainmenuframe(mvkobjs,mnobjs);
-	mui.render(mvkobjs, mvkobjs.rdcommandbuffer[0]);
-
-
-
-
-	vkCmdEndRenderPass(mvkobjs.rdcommandbuffer[0]);
-
-
-	mbackground->uploadubossbo(mvkobjs, mpersviewmats);
-
-	if (vkEndCommandBuffer(mvkobjs.rdcommandbuffer[0]) != VK_SUCCESS)return false;
-
-
-
-
-	VkSubmitInfo submitinfo{};
-	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	submitinfo.pWaitDstStageMask = &waitstage;
-
-	submitinfo.waitSemaphoreCount = 1;
-	submitinfo.pWaitSemaphores = &mvkobjs.rdpresentsemaphore;
-
-	submitinfo.signalSemaphoreCount = 1;
-	submitinfo.pSignalSemaphores = &mvkobjs.rdrendersemaphore;
-
-	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer[0];
-
-
-mvkobjs.mtx2->lock();
-	if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
-		return false;
-	}
-mvkobjs.mtx2->unlock();
-
-	VkPresentInfoKHR presentinfo{};
-	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentinfo.waitSemaphoreCount = 1;
-	presentinfo.pWaitSemaphores = &mvkobjs.rdrendersemaphore;
-
-	presentinfo.swapchainCount = 1;
-	presentinfo.pSwapchains = &mvkobjs.rdvkbswapchain.swapchain;
-
-	presentinfo.pImageIndices = &imgidx;
-
-mvkobjs.mtx2->lock();
-	res = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
-
-mvkobjs.mtx2->unlock();
-
-	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
-		return recreateswapchain();
-	}
-	else {
-		if (res != VK_SUCCESS) {
-			return false;
-		}
-	}
-
-
-
-	return rdscene;
-}
 bool vkrenderer::drawloading() {
 
 	if (vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
@@ -2358,195 +1968,5 @@ mvkobjs.mtx2->unlock();
 	}
 	return true;
 }
-
-
-void vkrenderer::drawshop() {
-
-
-	animateshop();
-
-	for (size_t i{ 0 }; i < mchoices.size(); i++) {
-		mchoices[i]->updatemats();
-	}
-	for (size_t i{ 0 }; i < mstaticchoices.size(); i++) {
-		mstaticchoices[i]->updatemats();
-	}
-
-
-
-	vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX);
-	vkResetFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence);
-
-	uint32_t imgidx = 0;
-	VkResult res = vkAcquireNextImageKHR(mvkobjs.rdvkbdevice.device, mvkobjs.rdvkbswapchain.swapchain, UINT64_MAX, mvkobjs.rdpresentsemaphore, VK_NULL_HANDLE, &imgidx);
-	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
-		recreateswapchain();
-	}
-
-
-
-    VkClearValue colorclearvalue;
-    colorclearvalue.color = { {0.0f,0.0f,0.0f,0.0f } };
-
-	VkClearValue depthvalue;
-	depthvalue.depthStencil.depth = 1.0f;
-
-	VkClearValue clearvals[] = { colorclearvalue,depthvalue };
-
-
-	VkRenderPassBeginInfo rpinfo{};
-	rpinfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	rpinfo.renderPass = mvkobjs.rdrenderpass;
-
-	rpinfo.renderArea.offset.x = 0;
-	rpinfo.renderArea.offset.y = 0;
-	rpinfo.renderArea.extent = mvkobjs.rdvkbswapchain.extent;
-	rpinfo.framebuffer = mvkobjs.rdframebuffers[imgidx];
-
-	rpinfo.clearValueCount = 2;
-	rpinfo.pClearValues = clearvals;
-
-	VkViewport viewport{};
-	viewport.x = 0.0f;
-	viewport.y = static_cast<float>(mvkobjs.rdvkbswapchain.extent.height);
-	viewport.width = static_cast<float>(mvkobjs.rdvkbswapchain.extent.width);
-	viewport.height = -static_cast<float>(mvkobjs.rdvkbswapchain.extent.height);
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor{};
-	scissor.offset = { 0,0 };
-	scissor.extent = mvkobjs.rdvkbswapchain.extent;
-
-
-
-
-
-
-
-
-
-
-	vkResetCommandBuffer(mvkobjs.rdcommandbuffer[0], 0);
-
-	VkCommandBufferBeginInfo cmdbgninfo{};
-	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	vkBeginCommandBuffer(mvkobjs.rdcommandbuffer[0], &cmdbgninfo);
-
-
-
-
-
-
-
-    handlekeymenu();
-
-
-
-
-
-
-	vkCmdBeginRenderPass(mvkobjs.rdcommandbuffer[0], &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
-
-
-
-	vkCmdSetViewport(mvkobjs.rdcommandbuffer[0], 0, 1, &viewport);
-	vkCmdSetScissor(mvkobjs.rdcommandbuffer[0], 0, 1, &scissor);
-
-	mground->draw(mvkobjs);
-
-
-
-
-
-    lifetime = static_cast<double>(SDL_GetTicks())/1000.0;
-    lifetime2 = static_cast<double>(SDL_GetTicks())/1000.0;
-
-
-	for (size_t i{ 0 }; i < mchoices.size(); i++) {
-		mchoices[i]->draw(mvkobjs, lifetime, lifetime2, shopitemcount);
-	}
-
-	for (size_t i{ 0 }; i < mstaticchoices.size(); i++) {
-		mstaticchoices[i]->draw(mvkobjs);//TODO
-	}
-
-	for (size_t i{ 0 }; i < mchoices.size(); i++) {
-		for (const auto& j : mchoices[i]->getallinstances()) {
-			j->checkforupdates();
-		}
-	}
-	for (size_t i{ 0 }; i < mstaticchoices.size(); i++) {
-		for (const auto& j : mstaticchoices[i]->getallinstances()) {
-			j->checkforupdates();
-		}
-	}
-
-
-
-
-
-	vkCmdEndRenderPass(mvkobjs.rdcommandbuffer[0]);
-
-	for (size_t i{ 0 }; i < mchoices.size(); i++) {
-		mchoices[i]->uploadubossbo(mvkobjs,mpersviewmats,enemyhps);
-	}
-	for (size_t i{ 0 }; i < mstaticchoices.size(); i++) {
-		mstaticchoices[i]->uploadubossbo(mvkobjs, mpersviewmats);
-	}
-
-
-	mground->uploadubossbo(mvkobjs, mpersviewmats);
-
-
-
-
-	vkEndCommandBuffer(mvkobjs.rdcommandbuffer[0]);
-
-
-
-	VkSubmitInfo submitinfo{};
-	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	submitinfo.pWaitDstStageMask = &waitstage;
-
-	submitinfo.waitSemaphoreCount = 1;
-	submitinfo.pWaitSemaphores = &mvkobjs.rdpresentsemaphore;
-
-	submitinfo.signalSemaphoreCount = 1;
-	submitinfo.pSignalSemaphores = &mvkobjs.rdrendersemaphore;
-
-	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer.at(0);
-
-
-	mvkobjs.mtx2->lock();
-	vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence);
-	mvkobjs.mtx2->unlock();
-
-	VkPresentInfoKHR presentinfo{};
-	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentinfo.waitSemaphoreCount = 1;
-	presentinfo.pWaitSemaphores = &mvkobjs.rdrendersemaphore;
-
-	presentinfo.swapchainCount = 1;
-	presentinfo.pSwapchains = &mvkobjs.rdvkbswapchain.swapchain;
-
-	presentinfo.pImageIndices = &imgidx;
-
-
-	mvkobjs.mtx2->lock();
-	res = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
-
-	mvkobjs.mtx2->unlock();
-
-	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
-		recreateswapchain();
-	}
-}
-
 
 

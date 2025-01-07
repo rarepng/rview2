@@ -7,17 +7,13 @@
 #include <iostream>
 #include "vkwind.hpp"
 
-//if building for windows ( msvc )
-//#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
-
 
 
 
 int main() {
 
 	std::unique_ptr<vkwind> w = std::make_unique<vkwind>();
-	if (w->init("Random Arena Wars")) {
-		w->framemainmenuupdate();
+    if (w->init("RViewer")) {
 		w->frameupdate();
 		w->cleanup();
 	}

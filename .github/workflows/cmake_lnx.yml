@@ -51,7 +51,7 @@ jobs:
         echo LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
         echo VK_ICD_FILENAMES=$VULKAN_SDK/etc/vulkan/icd.d >> $GITHUB_ENV
         echo VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d >> $GITHUB_ENV
-        echo LD_LIBRARY_PATH=/home/runner/work/raw/raw/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
+        echo LD_LIBRARY_PATH=/home/runner/work/rview/rview/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
         sudo ldconfig
     - name: vulkan_ci
       uses: NcStudios/VulkanCI@v1.1
@@ -62,8 +62,8 @@ jobs:
         $VULKAN_SDK/bin/glslc --version
     - name: downloading resources
       run: |
-        mkdir /home/runner/work/raw/raw/resources
-        cd /home/runner/work/raw/raw/resources
+        mkdir /home/runner/work/rview/rview/resources
+        cd /home/runner/work/rview/rview/resources
         curl -L "https://drive.google.com/uc?export=download&id=1ZwYuB17yq-yRpswRISuvSG-_R7j5GKM9" -o x.7z
         7z x x.7z -aoa
         rm x.7z
@@ -107,4 +107,4 @@ jobs:
     - name: swiftshader test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: |
-        ./raw &
+        ./rview &

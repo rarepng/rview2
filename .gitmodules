@@ -5,16 +5,6 @@
 	path = sub/glm
 	url = https://github.com/rarepng/glm
 	branch = master
-[submodule "glfw"]
-	path = sub/glfw
-	url = https://github.com/glfw/glfw
-[submodule "gns"]
-	path = sub/gns
-	url = https://github.com/rarepng/GameNetworkingSockets
-[submodule "protobuf"]
-	path = sub/protobuf
-	url = https://github.com/rarepng/protobuf
-	branch = 29.x
 [submodule "sub/simdjson"]
 	path = sub/simdjson
 	url = https://github.com/simdjson/simdjson
@@ -30,10 +20,6 @@
 [submodule "sub/imgui"]
 	path = sub/imgui
 	url = https://github.com/ocornut/imgui
-[submodule "sub/absl"]
-	path = sub/absl
-	url = https://github.com/abseil/abseil-cpp
-	branch = lts_2024_07_22
 [submodule "sub/sdl"]
 	path = sub/sdl
 	url = https://github.com/libsdl-org/SDL

@@ -21,8 +21,7 @@ enum struct gstate{
 class ui {
 public:
 	bool init(vkobjs& mvkobjs);
-	void createdbgframe(vkobjs& mvkobjs, modelsettings& settings, netobjs& nobjs);
-	bool createmainmenuframe(vkobjs& mvkobjs, netobjs& nobjs);
+    void createdbgframe(vkobjs& mvkobjs, modelsettings& settings);
 	bool createloadingscreen(vkobjs& mvkobjs);
 	bool createpausebuttons(vkobjs& mvkobjs);
 	void addchat(std::string s);
