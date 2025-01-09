@@ -15,7 +15,6 @@ bool vkwind::init(std::string title) {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
 		return false;
     }
-
     static const SDL_DisplayMode* mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay()); // wrong time
     mwind = SDL_CreateWindow(title.c_str(),900, 600,SDL_WINDOW_BORDERLESS | SDL_WINDOW_VULKAN | SDL_WINDOW_TRANSPARENT | SDL_WINDOW_RESIZABLE);
 
@@ -50,6 +49,7 @@ bool vkwind::init(std::string title) {
 
 void vkwind::frameupdate() {
     if (!shutdown) {
+        mvkrenderer->initscene();
         mvkrenderer->quicksetup();
         mvkrenderer->uploadfordraw();
         while (!shutdown) {

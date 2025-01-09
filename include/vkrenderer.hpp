@@ -40,8 +40,7 @@ public:
     vkrenderer(SDL_Window* wind,const SDL_DisplayMode* mode,bool* mshutdown,SDL_Event* e);
 	bool init();
 	void setsize(unsigned int w, unsigned int h);
-	bool uploadfordraw();
-	void uploadforshop();
+    bool uploadfordraw();
     bool draw();
     bool drawpause();
 	bool drawloading();
@@ -50,16 +49,19 @@ public:
 	void toggleshader();
 	void cleanup();
     void handlekey();
-    void handlekeymenu();
     void handleclick();
 	void handlemouse(double x, double y);
 	bool initscene();
     void initshop();
 	ui* getuihandle();
 	void startmoving();
-	void moveplayer();
-	void moveenemies();
+    void moveplayer();
 	bool checkphp();
+
+
+    void sdlevent(SDL_Event* e);
+
+
 
 	bool intersercthitbox(glm::vec3 x,std::pair<glm::vec3,unsigned int> y);
 
@@ -100,8 +102,6 @@ private:
 	std::vector<double> enemyhps{};
 
 
-	//gamestate mgamestate{};
-
 
 	std::shared_mutex pausedmtx{};
 
@@ -134,25 +134,8 @@ private:
 
 	vkcam mcam{};
 
-	std::shared_ptr<playoutmenubg> mmenubg;
-	std::shared_ptr<playoutmenubg> lifebar;
-
-	std::shared_ptr<playoutback> mbackground;
-
     std::shared_ptr<playoutplayer> mplayer;
-	std::shared_ptr<playoutground> mground;
-	std::shared_ptr<playoutcircle> mcircle;
-	std::shared_ptr<playoutcircle> mplates;
 
-
-	std::vector<std::shared_ptr<playoutcircle>> mchoices;
-	std::vector<std::shared_ptr<playoutstatic>> mstaticchoices;
-
-
-
-	std::vector<std::shared_ptr<playoutmodel>> mpgltf;
-
-	std::vector<std::shared_ptr<playoutstatic>> mstatic0;
 
 	bool mmodeluploadrequired{ true };
 
@@ -190,45 +173,13 @@ private:
 	int mcamupdown{ 0 };
 	
 
-	double shopitemcount{ 2.0 };
 
 
-	unsigned int dndcount{ 1 };
-	unsigned int playercount{ 1 };
-	unsigned int otherinstancecounts{ 1 };
-	unsigned int backgobjs{ 1 };
-	unsigned int groundobjs{ 200000 };
-	const std::vector<unsigned int> shopcounts{ 1,1 };
-	const std::vector<unsigned int> animcounts{ 22,4 };
-	const unsigned int totalanimcounts{ std::reduce(animcounts.begin(),animcounts.end())};
-	const std::vector<unsigned int> staticcounts{ };
-	const std::string dndname{ "resources/dnd.png" };
-	const std::string playerfname{ "resources/p0.glb" };
-	const std::vector<std::string> otherfnames{ "resources/t0.glb" };
-	const std::string backfname{ "resources/s3.glb" };
-	const std::string groundfname{ "resources/s4.glb" };
-	const std::vector<std::string> animfname{ "resources/e0.glb","resources/e1.glb" };
-	const std::vector<std::string> staticfname{ };
-	const std::vector<std::string> staticshopfname{ "resources/s2.glb","resources/s1.glb" };
-	const std::vector<std::string> dndshaders{ "shaders/dnd.vert.spv", "shaders/dnd.frag.spv" };
-	const std::vector<std::string> plateshaders{ "shaders/plate.vert.spv", "shaders/plate.frag.spv" };
-	const std::vector<std::string> menubgshaders{ "shaders/menufog.vert.spv", "shaders/menufog.frag.spv" };
-	const std::vector<std::string> lifebarshaders{ "shaders/heart.vert.spv", "shaders/heart.frag.spv" };
-	const std::vector<std::string> playershaders{ "shaders/player.vert.spv", "shaders/player.frag.spv" };
-	const std::vector<std::string> othershaders{ "shaders/player_nocape.vert.spv", "shaders/player_nocape.frag.spv" };
-	const std::vector<std::string> backshaders{ "shaders/static.vert.spv", "shaders/static.frag.spv" };
-	const std::vector<std::string> animshaders{ "shaders/gltf_gpu.vert.spv", "shaders/gltf_gpu.frag.spv" };
-	const std::vector<std::string> staticshaders{ "shaders/static.vert.spv", "shaders/static.frag.spv" };
-	const std::vector<std::string> groundshaders{ "shaders/ground.vert.spv", "shaders/ground.frag.spv" };
-	const std::vector<std::string> shopbgshaders{ "shaders/shopbg.vert.spv", "shaders/shopbg.frag.spv" };
-	const std::vector<std::string> staticshopshaders{ "shaders/staticshop.vert.spv", "shaders/staticshop.frag.spv" };
+    unsigned int playercount{ 1 };
+    const std::string playerfname{ "resources/p0.glb" };
+    const std::vector<std::string> playershaders{ "shaders/player.vert.spv", "shaders/player.frag.spv" };
 
 
-	const std::string circletexture{ "resources/dnd.png" };
-	const std::string hptexture{ "resources/compliment.png" };
-
-
-	const std::vector<std::string> shopbacktextures{ "resources/stars.png" };
 
 	ui mui{};
 	timer mframetimer{};
@@ -250,16 +201,8 @@ private:
 	bool switchshader{ false };
 
 
-	void wavesetup();
 
-
-	bool setuplifebar();
-	bool setuplifebar2();
-	bool loadbackground();
-	bool setupground();
-	bool setupground2();
-	bool setupplayer();
-	bool setupplayer2();
+    bool setupplayer();
 	bool setupmodels();
 	bool setupmodels2();
 	bool deviceinit();
