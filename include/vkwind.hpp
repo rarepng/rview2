@@ -12,7 +12,7 @@ public:
 
 	bool upreq{ true };
 
-	bool init(std::string title);
+    bool init(std::string title);
 	void framemainmenuupdate();
 	void frameupdate();
 	void cleanup();

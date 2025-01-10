@@ -1,5 +1,3 @@
-
-#define _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR //cause of msvc
 #include <string>
 #include <memory>
 #include <vulkan/vulkan.h>

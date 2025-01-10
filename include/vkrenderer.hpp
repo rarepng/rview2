@@ -20,13 +20,7 @@
 #include "vkcam.hpp"
 
 
-#include "playoutback.hpp"
 #include "playoutplayer.hpp"
-#include "playoutmodel.hpp"
-#include "playoutstatic.hpp"
-#include "playoutmenubg.hpp"
-#include "playoutground.hpp"
-#include "playoutcircle.hpp"
 
 
 #include "vkobjs.hpp"
@@ -47,8 +41,7 @@ public:
 	bool drawblank();
     void cleanloading();
 	void toggleshader();
-	void cleanup();
-    void handlekey();
+    void cleanup();
     void handleclick();
 	void handlemouse(double x, double y);
 	bool initscene();
@@ -61,14 +54,6 @@ public:
 
     void sdlevent(SDL_Event* e);
 
-
-
-	bool intersercthitbox(glm::vec3 x,std::pair<glm::vec3,unsigned int> y);
-
-	void dmgenemies();
-
-	void checkenemies();
-
 	glm::vec3 raymarch();
 
 
@@ -76,13 +61,7 @@ public:
 
 	void updateanims();
 
-
-	void animateshop();
-
-
-	void gametick();
-
-	bool checkcooldown(unsigned int x);
+    void gametick();
 
 
     bool quicksetup();
@@ -111,7 +90,6 @@ private:
 
     vkobjs mvkobjs{};
 
-	double* playerhp{ nullptr };
 
 	double dummy{ 0.0 };
 
@@ -119,7 +97,6 @@ private:
 
 	glm::vec2 movediff{};
 
-	std::vector<std::shared_ptr<spell>> mspells{ std::make_shared<spell>(0,false,true,false,620,240,0,0,500,glm::vec3{0.0f,0.0f,0.0f},0.0022),std::make_shared<spell>(1,false,true,false,290,48,0,0,0,glm::vec3{0.0f,0.0f,0.0f},0.0) };
 
 	double decaystart{};
 	bool inmenu{ true };
@@ -134,7 +111,7 @@ private:
 
 	vkcam mcam{};
 
-    std::shared_ptr<playoutplayer> mplayer;
+    std::vector<std::shared_ptr<playoutplayer>> mplayer;
 
 
 	bool mmodeluploadrequired{ true };
@@ -142,11 +119,7 @@ private:
 	bool playermoving{ false };
 
 	glm::vec3 playermoveto{ 0.0f };
-	glm::vec3 playerlookto{ 0.0f };
-	glm::vec3* playerlocation=nullptr;
-
-	glm::vec3 decaypos{ 0.0f };
-	//glm::vec3 deathanddecaypos{ 0.0f };
+    glm::vec3 playerlookto{ 0.0f };
 
 	float tmpx{}, tmpy{};
 
@@ -159,8 +132,7 @@ private:
 	double lifetime{ 0.0 };
 	double lifetime2{ 0.0 };
 
-	double decaytime{ 0.0 };
-	double deathanddecaystart{ 0.0 };
+    double decaytime{ 0.0 };
 
 
 	bool mlock{};
@@ -175,9 +147,9 @@ private:
 
 
 
-    unsigned int playercount{ 1 };
-    const std::string playerfname{ "resources/p0.glb" };
-    const std::vector<std::string> playershaders{ "shaders/player.vert.spv", "shaders/player.frag.spv" };
+    std::vector<unsigned int> playercount{ 1 };
+    const std::vector<std::string> playerfname{ {"resources/p0.glb"} };
+    const std::vector<std::vector<std::string>> playershaders{ {"shaders/player.vert.spv", "shaders/player.frag.spv"} };
 
 
 

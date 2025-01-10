@@ -34,10 +34,8 @@ float map2(glm::vec3 x) {
 	return std::max(x.y, 0.0f);
 }
 vkrenderer::vkrenderer(SDL_Window* wind,const SDL_DisplayMode* mode,bool* mshutdown,SDL_Event* e) {
-	mvkobjs.rdwind = wind;
-    //mvkobjs.rdmonitor = mont;
-	mvkobjs.rdmode = mode;
-	mvkobjs.decaying = &mspells[1]->active;
+    mvkobjs.rdwind = wind;
+    mvkobjs.rdmode = mode;
     mvkobjs.e=e;
     mvkobjs.mshutdown = mshutdown;
 
@@ -96,11 +94,20 @@ bool vkrenderer::init() {
 	return true;
 }
 bool vkrenderer::initscene() {
-    mplayer = std::make_shared<playoutplayer>();
 
-    if (!mplayer->setup(mvkobjs, playerfname, playercount))return false;
+    mplayer.reserve(playerfname.size());
+    mplayer.resize(playerfname.size());
 
-	if (!mplayer->setup2(mvkobjs, playershaders[0], playershaders[1]))return false;
+    unsigned int idx{0};
+
+    for(auto& i : mplayer){
+        i=std::make_shared<playoutplayer>();
+        if (!i->setup(mvkobjs, playerfname[idx], playercount[idx]))return false;
+        if (!i->setup2(mvkobjs, playershaders[idx][0], playershaders[idx][1]))return false;
+        idx++;
+    }
+
+
 
 	return true;
 }
@@ -111,15 +118,7 @@ vkobjs& vkrenderer::getvkobjs() {
 	return mvkobjs;
 }
 bool vkrenderer::quicksetup(){
-	playerlocation = mplayer->getinst(0)->getinstpos();
 	inmenu = false;
-
-
-    modelsettings& s = mplayer->getinst(0)->getinstancesettings();
-
-    playerhp = &s.hp;
-
-    mui.playerwave.push_back(1);
 
 	return true;
 }
@@ -401,8 +400,8 @@ void vkrenderer::cleanup() {
 	commandbuffer::cleanup(mvkobjs, mvkobjs.rdcommandpool[1], mvkobjs.rdcommandbuffer[1]);
 	commandpool::cleanup(mvkobjs, mvkobjs.rdcommandpool[1]);
 
-    if (mplayer)
-        mplayer->cleanupmodels(mvkobjs);
+    for(const auto& i:mplayer)
+        i->cleanupmodels(mvkobjs);
 	mui.cleanup(mvkobjs);
 
 
@@ -416,13 +415,13 @@ void vkrenderer::cleanup() {
 	framebuffer::cleanup(mvkobjs);
 
 
-    if (mplayer)
-        mplayer->cleanuplines(mvkobjs);
+    for(const auto& i:mplayer)
+        i->cleanuplines(mvkobjs);
 
 
     renderpass::cleanup(mvkobjs);
-    if (mplayer)
-        mplayer->cleanupbuffers(mvkobjs);
+    for(const auto& i:mplayer)
+        i->cleanupbuffers(mvkobjs);
 
 	vkDestroyImageView(mvkobjs.rdvkbdevice.device, mvkobjs.rddepthimageview, nullptr);
 	vmaDestroyImage(mvkobjs.rdallocator, mvkobjs.rddepthimage, mvkobjs.rddepthimagealloc);
@@ -474,8 +473,8 @@ bool vkrenderer::uploadfordraw(){
 
 	manimupdatetimer.start();
 
-
-    mplayer->uploadvboebo(mvkobjs, mvkobjs.rdcommandbuffer[0]);
+    for(const auto& i:mplayer)
+    i->uploadvboebo(mvkobjs, mvkobjs.rdcommandbuffer[0]);
 
 	mvkobjs.uploadubossbotime = manimupdatetimer.stop();
 	if (vkEndCommandBuffer(mvkobjs.rdcommandbuffer[0]) != VK_SUCCESS)return false;
@@ -529,27 +528,63 @@ bool vkrenderer::uploadfordraw(){
 	return true;
 }
 
-void vkrenderer::handlekey(){
-    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_F4]) {
-		mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
-        SDL_SetWindowFullscreen(mvkobjs.rdwind,mvkobjs.rdfullscreen);
-    }
-    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_ESCAPE]) {
-        *mvkobjs.mshutdown = true;
-    }
-}
 void vkrenderer::sdlevent(SDL_Event* e){
-    if(e->type==SDL_EVENT_KEY_UP)
-        if(e->key.key==SDLK_F4){
+    switch (e->type) {
+    case SDL_EVENT_KEY_UP:
+        switch(e->key.key){
+        case SDLK_F4:
             mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
             SDL_SetWindowFullscreen(mvkobjs.rdwind,mvkobjs.rdfullscreen);
+            break;
+        case SDLK_ESCAPE:
+            *mvkobjs.mshutdown = true;
+            break;
+
+        default:
+            break;
         }
-    if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_ESCAPE]) {
-        *mvkobjs.mshutdown = true;
+        break;
+    case SDL_EVENT_DROP_BEGIN:
+        SDL_RaiseWindow(mvkobjs.rdwind);
+        std::cout << "x : " << e->drop.x << std::endl;
+        std::cout << "y : " << e->drop.y << std::endl;
+        if(e->drop.data)
+        std::cout << e->drop.data << std::endl;
+        SDL_free(&e->drop.data);
+        if(e->drop.source)
+        std::cout << e->drop.source << std::endl;
+        break;
+    case SDL_EVENT_DROP_POSITION:
+        std::cout << "x : " << e->drop.x << std::endl;
+        std::cout << "y : " << e->drop.y << std::endl;
+        if(e->drop.data)
+            std::cout << e->drop.data << std::endl;
+        if(e->drop.source)
+            std::cout << e->drop.source << std::endl;
+        break;
+    case SDL_EVENT_DROP_COMPLETE:
+        std::cout << "x : " << e->drop.x << std::endl;
+        std::cout << "y : " << e->drop.y << std::endl;
+        if(e->drop.data)
+            std::cout << e->drop.data << std::endl;
+        if(e->drop.source)
+            std::cout << e->drop.source << std::endl;
+        break;
+    case SDL_EVENT_DROP_FILE:
+        std::cout << "x : " << e->drop.x << std::endl;
+        std::cout << "y : " << e->drop.y << std::endl;
+        if(e->drop.data)
+            std::cout << e->drop.data << std::endl;
+        if(e->drop.source)
+            std::cout << e->drop.source << std::endl;
+        break;
+    default:
+        break;
     }
 }
 void vkrenderer::moveplayer(){
-    modelsettings& s = mplayer->getinst(0)->getinstancesettings();
+    //currently selected
+    modelsettings& s = mplayer[0]->getinst(0)->getinstancesettings();
     s.msworldpos = playermoveto;
 }
 void vkrenderer::handleclick()
@@ -682,7 +717,8 @@ void vkrenderer::movecam() {
 			}
 
 			if (d < 10000.0f) {
-				modelsettings& s = mplayer->getinst(0)->getinstancesettings();
+                //currently selected
+                modelsettings& s = mplayer[0]->getinst(0)->getinstancesettings();
 
 				playerlookto = glm::normalize(mvkobjs.rdcamwpos + cfor * d - s.msworldpos);
 				movediff = glm::vec2(glm::abs(glm::vec3((mvkobjs.rdcamwpos + cfor * d) - s.msworldpos)).x, glm::abs(glm::vec3((mvkobjs.rdcamwpos + cfor * d) - s.msworldpos)).z);
@@ -692,8 +728,6 @@ void vkrenderer::movecam() {
 					mvkobjs.raymarchpos = mvkobjs.rdcamwpos + cfor * d;
 
 					s.msworldrot.y = glm::degrees(glm::atan(playerlookto.x, playerlookto.z));
-
-					s.msanimclip = 3;
 
 					playermoving = true;
 				}
@@ -712,8 +746,8 @@ void vkrenderer::checkforanimupdates() {
 
         muidrawtimer.start();
         //updatemtx.lock();
-
-        mplayer->getinst(0)->checkforupdates();
+        for(const auto& i:mplayer)
+        i->getinst(0)->checkforupdates();
         mvkobjs.rduidrawtime = muidrawtimer.stop();
 	}
 
@@ -726,8 +760,8 @@ void vkrenderer::updateanims(){
 
 
         manimupdatetimer.start();
-
-        mplayer->updateanims();
+        for(const auto& i:mplayer)
+        i->updateanims();
         mvkobjs.updateanimtime = manimupdatetimer.stop();
 
 	}
@@ -751,8 +785,8 @@ bool vkrenderer::draw() {
 
 		//joint anims
 		if (dummytick / 2) {
-
-            mplayer->updateanims();
+            for(const auto& i:mplayer)
+            i->updateanims();
 			dummytick = 0;
 		} 
 
@@ -760,13 +794,15 @@ bool vkrenderer::draw() {
 
 
 		//joint mats
-        mplayer->updatemats();
+        for(const auto& i:mplayer)
+        i->updatemats();
 
 		mvkobjs.updatemattime = mmatupdatetimer.stop();
 		
 		//joint check
         if(dummytick%2){
-            mplayer->getinst(0)->checkforupdates();
+            for(const auto& i:mplayer)
+            i->getinst(0)->checkforupdates();
 
 
 
@@ -867,25 +903,18 @@ bool vkrenderer::draw() {
 
 		vkCmdSetViewport(mvkobjs.rdcommandbuffer[0], 0, 1, &viewport);
 		vkCmdSetScissor(mvkobjs.rdcommandbuffer[0], 0, 1, &scissor);
-
-		mplayer->draw(mvkobjs);
-
-
+        for(const auto& i:mplayer)
+        i->draw(mvkobjs);
 
 
 
-		if (mspells[1]->active) {
-            decaytime = static_cast<double>(SDL_GetTicks())/1000.0 - decaystart-pausetime;
-			mplayer->drawdecays(mvkobjs, decaytime, &mspells[1]->active);
-		}
-		if (!mspells[1]->active)pausetime = 0.0;
 
 
         lifetime = static_cast<double>(SDL_GetTicks())/1000.0;
         lifetime2 = static_cast<double>(SDL_GetTicks())/1000.0;
 
-
-		modelsettings& settings = mplayer->getinst(0)->getinstancesettings();
+        //currently selected
+        modelsettings& settings = mplayer[0]->getinst(0)->getinstancesettings();
         mui.createdbgframe(mvkobjs, settings);
 
 		mui.render(mvkobjs, mvkobjs.rdcommandbuffer[0]);
@@ -898,7 +927,8 @@ bool vkrenderer::draw() {
 
 		muploadubossbotimer.start();
 
-		mplayer->uploadubossbo(mvkobjs, mpersviewmats);
+        for(const auto& i:mplayer)
+        i->uploadubossbo(mvkobjs, mpersviewmats);
 
 
 
@@ -1072,18 +1102,11 @@ bool vkrenderer::drawloading() {
 	submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer[1];
 
 
-	//if (vkResetFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence) != VK_SUCCESS) {
-	//	return false;
-	//}
 mvkobjs.mtx2->lock();
 	if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
 		return false;
 	}
 mvkobjs.mtx2->unlock();
-
-	//if (vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-	//	return false;
-	//}
 
 	VkPresentInfoKHR presentinfo{};
 	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1106,9 +1129,6 @@ mvkobjs.mtx2->unlock();
 			return false;
 		}
 	}
-
-
-
 	return rdscene;
 }
 
@@ -1213,11 +1233,11 @@ bool vkrenderer::drawblank(){
 	submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer[0];
 
 
-mvkobjs.mtx2->lock();
+    mvkobjs.mtx2->lock();
 	if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
 		return false;
 	}
-mvkobjs.mtx2->unlock();
+    mvkobjs.mtx2->unlock();
 
 	VkPresentInfoKHR presentinfo{};
 	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1229,10 +1249,10 @@ mvkobjs.mtx2->unlock();
 
 	presentinfo.pImageIndices = &imgidx;
 
-mvkobjs.mtx2->lock();
+    mvkobjs.mtx2->lock();
 	res = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
 
-mvkobjs.mtx2->unlock();
+    mvkobjs.mtx2->unlock();
 
 	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
 		return recreateswapchain();
