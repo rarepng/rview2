@@ -20,7 +20,7 @@
 #include "commandbuffer.hpp"
 #include "vksyncobjects.hpp"
 
-
+#include <future>
 
 
 #include "vkrenderer.hpp"
@@ -449,83 +449,163 @@ void vkrenderer::setsize(unsigned int w, unsigned int h) {
 
 bool vkrenderer::uploadfordraw(){
 
-	//mvkobjs.uploadmtx->lock();
+    //mvkobjs.uploadmtx->lock();
 
 
-	if (vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-		return false;
-	}
-	if (vkResetFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence) != VK_SUCCESS)return false;
+    if (vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
+        return false;
+    }
+    if (vkResetFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence) != VK_SUCCESS)return false;
 
 
-	uint32_t imgidx = 0;
-	VkResult res = vkAcquireNextImageKHR(mvkobjs.rdvkbdevice.device, mvkobjs.rdvkbswapchain.swapchain, UINT64_MAX, mvkobjs.rdpresentsemaphore, VK_NULL_HANDLE, &imgidx);
+    uint32_t imgidx = 0;
+    VkResult res = vkAcquireNextImageKHR(mvkobjs.rdvkbdevice.device, mvkobjs.rdvkbswapchain.swapchain, UINT64_MAX, mvkobjs.rdpresentsemaphore, VK_NULL_HANDLE, &imgidx);
 
 
-	if (vkResetCommandBuffer(mvkobjs.rdcommandbuffer[0], 0) != VK_SUCCESS)return false;
+    if (vkResetCommandBuffer(mvkobjs.rdcommandbuffer[0], 0) != VK_SUCCESS)return false;
 
-	VkCommandBufferBeginInfo cmdbgninfo{};
-	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    VkCommandBufferBeginInfo cmdbgninfo{};
+    cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	if (vkBeginCommandBuffer(mvkobjs.rdcommandbuffer[0], &cmdbgninfo) != VK_SUCCESS)return false;
+    if (vkBeginCommandBuffer(mvkobjs.rdcommandbuffer[0], &cmdbgninfo) != VK_SUCCESS)return false;
 
 
-	manimupdatetimer.start();
+    manimupdatetimer.start();
 
     for(const auto& i:mplayer)
-    i->uploadvboebo(mvkobjs, mvkobjs.rdcommandbuffer[0]);
+        i->uploadvboebo(mvkobjs, mvkobjs.rdcommandbuffer[0]);
 
-	mvkobjs.uploadubossbotime = manimupdatetimer.stop();
-	if (vkEndCommandBuffer(mvkobjs.rdcommandbuffer[0]) != VK_SUCCESS)return false;
-
-
-	VkSubmitInfo submitinfo{};
-	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	submitinfo.pWaitDstStageMask = &waitstage;
-
-	submitinfo.waitSemaphoreCount = 1;
-	submitinfo.pWaitSemaphores = &mvkobjs.rdpresentsemaphore;
-
-	submitinfo.signalSemaphoreCount = 1;
-	submitinfo.pSignalSemaphores = &mvkobjs.rdrendersemaphore;
-
-	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer.at(0);
-
-	VkSemaphoreWaitInfo swinfo{};
-	swinfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
-	swinfo.pSemaphores = &mvkobjs.rdpresentsemaphore;
-	swinfo.semaphoreCount = 1;
+    mvkobjs.uploadubossbotime = manimupdatetimer.stop();
+    if (vkEndCommandBuffer(mvkobjs.rdcommandbuffer[0]) != VK_SUCCESS)return false;
 
 
-	mvkobjs.mtx2->lock();
-	if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
-		return false;
-	}
-	mvkobjs.mtx2->unlock();
+    VkSubmitInfo submitinfo{};
+    submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    submitinfo.pWaitDstStageMask = &waitstage;
+
+    submitinfo.waitSemaphoreCount = 1;
+    submitinfo.pWaitSemaphores = &mvkobjs.rdpresentsemaphore;
+
+    submitinfo.signalSemaphoreCount = 1;
+    submitinfo.pSignalSemaphores = &mvkobjs.rdrendersemaphore;
+
+    submitinfo.commandBufferCount = 1;
+    submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer.at(0);
+
+    VkSemaphoreWaitInfo swinfo{};
+    swinfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+    swinfo.pSemaphores = &mvkobjs.rdpresentsemaphore;
+    swinfo.semaphoreCount = 1;
 
 
-	VkPresentInfoKHR presentinfo{};
-	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentinfo.waitSemaphoreCount = 1;
-	presentinfo.pWaitSemaphores = &mvkobjs.rdrendersemaphore;
-
-	presentinfo.swapchainCount = 1;
-	presentinfo.pSwapchains = &mvkobjs.rdvkbswapchain.swapchain;
-
-	presentinfo.pImageIndices = &imgidx;
+    mvkobjs.mtx2->lock();
+    if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
+        return false;
+    }
+    mvkobjs.mtx2->unlock();
 
 
-	mvkobjs.mtx2->lock();
-	vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
+    VkPresentInfoKHR presentinfo{};
+    presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentinfo.waitSemaphoreCount = 1;
+    presentinfo.pWaitSemaphores = &mvkobjs.rdrendersemaphore;
 
-	mvkobjs.mtx2->unlock();
+    presentinfo.swapchainCount = 1;
+    presentinfo.pSwapchains = &mvkobjs.rdvkbswapchain.swapchain;
 
-	//mvkobjs.uploadmtx->unlock();
-	return true;
+    presentinfo.pImageIndices = &imgidx;
+
+
+    mvkobjs.mtx2->lock();
+    vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
+
+    mvkobjs.mtx2->unlock();
+
+    //mvkobjs.uploadmtx->unlock();
+    return true;
+}
+
+bool vkrenderer::uploadfordraw(std::shared_ptr<playoutplayer>& x){
+
+    //mvkobjs.uploadmtx->lock();
+
+
+    if (vkWaitForFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
+        return false;
+    }
+    if (vkResetFences(mvkobjs.rdvkbdevice.device, 1, &mvkobjs.rdrenderfence) != VK_SUCCESS)return false;
+
+
+    uint32_t imgidx = 0;
+    VkResult res = vkAcquireNextImageKHR(mvkobjs.rdvkbdevice.device, mvkobjs.rdvkbswapchain.swapchain, UINT64_MAX, mvkobjs.rdpresentsemaphore, VK_NULL_HANDLE, &imgidx);
+
+
+    if (vkResetCommandBuffer(mvkobjs.rdcommandbuffer[0], 0) != VK_SUCCESS)return false;
+
+    VkCommandBufferBeginInfo cmdbgninfo{};
+    cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    if (vkBeginCommandBuffer(mvkobjs.rdcommandbuffer[0], &cmdbgninfo) != VK_SUCCESS)return false;
+
+
+    manimupdatetimer.start();
+
+    x->uploadvboebo(mvkobjs, mvkobjs.rdcommandbuffer[0]);
+
+    mvkobjs.uploadubossbotime = manimupdatetimer.stop();
+    if (vkEndCommandBuffer(mvkobjs.rdcommandbuffer[0]) != VK_SUCCESS)return false;
+
+
+    VkSubmitInfo submitinfo{};
+    submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    submitinfo.pWaitDstStageMask = &waitstage;
+
+    submitinfo.waitSemaphoreCount = 1;
+    submitinfo.pWaitSemaphores = &mvkobjs.rdpresentsemaphore;
+
+    submitinfo.signalSemaphoreCount = 1;
+    submitinfo.pSignalSemaphores = &mvkobjs.rdrendersemaphore;
+
+    submitinfo.commandBufferCount = 1;
+    submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer.at(0);
+
+    VkSemaphoreWaitInfo swinfo{};
+    swinfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+    swinfo.pSemaphores = &mvkobjs.rdpresentsemaphore;
+    swinfo.semaphoreCount = 1;
+
+
+    mvkobjs.mtx2->lock();
+    if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
+        return false;
+    }
+    mvkobjs.mtx2->unlock();
+
+
+    VkPresentInfoKHR presentinfo{};
+    presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentinfo.waitSemaphoreCount = 1;
+    presentinfo.pWaitSemaphores = &mvkobjs.rdrendersemaphore;
+
+    presentinfo.swapchainCount = 1;
+    presentinfo.pSwapchains = &mvkobjs.rdvkbswapchain.swapchain;
+
+    presentinfo.pImageIndices = &imgidx;
+
+
+    mvkobjs.mtx2->lock();
+    vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
+
+    mvkobjs.mtx2->unlock();
+
+    //mvkobjs.uploadmtx->unlock();
+    return true;
 }
 
 void vkrenderer::sdlevent(SDL_Event* e){
@@ -545,36 +625,61 @@ void vkrenderer::sdlevent(SDL_Event* e){
         }
         break;
     case SDL_EVENT_DROP_BEGIN:
+        std::cout << "BEG" << std::endl;
         SDL_RaiseWindow(mvkobjs.rdwind);
+        if(e->drop.x)
         std::cout << "x : " << e->drop.x << std::endl;
+        if(e->drop.y)
         std::cout << "y : " << e->drop.y << std::endl;
-        if(e->drop.data)
-        std::cout << e->drop.data << std::endl;
-        SDL_free(&e->drop.data);
+        if(e->drop.data){
+            std::cout << e->drop.data << std::endl;
+            // SDL_free(&e->drop.data);
+        }
         if(e->drop.source)
         std::cout << e->drop.source << std::endl;
         break;
     case SDL_EVENT_DROP_POSITION:
-        std::cout << "x : " << e->drop.x << std::endl;
-        std::cout << "y : " << e->drop.y << std::endl;
-        if(e->drop.data)
+        std::cout << "POS" << std::endl;
+        if(e->drop.x)
+            std::cout << "x : " << e->drop.x << std::endl;
+        if(e->drop.y)
+            std::cout << "y : " << e->drop.y << std::endl;
+        if(e->drop.data){
             std::cout << e->drop.data << std::endl;
+            // SDL_free(&e->drop.data);
+        }
         if(e->drop.source)
             std::cout << e->drop.source << std::endl;
         break;
     case SDL_EVENT_DROP_COMPLETE:
-        std::cout << "x : " << e->drop.x << std::endl;
-        std::cout << "y : " << e->drop.y << std::endl;
-        if(e->drop.data)
+        std::cout << "COMPLETE" << std::endl;
+        if(e->drop.x)
+            std::cout << "x : " << e->drop.x << std::endl;
+        if(e->drop.y)
+            std::cout << "y : " << e->drop.y << std::endl;
+        if(e->drop.data){
             std::cout << e->drop.data << std::endl;
+        }
         if(e->drop.source)
             std::cout << e->drop.source << std::endl;
         break;
     case SDL_EVENT_DROP_FILE:
-        std::cout << "x : " << e->drop.x << std::endl;
-        std::cout << "y : " << e->drop.y << std::endl;
-        if(e->drop.data)
+        std::cout << "FILE" << std::endl;
+        if(e->drop.x)
+            std::cout << "x : " << e->drop.x << std::endl;
+        if(e->drop.y)
+            std::cout << "y : " << e->drop.y << std::endl;
+        if(e->drop.data){
             std::cout << e->drop.data << std::endl;
+            auto f = std::async(std::launch::async,[&]{
+                std::shared_ptr<playoutplayer> newp = std::make_shared<playoutplayer>();
+                newp->setup(mvkobjs,e->drop.data,1);
+                newp->setup2(mvkobjs,playershaders[0][0],playershaders[0][1]);
+                // uploadfordraw(newp);
+                mplayerbuffer.push_back(newp);
+            });
+            //no free
+        }
         if(e->drop.source)
             std::cout << e->drop.source << std::endl;
         break;
@@ -780,7 +885,11 @@ bool vkrenderer::draw() {
 		mvkobjs.rduigeneratetime = muigentimer.stop();
 
 
-
+        for(auto it = mplayerbuffer.begin();it!=mplayerbuffer.end();){
+            uploadfordraw(*it);
+            mplayer.push_back(std::move(*it));
+            mplayerbuffer.erase(it);
+        }
 
 
 		//joint anims

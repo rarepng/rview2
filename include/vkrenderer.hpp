@@ -33,8 +33,9 @@ class vkrenderer {
 public:
     vkrenderer(SDL_Window* wind,const SDL_DisplayMode* mode,bool* mshutdown,SDL_Event* e);
 	bool init();
-	void setsize(unsigned int w, unsigned int h);
+    void setsize(unsigned int w, unsigned int h);
     bool uploadfordraw();
+    bool uploadfordraw(std::shared_ptr<playoutplayer>& x);
     bool draw();
     bool drawpause();
 	bool drawloading();
@@ -112,6 +113,7 @@ private:
 	vkcam mcam{};
 
     std::vector<std::shared_ptr<playoutplayer>> mplayer;
+    std::vector<std::shared_ptr<playoutplayer>> mplayerbuffer;
 
 
 	bool mmodeluploadrequired{ true };
