@@ -16,7 +16,8 @@ bool vkwind::init(std::string title) {
 		return false;
     }
     static const SDL_DisplayMode* mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay()); // wrong time
-    mwind = SDL_CreateWindow(title.c_str(),900, 600,SDL_WINDOW_BORDERLESS | SDL_WINDOW_VULKAN | SDL_WINDOW_TRANSPARENT | SDL_WINDOW_RESIZABLE);
+    //mwind = SDL_CreateWindow(title.c_str(), 900, 600, SDL_WINDOW_BORDERLESS | SDL_WINDOW_VULKAN | SDL_WINDOW_TRANSPARENT | SDL_WINDOW_RESIZABLE);
+    mwind = SDL_CreateWindow(title.c_str(), 900, 600,  SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 
     if (!mwind) {
         SDL_Quit();
