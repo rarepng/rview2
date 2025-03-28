@@ -44,45 +44,26 @@ vkrenderer::vkrenderer(SDL_Window* wind,const SDL_DisplayMode* mode,bool* mshutd
 }
 bool vkrenderer::init() {
 
-	
-
-	std::srand(static_cast<int>(time(NULL)));
+    std::srand(static_cast<int>(time(NULL)));
 	mvkobjs.rdheight = mvkobjs.rdvkbswapchain.extent.height;
-	mvkobjs.rdwidth = mvkobjs.rdvkbswapchain.extent.width;
-	if (!mvkobjs.rdwind)return false;
-	if (!deviceinit()){
-		return false;
-	}
-	if (!initvma()){
-		return false;
-	}
-	if (!getqueue()){
-		return false;
-	}
-	if (!createswapchain()){
-		return false;
-	}
-	if (!createdepthbuffer()){
-		return false;
-	}
-	if (!createcommandpool()){
-		return false;
-	}
-	if (!createcommandbuffer()){
-		return false;
-	}
-	if (!createrenderpass()){
-		return false;
-	}
-	if (!createframebuffer()){
-		return false;
-	}
-	if (!createsyncobjects()){
-		return false;
-    }
-	if (!initui()){
-		return false;
-	}
+    mvkobjs.rdwidth = mvkobjs.rdvkbswapchain.extent.width;
+    if (!mvkobjs.rdwind)return false;
+    if(!std::apply([](auto&&... f) {
+        return (... && f());
+    },     std::tuple{
+                   [this]() { return deviceinit(); },
+                   [this]() { return initvma(); },
+                   [this]() { return getqueue(); },
+                   [this]() { return createswapchain(); },
+                   [this]() { return createdepthbuffer(); },
+                   [this]() { return createcommandpool(); },
+                   [this]() { return createcommandbuffer(); },
+                   [this]() { return createrenderpass(); },
+                   [this]() { return createframebuffer(); },
+                   [this]() { return createsyncobjects(); },
+                   [this]() { return initui(); }
+                    })) return false;
+
 
 	ImGuiIO& io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;

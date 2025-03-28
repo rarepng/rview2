@@ -100,13 +100,13 @@ bool playoutplayer::createplayout(vkobjs& objs) {
 
 bool playoutplayer::createpline(vkobjs& objs, std::string vfile, std::string ffile) {
 	if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpupipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{vfile, ffile}))return false;
-	if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpupipelineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{"shaders/playeruint.vert.spv", "shaders/playeruint.frag.spv"}, true))return false;
+    if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpupipelineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{"shaders/playeruint.vert.spv", "shaders/playeruint.frag.spv"}, true))return false;
 	return true;
 }
 
 bool playoutplayer::createpline2(vkobjs& objs, std::string vfile, std::string ffile) {
 	if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpudqpipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{vfile, ffile}))return false;
-	if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpudqpipelineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{vfile, ffile}, true))return false;
+    if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpudqpipelineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{vfile, ffile}, true))return false;
 	return true;
 }
 

@@ -9,3 +9,4 @@ vs
 CMakeSettings.json
 .gitignore
 CMakeLists.txt.user
+dist

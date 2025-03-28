@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.31)
-project(rview LANGUAGES CXX)
+project(rview2 LANGUAGES CXX)
 
 
 include(ExternalProject)
@@ -60,14 +60,14 @@ set(OTHER_SOURCES
     ${submodules_path}/imgui/imgui_demo.cpp
 )
 
-add_executable(rview ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_HEADERS})
+add_executable(rview2 ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_HEADERS})
 
 
 
 if(UNIX)
-set_target_properties(rview PROPERTIES CMAKE_CXX_FLAGS '-static')
+set_target_properties(rview2 PROPERTIES CMAKE_CXX_FLAGS '-static')
 else()
-set_target_properties(rview PROPERTIES CMAKE_CXX_FLAGS '-static\ -mwindows')
+set_target_properties(rview2 PROPERTIES CMAKE_CXX_FLAGS '-static\ -mwindows')
 endif()
 
 file(GLOB shaders ${PROJECT_BINARY_DIR}/shaders/*)
@@ -91,7 +91,7 @@ file(GLOB_RECURSE GLSL_SOURCE_FILES
   endforeach()
     set_source_files_properties(${SPIRV_BINARY_FILES} PROPERTIES GENERATED TRUE)
   add_custom_target(shaders ALL DEPENDS ${SPIRV_BINARY_FILES})
-  add_dependencies(rview shaders)
+  add_dependencies(rview2 shaders)
 
 
 
@@ -103,10 +103,10 @@ add_custom_command(
     DEPENDS "${PROJECT_SOURCE_DIR}/resources"
 )
 add_custom_target(resources_bin_deps DEPENDS ${PROJECT_BINARY_DIR}/resources)
-add_dependencies(rview resources_bin_deps)
+add_dependencies(rview2 resources_bin_deps)
 
 
-target_link_libraries(rview
+target_link_libraries(rview2
     PRIVATE
         SDL3-static
         SDL3_image-static
@@ -116,13 +116,13 @@ target_link_libraries(rview
         vk-bootstrap::vk-bootstrap
 )
 if(UNIX)
-target_link_libraries(rview
+target_link_libraries(rview2
     PRIVATE
         c
         pthread
 )
 else()
-target_link_libraries(rview
+target_link_libraries(rview2
     PRIVATE
         #pthread
         #ws2_32                               #windows
@@ -132,7 +132,7 @@ target_link_libraries(rview
 )
 endif()
 
-target_include_directories(rview
+target_include_directories(rview2
     PUBLIC
         "${submodules_path}/stb"
         "${submodules_path}/imgui"
@@ -143,7 +143,7 @@ target_include_directories(rview
 
 
 
-set_property(TARGET rview APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/resources)
-set_property(TARGET rview APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/shaders)
+set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/resources)
+set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/shaders)
 
 

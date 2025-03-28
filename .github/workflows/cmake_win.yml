@@ -45,7 +45,7 @@ jobs:
         $env:LD_LIBRARY_PATH="$env:VULKAN_SDK/lib;$env:LD_LIBRARY_PATH"
         $env:VK_ICD_FILENAMES="$env:VULKAN_SDK/etc/vulkan/icd.d"
         $env:VK_LAYER_PATH="$env:VULKAN_SDK/etc/vulkan/explicit_layer.d"
-        $env:LD_LIBRARY_PATH="D:/a/work/rview/rview/lib;$env:LD_LIBRARY_PATH"
+        $env:LD_LIBRARY_PATH="D:/a/work/rview2/rview2/lib;$env:LD_LIBRARY_PATH"
         echo VULKAN_SDK=$env:VULKAN_SDK  | tee -a $env:GITHUB_ENV
         echo PATH=$env:PATH  | tee -a $env:GITHUB_ENV
         echo LD_LIBRARY_PATH=$env:LD_LIBRARY_PATH  | tee -a $env:GITHUB_ENV
@@ -59,8 +59,8 @@ jobs:
         ls -r $VULKAN_SDK
     - name: downloading resources
       run: |
-        mkdir D:/a/rview/rview/resources
-        cd D:/a/rview/rview/resources
+        mkdir D:/a/rview2/rview2/resources
+        cd D:/a/rview2/rview2/resources
         curl -L "https://drive.google.com/uc?export=download&id=1ZwYuB17yq-yRpswRISuvSG-_R7j5GKM9" -o x.7z
         7z x x.7z -aoa
         rm x.7z
@@ -96,4 +96,4 @@ jobs:
     - name: swiftshader test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: |
-        ./rview &
+        ./rview2 &
