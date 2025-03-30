@@ -51,23 +51,14 @@ bool vkrenderer::init() {
     if(!std::apply([](auto&&... f) {
         return (... && f());
     },     std::tuple{
-                   [this]() { return deviceinit(); },
-                   [this]() { return initvma(); },
-                   [this]() { return getqueue(); },
-                   [this]() { return createswapchain(); },
-                   [this]() { return createdepthbuffer(); },
-                   [this]() { return createcommandpool(); },
-                   [this]() { return createcommandbuffer(); },
-                   [this]() { return createrenderpass(); },
-                   [this]() { return createframebuffer(); },
-                   [this]() { return createsyncobjects(); },
-                   [this]() { return initui(); }
+                   [this]() { return deviceinit() && initvma() && getqueue() && createswapchain() && createdepthbuffer() && createcommandpool()
+                                              && createcommandbuffer() && createrenderpass() && createframebuffer() && createsyncobjects(); },
                     })) return false;
 
-
-	ImGuiIO& io = ImGui::GetIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
-
+    if(initui()){
+        ImGuiIO& io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+    }else return false;
 
 	mframetimer.start();
 
