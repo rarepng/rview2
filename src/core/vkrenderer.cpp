@@ -29,6 +29,7 @@
 //#include "logger.hpp"
 //#endif
 #include <SDL3/SDL_vulkan.h>
+// #include <unistd.h>
 
 float map2(glm::vec3 x) {
 	return std::max(x.y, 0.0f);
@@ -71,7 +72,7 @@ bool vkrenderer::initscene() {
     mplayer.resize(playerfname.size());
 
     unsigned int idx{0};
-
+	// std::cout << "CWD : " << getcwd(new char[](1024),1024) << std::endl;
     for(auto& i : mplayer){
         i=std::make_shared<playoutplayer>();
         if (!i->setup(mvkobjs, playerfname[idx], playercount[idx]))return false;

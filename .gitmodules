@@ -1,28 +1,28 @@
 [submodule "fastgltf"]
 	path = sub/fastgltf
-	url = https://github.com/spnda/fastgltf
+	url = ../../spnda/fastgltf.git
 [submodule "glm"]
 	path = sub/glm
-	url = https://github.com/rarepng/glm
+	url = ../glm.git
 	branch = master
-[submodule "sub/simdjson"]
+[submodule "simdjson"]
 	path = sub/simdjson
-	url = https://github.com/simdjson/simdjson
-[submodule "sub/vk_boot"]
+	url = ../../simdjson/simdjson.git
+[submodule "vk_boot"]
 	path = sub/vk_boot
-	url = https://github.com/charles-lunarg/vk-bootstrap
-[submodule "sub/vma"]
+	url = ../../charles-lunarg/vk-bootstrap.git
+[submodule "vma"]
 	path = sub/vma
-	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
-[submodule "sub/stb"]
+	url = ../../GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "stb"]
 	path = sub/stb
-	url = https://github.com/nothings/stb
-[submodule "sub/imgui"]
+	url = ../../nothings/stb.git
+[submodule "imgui"]
 	path = sub/imgui
-	url = https://github.com/ocornut/imgui
-[submodule "sub/sdl"]
+	url = ../../ocornut/imgui.git
+[submodule "sdl"]
 	path = sub/sdl
-	url = https://github.com/libsdl-org/SDL
-[submodule "sub/sdlimg"]
+	url = ../../libsdl-org/SDL.git
+[submodule "sdlimg"]
 	path = sub/sdlimg
-	url = https://github.com/libsdl-org/SDL_image
+	url = ../../libsdl-org/SDL_image.git

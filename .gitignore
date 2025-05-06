@@ -7,6 +7,13 @@ gbuild
 .vs
 vs
 CMakeSettings.json
+CMakePresets.json
+gg.cmake
 .gitignore
 CMakeLists.txt.user
 dist
+.config
+.cache
+.vscode
+*.swp
+# .gitmodules

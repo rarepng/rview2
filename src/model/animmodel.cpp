@@ -16,15 +16,13 @@
 #include "vkebo.hpp"
 #include "animmodel.hpp"
 
-bool animmodel::loadmodel(vkobjs& objs, std::string fname)
-{
+bool animmodel::loadmodel(vkobjs& objs, std::string fname){
 
     //mmodel = std::make_shared<tinygltf::Model>();
 
     fastgltf::Parser fastparser{};
     auto buff = fastgltf::MappedGltfFile::FromPath(fname);
     auto a = fastparser.loadGltfBinary(buff.get(),"resources/");
-
     mmodel2 = std::move(a.get());
 
     //tinygltf::TinyGLTF loader;

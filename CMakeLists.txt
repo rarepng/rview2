@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.31)
 project(rview2 LANGUAGES CXX)
 
 
-include(ExternalProject)
+#include(ExternalProject)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,8 +19,8 @@ set(SHELL_CMD bash)
 set(SEP ":")
 set(STATIC_LIB_EXT a)
 else()
-#set(SHELL_CMD pwsh)  #powershell 7
-set(SHELL_CMD powershell) #default for windows 
+set(SHELL_CMD pwsh)  #powershell 7
+#set(SHELL_CMD powershell) #default for windows 
 set(EXT ".exe")
 set(SEP ";")
 set(STATIC_LIB_EXT lib)
