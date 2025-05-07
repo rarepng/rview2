@@ -60,18 +60,11 @@ private:
 
 	int mjnodecount{ 0 };
 
-	std::string mmodelfilename;
-
-	//std::shared_ptr<tinygltf::Model> mmodel = nullptr;
-
 	fastgltf::Asset mmodel2;
 
 	
 
 
-	//std::vector<unsigned int> mjointvec{};
-	//std::vector<glm::vec4> mweightvec{};
-	//std::vector<glm::mat<4,4,unsigned int>> minversebindmats{};
 	std::vector<glm::mat4> minversebindmats{};
 
 	std::vector<std::vector<std::vector<int>>> mattribaccs{};

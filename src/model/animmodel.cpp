@@ -20,7 +20,7 @@ bool animmodel::loadmodel(vkobjs& objs, std::string fname){
 
     fastgltf::Parser fastparser{};
     auto buff = fastgltf::MappedGltfFile::FromPath(fname);
-    auto a = fastparser.loadGltfBinary(buff.get(),"resources/");
+    auto a = fastparser.loadGltfBinary(buff.get(),std::filesystem::absolute(fname));
     mmodel2 = std::move(a.get());
 
     mgltfobjs.tex.reserve(mmodel2.images.size());
@@ -29,7 +29,6 @@ bool animmodel::loadmodel(vkobjs& objs, std::string fname){
     if (!vktexture::loadtexlayoutpool(objs, mgltfobjs.tex,mgltfobjs.texpls, mmodel2))return false;
 
 
-    mmodelfilename = fname;
 
     createvboebo(objs);
 
