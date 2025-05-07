@@ -18,19 +18,10 @@
 
 bool animmodel::loadmodel(vkobjs& objs, std::string fname){
 
-    //mmodel = std::make_shared<tinygltf::Model>();
-
     fastgltf::Parser fastparser{};
     auto buff = fastgltf::MappedGltfFile::FromPath(fname);
     auto a = fastparser.loadGltfBinary(buff.get(),"resources/");
     mmodel2 = std::move(a.get());
-
-    //tinygltf::TinyGLTF loader;
-    //std::string err;
-    //std::string warr;
-    //bool res = false;
-    //res = loader.LoadBinaryFromFile(mmodel.get(), &err, &warr, fname);
-
 
     mgltfobjs.tex.reserve(mmodel2.images.size());
     mgltfobjs.tex.resize(mmodel2.images.size());
@@ -40,9 +31,6 @@ bool animmodel::loadmodel(vkobjs& objs, std::string fname){
 
     mmodelfilename = fname;
 
-
-    //createvertexbuffers(objs);
-    //createindexbuffers(objs);
     createvboebo(objs);
 
     getjointdata();
@@ -55,8 +43,6 @@ bool animmodel::loadmodel(vkobjs& objs, std::string fname){
 
     return true;
 }
-
-
 
 
 
@@ -130,14 +116,7 @@ void animmodel::getjointdata() {
 
 
 void animmodel::getinvbindmats() {
-    //const tinygltf::Skin& skin = mmodel->skins.at(0);
-    //int invBindMatAccessor = skin.inverseBindMatrices;
 
-    //const tinygltf::Accessor& accessor = mmodel->accessors.at(invBindMatAccessor);
-    //const tinygltf::BufferView& bufferView = mmodel->bufferViews.at(accessor.bufferView);
-    //const tinygltf::Buffer& buffer = mmodel->buffers.at(bufferView.buffer);
-     
-     
     const fastgltf::Skin& skin = mmodel2.skins.at(0);
     size_t invBindMatAccessor = skin.inverseBindMatrices.value();
 

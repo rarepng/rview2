@@ -4,7 +4,6 @@
 [submodule "glm"]
 	path = sub/glm
 	url = ../glm.git
-	branch = master
 [submodule "simdjson"]
 	path = sub/simdjson
 	url = ../../simdjson/simdjson.git
