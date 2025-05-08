@@ -74,9 +74,8 @@ bool vkrenderer::initscene() {
     unsigned int idx{0};
 	// std::cout << "CWD : " << getcwd(new char[](1024),1024) << std::endl;
     for(auto& i : mplayer){
-        i=std::make_shared<playoutplayer>();
-        if (!i->setup(mvkobjs, playerfname[idx], playercount[idx]))return false;
-        if (!i->setup2(mvkobjs, playershaders[idx][0], playershaders[idx][1]))return false;
+        i=std::make_shared<playoutgeneric>();
+        if (!i->setup(mvkobjs, playerfname[idx], playercount[idx],playershaders[idx][0], playershaders[idx][1]))return false;
         idx++;
     }
 
@@ -501,7 +500,7 @@ bool vkrenderer::uploadfordraw(){
     return true;
 }
 
-bool vkrenderer::uploadfordraw(std::shared_ptr<playoutplayer>& x){
+bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric>& x){
 
     //mvkobjs.uploadmtx->lock();
 
@@ -645,9 +644,8 @@ void vkrenderer::sdlevent(SDL_Event* e){
         if(e->drop.data){
             std::cout << e->drop.data << std::endl;
             auto f = std::async(std::launch::async,[&]{
-                std::shared_ptr<playoutplayer> newp = std::make_shared<playoutplayer>();
-                newp->setup(mvkobjs,e->drop.data,1);
-                newp->setup2(mvkobjs,playershaders[0][0],playershaders[0][1]);
+                std::shared_ptr<playoutgeneric> newp = std::make_shared<playoutgeneric>();
+                newp->setup(mvkobjs,e->drop.data,1,playershaders[0][0],playershaders[0][1]);
                 // uploadfordraw(newp);
                 mplayerbuffer.push_back(newp);
             });

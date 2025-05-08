@@ -4,7 +4,7 @@
 #include <memory>
 #include <vulkan/vulkan.h>
 #include "vkobjs.hpp"
-#include "animinstance.hpp"
+#include "genericinstance.hpp"
 
 class playoutgeneric {
 public:
@@ -32,8 +32,8 @@ public:
 	void uploadvboebo(vkobjs& objs, VkCommandBuffer& cbuffer);
 	void uploadubossbo(vkobjs& objs, std::vector<glm::mat4>& cammats);
 
-	std::shared_ptr<animinstance> getinst(int i);
-	std::shared_ptr<animinstance> getdecayinst(int i);
+	std::shared_ptr<genericinstance> getinst(int i);
+	std::shared_ptr<genericinstance> getdecayinst(int i);
 
 
 	unsigned int getnuminstances();
@@ -75,9 +75,9 @@ private:
 	int nummats{};
 
 	std::string mmodelfilename;
-	std::shared_ptr<animmodel> mgltf = nullptr;
-	std::vector < std::shared_ptr < animinstance >> minstances;
-	std::vector < std::shared_ptr < animinstance >> decayinstances;
+	std::shared_ptr<genericmodel> mgltf = nullptr;
+	std::vector < std::shared_ptr < genericinstance >> minstances;
+	std::vector < std::shared_ptr < genericinstance >> decayinstances;
 
 
 

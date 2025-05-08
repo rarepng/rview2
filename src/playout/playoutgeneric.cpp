@@ -25,7 +25,7 @@ bool playoutgeneric::setup(vkobjs& objs, std::string fname, int count,std::strin
 }
 
 bool playoutgeneric::loadmodel(vkobjs& objs, std::string fname) {
-	mgltf = std::make_shared<animmodel>();
+	mgltf = std::make_shared<genericmodel>();
 	if (!mgltf->loadmodel(objs, fname))return false;
 	return true;
 }
@@ -33,7 +33,7 @@ bool playoutgeneric::loadmodel(vkobjs& objs, std::string fname) {
 bool playoutgeneric::createinstances(vkobjs& objs, int count, bool rand) {
 	int numTriangles{};
 	for (int i = 0; i < count; ++i) {
-		minstances.emplace_back(std::make_shared<animinstance>(mgltf, glm::vec3{ 0.0f, 0.0f, 0.0f }, rand));
+		minstances.emplace_back(std::make_shared<genericinstance>(mgltf, glm::vec3{ 0.0f, 0.0f, 0.0f }, rand));
 		numTriangles += mgltf->gettricount(0, 0);
 	}
 	totaltricount = numTriangles;
@@ -47,7 +47,7 @@ bool playoutgeneric::createdecayinstances(vkobjs& objs){
 	for (int i{ 0 }; i < 20; i++) {
 		float x = minstances[0]->getinstancesettings().msworldpos.x;
 		float z = minstances[0]->getinstancesettings().msworldpos.z;
-		decayinstances.emplace_back(std::make_shared<animinstance>(mgltf, glm::vec3{ x, 0.0f, z }, false));
+		decayinstances.emplace_back(std::make_shared<genericinstance>(mgltf, glm::vec3{ x, 0.0f, z }, false));
 	}
 	return true;
 }
@@ -141,11 +141,11 @@ void playoutgeneric::uploadubossbo(vkobjs& objs, std::vector<glm::mat4>& cammats
 
 }
 
-std::shared_ptr<animinstance> playoutgeneric::getinst(int i) {
+std::shared_ptr<genericinstance> playoutgeneric::getinst(int i) {
 	return minstances[i];
 }
 
-std::shared_ptr<animinstance> playoutgeneric::getdecayinst(int i){
+std::shared_ptr<genericinstance> playoutgeneric::getdecayinst(int i){
 	return decayinstances[i];
 }
 

@@ -14,9 +14,9 @@
 
 #include "vkvbo.hpp"
 #include "vkebo.hpp"
-#include "animmodel.hpp"
+#include "genericmodel.hpp"
 
-bool animmodel::loadmodel(vkobjs& objs, std::string fname){
+bool genericmodel::loadmodel(vkobjs& objs, std::string fname){
 
     fastgltf::Parser fastparser{};
     auto buff = fastgltf::MappedGltfFile::FromPath(fname);
@@ -33,7 +33,6 @@ bool animmodel::loadmodel(vkobjs& objs, std::string fname){
     createvboebo(objs);
 
     getjointdata();
-    //getweightdata();
     getinvbindmats();
 
     mjnodecount = mmodel2.nodes.size();
@@ -45,11 +44,11 @@ bool animmodel::loadmodel(vkobjs& objs, std::string fname){
 
 
 
-int animmodel::getnodecount() {
+int genericmodel::getnodecount() {
     return mjnodecount;
 }
 
-gltfnodedata animmodel::getgltfnodes() {
+gltfnodedata genericmodel::getgltfnodes() {
     gltfnodedata nodeData{};
 
     int rootNodeNum = mmodel2.scenes.at(0).nodeIndices.at(0);
@@ -67,43 +66,7 @@ gltfnodedata animmodel::getgltfnodes() {
     return nodeData;
 }
 
-void animmodel::getjointdata() {
-    jointuintofx.reserve(mmodel2.meshes.size());
-    jointuintofx.resize(mmodel2.meshes.size());
-    for (size_t i{ 0 }; i < mmodel2.meshes.size(); i++) {
-        for (size_t j{ 0 }; j < mmodel2.meshes[i].primitives.size(); j++) {
-            const fastgltf::Accessor& accessor = mmodel2.accessors.at(mmodel2.meshes.at(i).primitives.at(j).findAttribute("JOINTS_0")->accessorIndex);
-            const fastgltf::BufferView& bufferView = mmodel2.bufferViews.at(accessor.bufferViewIndex.value());
-            const fastgltf::Buffer& buffer = mmodel2.buffers.at(bufferView.bufferIndex);
-            //if (accessor.componentType == 5121) {
-            //    jointzchar.reserve(accessor.count*4);
-            //    jointzchar.resize(accessor.count*4);
-            //    std::memcpy(jointzchar.data(), &buffer.data[bufferView.byteOffset + accessor.byteOffset], bufferView.byteLength);
-            //    jointzint.insert(jointzint.end(), jointzchar.begin(), jointzchar.end());
-            //    jointzchar.clear();
-            //} else 
-             if (accessor.componentType == fastgltf::ComponentType::UnsignedShort) {
-                 if (i > 0)
-                    jointuintofx.at(i) = jointzint.size();
-                 else
-                     jointuintofx.at(i) = 0;
-                jointz.reserve(accessor.count * 4);
-                jointz.resize(accessor.count * 4);
-                std::visit(fastgltf::visitor{
-                    [](auto& arg) {},
-                    [&](const fastgltf::sources::Array& vector) {
-                        std::memcpy(jointz.data(), vector.bytes.data() + bufferView.byteOffset + accessor.byteOffset, bufferView.byteLength);
-                    } }, buffer.data);
-                jointzint.insert(jointzint.end(), jointz.begin(), jointz.end());
-                jointz.clear();
-             } else {
-                 if (i > 0)
-                     jointuintofx.at(i) = jointuintofx.at(i - 1);
-                 else
-                     jointuintofx.at(i) = 0;
-             }
-        }
-    }
+void genericmodel::getjointdata() {
     mnodetojoint.reserve(mmodel2.nodes.size());
     mnodetojoint.resize(mmodel2.nodes.size());
 
@@ -114,7 +77,7 @@ void animmodel::getjointdata() {
 }
 
 
-void animmodel::getinvbindmats() {
+void genericmodel::getinvbindmats() {
 
     const fastgltf::Skin& skin = mmodel2.skins.at(0);
     size_t invBindMatAccessor = skin.inverseBindMatrices.value();
@@ -136,7 +99,7 @@ void animmodel::getinvbindmats() {
 
 }
 
-void animmodel::getanims() {
+void genericmodel::getanims() {
     manimclips.reserve(mmodel2.animations.size());
     //for (auto& anim0 : mmodel->animations) {
     //    std::shared_ptr<vkclip> clip0=std::make_shared<vkclip>(anim0.name);
@@ -154,11 +117,11 @@ void animmodel::getanims() {
     }
 }
 
-std::vector<std::shared_ptr<vkclip>> animmodel::getanimclips() {
+std::vector<std::shared_ptr<vkclip>> genericmodel::getanimclips() {
     return manimclips;
 }
 
-void animmodel::getnodes(std::shared_ptr<vknode> treeNode) {
+void genericmodel::getnodes(std::shared_ptr<vknode> treeNode) {
     int nodeNum = treeNode->getnum();
     const auto& childNodes = mmodel2.nodes.at(nodeNum).children;
 
@@ -177,7 +140,7 @@ void animmodel::getnodes(std::shared_ptr<vknode> treeNode) {
     }
 }
 
-void animmodel::getnodedata(std::shared_ptr<vknode> treeNode) {
+void genericmodel::getnodedata(std::shared_ptr<vknode> treeNode) {
     int nodeNum = treeNode->getnum();
     const fastgltf::Node& node = mmodel2.nodes.at(nodeNum);
     treeNode->setname(static_cast<std::string>(node.name));
@@ -193,7 +156,7 @@ void animmodel::getnodedata(std::shared_ptr<vknode> treeNode) {
     treeNode->calculatenodemat();
 }
 
-void animmodel::resetnodedata(std::shared_ptr<vknode> treeNode) {
+void genericmodel::resetnodedata(std::shared_ptr<vknode> treeNode) {
     getnodedata(treeNode);
 
     for (auto& childNode : treeNode->getchildren()) {
@@ -201,7 +164,7 @@ void animmodel::resetnodedata(std::shared_ptr<vknode> treeNode) {
     }
 }
 
-std::vector<std::shared_ptr<vknode>> animmodel::getnodelist(std::vector<std::shared_ptr<vknode>>& nodeList, int nodeNum) {
+std::vector<std::shared_ptr<vknode>> genericmodel::getnodelist(std::vector<std::shared_ptr<vknode>>& nodeList, int nodeNum) {
     for (auto& childNode : nodeList.at(nodeNum)->getchildren()) {
         int childNodeNum = childNode->getnum();
         nodeList.at(childNodeNum) = childNode;
@@ -210,16 +173,20 @@ std::vector<std::shared_ptr<vknode>> animmodel::getnodelist(std::vector<std::sha
     return nodeList;
 }
 
-std::vector<glm::mat4> animmodel::getinversebindmats() {
+std::vector<glm::mat4> genericmodel::getinversebindmats() {
     return minversebindmats;
 }
 
-std::vector<unsigned int> animmodel::getnodetojoint() {
+std::vector<unsigned int> genericmodel::getnodetojoint() {
     return mnodetojoint;
 }
 
 
-void animmodel::createvboebo(vkobjs& objs){
+void genericmodel::createvboebo(vkobjs& objs){ //& joint vector
+
+    jointuintofx.reserve(mmodel2.meshes.size());
+    jointuintofx.resize(mmodel2.meshes.size());
+
     mgltfobjs.vbodata.reserve(mmodel2.meshes.size());
     mgltfobjs.vbodata.resize(mmodel2.meshes.size());
     mgltfobjs.ebodata.reserve(mmodel2.meshes.size());
@@ -235,28 +202,64 @@ void animmodel::createvboebo(vkobjs& objs){
             const auto& idx = std::distance(mmodel2.meshes[i].primitives.begin(), it);
             mgltfobjs.vbodata.at(i).at(idx).reserve(it->attributes.size());
             mgltfobjs.vbodata.at(i).at(idx).resize(it->attributes.size());
+            // it->
             const fastgltf::Accessor& idxacc = mmodel2.accessors[it->indicesAccessor.value()];
+
             const fastgltf::Accessor& posacc = mmodel2.accessors[it->findAttribute("POSITION")->accessorIndex];
-            const fastgltf::Accessor& noracc = mmodel2.accessors[it->findAttribute("NORMAL")->accessorIndex];
-            const fastgltf::Accessor& texacc = mmodel2.accessors[it->findAttribute("TEXCOORD_0")->accessorIndex];
-            const fastgltf::Accessor& joiacc = mmodel2.accessors[it->findAttribute("JOINTS_0")->accessorIndex];
-            const fastgltf::Accessor& weiacc = mmodel2.accessors[it->findAttribute("WEIGHTS_0")->accessorIndex];
-            std::cout << it->findAttribute("JOINTS_0")->accessorIndex << std::endl;
-            std::cout << it->findAttribute("JOINTS_0") << std::endl;
-            std::cout << fastgltf::getElementByteSize(joiacc.type,joiacc.componentType) << std::endl;
-            std::cout << fastgltf::getElementByteSize(weiacc.type,weiacc.componentType) << std::endl;
             if(!posacc.bufferViewIndex.has_value())continue; //gltf standard -> every primitive's verts must have position;
             vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(0), posacc.count * fastgltf::getElementByteSize(posacc.type,posacc.componentType));
+
+            const fastgltf::Accessor& noracc = mmodel2.accessors[it->findAttribute("NORMAL")->accessorIndex];
+
+            if(it->materialIndex.has_value()){
+                const auto& texidx = mmodel2.materials.at(it->materialIndex.value()).pbrData.baseColorTexture->texCoordIndex;
+                // while(const auto& tcoord{it->findAttribute("TEXCOORD_" + std::to_string(texidx))->accessorIndex}!=);
+                const fastgltf::Accessor& texacc = mmodel2.accessors[it->findAttribute("TEXCOORD_" + std::to_string(texidx))->accessorIndex];
+                if(&texacc!=&posacc)
+                vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(2), texacc.count * fastgltf::getElementByteSize(texacc.type,texacc.componentType));
+            }
+
+            const fastgltf::Accessor& joiacc = mmodel2.accessors[it->findAttribute("JOINTS_0")->accessorIndex];
+            const fastgltf::Accessor& weiacc = mmodel2.accessors[it->findAttribute("WEIGHTS_0")->accessorIndex];
+
             if(&noracc!=&posacc)
             vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(1), noracc.count * fastgltf::getElementByteSize(noracc.type,noracc.componentType));
-            if(&texacc!=&posacc)
-            vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(2), texacc.count * fastgltf::getElementByteSize(texacc.type,texacc.componentType));
             // if(joiacc){  //todo
             // if(weiacc){  //todo
             // std::cout << joiacc.componentType << std::endl;
             // if(joiacc.)
-            if(&joiacc!=&posacc)
+            if(&joiacc!=&posacc){
             vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(3), joiacc.count * fastgltf::getElementByteSize(joiacc.type,joiacc.componentType));
+            
+            
+            meshjointtype.at(i) = joiacc.componentType != fastgltf::ComponentType::UnsignedByte;
+
+            const auto& joibview = mmodel2.bufferViews.at(joiacc.bufferViewIndex.value());
+
+            if (joiacc.componentType == fastgltf::ComponentType::UnsignedShort) {
+                if (i > 0)
+                   jointuintofx.at(i) = jointzint.size();
+                else
+                    jointuintofx.at(i) = 0;
+               jointz.reserve(joiacc.count * numotypes.at(joiacc.type));
+               jointz.resize(joiacc.count * numotypes.at(joiacc.type));
+               std::visit(fastgltf::visitor{
+                   [](auto& arg) {},
+                   [&](const fastgltf::sources::Array& vector) {
+                       std::memcpy(jointz.data(), vector.bytes.data() + joibview.byteOffset + joiacc.byteOffset, joibview.byteLength);
+                   } }, mmodel2.buffers.at(joibview.bufferIndex).data);
+               jointzint.insert(jointzint.end(), jointz.begin(), jointz.end());
+               jointz.clear();
+            } else {
+                if (i > 0)
+                    jointuintofx.at(i) = jointuintofx.at(i - 1);
+                else
+                    jointuintofx.at(i) = 0;
+            }
+
+
+
+            }
 
             // std::vector<fastgltf::ComponentType> byters{fastgltf::ComponentType::Byte,fastgltf::ComponentType::UnsignedByte};
 
@@ -264,7 +267,6 @@ void animmodel::createvboebo(vkobjs& objs){
             //     return joiacc.componentType == x;
             // });
 
-            meshjointtype.at(i) = joiacc.componentType != fastgltf::ComponentType::UnsignedByte;
 
 
             if(&weiacc!=&posacc)
@@ -272,14 +274,14 @@ void animmodel::createvboebo(vkobjs& objs){
 
             vkebo::init(objs, mgltfobjs.ebodata.at(i).at(idx), idxacc.count * fastgltf::getComponentByteSize(idxacc.componentType));
             
-            mgltfobjs.vbodata.at(i).at(idx).shrink_to_fit();
+            mgltfobjs.vbodata.at(i).at(idx).shrink_to_fit(); //useless cause resize
         }
     }
 }
 
 
 
-void animmodel::uploadvboebo(vkobjs& objs,VkCommandBuffer& cbuffer){
+void genericmodel::uploadvboebo(vkobjs& objs,VkCommandBuffer& cbuffer){
     for (size_t i{ 0 }; i < mmodel2.meshes.size(); i++) {
         for (auto it = mmodel2.meshes[i].primitives.begin(); it < mmodel2.meshes[i].primitives.end(); it++) {
             const auto& idx = std::distance(mmodel2.meshes[i].primitives.begin(), it);
@@ -326,7 +328,7 @@ void animmodel::uploadvboebo(vkobjs& objs,VkCommandBuffer& cbuffer){
 
 
 
-int animmodel::gettricount(int i,int j){
+int genericmodel::gettricount(int i,int j){
     const fastgltf::Primitive& prims = mmodel2.meshes.at(i).primitives.at(j);
     const fastgltf::Accessor& acc = mmodel2.accessors.at(prims.indicesAccessor.value());
     unsigned int c{ 0 };
@@ -346,7 +348,7 @@ int animmodel::gettricount(int i,int j){
 
 
 
-void animmodel::drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, VkPipeline& vkpline, VkPipeline& vkplineuint, int instancecount,int stride) {
+void genericmodel::drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, VkPipeline& vkpline, VkPipeline& vkplineuint, int instancecount,int stride) {
     VkDeviceSize offset = 0;
     std::vector<std::vector<vkpushconstants>> pushes(mgltfobjs.vbodata.size());
 
@@ -379,7 +381,7 @@ void animmodel::drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, VkPipeli
 
 }
 
-void animmodel::drawinstanced(vkobjs& objs, VkPipelineLayout& vkplayout, int instancecount, int stride, double& decaytime, bool* decaying){
+void genericmodel::drawinstanced(vkobjs& objs, VkPipelineLayout& vkplayout, int instancecount, int stride, double& decaytime, bool* decaying){
     VkDeviceSize offset = 0;
     std::vector<std::vector<vkpushconstants>> pushes(mgltfobjs.vbodata.size());
     if (decaytime > 0.8)*decaying = false;
@@ -408,7 +410,7 @@ void animmodel::drawinstanced(vkobjs& objs, VkPipelineLayout& vkplayout, int ins
 
 
 
-void animmodel::cleanup(vkobjs& objs){
+void genericmodel::cleanup(vkobjs& objs){
 
     for (int i{ 0 }; i < mgltfobjs.vbodata.size(); i++) {
         for (int j{ 0 }; j < mgltfobjs.vbodata.at(i).size(); j++) {
@@ -432,10 +434,10 @@ void animmodel::cleanup(vkobjs& objs){
 }
 
 
-std::vector<vktexdata> animmodel::gettexdata() {
+std::vector<vktexdata> genericmodel::gettexdata() {
     return mgltfobjs.tex;
 }
 
-vktexdatapls animmodel::gettexdatapls(){
+vktexdatapls genericmodel::gettexdatapls(){
     return mgltfobjs.texpls;
 }

@@ -20,7 +20,7 @@
 #include "vkcam.hpp"
 
 
-#include "playoutplayer.hpp"
+#include "playoutgeneric.hpp"
 
 
 #include "vkobjs.hpp"
@@ -35,7 +35,7 @@ public:
 	bool init();
     void setsize(unsigned int w, unsigned int h);
     bool uploadfordraw();
-    bool uploadfordraw(std::shared_ptr<playoutplayer>& x);
+    bool uploadfordraw(std::shared_ptr<playoutgeneric>& x);
     bool draw();
     bool drawpause();
 	bool drawloading();
@@ -112,8 +112,8 @@ private:
 
 	vkcam mcam{};
 
-    std::vector<std::shared_ptr<playoutplayer>> mplayer;
-    std::vector<std::shared_ptr<playoutplayer>> mplayerbuffer;
+    std::vector<std::shared_ptr<playoutgeneric>> mplayer;
+    std::vector<std::shared_ptr<playoutgeneric>> mplayerbuffer;
 
 
 	bool mmodeluploadrequired{ true };
