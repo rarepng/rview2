@@ -99,7 +99,7 @@ bool vkrenderer::deviceinit() {
 
     // std::lock_guard<std::shared_mutex> lg{ *mvkobjs.mtx2 };
     // auto instret = instbuild.use_default_debug_messenger().request_validation_layers().enable_extension("VK_EXT_shader_replicated_composites").require_api_version(1, 3, 0).build();
-    auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 3, 0).build();
+    auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 4, 309).build();
 	
 
     // instret.value().
@@ -111,7 +111,7 @@ bool vkrenderer::deviceinit() {
 
 
 
-    std::cout << res;
+    std::cout << res << std::endl;
 
 	vkb::PhysicalDeviceSelector physicaldevsel{ mvkobjs.rdvkbinstance };
     auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1,3).select();
@@ -185,7 +185,7 @@ bool vkrenderer::deviceinit() {
 
     //auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).add_required_extension_features(physmeshfeatures).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).add_required_extension("VK_EXT_mesh_shader").select();
     // auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_11(physfeatures11).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).add_required_extension("VK_EXT_shader_replicated_composites").add_required_extension_features(replicatedCompositesFeatures).select();
-    auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_11(physfeatures11).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).select();
+    auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 4).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_11(physfeatures11).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).select();
 	//auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 0).set_surface(msurface).select();
 
 	//std::cout << "\n\n\n\n\n\n\n\n\n\n mesh shader value: " << secondphysicaldevselret.value().is_extension_present("VK_EXT_mesh_shader") << "\n\n\n\n\n";
@@ -492,9 +492,18 @@ bool vkrenderer::uploadfordraw(){
 
 
     mvkobjs.mtx2->lock();
-    vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
+    size_t res2 = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
 
     mvkobjs.mtx2->unlock();
+
+	if (res2 == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
+		return recreateswapchain();
+	} else {
+		if (res2 != VK_SUCCESS) {
+			return false;
+		}
+	}
+
 
     //mvkobjs.uploadmtx->unlock();
     return true;
@@ -572,7 +581,7 @@ bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric>& x){
 
 
     mvkobjs.mtx2->lock();
-    vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
+    size_t res2 = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
 
     mvkobjs.mtx2->unlock();
 
@@ -581,6 +590,8 @@ bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric>& x){
 }
 
 void vkrenderer::sdlevent(SDL_Event* e){
+	if(e->type==SDL_EventType::SDL_EVENT_WINDOW_MINIMIZED)
+		std::cout << e->type << std::endl;
     switch (e->type) {
     case SDL_EVENT_KEY_UP:
         switch(e->key.key){
@@ -956,6 +967,8 @@ bool vkrenderer::draw() {
 
 		if (vkResetCommandBuffer(mvkobjs.rdcommandbuffer[0], 0) != VK_SUCCESS)return false;
 
+        sdlevent(mvkobjs.e);
+
 		VkCommandBufferBeginInfo cmdbgninfo{};
 		cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -966,7 +979,6 @@ bool vkrenderer::draw() {
 
 
 
-        sdlevent(mvkobjs.e);
 
 
 

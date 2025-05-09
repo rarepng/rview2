@@ -212,11 +212,13 @@ void genericmodel::createvboebo(vkobjs& objs){ //& joint vector
             const fastgltf::Accessor& noracc = mmodel2.accessors[it->findAttribute("NORMAL")->accessorIndex];
 
             if(it->materialIndex.has_value()){
-                const auto& texidx = mmodel2.materials.at(it->materialIndex.value()).pbrData.baseColorTexture->texCoordIndex;
-                // while(const auto& tcoord{it->findAttribute("TEXCOORD_" + std::to_string(texidx))->accessorIndex}!=);
-                const fastgltf::Accessor& texacc = mmodel2.accessors[it->findAttribute("TEXCOORD_" + std::to_string(texidx))->accessorIndex];
-                if(&texacc!=&posacc)
-                vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(2), texacc.count * fastgltf::getElementByteSize(texacc.type,texacc.componentType));
+                if(mmodel2.materials.at(it->materialIndex.value()).pbrData.baseColorTexture.has_value()){
+                    const auto& texidx = mmodel2.materials.at(it->materialIndex.value()).pbrData.baseColorTexture->texCoordIndex;
+                    // while(const auto& tcoord{it->findAttribute("TEXCOORD_" + std::to_string(texidx))->accessorIndex}!=);
+                    const fastgltf::Accessor& texacc = mmodel2.accessors[it->findAttribute("TEXCOORD_" + std::to_string(texidx))->accessorIndex];
+                    if(&texacc!=&posacc)
+                    vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(2), texacc.count * fastgltf::getElementByteSize(texacc.type,texacc.componentType));
+                }
             }
 
             const fastgltf::Accessor& joiacc = mmodel2.accessors[it->findAttribute("JOINTS_0")->accessorIndex];
@@ -307,18 +309,25 @@ void genericmodel::uploadvboebo(vkobjs& objs,VkCommandBuffer& cbuffer){
             vkebo::upload(objs,cbuffer, mgltfobjs.ebodata.at(i).at(idx), b, idxbview, idxacc.count);
 
 
+            if(!posacc.bufferViewIndex.has_value())continue; //gltf standard -> every primitive's verts must have position;
             vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(0), b, posbview, posacc);
+            if(&noracc!=&posacc)
             vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(1), b, norbview, noracc);
-            vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(2), b, texbview, texacc);
+            if(it->materialIndex.has_value())
+                if(mmodel2.materials.at(it->materialIndex.value()).pbrData.baseColorTexture.has_value())
+                    if(&texacc!=&posacc)
+                        vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(2), b, texbview, texacc);
 
-            if (joiacc.componentType == fastgltf::ComponentType::UnsignedShort) {
-                vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(3), jointzint, joiacc.count, jointuintofx[i]);
-            } else {
-                vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(3), b, joibview, joiacc);
-            }
+            if(&joiacc!=&posacc)
+                if (joiacc.componentType == fastgltf::ComponentType::UnsignedShort) {
+                    vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(3), jointzint, joiacc.count, jointuintofx[i]);
+                } else {
+                    vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(3), b, joibview, joiacc);
+                }
 
 
-            vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(4), b, weibview, weiacc);
+            if(&weiacc!=&posacc)
+                vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(4), b, weibview, weiacc);
             
         }
     }
