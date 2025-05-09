@@ -52,6 +52,7 @@ void vkwind::frameupdate() {
     if (!shutdown) {
         mvkrenderer->initscene();
         mvkrenderer->quicksetup();
+        mvkrenderer->drawblank();
         mvkrenderer->uploadfordraw();
         while (!shutdown) {
             if (!mvkrenderer->draw()) {
