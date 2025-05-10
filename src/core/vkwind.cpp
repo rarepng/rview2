@@ -52,6 +52,9 @@ void vkwind::frameupdate() {
     if (!shutdown) {
         mvkrenderer->initscene();
         mvkrenderer->quicksetup();
+        // has to recreate swapchain atleast 3 times before uploading image to gpu because of mailbox present mode but im not sure why exactly
+        mvkrenderer->drawblank();
+        mvkrenderer->drawblank();
         mvkrenderer->drawblank();
         mvkrenderer->uploadfordraw();
         while (!shutdown) {

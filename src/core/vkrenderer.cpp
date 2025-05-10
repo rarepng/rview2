@@ -295,7 +295,7 @@ bool vkrenderer::createswapchain() {
     VkSurfaceCapabilitiesKHR surcap;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mvkobjs.rdvkbdevice.physical_device,msurface,&surcap);
 
-    std::cout << surcap.supportedCompositeAlpha;/////////////////////////
+    std::cout << surcap.supportedCompositeAlpha << std::endl;/////////////////////////
 
     swapchainbuild.set_composite_alpha_flags((VkCompositeAlphaFlagBitsKHR)(surcap.supportedCompositeAlpha & 8 ? 8:1));
     swapchainbuild.set_desired_format({VK_FORMAT_B8G8R8A8_SRGB,VK_COLOR_SPACE_SRGB_NONLINEAR_KHR  });
