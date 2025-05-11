@@ -309,10 +309,7 @@ bool vkrenderer::createswapchain() {
 }
 bool vkrenderer::recreateswapchain() {
     SDL_GetWindowSize(mvkobjs.rdwind, &mvkobjs.rdwidth, &mvkobjs.rdheight);
-	while (mvkobjs.rdwidth == 0 || mvkobjs.rdheight == 0) {
-        SDL_GetWindowSize(mvkobjs.rdwind, &mvkobjs.rdwidth, &mvkobjs.rdheight);
-        //glfwWaitEvents();
-	}
+
 	vkDeviceWaitIdle(mvkobjs.rdvkbdevice.device);
 	framebuffer::cleanup(mvkobjs);
 	vkDestroyImageView(mvkobjs.rdvkbdevice.device, mvkobjs.rddepthimageview, nullptr);
@@ -590,8 +587,12 @@ bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric>& x){
 }
 
 void vkrenderer::sdlevent(SDL_Event* e){
-	if(e->type==SDL_EventType::SDL_EVENT_WINDOW_MINIMIZED)
-		std::cout << e->type << std::endl;
+	if(e->type==SDL_EventType::SDL_EVENT_WINDOW_MINIMIZED){
+		while(e->type!=SDL_EventType::SDL_EVENT_WINDOW_RESTORED){
+			// std::cout << e->type << std::endl;
+            SDL_PollEvent(e);
+		}
+	}
     switch (e->type) {
     case SDL_EVENT_KEY_UP:
         switch(e->key.key){
