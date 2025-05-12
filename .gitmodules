@@ -1,27 +1,15 @@
 [submodule "fastgltf"]
 	path = sub/fastgltf
 	url = ../../spnda/fastgltf.git
-[submodule "glm"]
-	path = sub/glm
-	url = ../glm.git
-[submodule "simdjson"]
-	path = sub/simdjson
-	url = ../../simdjson/simdjson.git
-[submodule "vk_boot"]
-	path = sub/vk_boot
-	url = ../../charles-lunarg/vk-bootstrap.git
 [submodule "vma"]
 	path = sub/vma
 	url = ../../GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-[submodule "stb"]
-	path = sub/stb
-	url = ../../nothings/stb.git
-[submodule "imgui"]
-	path = sub/imgui
-	url = ../../ocornut/imgui.git
-[submodule "sdl"]
-	path = sub/sdl
-	url = ../../libsdl-org/SDL.git
-[submodule "sdlimg"]
-	path = sub/sdlimg
-	url = ../../libsdl-org/SDL_image.git
+[submodule "gns"]
+	path = sub/gns
+	url = ../GameNetworkingSockets
+[submodule "protobuf"]
+	path = sub/protobuf
+	url = ../protobuf
+[submodule "absl"]
+	path = sub/absl
+	url = ../../abseil/abseil-cpp
