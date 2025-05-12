@@ -2,13 +2,19 @@ cmake_minimum_required(VERSION 3.31)
 project(rview2 LANGUAGES CXX)
 
 
-#include(ExternalProject)
+include(ExternalProject)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 find_package(Vulkan REQUIRED)
+
+
+
+set(OPENSSL_USE_STATIC_LIBS ON)
+find_package(OpenSSL REQUIRED)
+
 
 set(submodules_path
         ${PROJECT_SOURCE_DIR}/sub
@@ -26,6 +32,93 @@ set(SEP ";")
 set(STATIC_LIB_EXT lib)
 endif()
 
+add_definitions(-DSTEAMNETWORKINGSOCKETS_STATIC_LINK=1)
+add_definitions(-DABSL_OPTION_USE_STD_ORDERING=0)
+
+
+ExternalProject_Add(abslEX
+    SOURCE_DIR ${submodules_path}/absl
+    CMAKE_ARGS
+        ${GLOBAL_DEFAULT_ARGS}
+        -G Ninja
+        -DBUILD_TESTING=OFF
+        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/cmake_more_cache/absl
+        -DCMAKE_CXX_STANDARD=20
+        -DCMAKE_CXX_STANDARD_REQUIRED=ON
+        -DCMAKE_CXX_COMPILER=g++
+        -DCMAKE_C_COMPILER=gcc
+        -DBUILD_SHARED_LIB=OFF
+        -DBUILD_SHARED_LIBS=OFF
+        -DABSL_OPTION_USE_STD_ORDERING=0
+        -DCMAKE_CXX_FLAGS='-static\ -D\ ABSL_OPTION_USE_STD_ORDERING=0\ -D\ ABSL_USES_STD_ORDERING=0'
+        -DCMAKE_C_FLAGS='-static\ -D\ ABSL_OPTION_USE_STD_ORDERING=0\ -D\ ABSL_USES_STD_ORDERING=0'
+        -B ${PROJECT_SOURCE_DIR}/cmake_more_cache/absl_build
+    BUILD_COMMAND ninja
+    INSTALL_COMMAND ninja install
+)
+
+
+ExternalProject_Add(protoEX
+    SOURCE_DIR ${submodules_path}/protobuf
+    CMAKE_ARGS
+        ${GLOBAL_DEFAULT_ARGS}
+        -G Ninja
+        -DCMAKE_CXX_COMPILER=g++
+        -DCMAKE_C_COMPILER=gcc
+        -DCMAKE_BUILD_TYPE=Release
+        -Dprotobuf_BUILD_TESTS=OFF
+        -Dprotobuf_BUILD_SHARED_LIBS=OFF
+        -DBUILD_SHARED_LIBS=OFF
+        -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto
+        -DCMAKE_CXX_STANDARD=20
+        -DCMAKE_CXX_STANDARD_REQUIRED=ON
+        -DABSL_OPTION_USE_STD_ORDERING=0
+        -DCMAKE_CXX_FLAGS='-static\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include'
+        -DCMAKE_C_FLAGS='-static\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include'
+        -Dprotobuf_WITH_ZLIB=OFF
+        -Dprotobuf_ABSL_PROVIDER=package
+        -DCMAKE_PREFIX_PATH=${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/lib/cmake/absl
+        -DABSL_ROOT_DIR=${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/lib/cmake/absl
+        -B ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto_build
+    BUILD_COMMAND ninja
+    INSTALL_COMMAND ninja install
+)
+
+
+ExternalProject_Add(gnsEX
+    SOURCE_DIR ${submodules_path}/gns
+    CMAKE_ARGS
+        ${GLOBAL_DEFAULT_ARGS}
+        -G Ninja
+        -DCMAKE_CXX_COMPILER=g++
+        -DCMAKE_C_COMPILER=gcc
+        -DCMAKE_BUILD_TYPE=Release
+        -DProtobuf_USE_STATIC_LIBS=ON
+        -Dprotobuf_BUILD_TESTS=OFF
+        -Dprotobuf_BUILD_SHARED_LIBS=OFF
+        -DCMAKE_CXX_STANDARD=20
+        -DCMAKE_CXX_STANDARD_REQUIRED=ON
+        -DOPENSSL_USE_STATIC_LIBS=ON
+        -DProtobuf_LIBRARIES=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib
+        -DProtobuf_INCLUDE_DIR=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include
+        -DBUILD_SHARED_LIB=OFF
+        -DBUILD_STATIC_LIB=ON
+        -DBUILD_SHARED_LIBS=OFF
+        -DBUILD_STATIC_LIBS=ON
+        -DProtobuf_PROTOC_EXECUTABLE=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin/protoc${EXT}
+        -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/cmake_more_cache/gns
+        -DCMAKE_PREFIX_PATH=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin
+        -DProtobuf_DIR=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto
+        -DSTEAMNETWORKINGSOCKETS_STATIC_LINK=1
+        #-DCMAKE_CXX_FLAGS='-D\ STEAMNETWORKINGSOCKETS_STATIC_LINK=1\ --static\ -static\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/absl\ -lprotobuf\ -lprotoc\ -lutf8_range\ -labsl_synchronization\ -labsl_symbolize\ -labsl_strings\ -labsl_str_format_internal\ -labsl_strings_internal\ -labsl_log_initialize\ -labsl_log_entry\ -labsl_log_flags\ -labsl_log_severity\ -labsl_log_internal_check_op\ -labsl_log_internal_conditions\ -labsl_log_internal_message\ -labsl_log_internal_nullguard\ -labsl_log_internal_proto\ -labsl_log_internal_format\ -labsl_log_internal_globals\ -labsl_log_internal_log_sink_set\ -labsl_log_sink\ -labsl_raw_logging_internal\ -labsl_log_globals\ -labsl_cord\ -labsl_cordz_info\ -labsl_cordz_handle\ -labsl_cordz_functions\ -labsl_cord_internal\ -labsl_crc_cord_state\ -labsl_crc32c\ -labsl_crc_internal\ -labsl_exponential_biased\ -labsl_synchronization\ -labsl_time\ -labsl_time_zone\ -labsl_int128\ -labsl_examine_stack\ -labsl_stacktrace\ -labsl_symbolize\ -labsl_demangle_internal\ -labsl_debugging_internal\ -labsl_malloc_internal\ -labsl_throw_delegate\ -labsl_strerror\ -labsl_raw_hash_set\ -labsl_hash\ -labsl_city\ -labsl_low_level_hash\ -labsl_base\ -labsl_spinlock_wait\ -labsl_status\ -std=c++20\ -lstdc++'
+        -DCMAKE_CXX_FLAGS='--static\ -static\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/absl\ -lprotobuf-lite\ -lprotobuf\ -lprotoc\ -lutf8_range\ -std=c++20\ -lstdc++\ -lpthread\ -lupb\ -lutf8_validity'
+        #-DCMAKE_CXX_FLAGS='-static'
+        -B "${PROJECT_SOURCE_DIR}/cmake_more_cache/gns_build"
+    BUILD_COMMAND ninja
+    INSTALL_COMMAND ninja install
+    DEPENDS protoEX
+)
 
 
 
@@ -106,6 +199,19 @@ add_custom_target(resources_bin_deps DEPENDS ${PROJECT_BINARY_DIR}/resources)
 add_dependencies(rview2 resources_bin_deps)
 
 
+
+target_link_directories(rview2 PRIVATE
+${PROJECT_SOURCE_DIR}/cmake_more_cache/gns/lib
+${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib
+${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/lib
+#${OPENSSL_ROOT}/lib64
+)
+
+add_dependencies(protoEX abslEX)
+add_dependencies(gnsEX protoEX)
+add_dependencies(rview2 gnsEX)
+
+
 target_link_libraries(rview2
     PRIVATE
         SDL3-static
@@ -113,7 +219,109 @@ target_link_libraries(rview2
         fastgltf
         glm
         Vulkan::Vulkan
+        OpenSSL::SSL
+        OpenSSL::Crypto
         vk-bootstrap::vk-bootstrap
+        GameNetworkingSockets_s
+        protobuf
+        protoc
+        upb
+        protobuf-lite
+        utf8_range
+        utf8_validity
+        OpenSSL::SSL
+        OpenSSL::Crypto
+        protobuf
+        # absl_bad_any_cast_impl
+        # absl_bad_optional_access
+        # absl_bad_variant_access
+        absl_base
+        absl_city
+        absl_civil_time
+        absl_cord
+        absl_cord_internal
+        absl_cordz_functions
+        absl_cordz_handle
+        absl_cordz_info
+        absl_cordz_sample_token
+        absl_crc_cord_state
+        absl_crc_cpu_detect
+        absl_crc_internal
+        absl_crc32c
+        absl_examine_stack                    ################################################
+        absl_symbolize                        ##                                            ##
+        absl_demangle_internal                ##            DO NOT CHANGE ORDER             ##
+        absl_demangle_rust                    ##                    !!!                     ##
+        absl_debugging_internal               ##                                            ##
+        absl_decode_rust_punycode             ################################################
+        absl_die_if_null
+        absl_exponential_biased
+        absl_failure_signal_handler
+        absl_flags_commandlineflag
+        absl_flags_commandlineflag_internal
+        absl_flags_config
+        absl_flags_internal
+        absl_flags_marshalling
+        absl_flags_parse
+        absl_flags_private_handle_accessor
+        absl_flags_program_name
+        absl_flags_reflection
+        absl_flags_usage
+        absl_flags_usage_internal
+        absl_graphcycles_internal
+        absl_hash
+        absl_hashtablez_sampler
+        absl_int128
+        absl_kernel_timeout_internal
+        absl_leak_check
+        # absl_log_entry
+        absl_log_flags
+        absl_log_globals
+        absl_log_initialize
+        absl_log_internal_check_op
+        absl_log_internal_conditions
+        absl_log_internal_fnmatch
+        absl_log_internal_format
+        absl_log_internal_globals
+        absl_log_internal_log_sink_set
+        absl_log_internal_message
+        absl_log_internal_nullguard
+        absl_log_internal_proto
+        absl_log_severity
+        absl_log_sink
+        absl_low_level_hash
+        absl_malloc_internal
+        absl_periodic_sampler
+        absl_poison
+        absl_random_distributions
+        absl_random_internal_distribution_test_util
+        absl_random_internal_platform
+        # absl_random_internal_pool_urbg
+        absl_random_internal_randen
+        absl_random_internal_randen_hwaes
+        absl_random_internal_randen_hwaes_impl
+        absl_random_internal_randen_slow
+        absl_random_internal_seed_material
+        absl_random_seed_gen_exception
+        absl_random_seed_sequences
+        absl_raw_hash_set
+        absl_raw_logging_internal
+        absl_scoped_set_env
+        absl_spinlock_wait
+        absl_stacktrace
+        absl_status
+        absl_statusor
+        absl_str_format_internal
+        absl_strerror
+        absl_string_view
+        absl_strings
+        absl_strings_internal
+        absl_synchronization
+        absl_throw_delegate
+        absl_time
+        absl_time_zone
+        absl_utf8_for_code_point
+        absl_vlog_config_internal
 )
 if(UNIX)
 target_link_libraries(rview2
@@ -134,6 +342,7 @@ endif()
 
 target_include_directories(rview2
     PUBLIC
+        "${PROJECT_SOURCE_DIR}/cmake_more_cache/gns/include/GameNetworkingSockets"
         "${submodules_path}/stb"
         "${submodules_path}/imgui"
         "${submodules_path}/vma/include"
