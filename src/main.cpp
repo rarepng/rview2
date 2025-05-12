@@ -5,7 +5,15 @@
 #include <iostream>
 #include "vkwind.hpp"
 
-
+VKAPI_ATTR VkBool32 VKAPI_CALL dbgcallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT       messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT              messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT*  pCallbackData,
+    void*                                        pUserData
+){
+    std::cout << "vlayer: " << pCallbackData->pMessage << std::endl;
+    return VK_TRUE;
+}
 
 
 int main() {

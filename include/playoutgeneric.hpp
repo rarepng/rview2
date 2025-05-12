@@ -65,7 +65,7 @@ private:
 
 	bool uploadreq{ true };
 
-	int totaltricount{};
+	size_t totaltricount{};
 	int numinstancess{};
 
 	int stride{};

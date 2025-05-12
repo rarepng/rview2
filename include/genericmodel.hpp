@@ -31,7 +31,7 @@ public:
 	std::string getmodelfname();
 	int getnodecount();
 	gltfnodedata getgltfnodes();
-	int gettricount(int i,int j);
+	size_t gettricount(size_t i,size_t j);
 
 	std::vector<glm::mat4> getinversebindmats();
 	std::vector<unsigned int> getnodetojoint();

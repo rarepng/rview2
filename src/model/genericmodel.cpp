@@ -16,6 +16,10 @@
 #include "vkebo.hpp"
 #include "genericmodel.hpp"
 
+
+
+
+
 bool genericmodel::loadmodel(vkobjs& objs, std::string fname){
 
     fastgltf::Parser fastparser{};
@@ -199,6 +203,9 @@ void genericmodel::createvboebo(vkobjs& objs){ //& joint vector
         mgltfobjs.vbodata[i].reserve(mmodel2.meshes[i].primitives.size());
         mgltfobjs.vbodata[i].resize(mmodel2.meshes[i].primitives.size());
         for (auto it = mmodel2.meshes[i].primitives.begin(); it < mmodel2.meshes[i].primitives.end(); it++) {
+
+            if(it->type!=fastgltf::PrimitiveType::Triangles)continue;
+
             const auto& idx = std::distance(mmodel2.meshes[i].primitives.begin(), it);
             mgltfobjs.vbodata.at(i).at(idx).reserve(it->attributes.size());
             mgltfobjs.vbodata.at(i).at(idx).resize(it->attributes.size());
@@ -337,19 +344,10 @@ void genericmodel::uploadvboebo(vkobjs& objs,VkCommandBuffer& cbuffer){
 
 
 
-int genericmodel::gettricount(int i,int j){
+size_t genericmodel::gettricount(size_t i,size_t j){
     const fastgltf::Primitive& prims = mmodel2.meshes.at(i).primitives.at(j);
     const fastgltf::Accessor& acc = mmodel2.accessors.at(prims.indicesAccessor.value());
-    unsigned int c{ 0 };
-    //switch (prims.mode) {
-    //case TINYGLTF_MODE_TRIANGLES:
-    c = acc.count / 3;
-    //    break;
-    //default:
-    //    c = 0;
-    //    break;
-    //}
-
+    size_t c{  acc.count / 3 };
     return c;
 }
 
@@ -370,21 +368,23 @@ void genericmodel::drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, VkPip
 
         for (int j{ 0 }; j < mgltfobjs.vbodata.at(i).size(); j++) {
             pushes[i][j].pkmodelstride = stride;
-            pushes[i][j].texidx = 0;//static_cast<unsigned int>(mmodel2.textures[mmodel2.materials[mmodel2.meshes.at(i).primitives.at(j).materialIndex.value_or(0)].pbrData.baseColorTexture->textureIndex].imageIndex.value_or(0));
+            if(mmodel2.meshes.at(i).primitives.at(j).materialIndex.has_value()){
+                if(mmodel2.materials.at(mmodel2.meshes.at(i).primitives.at(j).materialIndex.value()).pbrData.baseColorTexture.has_value())
+                    pushes[i][j].texidx =  static_cast<unsigned int>(mmodel2.textures[mmodel2.materials[mmodel2.meshes.at(i).primitives.at(j).materialIndex.value_or(0)].pbrData.baseColorTexture->textureIndex].imageIndex.value_or(0));
+            }else{
+                    pushes[i][j].texidx = 0;
+            }
             pushes[i][j].t = static_cast<float>(SDL_GetTicks())/1000.0f;
             pushes[i][j].decaying = false;
 
             vkCmdPushConstants(objs.rdcommandbuffer[0], vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants), &pushes.at(i).at(j));
             for (int k{ 0 }; k < mgltfobjs.vbodata.at(i).at(j).size(); k++) {
+                if(mgltfobjs.vbodata.at(i).at(j).at(k).rdvertexbuffer !=VK_NULL_HANDLE)
                 vkCmdBindVertexBuffers(objs.rdcommandbuffer[0], k, 1, &mgltfobjs.vbodata.at(i).at(j).at(k).rdvertexbuffer, &offset);
             }
             vkCmdBindIndexBuffer(objs.rdcommandbuffer[0], mgltfobjs.ebodata.at(i).at(j).bhandle, 0, VK_INDEX_TYPE_UINT16);
-            //if(mmodel2.meshes.at(i).primitives.at(j).materialIndex.has_value())
-            //if(mmodel2.textures[mmodel2.materials[mmodel2.meshes.at(i).primitives.at(j).materialIndex.value_or(0)].pbrData.baseColorTexture->textureIndex].imageIndex.has_value())
                 vkCmdDrawIndexed(objs.rdcommandbuffer[0], static_cast<uint32_t>(gettricount(i, j) * 3), instancecount, 0, 0, 0);
-            //else {
-            //    vkCmdDrawIndexed(objs.rdcommandbuffer[0], 0, instancecount, 0, 0, 0);
-            //}
+
         }
     }
 

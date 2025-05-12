@@ -31,8 +31,8 @@ bool playoutgeneric::loadmodel(vkobjs& objs, std::string fname) {
 }
 
 bool playoutgeneric::createinstances(vkobjs& objs, int count, bool rand) {
-	int numTriangles{};
-	for (int i = 0; i < count; ++i) {
+	size_t numTriangles{};
+	for (size_t i{0}; i < count; ++i) {
 		minstances.emplace_back(std::make_shared<genericinstance>(mgltf, glm::vec3{ 0.0f, 0.0f, 0.0f }, rand));
 		numTriangles += mgltf->gettricount(0, 0);
 	}
