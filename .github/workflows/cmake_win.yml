@@ -38,22 +38,22 @@ jobs:
       run: |
         choco install -y ninja 7zip
         choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --apply-install-arguments-to-dependencies
-        cd D:/a/raw/raw
+        cd D:/a/rview2/rview2
         # curl -L "https://github.com/openssl/openssl/releases/download/openssl-3.5.0/openssl-3.5.0.tar.gz" | tar -xz     #doesnt work on runner
         pwsh -c 'curl -L "https://github.com/openssl/openssl/releases/download/openssl-3.5.0/openssl-3.5.0.tar.gz" -o ossl.tar.gz'
         tar -xvzf ossl.tar.gz
     - shell: msys2 {0}
       run: |
-        cd /d/a/raw/raw/openssl-3.5.0
+        cd /d/a/rview2/rview2/openssl-3.5.0
         # echo y | pacman -S make
         export OPENSSL_USE_STATIC_LIBS=ON
         ./Configure --prefix=$PWD/dist no-idea no-mdc2 no-rc5 no-shared mingw64
         make depend && make && make install
     - name: set openssl
       run: |
-        $env:OPENSSL_ROOT_DIR="D:/a/raw/raw/openssl-3.4.0/dist"
-        $env:PATH="D:/a/raw/raw/openssl-3.4.0/dist/bin;$env:PATH"
-        echo "OPENSSL_ROOT_DIR=D:/a/raw/raw/openssl-3.4.0/dist" | tee -a $env:GITHUB_ENV
+        $env:OPENSSL_ROOT_DIR="D:/a/rview2/rview2/openssl-3.5.0/dist"
+        $env:PATH="D:/a/rview2/rview2/openssl-3.5.0/dist/bin;$env:PATH"
+        echo "OPENSSL_ROOT_DIR=D:/a/rview2/rview2/openssl-3.5.0/dist" | tee -a $env:GITHUB_ENV
         echo "PATH=$env:PATH" | tee -a $env:GITHUB_ENV
     - name: installing vulkan sdk
       run: |
