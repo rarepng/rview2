@@ -5,15 +5,16 @@
 #include <iostream>
 #include "vkwind.hpp"
 
-VKAPI_ATTR VkBool32 VKAPI_CALL dbgcallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT       messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT              messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT*  pCallbackData,
-    void*                                        pUserData
-){
-    std::cout << "vlayer: " << pCallbackData->pMessage << std::endl;
-    return VK_TRUE;
-}
+// idk how to do this properly
+// VKAPI_ATTR VkBool32 VKAPI_CALL dbgcallback(
+//     VkDebugUtilsMessageSeverityFlagBitsEXT       messageSeverity,
+//     VkDebugUtilsMessageTypeFlagsEXT              messageType,
+//     const VkDebugUtilsMessengerCallbackDataEXT*  pCallbackData,
+//     void*                                        pUserData
+// ){
+//     std::cout << "vlayer: " << pCallbackData->pMessage << std::endl;
+//     return VK_TRUE;
+// }
 
 
 int main() {
@@ -22,8 +23,7 @@ int main() {
     if (w->init("RViewer")) {
 		w->frameupdate();
 		w->cleanup();
-	}
-	else {
+	} else {
 		std::string hold;
 		std::cin >> hold;
 		return -1;

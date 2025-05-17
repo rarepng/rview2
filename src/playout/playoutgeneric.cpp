@@ -4,6 +4,7 @@
 #include "ssbo.hpp"
 #include "playout.hpp"
 #include "pline.hpp"
+#include "staticinstance.hpp"
 
 bool playoutgeneric::setup(vkobjs& objs, std::string fname, int count,std::string vfile, std::string ffile) {
 	if (!createubo(objs))return false;
@@ -59,13 +60,13 @@ bool playoutgeneric::createubo(vkobjs& objs) {
 
 
 bool playoutgeneric::createssbomat(vkobjs& objs) {
-	size_t size = numinstancess * minstances[0]->getjointmatrixsize() * sizeof(glm::mat4);
+	size_t size = numinstancess * SDL_clamp(minstances[0]->getjointmatrixsize(),1,minstances[0]->getjointmatrixsize()) * sizeof(glm::mat4);
 	if (!ssbo::init(objs, rdjointmatrixssbo, size))return false;
 	desclayouts.push_back(rdjointmatrixssbo.rdssbodescriptorlayout);
 	return true;
 }
 bool playoutgeneric::createssbouint(vkobjs& objs) {
-	size_t size = numinstancess * minstances[0]->getjointmatrixsize() * sizeof(glm::mat4);
+	size_t size = numinstancess * SDL_clamp(minstances[0]->getjointmatrixsize(),1,minstances[0]->getjointmatrixsize()) * sizeof(glm::mat4);
 	if (!ssbo::init(objs, uintssbo, size))return false;
 	desclayouts.push_back(uintssbo.rdssbodescriptorlayout);
 	return true;
@@ -73,13 +74,13 @@ bool playoutgeneric::createssbouint(vkobjs& objs) {
 
 
 bool playoutgeneric::createssbodq(vkobjs& objs) {
-	size_t size = (numinstancess)*minstances[0]->getjointdualquatssize() * sizeof(glm::mat2x4);
+	size_t size = numinstancess * SDL_clamp(minstances[0]->getjointmatrixsize(),1,minstances[0]->getjointmatrixsize()) * sizeof(glm::mat2x4);
 	if (!ssbo::init(objs, rdjointdualquatssbo, size))return false;
 	desclayouts.push_back(rdjointdualquatssbo.rdssbodescriptorlayout);
 	return true;
 }
 bool playoutgeneric::createssbodecay(vkobjs& objs) {
-	size_t size = minstances[0]->getjointmatrixsize() * sizeof(glm::mat4);
+	size_t size = numinstancess * SDL_clamp(minstances[0]->getjointmatrixsize(),1,minstances[0]->getjointmatrixsize()) * sizeof(glm::mat4);
 	if (!ssbo::init(objs, rdjointdecay, size))return false;
 	desclayouts.push_back(rdjointdecay.rdssbodescriptorlayout);
 	return true;

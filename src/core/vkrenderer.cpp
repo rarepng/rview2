@@ -655,9 +655,11 @@ void vkrenderer::sdlevent(SDL_Event* e){
             std::cout << "y : " << e->drop.y << std::endl;
         if(e->drop.data){
             std::cout << e->drop.data << std::endl;
+			const std::string fnamebuffer = e->drop.data;
             auto f = std::async(std::launch::async,[&]{
                 std::shared_ptr<playoutgeneric> newp = std::make_shared<playoutgeneric>();
-                newp->setup(mvkobjs,e->drop.data,1,playershaders[0][0],playershaders[0][1]);
+                if(!newp->setup(mvkobjs,e->drop.data,1,playershaders[0][0],playershaders[0][1]))
+				std::cout << "failed to setup model" << std::endl;
                 // uploadfordraw(newp);
                 mplayerbuffer.push_back(newp);
             });

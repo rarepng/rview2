@@ -36,13 +36,14 @@ bool genericmodel::loadmodel(vkobjs& objs, std::string fname){
 
     createvboebo(objs);
 
+    if(mmodel2.skins.size()){
     getjointdata();
     getinvbindmats();
 
     mjnodecount = mmodel2.nodes.size();
 
     getanims();
-
+    }
     return true;
 }
 
@@ -54,7 +55,7 @@ int genericmodel::getnodecount() {
 
 gltfnodedata genericmodel::getgltfnodes() {
     gltfnodedata nodeData{};
-
+    if(mmodel2.skins.size()){
     int rootNodeNum = mmodel2.scenes.at(0).nodeIndices.at(0);
 
     nodeData.rootnode = vknode::createroot(rootNodeNum);
@@ -66,7 +67,7 @@ gltfnodedata genericmodel::getgltfnodes() {
     nodeData.nodelist.resize(mjnodecount);
     nodeData.nodelist.at(rootNodeNum) = nodeData.rootnode;
     getnodelist(nodeData.nodelist, rootNodeNum);
-
+    }
     return nodeData;
 }
 
@@ -227,17 +228,17 @@ void genericmodel::createvboebo(vkobjs& objs){ //& joint vector
                     vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(2), texacc.count * fastgltf::getElementByteSize(texacc.type,texacc.componentType));
                 }
             }
-
             const fastgltf::Accessor& joiacc = mmodel2.accessors[it->findAttribute("JOINTS_0")->accessorIndex];
             const fastgltf::Accessor& weiacc = mmodel2.accessors[it->findAttribute("WEIGHTS_0")->accessorIndex];
-
-            if(&noracc!=&posacc)
+            const fastgltf::Accessor& noacc = mmodel2.accessors[it->findAttribute("nothing")->accessorIndex];
+            if(&noracc!=&noacc)
             vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(1), noracc.count * fastgltf::getElementByteSize(noracc.type,noracc.componentType));
             // if(joiacc){  //todo
             // if(weiacc){  //todo
             // std::cout << joiacc.componentType << std::endl;
             // if(joiacc.)
-            if(&joiacc!=&posacc){
+            // if()
+            if(&joiacc!=&noacc){
             vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(3), joiacc.count * fastgltf::getElementByteSize(joiacc.type,joiacc.componentType));
             
             
@@ -278,7 +279,7 @@ void genericmodel::createvboebo(vkobjs& objs){ //& joint vector
 
 
 
-            if(&weiacc!=&posacc)
+            if(&weiacc!=&noacc)
             vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(4), weiacc.count * fastgltf::getElementByteSize(weiacc.type,weiacc.componentType));
 
             vkebo::init(objs, mgltfobjs.ebodata.at(i).at(idx), idxacc.count * fastgltf::getComponentByteSize(idxacc.componentType));
