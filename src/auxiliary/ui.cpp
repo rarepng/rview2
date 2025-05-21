@@ -172,7 +172,7 @@ bool ui::init(vkobjs& renderData) {
     return true;
 }
 
-void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
+void ui::createdbgframe(vkobjs& renderData, selection& settings) {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
@@ -454,48 +454,74 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
             //ImGui::SliderFloat("##FOV", &renderData.rdfov, 40.0f, 150.0f, "%f", flags);
         }
 
-        if (ImGui::CollapsingHeader("instances")) {
-            ImGui::Text("count  : %d", renderData.rdnumberofinstances);
+        if (ImGui::CollapsingHeader("models")) {
+            ImGui::Text("model count  : %d", settings.instancesettings.size());
 
-            ImGui::Text("selected :");
+            ImGui::Text("selected model :");
             ImGui::SameLine();
             ImGui::PushButtonRepeat(true);
-            if (ImGui::ArrowButton("##LEFT", ImGuiDir_Left) &&
-                renderData.rdcurrentselectedinstance > 0) {
-                renderData.rdcurrentselectedinstance--;
+            if (ImGui::ArrowButton("##LEFTMOD", ImGuiDir_Left) &&
+                settings.midx > 0) {
+                settings.midx--;
             }
             ImGui::SameLine();
             ImGui::PushItemWidth(30);
-            ImGui::DragInt("##SELINST", &renderData.rdcurrentselectedinstance, 1, 0,
-                renderData.rdnumberofinstances - 1, "%3d", flags);
+            ImGui::DragScalar("##SELMOD",ImGuiDataType_U64,&settings.midx,flags);
             ImGui::PopItemWidth();
             ImGui::SameLine();
-            if (ImGui::ArrowButton("##RIGHT", ImGuiDir_Right) &&
-                renderData.rdcurrentselectedinstance < (renderData.rdnumberofinstances - 1)) {
-                renderData.rdcurrentselectedinstance++;
+            if (ImGui::ArrowButton("##RIGHTMOD", ImGuiDir_Right) &&
+                settings.midx < settings.instancesettings.size()-1) {
+                settings.midx++;
             }
             ImGui::PopButtonRepeat();
 
+            ImGui::Text("instance count  : %d", settings.instancesettings.at(settings.midx).size());
+
+            ImGui::Text("selected instance :");
+            ImGui::SameLine();
+            ImGui::PushButtonRepeat(true);
+            if (ImGui::ArrowButton("##LEFTINST", ImGuiDir_Left) &&
+                settings.iidx > 0) {
+                settings.iidx--;
+            }
+            ImGui::SameLine();
+            ImGui::PushItemWidth(30);
+            ImGui::DragScalar("##SELINST",ImGuiDataType_U64,&settings.iidx,flags);
+            // ImGui::DragScalar("##SELINST", &settings.iidx, 1, 0,
+            //     renderData.rdnumberofinstances - 1, "%3d", flags);
+            ImGui::PopItemWidth();
+            ImGui::SameLine();
+            if (ImGui::ArrowButton("##RIGHTINST", ImGuiDir_Right) &&
+                settings.iidx < settings.instancesettings.at(settings.midx).size()-1) {
+                settings.iidx++;
+            }
+            ImGui::PopButtonRepeat();
+
+            ImGui::Text("scale :");
+            ImGui::SameLine();
+            ImGui::SliderFloat3("##WORLDSCALE", glm::value_ptr(settings.instancesettings.at(settings.midx).at(settings.iidx)->msworldscale),
+                0.0f, 1000.0f, "%.1f", flags);
+
             ImGui::Text("position (x,z)  :");
             ImGui::SameLine();
-            ImGui::SliderFloat3("##WORLDPOS", glm::value_ptr(settings.msworldpos),
+            ImGui::SliderFloat3("##WORLDPOS", glm::value_ptr(settings.instancesettings.at(settings.midx).at(settings.iidx)->msworldpos),
                 -75.0f, 75.0f, "%.1f", flags);
 
             ImGui::Text("rotation - yaw   :");
             ImGui::SameLine();
-            ImGui::SliderFloat("##WORLDROT", &settings.msworldrot.y,
+            ImGui::SliderFloat("##WORLDROT", &settings.instancesettings.at(settings.midx).at(settings.iidx)->msworldrot.y,
                 -180.0f, 180.0f, "%.0f", flags);
         }
 
         if (ImGui::CollapsingHeader("model")) {
-            ImGui::Checkbox("draw", &settings.msdrawmodel);
+            ImGui::Checkbox("draw", &settings.instancesettings.at(settings.midx).at(settings.iidx)->msdrawmodel);
             //ImGui::Checkbox("Draw Skeleton", &settings.msdrawskeleton);
 
             ImGui::Text("skinning:");
             ImGui::SameLine();
             if (ImGui::RadioButton("linear",
-                settings.mvertexskinningmode == skinningmode::linear)) {
-                settings.mvertexskinningmode = skinningmode::linear;
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->mvertexskinningmode == skinningmode::linear)) {
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->mvertexskinningmode = skinningmode::linear;
             }
             //ImGui::SameLine();
             //if (ImGui::RadioButton("dual quats",
@@ -505,36 +531,36 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
         }
 
         if (ImGui::CollapsingHeader("animation")) {
-            ImGui::Checkbox("play", &settings.msplayanimation);
+            ImGui::Checkbox("play", &settings.instancesettings.at(settings.midx).at(settings.iidx)->msplayanimation);
 
-            if (!settings.msplayanimation) {
+            if (!settings.instancesettings.at(settings.midx).at(settings.iidx)->msplayanimation) {
                 ImGui::BeginDisabled();
             }
 
             ImGui::Text("playback direction:");
             ImGui::SameLine();
             if (ImGui::RadioButton("forward",
-                settings.msanimationplaydirection == replaydirection::forward)) {
-                settings.msanimationplaydirection = replaydirection::forward;
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimationplaydirection == replaydirection::forward)) {
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimationplaydirection = replaydirection::forward;
             }
             ImGui::SameLine();
             if (ImGui::RadioButton("backward",
-                settings.msanimationplaydirection == replaydirection::backward)) {
-                settings.msanimationplaydirection = replaydirection::backward;
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimationplaydirection == replaydirection::backward)) {
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimationplaydirection = replaydirection::backward;
             }
 
-            if (!settings.msplayanimation) {
+            if (!settings.instancesettings.at(settings.midx).at(settings.iidx)->msplayanimation) {
                 ImGui::EndDisabled();
             }
 
             ImGui::Text("clip   ");
             ImGui::SameLine();
             if (ImGui::BeginCombo("##ClipCombo",
-                settings.msclipnames.at(settings.msanimclip).c_str())) {
-                for (int i = 0; i < settings.msclipnames.size(); ++i) {
-                    const bool isSelected = (settings.msanimclip == i);
-                    if (ImGui::Selectable(settings.msclipnames.at(i).c_str(), isSelected)) {
-                        settings.msanimclip = i;
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.at(settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimclip).c_str())) {
+                for (int i = 0; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.size(); ++i) {
+                    const bool isSelected = (settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimclip == i);
+                    if (ImGui::Selectable(settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.at(i).c_str(), isSelected)) {
+                        settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimclip = i;
                     }
                     if (isSelected) {
                         ImGui::SetItemDefaultFocus();
@@ -543,16 +569,16 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
                 ImGui::EndCombo();
             }
 
-            if (settings.msplayanimation) {
+            if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msplayanimation) {
                 ImGui::Text("speed  ");
                 ImGui::SameLine();
-                ImGui::SliderFloat("##ClipSpeed", &settings.msanimspeed, 0.0f, 2.0f, "%.3f", flags);
+                ImGui::SliderFloat("##ClipSpeed", &settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimspeed, 0.0f, 2.0f, "%.3f", flags);
             }
             else {
                 ImGui::Text("timepos");
                 ImGui::SameLine();
-                ImGui::SliderFloat("##ClipPos", &settings.msanimtimepos, 0.0f,
-                    settings.msanimendtime, "%.3f", flags);
+                ImGui::SliderFloat("##ClipPos", &settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimtimepos, 0.0f,
+                    settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimendtime, "%.3f", flags);
             }
         }
 
@@ -560,37 +586,37 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
             ImGui::Text("blend type:");
             ImGui::SameLine();
             if (ImGui::RadioButton("Fade In/Out",
-                settings.msblendingmode == blendmode::fadeinout)) {
-                settings.msblendingmode = blendmode::fadeinout;
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode == blendmode::fadeinout)) {
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode = blendmode::fadeinout;
             }
             ImGui::SameLine();
             if (ImGui::RadioButton("crossfading",
-                settings.msblendingmode == blendmode::crossfade)) {
-                settings.msblendingmode = blendmode::crossfade;
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode == blendmode::crossfade)) {
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode = blendmode::crossfade;
             }
             ImGui::SameLine();
             if (ImGui::RadioButton("additive",
-                settings.msblendingmode == blendmode::additive)) {
-                settings.msblendingmode = blendmode::additive;
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode == blendmode::additive)) {
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode = blendmode::additive;
             }
 
-            if (settings.msblendingmode == blendmode::fadeinout) {
+            if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode == blendmode::fadeinout) {
                 ImGui::Text("factor");
                 ImGui::SameLine();
-                ImGui::SliderFloat("##BlendFactor", &settings.msanimblendfactor, 0.0f, 1.0f, "%.3f",
+                ImGui::SliderFloat("##BlendFactor", &settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimblendfactor, 0.0f, 1.0f, "%.3f",
                     flags);
             }
 
-            if (settings.msblendingmode == blendmode::crossfade ||
-                settings.msblendingmode == blendmode::additive) {
+            if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode == blendmode::crossfade ||
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode == blendmode::additive) {
                 ImGui::Text("Dest Clip   ");
                 ImGui::SameLine();
                 if (ImGui::BeginCombo("##DestClipCombo",
-                    settings.msclipnames.at(settings.mscrossblenddestanimclip).c_str())) {
-                    for (int i = 0; i < settings.msclipnames.size(); ++i) {
-                        const bool isSelected = (settings.mscrossblenddestanimclip == i);
-                        if (ImGui::Selectable(settings.msclipnames.at(i).c_str(), isSelected)) {
-                            settings.mscrossblenddestanimclip = i;
+                    settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.at(settings.instancesettings.at(settings.midx).at(settings.iidx)->mscrossblenddestanimclip).c_str())) {
+                    for (int i = 0; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.size(); ++i) {
+                        const bool isSelected = (settings.instancesettings.at(settings.midx).at(settings.iidx)->mscrossblenddestanimclip == i);
+                        if (ImGui::Selectable(settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.at(i).c_str(), isSelected)) {
+                            settings.instancesettings.at(settings.midx).at(settings.iidx)->mscrossblenddestanimclip = i;
                         }
                         if (isSelected) {
                             ImGui::SetItemDefaultFocus();
@@ -601,20 +627,20 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
 
                 ImGui::Text("Cross Blend ");
                 ImGui::SameLine();
-                ImGui::SliderFloat("##CrossBlendFactor", &settings.msanimcrossblendfactor, 0.0f, 1.0f,
+                ImGui::SliderFloat("##CrossBlendFactor", &settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimcrossblendfactor, 0.0f, 1.0f,
                     "%.3f", flags);
             }
 
-            if (settings.msblendingmode == blendmode::additive) {
+            if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode == blendmode::additive) {
                 ImGui::Text("Split Node  ");
                 ImGui::SameLine();
                 if (ImGui::BeginCombo("##SplitNodeCombo",
-                    settings.msskelnodenames.at(settings.msskelsplitnode).c_str())) {
-                    for (int i = 0; i < settings.msskelnodenames.size(); ++i) {
-                        if (settings.msskelnodenames.at(i).compare("(invalid)") != 0) {
-                            const bool isSelected = (settings.msskelsplitnode == i);
-                            if (ImGui::Selectable(settings.msskelnodenames.at(i).c_str(), isSelected)) {
-                                settings.msskelsplitnode = i;
+                    settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.at(settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelsplitnode).c_str())) {
+                    for (int i = 0; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.size(); ++i) {
+                        if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.at(i).compare("(invalid)") != 0) {
+                            const bool isSelected = (settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelsplitnode == i);
+                            if (ImGui::Selectable(settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.at(i).c_str(), isSelected)) {
+                                settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelsplitnode = i;
                             }
                             if (isSelected) {
                                 ImGui::SetItemDefaultFocus();
@@ -628,39 +654,39 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
 
         if (ImGui::CollapsingHeader("inverse kinematics")) {
             if (ImGui::RadioButton("Off",
-                settings.msikmode == ikmode::off)) {
-                settings.msikmode = ikmode::off;
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode == ikmode::off)) {
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode = ikmode::off;
             }
             ImGui::SameLine();
             if (ImGui::RadioButton("CCD",
-                settings.msikmode == ikmode::ccd)) {
-                settings.msikmode = ikmode::ccd;
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode == ikmode::ccd)) {
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode = ikmode::ccd;
             }
             ImGui::SameLine();
             if (ImGui::RadioButton("FABRIK",
-                settings.msikmode == ikmode::fabrik)) {
-                settings.msikmode = ikmode::fabrik;
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode == ikmode::fabrik)) {
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode = ikmode::fabrik;
             }
 
-            if (settings.msikmode == ikmode::ccd ||
-                settings.msikmode == ikmode::fabrik) {
+            if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode == ikmode::ccd ||
+                settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode == ikmode::fabrik) {
                 ImGui::Text("IK Iterations  :");
                 ImGui::SameLine();
-                ImGui::SliderInt("##IKITER", &settings.msikiterations, 0, 15, "%d", flags);
+                ImGui::SliderInt("##IKITER", &settings.instancesettings.at(settings.midx).at(settings.iidx)->msikiterations, 0, 15, "%d", flags);
 
                 ImGui::Text("Target Position:");
                 ImGui::SameLine();
-                ImGui::SliderFloat3("##IKTargetPOS", glm::value_ptr(settings.msiktargetpos), -10.0f,
+                ImGui::SliderFloat3("##IKTargetPOS", glm::value_ptr(settings.instancesettings.at(settings.midx).at(settings.iidx)->msiktargetpos), -10.0f,
                     10.0f, "%.3f", flags);
                 ImGui::Text("Effector Node  :");
                 ImGui::SameLine();
                 if (ImGui::BeginCombo("##EffectorNodeCombo",
-                    settings.msskelnodenames.at(settings.msikeffectornode).c_str())) {
-                    for (int i = 0; i < settings.msskelnodenames.size(); ++i) {
-                        if (settings.msskelnodenames.at(i).compare("(invalid)") != 0) {
-                            const bool isSelected = (settings.msikeffectornode == i);
-                            if (ImGui::Selectable(settings.msskelnodenames.at(i).c_str(), isSelected)) {
-                                settings.msikeffectornode = i;
+                    settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.at(settings.instancesettings.at(settings.midx).at(settings.iidx)->msikeffectornode).c_str())) {
+                    for (int i = 0; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.size(); ++i) {
+                        if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.at(i).compare("(invalid)") != 0) {
+                            const bool isSelected = (settings.instancesettings.at(settings.midx).at(settings.iidx)->msikeffectornode == i);
+                            if (ImGui::Selectable(settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.at(i).c_str(), isSelected)) {
+                                settings.instancesettings.at(settings.midx).at(settings.iidx)->msikeffectornode = i;
                             }
 
                             if (isSelected) {
@@ -673,12 +699,12 @@ void ui::createdbgframe(vkobjs& renderData, modelsettings& settings) {
                 ImGui::Text("IK Root Node   :");
                 ImGui::SameLine();
                 if (ImGui::BeginCombo("##RootNodeCombo",
-                    settings.msskelnodenames.at(settings.msikrootnode).c_str())) {
-                    for (int i = 0; i < settings.msskelnodenames.size(); ++i) {
-                        if (settings.msskelnodenames.at(i).compare("(invalid)") != 0) {
-                            const bool isSelected = (settings.msikrootnode == i);
-                            if (ImGui::Selectable(settings.msskelnodenames.at(i).c_str(), isSelected)) {
-                                settings.msikrootnode = i;
+                    settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.at(settings.instancesettings.at(settings.midx).at(settings.iidx)->msikrootnode).c_str())) {
+                    for (int i = 0; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.size(); ++i) {
+                        if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.at(i).compare("(invalid)") != 0) {
+                            const bool isSelected = (settings.instancesettings.at(settings.midx).at(settings.iidx)->msikrootnode == i);
+                            if (ImGui::Selectable(settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.at(i).c_str(), isSelected)) {
+                                settings.instancesettings.at(settings.midx).at(settings.iidx)->msikrootnode = i;
                             }
 
                             if (isSelected) {

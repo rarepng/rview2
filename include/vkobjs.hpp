@@ -190,10 +190,6 @@ struct vkobjs {
 	glm::vec3 rdcamwpos{ 350.0f,350.0f,1000.0f };
 
 
-	int rdnumberofinstances{ 0 };
-	int rdcurrentselectedinstance{ 0 };
-
-
 
 	glm::vec3 raymarchpos{ 0.0f };
 

@@ -70,15 +70,29 @@ bool vkrenderer::initscene() {
 
     mplayer.reserve(playerfname.size());
     mplayer.resize(playerfname.size());
+	
+	selectiondata.n_instances.reserve(playercount.size());
+	selectiondata.n_instances.resize(playercount.size());
 
-    unsigned int idx{0};
+	selectiondata.instancesettings.reserve(playercount.size());
+	selectiondata.instancesettings.resize(playercount.size());
+
+    size_t idx{0};
 	// std::cout << "CWD : " << getcwd(new char[](1024),1024) << std::endl;
     for(auto& i : mplayer){
+	selectiondata.instancesettings.at(idx).reserve(playercount[idx]);
+	selectiondata.instancesettings.at(idx).resize(playercount[idx]);
+	selectiondata.n_instances.at(idx) = playercount[idx];
         i=std::make_shared<playoutgeneric>();
         if (!i->setup(mvkobjs, playerfname[idx], playercount[idx],playershaders[idx][0], playershaders[idx][1]))return false;
-        idx++;
+		for(size_t j{0};j<playercount[idx];j++)
+			selectiondata.instancesettings.at(idx).at(j)=&i->getinst(j)->getinstancesettings();
+		idx++;
     }
-
+	playerfname.clear();
+	playerfname.shrink_to_fit();
+	playercount.clear();
+	playercount.shrink_to_fit();
 
 
 	return true;
@@ -869,11 +883,14 @@ bool vkrenderer::draw() {
 
 		mvkobjs.rduigeneratetime = muigentimer.stop();
 
-
+		//idfk
         for(auto it = mplayerbuffer.begin();it!=mplayerbuffer.end();){
             uploadfordraw(*it);
             mplayer.push_back(std::move(*it));
             mplayerbuffer.erase(it);
+			selectiondata.n_instances.push_back(1); //initialize as 1 instance
+			selectiondata.instancesettings.emplace_back();
+			selectiondata.instancesettings.back().emplace_back(&mplayer.back()->getinst(0)->getinstancesettings());
         }
 
 
@@ -897,9 +914,6 @@ bool vkrenderer::draw() {
         if(dummytick%2){
             for(const auto& i:mplayer)
             i->getinst(0)->checkforupdates();
-
-
-
         }
 
 		dummytick++;
@@ -1008,9 +1022,7 @@ bool vkrenderer::draw() {
         lifetime = static_cast<double>(SDL_GetTicks())/1000.0;
         lifetime2 = static_cast<double>(SDL_GetTicks())/1000.0;
 
-        //currently selected
-        modelsettings& settings = mplayer[0]->getinst(0)->getinstancesettings();
-        mui.createdbgframe(mvkobjs, settings);
+        mui.createdbgframe(mvkobjs, selectiondata);
 
 		mui.render(mvkobjs, mvkobjs.rdcommandbuffer[0]);
 
