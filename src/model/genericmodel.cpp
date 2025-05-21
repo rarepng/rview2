@@ -234,6 +234,9 @@ void genericmodel::createvboebo(vkobjs& objs){ //& joint vector
                 vkvbo::init(objs,mgltfobjs.vbodata.at(i).at(idx).at(2),acc.count * fastgltf::getElementByteSize(acc.type,acc.componentType));
                 
                 }else if(it2->name == "JOINTS_0"){
+                    if(acc.componentType != fastgltf::ComponentType::UnsignedByte)
+                vkvbo::init(objs,mgltfobjs.vbodata.at(i).at(idx).at(3),acc.count * fastgltf::getElementByteSize(acc.type,acc.componentType)*4);
+                    else
                 vkvbo::init(objs,mgltfobjs.vbodata.at(i).at(idx).at(3),acc.count * fastgltf::getElementByteSize(acc.type,acc.componentType));
 
                 }else if(it2->name == "WEIGHTS_0"){
@@ -343,7 +346,7 @@ void genericmodel::uploadvboebo(vkobjs& objs,VkCommandBuffer& cbuffer){
                 if(it2->name.starts_with("JOINTS_")){
                     if(it2->name=="JOINTS_0")
                     if (acc.componentType == fastgltf::ComponentType::UnsignedShort) {
-                        vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(idx2), jointzint, acc.count, jointuintofx[i]);
+                        vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(3), jointzint, acc.count, jointuintofx[i]);
                     } else {
                         vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(3), b, bview, acc);
                     }
