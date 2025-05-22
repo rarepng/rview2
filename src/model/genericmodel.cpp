@@ -279,6 +279,7 @@ void genericmodel::createvboebo(vkobjs& objs){ //& joint vector
             meshjointtype.at(i) = joiacc.componentType != fastgltf::ComponentType::UnsignedByte;
 
             const auto& joibview = mmodel2.bufferViews.at(joiacc.bufferViewIndex.value());
+            const fastgltf::Buffer& buffer = mmodel2.buffers.at(joibview.bufferIndex); //important on demand
 
             if (joiacc.componentType == fastgltf::ComponentType::UnsignedShort) {
                 if (i > 0)
@@ -291,7 +292,7 @@ void genericmodel::createvboebo(vkobjs& objs){ //& joint vector
                    [](auto& arg) {},
                    [&](const fastgltf::sources::Array& vector) {
                        std::memcpy(jointz.data(), vector.bytes.data() + joibview.byteOffset + joiacc.byteOffset, joibview.byteLength);
-                   } }, mmodel2.buffers.at(joibview.bufferIndex).data);
+                   } }, buffer.data);
                jointzint.insert(jointzint.end(), jointz.begin(), jointz.end());
                jointz.clear();
             } else {

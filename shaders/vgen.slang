@@ -30,6 +30,7 @@ struct jmats {
 
 [vk_push_constant]
 layout(push_constant) uniform consts Constants;
+
 layout(set = 1, binding = 0) ConstantBuffer<cams> Matrices;
 // layout (set = 1, binding = 0) uniform cams Matrices;
 
