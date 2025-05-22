@@ -6,10 +6,10 @@
  <br>
  <a href="https://discord.gg/kxRUCKAR3T"><img src="https://img.shields.io/badge/join-discord-%23FFFFFFFF?style=flat&logo=discord&labelColor=black" height="22"></a>
 
-## Random Arena wars 
-vulkan 1.3 simple cross platform online multiplayer game.
+## Rview 2
+vulkan 1.4 simple cross platform multiplayer gltf file viewer.
 can load any gltf model, pbr materials, textures, alpha blending, fk and ik animations, actions and non-linear animations
-full support for glsl shaders ( compile with glslc/glslangvalidator for vulkan ).
+full support for glsl shaders ( compile with glslc/glslangvalidator for vulkan ). gltf extensions are wip.
 
 ## Downloads
 

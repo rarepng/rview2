@@ -17,11 +17,17 @@ enum struct gstate{
 	player
 };
 
+struct selection{
+	std::vector<size_t> n_instances{};
+	std::vector<std::vector<modelsettings*>> instancesettings{};
+	size_t midx{0};
+	size_t iidx{0};
+};
 
 class ui {
 public:
 	bool init(vkobjs& mvkobjs);
-    void createdbgframe(vkobjs& mvkobjs, modelsettings& settings);
+    void createdbgframe(vkobjs& mvkobjs, selection& settingsz);
 	bool createloadingscreen(vkobjs& mvkobjs);
 	bool createpausebuttons(vkobjs& mvkobjs);
 	void addchat(std::string s);

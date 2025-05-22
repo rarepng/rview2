@@ -16,4 +16,5 @@ dist
 .cache
 .vscode
 *.swp
+out
 # .gitmodules

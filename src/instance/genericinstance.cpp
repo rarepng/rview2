@@ -14,6 +14,7 @@ genericinstance::genericinstance(std::shared_ptr<genericmodel> model, glm::vec3 
 	mgltfmodel = model;
 	mmodelsettings.msworldpos = worldpos;
 	mnodecount = mgltfmodel->getnodecount();
+	if(mnodecount){
 	minversebindmats = mgltfmodel->getinversebindmats();
 	mnodetojoint = mgltfmodel->getnodetojoint();
 	mjointmats.reserve(minversebindmats.size());
@@ -69,21 +70,22 @@ genericinstance::genericinstance(std::shared_ptr<genericmodel> model, glm::vec3 
 		mrootnode->setwrot(mmodelsettings.msworldrot);
 
 	}
-
+	}
 	checkforupdates();
+	
+	if(mnodecount){
+		mskeletonmesh = std::make_shared<vkmesh>();
+		mskeletonmesh->verts.reserve(mnodecount * 2);
+		mskeletonmesh->verts.resize(mnodecount * 2);
 
-	mskeletonmesh = std::make_shared<vkmesh>();
-	mskeletonmesh->verts.reserve(mnodecount * 2);
-	mskeletonmesh->verts.resize(mnodecount * 2);
+		//hardcoded
+		mmodelsettings.msikeffectornode = 19;
+		mmodelsettings.msikrootnode = 26;
+		setinversekindematicsnode(mmodelsettings.msikeffectornode, mmodelsettings.msikrootnode);
+		setnumikiterations(mmodelsettings.msikiterations);
 
-	//hardcoded
-	mmodelsettings.msikeffectornode = 19;
-	mmodelsettings.msikrootnode = 26;
-	setinversekindematicsnode(mmodelsettings.msikeffectornode, mmodelsettings.msikrootnode);
-	setnumikiterations(mmodelsettings.msikiterations);
-
-	mmodelsettings.msiktargetworldpos = getwrot() * mmodelsettings.msiktargetpos + glm::vec3(worldpos.x, 0.0f, worldpos.y);
-
+		mmodelsettings.msiktargetworldpos = getwrot() * mmodelsettings.msiktargetpos + glm::vec3(worldpos.x, 0.0f, worldpos.y);
+	}
 
 }
 
@@ -177,17 +179,19 @@ std::vector<glm::mat2x4> genericinstance::getjointdualquats() {
 
 
 void genericinstance::checkforupdates() {
-	static blendmode lastBlendMode = mmodelsettings.msblendingmode;
-	static int skelSplitNode = mmodelsettings.msskelsplitnode;
 	static glm::vec3 worldPos = mmodelsettings.msworldpos;
 	static glm::vec3 worldRot = mmodelsettings.msworldrot;
 	static glm::vec3 worldScale = mmodelsettings.msworldscale;
+	
+	if(mnodecount){
+	static blendmode lastBlendMode = mmodelsettings.msblendingmode;
+	static int skelSplitNode = mmodelsettings.msskelsplitnode;
 	static glm::vec3 ikTargetPos = mmodelsettings.msiktargetpos;
 	static ikmode lastIkMode = mmodelsettings.msikmode;
 	static int numIKIterations = mmodelsettings.msikiterations;
 	static int ikEffectorNode = mmodelsettings.msikeffectornode;
 	static int ikRootNode = mmodelsettings.msikrootnode;
-
+	
 	if (skelSplitNode != mmodelsettings.msskelsplitnode) {
 		setskeletonsplitnode(mmodelsettings.msskelsplitnode);
 		skelSplitNode = mmodelsettings.msskelsplitnode;
@@ -243,7 +247,7 @@ void genericinstance::checkforupdates() {
 		ikRootNode = mmodelsettings.msikrootnode;
 	}
 }
-
+}
 
 void genericinstance::updateanimation() {
 	if (mmodelsettings.msplayanimation) {

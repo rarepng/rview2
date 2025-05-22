@@ -20,7 +20,5 @@ layout (std140,set=1,binding=1) uniform texidx{
 void main() {
   vec4 col;
   col = texture(tex[txidx], vec2(texCoord.x,texCoord.y-fract(t2*txidx/4.0)));
-  //col.xyz += dec*(t2/20.0)/10.0;
-  //col.w -= dec*(t2/20.0)/10.0;
   FragColor = vec4(col.xyz,col.w*2.0);
 }

@@ -114,6 +114,8 @@ private:
 
     std::vector<std::shared_ptr<playoutgeneric>> mplayer;
     std::vector<std::shared_ptr<playoutgeneric>> mplayerbuffer;
+	
+	selection selectiondata{};
 
 
 	bool mmodeluploadrequired{ true };
@@ -150,7 +152,7 @@ private:
 
 
     std::vector<unsigned int> playercount{ 1 };
-    const std::vector<std::string> playerfname{ {"resources/p0.glb"} };
+    std::vector<std::string> playerfname{ {"resources/p0.glb"} };
     const std::vector<std::vector<std::string>> playershaders{ {"shaders/player.vert.spv", "shaders/player.frag.spv"} };
 
 

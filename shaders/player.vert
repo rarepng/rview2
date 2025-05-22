@@ -5,7 +5,7 @@ layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aTexCoord;
 layout (location = 3) in u8vec4 aJointNum;
 //layout (location = 3) in u16vec4 aJointNum;
-//layout (location = 3) in uvec4 aJointNum;
+// layout (location = 3) in uvec4 aJointNum;
 layout (location = 4) in vec4 aJointWeight;
 
 

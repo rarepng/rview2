@@ -36,13 +36,14 @@ bool genericmodel::loadmodel(vkobjs& objs, std::string fname){
 
     createvboebo(objs);
 
+    if(mmodel2.skins.size()){
     getjointdata();
     getinvbindmats();
 
     mjnodecount = mmodel2.nodes.size();
 
     getanims();
-
+    }
     return true;
 }
 
@@ -54,7 +55,7 @@ int genericmodel::getnodecount() {
 
 gltfnodedata genericmodel::getgltfnodes() {
     gltfnodedata nodeData{};
-
+    if(mmodel2.skins.size()){
     int rootNodeNum = mmodel2.scenes.at(0).nodeIndices.at(0);
 
     nodeData.rootnode = vknode::createroot(rootNodeNum);
@@ -66,7 +67,7 @@ gltfnodedata genericmodel::getgltfnodes() {
     nodeData.nodelist.resize(mjnodecount);
     nodeData.nodelist.at(rootNodeNum) = nodeData.rootnode;
     getnodelist(nodeData.nodelist, rootNodeNum);
-
+    }
     return nodeData;
 }
 
@@ -204,46 +205,81 @@ void genericmodel::createvboebo(vkobjs& objs){ //& joint vector
         mgltfobjs.vbodata[i].resize(mmodel2.meshes[i].primitives.size());
         for (auto it = mmodel2.meshes[i].primitives.begin(); it < mmodel2.meshes[i].primitives.end(); it++) {
 
-            if(it->type!=fastgltf::PrimitiveType::Triangles)continue;
+            if(it->type!=fastgltf::PrimitiveType::Triangles)continue; //only drawing triangles
 
             const auto& idx = std::distance(mmodel2.meshes[i].primitives.begin(), it);
             mgltfobjs.vbodata.at(i).at(idx).reserve(it->attributes.size());
             mgltfobjs.vbodata.at(i).at(idx).resize(it->attributes.size());
             // it->
             const fastgltf::Accessor& idxacc = mmodel2.accessors[it->indicesAccessor.value()];
+            vkebo::init(objs, mgltfobjs.ebodata.at(i).at(idx), idxacc.count * fastgltf::getComponentByteSize(idxacc.componentType));
 
-            const fastgltf::Accessor& posacc = mmodel2.accessors[it->findAttribute("POSITION")->accessorIndex];
-            if(!posacc.bufferViewIndex.has_value())continue; //gltf standard -> every primitive's verts must have position;
-            vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(0), posacc.count * fastgltf::getElementByteSize(posacc.type,posacc.componentType));
+            for(auto it2=it->attributes.begin();it2<it->attributes.end();it2++){
+                const auto& idx2 = std::distance(it->attributes.begin(),it2);
+                //temp
+                // if(it2->name=="TEXCOORD_1"){
+                //     mgltfobjs.vbodata.at(i).at(idx).erase(mgltfobjs.vbodata.at(i).at(idx).begin()+idx2);
+                //     continue;
+                // }
+                const fastgltf::Accessor& acc = mmodel2.accessors[it2->accessorIndex];
 
-            const fastgltf::Accessor& noracc = mmodel2.accessors[it->findAttribute("NORMAL")->accessorIndex];
+                //idfk how not to have it this way;
+                if(it2->name == "POSITION"){
 
-            if(it->materialIndex.has_value()){
-                if(mmodel2.materials.at(it->materialIndex.value()).pbrData.baseColorTexture.has_value()){
-                    const auto& texidx = mmodel2.materials.at(it->materialIndex.value()).pbrData.baseColorTexture->texCoordIndex;
-                    // while(const auto& tcoord{it->findAttribute("TEXCOORD_" + std::to_string(texidx))->accessorIndex}!=);
-                    const fastgltf::Accessor& texacc = mmodel2.accessors[it->findAttribute("TEXCOORD_" + std::to_string(texidx))->accessorIndex];
-                    if(&texacc!=&posacc)
-                    vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(2), texacc.count * fastgltf::getElementByteSize(texacc.type,texacc.componentType));
+                vkvbo::init(objs,mgltfobjs.vbodata.at(i).at(idx).at(0),acc.count * fastgltf::getElementByteSize(acc.type,acc.componentType));
+                }else if(it2->name == "NORMAL"){
+                vkvbo::init(objs,mgltfobjs.vbodata.at(i).at(idx).at(1),acc.count * fastgltf::getElementByteSize(acc.type,acc.componentType));
+                    
+                }else if(it2->name == "TEXCOORD_0"){
+                vkvbo::init(objs,mgltfobjs.vbodata.at(i).at(idx).at(2),acc.count * fastgltf::getElementByteSize(acc.type,acc.componentType));
+                
+                }else if(it2->name == "JOINTS_0"){
+                    if(acc.componentType != fastgltf::ComponentType::UnsignedByte)
+                vkvbo::init(objs,mgltfobjs.vbodata.at(i).at(idx).at(3),acc.count * fastgltf::getElementByteSize(acc.type,acc.componentType)*4);
+                    else
+                vkvbo::init(objs,mgltfobjs.vbodata.at(i).at(idx).at(3),acc.count * fastgltf::getElementByteSize(acc.type,acc.componentType));
+
+                }else if(it2->name == "WEIGHTS_0"){
+                vkvbo::init(objs,mgltfobjs.vbodata.at(i).at(idx).at(4),acc.count * fastgltf::getElementByteSize(acc.type,acc.componentType));
+
                 }
             }
 
-            const fastgltf::Accessor& joiacc = mmodel2.accessors[it->findAttribute("JOINTS_0")->accessorIndex];
-            const fastgltf::Accessor& weiacc = mmodel2.accessors[it->findAttribute("WEIGHTS_0")->accessorIndex];
+            // const fastgltf::Accessor& posacc = mmodel2.accessors[it->findAttribute("POSITION")->accessorIndex];
+            // if(!posacc.bufferViewIndex.has_value())continue; //gltf standard -> every primitive's verts must have position;
 
-            if(&noracc!=&posacc)
-            vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(1), noracc.count * fastgltf::getElementByteSize(noracc.type,noracc.componentType));
-            // if(joiacc){  //todo
-            // if(weiacc){  //todo
-            // std::cout << joiacc.componentType << std::endl;
-            // if(joiacc.)
-            if(&joiacc!=&posacc){
-            vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(3), joiacc.count * fastgltf::getElementByteSize(joiacc.type,joiacc.componentType));
+            // vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(0), posacc.count * fastgltf::getElementByteSize(posacc.type,posacc.componentType));
+
+            // const fastgltf::Accessor& noracc = mmodel2.accessors[it->findAttribute("NORMAL")->accessorIndex];
+
+            // if(it->materialIndex.has_value()){
+            //     if(mmodel2.materials.at(it->materialIndex.value()).pbrData.baseColorTexture.has_value()){
+            //         const auto& texidx = mmodel2.materials.at(it->materialIndex.value()).pbrData.baseColorTexture->texCoordIndex;
+            //         // while(const auto& tcoord{it->findAttribute("TEXCOORD_" + std::to_string(texidx))->accessorIndex}!=);
+            //         const fastgltf::Accessor& texacc = mmodel2.accessors[it->findAttribute("TEXCOORD_" + std::to_string(texidx))->accessorIndex];
+            //         if(&texacc!=&posacc)
+            //         vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(2), texacc.count * fastgltf::getElementByteSize(texacc.type,texacc.componentType));
+            //     }
+            // }
+            // const fastgltf::Accessor& joiacc = mmodel2.accessors[it->findAttribute("JOINTS_0")->accessorIndex];
+            // const fastgltf::Accessor& weiacc = mmodel2.accessors[it->findAttribute("WEIGHTS_0")->accessorIndex];
+            // const fastgltf::Accessor& noacc = mmodel2.accessors[it->findAttribute("nothing")->accessorIndex];
+            // if(&noracc!=&noacc)
+            // vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(1), noracc.count * fastgltf::getElementByteSize(noracc.type,noracc.componentType));
+            // // if(joiacc){  //todo
+            // // if(weiacc){  //todo
+            // // std::cout << joiacc.componentType << std::endl;
+            // // if(joiacc.)
+            // // if()
+            // if(&joiacc!=&noacc){
+            // vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(3), joiacc.count * fastgltf::getElementByteSize(joiacc.type,joiacc.componentType));
             
-            
+            if(mmodel2.skins.size()){
+            const fastgltf::Accessor& joiacc = mmodel2.accessors[it->findAttribute("JOINTS_0")->accessorIndex];
             meshjointtype.at(i) = joiacc.componentType != fastgltf::ComponentType::UnsignedByte;
 
             const auto& joibview = mmodel2.bufferViews.at(joiacc.bufferViewIndex.value());
+            const fastgltf::Buffer& buffer = mmodel2.buffers.at(joibview.bufferIndex); //important on demand
 
             if (joiacc.componentType == fastgltf::ComponentType::UnsignedShort) {
                 if (i > 0)
@@ -256,7 +292,7 @@ void genericmodel::createvboebo(vkobjs& objs){ //& joint vector
                    [](auto& arg) {},
                    [&](const fastgltf::sources::Array& vector) {
                        std::memcpy(jointz.data(), vector.bytes.data() + joibview.byteOffset + joiacc.byteOffset, joibview.byteLength);
-                   } }, mmodel2.buffers.at(joibview.bufferIndex).data);
+                   } }, buffer.data);
                jointzint.insert(jointzint.end(), jointz.begin(), jointz.end());
                jointz.clear();
             } else {
@@ -266,9 +302,8 @@ void genericmodel::createvboebo(vkobjs& objs){ //& joint vector
                     jointuintofx.at(i) = 0;
             }
 
+        }
 
-
-            }
 
             // std::vector<fastgltf::ComponentType> byters{fastgltf::ComponentType::Byte,fastgltf::ComponentType::UnsignedByte};
 
@@ -278,10 +313,9 @@ void genericmodel::createvboebo(vkobjs& objs){ //& joint vector
 
 
 
-            if(&weiacc!=&posacc)
-            vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(4), weiacc.count * fastgltf::getElementByteSize(weiacc.type,weiacc.componentType));
+            // if(&weiacc!=&noacc)
+            // vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(4), weiacc.count * fastgltf::getElementByteSize(weiacc.type,weiacc.componentType));
 
-            vkebo::init(objs, mgltfobjs.ebodata.at(i).at(idx), idxacc.count * fastgltf::getComponentByteSize(idxacc.componentType));
             
             mgltfobjs.vbodata.at(i).at(idx).shrink_to_fit(); //useless cause resize
         }
@@ -293,48 +327,44 @@ void genericmodel::createvboebo(vkobjs& objs){ //& joint vector
 void genericmodel::uploadvboebo(vkobjs& objs,VkCommandBuffer& cbuffer){
     for (size_t i{ 0 }; i < mmodel2.meshes.size(); i++) {
         for (auto it = mmodel2.meshes[i].primitives.begin(); it < mmodel2.meshes[i].primitives.end(); it++) {
-            const auto& idx = std::distance(mmodel2.meshes[i].primitives.begin(), it);
-
-            const fastgltf::Accessor& idxacc = mmodel2.accessors[it->indicesAccessor.value()];
-
-            const fastgltf::Accessor& posacc = mmodel2.accessors[it->findAttribute("POSITION")->accessorIndex];
-            const fastgltf::Accessor& noracc = mmodel2.accessors[it->findAttribute("NORMAL")->accessorIndex];
-            const fastgltf::Accessor& texacc = mmodel2.accessors[it->findAttribute("TEXCOORD_0")->accessorIndex];
-            const fastgltf::Accessor& joiacc = mmodel2.accessors[it->findAttribute("JOINTS_0")->accessorIndex];
-            const fastgltf::Accessor& weiacc = mmodel2.accessors[it->findAttribute("WEIGHTS_0")->accessorIndex];
-
-            const fastgltf::BufferView& idxbview = mmodel2.bufferViews[idxacc.bufferViewIndex.value()];
-
-            const fastgltf::BufferView& posbview = mmodel2.bufferViews[posacc.bufferViewIndex.value()];
-            const fastgltf::BufferView& norbview = mmodel2.bufferViews[noracc.bufferViewIndex.value()];
-            const fastgltf::BufferView& texbview = mmodel2.bufferViews[texacc.bufferViewIndex.value()];
-            const fastgltf::BufferView& joibview = mmodel2.bufferViews[joiacc.bufferViewIndex.value()];
-            const fastgltf::BufferView& weibview = mmodel2.bufferViews[weiacc.bufferViewIndex.value()];
 
             const fastgltf::Buffer& b = mmodel2.buffers[0];
 
+            const auto& idx = std::distance(mmodel2.meshes[i].primitives.begin(), it);
+            const fastgltf::Accessor& idxacc = mmodel2.accessors[it->indicesAccessor.value()];
+
+            // const fastgltf::Accessor& posacc = mmodel2.accessors[it->findAttribute("POSITION")->accessorIndex];
+            // if(!posacc.bufferViewIndex.has_value())continue; //gltf standard -> every primitive's verts must have position;
+
+            const fastgltf::BufferView& idxbview = mmodel2.bufferViews[idxacc.bufferViewIndex.value()];
             vkebo::upload(objs,cbuffer, mgltfobjs.ebodata.at(i).at(idx), b, idxbview, idxacc.count);
 
-
-            if(!posacc.bufferViewIndex.has_value())continue; //gltf standard -> every primitive's verts must have position;
-            vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(0), b, posbview, posacc);
-            if(&noracc!=&posacc)
-            vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(1), b, norbview, noracc);
-            if(it->materialIndex.has_value())
-                if(mmodel2.materials.at(it->materialIndex.value()).pbrData.baseColorTexture.has_value())
-                    if(&texacc!=&posacc)
-                        vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(2), b, texbview, texacc);
-
-            if(&joiacc!=&posacc)
-                if (joiacc.componentType == fastgltf::ComponentType::UnsignedShort) {
-                    vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(3), jointzint, joiacc.count, jointuintofx[i]);
-                } else {
-                    vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(3), b, joibview, joiacc);
+            //wip
+            for(auto it2=it->attributes.begin();it2<it->attributes.end();it2++){
+                const auto& idx2 = std::distance(it->attributes.begin(),it2);
+                const fastgltf::Accessor& acc = mmodel2.accessors[it2->accessorIndex];
+                const fastgltf::BufferView& bview = mmodel2.bufferViews[acc.bufferViewIndex.value()];
+                if(it2->name.starts_with("JOINTS_")){
+                    if(it2->name=="JOINTS_0")
+                    if (acc.componentType == fastgltf::ComponentType::UnsignedShort) {
+                        vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(3), jointzint, acc.count, jointuintofx[i]);
+                    } else {
+                        vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(3), b, bview, acc);
+                    }
+                }else if(it2->name.starts_with("TEXCOORD_")){
+                    if(it2->name=="TEXCOORD_0") //only 1 cause shader not ready
+                    vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(2), b, bview, acc);
+                }else if(it2->name.starts_with("WEIGHTS_")){
+                    if(it2->name=="WEIGHTS_0")
+                    vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(4), b, bview, acc);
+                }else if(it2->name.starts_with("NORMAL")){
+                    vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(1), b, bview, acc);
+                }else if(it2->name.starts_with("POSITION")){
+                    vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(0), b, bview, acc);
+                }else{
+                    std::cout << "new attribute : " << it2->name << " : ignored" << std::endl;
                 }
-
-
-            if(&weiacc!=&posacc)
-                vkvbo::upload(objs, cbuffer, mgltfobjs.vbodata.at(i).at(idx).at(4), b, weibview, weiacc);
+            }
             
         }
     }
@@ -364,12 +394,17 @@ void genericmodel::drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, VkPip
     for (int i{ 0 }; i < mgltfobjs.vbodata.size(); i++) {
         pushes[i].reserve(mgltfobjs.vbodata.at(i).size());
         pushes[i].resize(mgltfobjs.vbodata.at(i).size());
-        meshjointtype[i] ? vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplineuint) : vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkpline);
+
+        meshjointtype[i] ? 
+        vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplineuint) 
+        :
+         vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkpline)
+        ;
 
         for (int j{ 0 }; j < mgltfobjs.vbodata.at(i).size(); j++) {
             pushes[i][j].pkmodelstride = stride;
-            if(mmodel2.meshes.at(i).primitives.at(j).materialIndex.has_value()){
-                if(mmodel2.materials.at(mmodel2.meshes.at(i).primitives.at(j).materialIndex.value()).pbrData.baseColorTexture.has_value())
+            if(mmodel2.meshes.at(i).primitives.at(j).materialIndex.has_value()
+            && mmodel2.materials.at(mmodel2.meshes.at(i).primitives.at(j).materialIndex.value()).pbrData.baseColorTexture.has_value()){
                     pushes[i][j].texidx =  static_cast<unsigned int>(mmodel2.textures[mmodel2.materials[mmodel2.meshes.at(i).primitives.at(j).materialIndex.value_or(0)].pbrData.baseColorTexture->textureIndex].imageIndex.value_or(0));
             }else{
                     pushes[i][j].texidx = 0;
@@ -378,9 +413,10 @@ void genericmodel::drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, VkPip
             pushes[i][j].decaying = false;
 
             vkCmdPushConstants(objs.rdcommandbuffer[0], vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants), &pushes.at(i).at(j));
+            //rework bindings
             for (int k{ 0 }; k < mgltfobjs.vbodata.at(i).at(j).size(); k++) {
                 if(mgltfobjs.vbodata.at(i).at(j).at(k).rdvertexbuffer !=VK_NULL_HANDLE)
-                vkCmdBindVertexBuffers(objs.rdcommandbuffer[0], k, 1, &mgltfobjs.vbodata.at(i).at(j).at(k).rdvertexbuffer, &offset);
+                    vkCmdBindVertexBuffers(objs.rdcommandbuffer[0], k, 1, &mgltfobjs.vbodata.at(i).at(j).at(k).rdvertexbuffer, &offset);
             }
             vkCmdBindIndexBuffer(objs.rdcommandbuffer[0], mgltfobjs.ebodata.at(i).at(j).bhandle, 0, VK_INDEX_TYPE_UINT16);
                 vkCmdDrawIndexed(objs.rdcommandbuffer[0], static_cast<uint32_t>(gettricount(i, j) * 3), instancecount, 0, 0, 0);
@@ -389,35 +425,6 @@ void genericmodel::drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, VkPip
     }
 
 }
-
-void genericmodel::drawinstanced(vkobjs& objs, VkPipelineLayout& vkplayout, int instancecount, int stride, double& decaytime, bool* decaying){
-    VkDeviceSize offset = 0;
-    std::vector<std::vector<vkpushconstants>> pushes(mgltfobjs.vbodata.size());
-    if (decaytime > 0.8)*decaying = false;
-    vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1, &mgltfobjs.texpls.texdescriptorset, 0, nullptr);
-
-    for (int i{ 0 }; i < mgltfobjs.vbodata.size(); i++) {
-        pushes[i].reserve(mgltfobjs.vbodata.at(i).size());
-        pushes[i].resize(mgltfobjs.vbodata.at(i).size());
-
-        for (int j{ 0 }; j < mgltfobjs.vbodata.at(i).size(); j++) {
-            pushes[i][j].pkmodelstride = stride;
-            pushes[i][j].texidx = 0;
-            pushes[i][j].t = decaytime;
-
-            vkCmdPushConstants(objs.rdcommandbuffer[0], vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants), &pushes.at(i).at(j));
-            for (int k{ 0 }; k < mgltfobjs.vbodata.at(i).at(j).size(); k++) {
-                vkCmdBindVertexBuffers(objs.rdcommandbuffer[0], k, 1, &mgltfobjs.vbodata.at(i).at(j).at(k).rdvertexbuffer, &offset);
-            }
-            vkCmdBindIndexBuffer(objs.rdcommandbuffer[0], mgltfobjs.ebodata.at(i).at(j).bhandle, 0, VK_INDEX_TYPE_UINT16);
-            //ubo::upload(objs, objs.rdperspviewmatrixubo, mmodel->textures[mmodel->materials[i].pbrMetallicRoughness.baseColorTexture.index].source);
-            vkCmdDrawIndexed(objs.rdcommandbuffer[0], static_cast<uint32_t>(gettricount(i, j) * 3), instancecount, 0, 0, 0);
-        }
-    }
-}
-
-
-
 
 void genericmodel::cleanup(vkobjs& objs){
 
