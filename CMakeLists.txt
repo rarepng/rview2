@@ -172,12 +172,12 @@ file(GLOB_RECURSE GLSL_SOURCE_FILES
     )
   foreach(GLSL ${GLSL_SOURCE_FILES})
     get_filename_component(GLSL_EXT "${GLSL}" EXT)
-    string(SUBSTRING "${GLSL_EXT}" 1 -1 GLSL_EXT)
-    if(GLSL_EXT STREQUAL "frag")
+    # string(SUBSTRING "${GLSL_EXT}" 1 -1 GLSL_EXT)
+    if(GLSL_EXT STREQUAL ".frag")
         set(SLANG_STAGE "fragment")
-    elseif(GLSL_EXT STREQUAL "vert")
+    elseif(GLSL_EXT STREQUAL ".vert")
         set(SLANG_STAGE "vertex")
-    elseif(GLSL_EXT STREQUAL "comp")
+    elseif(GLSL_EXT STREQUAL ".comp")
         set(SLANG_STAGE "compute")
     endif()
     file(TO_CMAKE_PATH "${GLSL}" GLSL_NATIVE)
@@ -187,7 +187,7 @@ file(GLOB_RECURSE GLSL_SOURCE_FILES
         OUTPUT ${SPIRV}
         COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders"
         # compiling pure glsl files for now
-        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -default-downstream-compiler glsl glslang -lang glsl -entry main $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage "${SLANG_STAGE}" -matrix-layout-row-major -target spirv -capability SPIRV_1_6 ${GLSL_NATIVE} -o ${SPIRV}"
+        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -default-downstream-compiler glsl glslang -lang glsl -entry main $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage ${SLANG_STAGE} -matrix-layout-row-major -target spirv -capability SPIRV_1_6 ${GLSL_NATIVE} -o ${SPIRV}"
         # COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> ${GLSL_NATIVE} -o ${SPIRV}"
         # COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/glslc $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> --target-env=vulkan1.4 --target-spv=spv1.6 -std=460 -c ${GLSL_NATIVE} -o ${SPIRV}"
         DEPENDS ${GLSL_NATIVE}
