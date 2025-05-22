@@ -4,7 +4,6 @@
 #include "ssbo.hpp"
 #include "playout.hpp"
 #include "pline.hpp"
-#include "staticinstance.hpp"
 
 bool playoutgeneric::setup(vkobjs& objs, std::string fname, int count,std::string vfile, std::string ffile) {
 	if (!createubo(objs))return false;
@@ -17,8 +16,6 @@ bool playoutgeneric::setup(vkobjs& objs, std::string fname, int count,std::strin
 
 	if (!createplayout(objs))return false;
 	if (!createpline(objs, vfile, ffile))return false;
-	if (!createpline2(objs, "shaders/gltf_gpu_dquat.vert.spv", "shaders/gltf_gpu_dquat.frag.spv"))return false;
-	if (!createdecaypline(objs, "shaders/decay_glitch.vert.spv", "shaders/decay_glitch.frag.spv"))return false;
 
 	ready = true;
 
@@ -98,19 +95,6 @@ bool playoutgeneric::createpline(vkobjs& objs, std::string vfile, std::string ff
     if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpupipelineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{"shaders/playeruint.vert.spv", "shaders/playeruint.frag.spv"}, true))return false;
 	return true;
 }
-
-bool playoutgeneric::createpline2(vkobjs& objs, std::string vfile, std::string ffile) {
-	if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpudqpipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{vfile, ffile}))return false;
-    if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpudqpipelineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{vfile, ffile}, true))return false;
-	return true;
-}
-
-bool playoutgeneric::createdecaypline(vkobjs& objs, std::string vfile, std::string ffile){
-	if (!pline::init(objs, rdgltfpipelinelayout, decaypline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{vfile, ffile}))return false;
-	if (!pline::init(objs, rdgltfpipelinelayout, decayplineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31, std::vector<std::string>{vfile, ffile},true))return false;
-	return true;
-}
-
 
 void playoutgeneric::updateanims() {
 	for (auto& i : minstances) {
@@ -221,22 +205,6 @@ void playoutgeneric::draw(vkobjs& objs) {
 		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 5, 1, &uintssbo.rdssbodescriptorset, 0, nullptr);
 
 		mgltf->drawinstanced(objs, rdgltfpipelinelayout, rdgltfgpupipeline,rdgltfgpupipelineuint, numinstancess, stride);
-		//vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfgpudqpipeline);
-		//mgltf->drawinstanced(objs, rdgltfpipelinelayout, numinstancess, stridedq);
 	}
 
-}
-
-void playoutgeneric::drawdecays(vkobjs& objs, double& decaytime, bool* decaying){
-
-	if (minstances[0]->getinstancesettings().msdrawmodel) {
-		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1, &rdperspviewmatrixubo[0].rdubodescriptorset, 0, nullptr);
-		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1, &rdjointmatrixssbo.rdssbodescriptorset, 0, nullptr);
-		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 3, 1, &rdjointdualquatssbo.rdssbodescriptorset, 0, nullptr);
-		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 4, 1, &rdjointdecay.rdssbodescriptorset, 0, nullptr);
-		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 5, 1, &uintssbo.rdssbodescriptorset, 0, nullptr);
-
-		vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, decaypline);
-		mgltf->drawinstanced(objs, rdgltfpipelinelayout, decayinstances.size(), stride, decaytime, decaying);
-	}
 }

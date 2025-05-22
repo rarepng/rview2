@@ -56,7 +56,7 @@ jobs:
         sudo ldconfig
     - name: verifying vulkan
       run: |
-        mkdir $VULKAN_SDK/bin
+        mkdir -p $VULKAN_SDK/bin
         cp /home/runner/vulk/bin/slangc $VULKAN_SDK/bin/slangc
         $VULKAN_SDK/bin/slangc -v
     - name: downloading resources

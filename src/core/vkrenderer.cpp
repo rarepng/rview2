@@ -150,13 +150,14 @@ bool vkrenderer::deviceinit() {
 	physfeatures12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
 	physfeatures13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 	physfeatures14.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
-	//physmeshfeatures.pNext = &physfeatures12;
 	physfeatures.pNext = &physfeatures11;
 	physfeatures11.pNext = &physfeatures12;
     physfeatures12.pNext = &physfeatures13;
     physfeatures13.pNext = &physfeatures14;
+    physfeatures14.pNext = VK_NULL_HANDLE;
 
 
+	//physmeshfeatures.pNext = &physfeatures12;
     // VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT x;
     // x.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_REPLICATED_COMPOSITES_FEATURES_EXT;
     // x.shaderReplicatedComposites=true;
@@ -171,7 +172,7 @@ bool vkrenderer::deviceinit() {
     // physfeatures13.pNext = &replicatedCompositesFeatures;
 
 	//b8storagefeature.pNext = VK_NULL_HANDLE;
-    vkGetPhysicalDeviceFeatures2(firstphysicaldevselret.value(), &physfeatures);
+	vkGetPhysicalDeviceFeatures2(firstphysicaldevselret.value(), &physfeatures);
 	//std::cout << "\n\n\n\n" << physfeatures12.runtimeDescriptorArray << std::endl;
 	//if (physmeshfeatures.meshShader == VK_FALSE) {
 	//	std::cout << "NO mesh shader support"  << std::endl;
@@ -183,15 +184,7 @@ bool vkrenderer::deviceinit() {
 	//physmeshfeatures.taskShader = VK_TRUE;
 	//physmeshfeatures.multiviewMeshShader = VK_FALSE;
 	//physmeshfeatures.primitiveFragmentShadingRateMeshShader = VK_FALSE;
-	{
-		
 
-		
-
-
-
-
-	}
     // vkph
 
             // VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT;

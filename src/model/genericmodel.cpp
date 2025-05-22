@@ -394,7 +394,12 @@ void genericmodel::drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, VkPip
     for (int i{ 0 }; i < mgltfobjs.vbodata.size(); i++) {
         pushes[i].reserve(mgltfobjs.vbodata.at(i).size());
         pushes[i].resize(mgltfobjs.vbodata.at(i).size());
-        meshjointtype[i] ? vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplineuint) : vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkpline);
+
+        meshjointtype[i] ? 
+        vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplineuint) 
+        :
+         vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkpline)
+        ;
 
         for (int j{ 0 }; j < mgltfobjs.vbodata.at(i).size(); j++) {
             pushes[i][j].pkmodelstride = stride;
@@ -420,35 +425,6 @@ void genericmodel::drawinstanced(vkobjs& objs,VkPipelineLayout& vkplayout, VkPip
     }
 
 }
-
-void genericmodel::drawinstanced(vkobjs& objs, VkPipelineLayout& vkplayout, int instancecount, int stride, double& decaytime, bool* decaying){
-    VkDeviceSize offset = 0;
-    std::vector<std::vector<vkpushconstants>> pushes(mgltfobjs.vbodata.size());
-    if (decaytime > 0.8)*decaying = false;
-    vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1, &mgltfobjs.texpls.texdescriptorset, 0, nullptr);
-
-    for (int i{ 0 }; i < mgltfobjs.vbodata.size(); i++) {
-        pushes[i].reserve(mgltfobjs.vbodata.at(i).size());
-        pushes[i].resize(mgltfobjs.vbodata.at(i).size());
-
-        for (int j{ 0 }; j < mgltfobjs.vbodata.at(i).size(); j++) {
-            pushes[i][j].pkmodelstride = stride;
-            pushes[i][j].texidx = 0;
-            pushes[i][j].t = decaytime;
-
-            vkCmdPushConstants(objs.rdcommandbuffer[0], vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants), &pushes.at(i).at(j));
-            for (int k{ 0 }; k < mgltfobjs.vbodata.at(i).at(j).size(); k++) {
-                vkCmdBindVertexBuffers(objs.rdcommandbuffer[0], k, 1, &mgltfobjs.vbodata.at(i).at(j).at(k).rdvertexbuffer, &offset);
-            }
-            vkCmdBindIndexBuffer(objs.rdcommandbuffer[0], mgltfobjs.ebodata.at(i).at(j).bhandle, 0, VK_INDEX_TYPE_UINT16);
-            //ubo::upload(objs, objs.rdperspviewmatrixubo, mmodel->textures[mmodel->materials[i].pbrMetallicRoughness.baseColorTexture.index].source);
-            vkCmdDrawIndexed(objs.rdcommandbuffer[0], static_cast<uint32_t>(gettricount(i, j) * 3), instancecount, 0, 0, 0);
-        }
-    }
-}
-
-
-
 
 void genericmodel::cleanup(vkobjs& objs){
 
