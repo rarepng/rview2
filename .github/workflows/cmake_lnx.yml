@@ -57,7 +57,7 @@ jobs:
     - name: verifying vulkan
       run: |
         mkdir -p $VULKAN_SDK/bin
-        cp /home/runner/vulk/bin/slangc $VULKAN_SDK/bin/slangc
+        cp -n /home/runner/vulk/bin/slangc $VULKAN_SDK/bin/slangc
         $VULKAN_SDK/bin/slangc -v
     - name: downloading resources
       run: |
