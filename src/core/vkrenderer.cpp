@@ -113,7 +113,7 @@ bool vkrenderer::deviceinit() {
 
     // std::lock_guard<std::shared_mutex> lg{ *mvkobjs.mtx2 };
     // auto instret = instbuild.use_default_debug_messenger().request_validation_layers().enable_extension("VK_EXT_shader_replicated_composites").require_api_version(1, 3, 0).build();
-    auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 3).build();
+    auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 4).build();
 	
 
     // instret.value().
@@ -128,7 +128,7 @@ bool vkrenderer::deviceinit() {
     std::cout << res << std::endl;
 
 	vkb::PhysicalDeviceSelector physicaldevsel{ mvkobjs.rdvkbinstance };
-    auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1,3).select();
+    auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1,4).select();
 
     // VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT x;
     // x.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT;
@@ -136,23 +136,25 @@ bool vkrenderer::deviceinit() {
     // x.pNext = VK_NULL_HANDLE;
 
     //VkPhysicalDeviceMeshShaderFeaturesEXT physmeshfeatures;
-	VkPhysicalDeviceVulkan13Features physfeatures13;
-
     //VkPhysicalDevice8BitStorageFeatures b8storagefeature;
-	VkPhysicalDeviceVulkan12Features physfeatures12;
-	VkPhysicalDeviceVulkan11Features physfeatures11;
-	//VkPhysicalDeviceVulkan11Features physfeatures11;
-	VkPhysicalDeviceFeatures2 physfeatures;
     //b8storagefeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES;
 	//physmeshfeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+
+	VkPhysicalDeviceVulkan14Features physfeatures14;
+	VkPhysicalDeviceVulkan13Features physfeatures13;
+	VkPhysicalDeviceVulkan12Features physfeatures12;
+	VkPhysicalDeviceVulkan11Features physfeatures11;
+	VkPhysicalDeviceFeatures2 physfeatures;
 	physfeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 	physfeatures11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
 	physfeatures12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
 	physfeatures13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+	physfeatures14.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
 	//physmeshfeatures.pNext = &physfeatures12;
 	physfeatures.pNext = &physfeatures11;
 	physfeatures11.pNext = &physfeatures12;
     physfeatures12.pNext = &physfeatures13;
+    physfeatures13.pNext = &physfeatures14;
 
 
     // VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT x;
@@ -167,7 +169,6 @@ bool vkrenderer::deviceinit() {
 
     // physfeatures13.pNext = &x;
     // physfeatures13.pNext = &replicatedCompositesFeatures;
-    physfeatures13.pNext = VK_NULL_HANDLE;
 
 	//b8storagefeature.pNext = VK_NULL_HANDLE;
     vkGetPhysicalDeviceFeatures2(firstphysicaldevselret.value(), &physfeatures);
@@ -199,7 +200,7 @@ bool vkrenderer::deviceinit() {
 
     //auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).add_required_extension_features(physmeshfeatures).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).add_required_extension("VK_EXT_mesh_shader").select();
     // auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_11(physfeatures11).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).add_required_extension("VK_EXT_shader_replicated_composites").add_required_extension_features(replicatedCompositesFeatures).select();
-    auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_11(physfeatures11).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).select();
+    auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 4).set_surface(msurface).set_required_features(physfeatures.features).set_required_features_11(physfeatures11).set_required_features_12(physfeatures12).set_required_features_13(physfeatures13).set_required_features_14(physfeatures14).select();
 	//auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 0).set_surface(msurface).select();
 
 	//std::cout << "\n\n\n\n\n\n\n\n\n\n mesh shader value: " << secondphysicaldevselret.value().is_extension_present("VK_EXT_mesh_shader") << "\n\n\n\n\n";

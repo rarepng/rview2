@@ -36,6 +36,7 @@ jobs:
         sudo apt-get install -y libssl-dev libprotobuf-dev protobuf-compiler ninja-build libwayland-dev libxkbcommon-dev xorg-dev p7zip xvfb
     - name: installing vulkan sdk
       run: |
+        rm -r -f /home/runner/vulk
         mkdir /home/runner/vulk
         cd /home/runner/vulk
         curl -L https://sdk.lunarg.com/sdk/download/latest/linux/vulkan_sdk.tar.xz | tar -xJ -C .
@@ -53,13 +54,11 @@ jobs:
         echo VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d >> $GITHUB_ENV
         echo LD_LIBRARY_PATH=/home/runner/work/rview2/rview2/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
         sudo ldconfig
-    - name: vulkan_ci
-      uses: NcStudios/VulkanCI@v1.1
     - name: verifying vulkan
       run: |
         mkdir $VULKAN_SDK/bin
-        cp /home/runner/vulk/bin/glslc $VULKAN_SDK/bin/glslc
-        $VULKAN_SDK/bin/glslc --version
+        cp /home/runner/vulk/bin/slangc $VULKAN_SDK/bin/slangc
+        $VULKAN_SDK/bin/slangc -v
     - name: downloading resources
       run: |
         mkdir /home/runner/work/rview2/rview2/resources
