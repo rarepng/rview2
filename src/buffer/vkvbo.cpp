@@ -29,48 +29,6 @@ bool vkvbo::init(vkobjs& mvkobjs, vkvertexbufferdata& vbdata, size_t bsize)
     return true;
 }
 
-
-bool vkvbo::upload(vkobjs& mvkobjs, VkCommandBuffer& cbuffer, vkvertexbufferdata& vbdata, vkmesh vmesh){
-
-    //size_t vsize = vmesh.verts.size() * sizeof(vkvert);
-
-    //if (vbdata.rdvertexbuffersize < vsize) {
-    //    cleanup(mvkobjs, vbdata);
-    //    if (!init(mvkobjs, vbdata,vsize)) return false;
-    //    vbdata.rdvertexbuffersize = vsize;
-    //}
-
-    void* d;
-
-    vmaMapMemory(mvkobjs.rdallocator, vbdata.stagingballoc, &d);
-    std::memcpy(d, vmesh.verts.data(), vbdata.rdvertexbuffersize);
-    vmaUnmapMemory(mvkobjs.rdallocator, vbdata.stagingballoc);
-
-    VkBufferMemoryBarrier vbbarrier{};
-    vbbarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-    vbbarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-    vbbarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-    vbbarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    vbbarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    vbbarrier.buffer = vbdata.stagingbhandle;
-    vbbarrier.offset = 0;
-    vbbarrier.size = vbdata.rdvertexbuffersize;
-
-    VkBufferCopy stagingbuffercopy{};
-    stagingbuffercopy.srcOffset = 0;
-    stagingbuffercopy.dstOffset = 0;
-    stagingbuffercopy.size = vbdata.rdvertexbuffersize;
-
-
-
-    vkCmdCopyBuffer(cbuffer, vbdata.stagingbhandle,
-        vbdata.rdvertexbuffer, 1, &stagingbuffercopy);
-    vkCmdPipelineBarrier(cbuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &vbbarrier, 0, nullptr);
-
-    return true;
-}
-
 bool vkvbo::upload(vkobjs& mvkobjs, VkCommandBuffer& cbuffer, vkvertexbufferdata& vbdata, std::vector<glm::vec3> vertexData) {
 
     /* copy data to staging buffer*/

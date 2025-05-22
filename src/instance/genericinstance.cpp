@@ -74,9 +74,6 @@ genericinstance::genericinstance(std::shared_ptr<genericmodel> model, glm::vec3 
 	checkforupdates();
 	
 	if(mnodecount){
-		mskeletonmesh = std::make_shared<vkmesh>();
-		mskeletonmesh->verts.reserve(mnodecount * 2);
-		mskeletonmesh->verts.resize(mnodecount * 2);
 
 		//hardcoded
 		mmodelsettings.msikeffectornode = 19;
@@ -93,36 +90,6 @@ void genericinstance::resetnodedata() {
 	mgltfmodel->resetnodedata(mrootnode);
 	updatenodematrices(mrootnode);
 }
-
-std::shared_ptr<vkmesh> genericinstance::getskeleton(){
-	mskeletonmesh->verts.clear();
-	getskeletonpernode(mrootnode->getchildren().at(0));
-	return mskeletonmesh;
-}
-
-void genericinstance::getskeletonpernode(std::shared_ptr<vknode> treenode){
-
-	glm::vec3 parentpos{ 0.0f };
-	parentpos = glm::vec3(treenode->getnodematrix() * glm::vec4(1.0f));
-	vkvert parentvert;
-	parentvert.pos = parentpos;
-	parentvert.col = glm::vec3(0.0f, 1.0f, 1.0f);
-
-	for (const auto& child : treenode->getchildren()) {
-		glm::vec3 childpos{ 0.0f };
-		childpos = glm::vec3(child->getnodematrix() * glm::vec4(1.0f));
-
-		vkvert childvert;
-		childvert.pos = childpos;
-		childvert.col = glm::vec3(0.0f, 0.0f, 1.0f);
-		mskeletonmesh->verts.emplace_back(parentvert);
-		mskeletonmesh->verts.emplace_back(childvert);
-
-		getskeletonpernode(child);
-	}
-
-}
-
 
 void genericinstance::updatenodematrices(std::shared_ptr<vknode>treenode) {
 	treenode->calculatenodemat();

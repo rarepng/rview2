@@ -17,7 +17,6 @@ public:
 	genericinstance(std::shared_ptr<genericmodel>model, glm::vec3 worldpos, bool randomize = false);
 	~genericinstance();
 	void resetnodedata();
-	std::shared_ptr<vkmesh> getskeleton();
 	void setskeletonsplitnode(int nodenum);
 	int getjointmatrixsize();
 	int getjointdualquatssize();
@@ -48,7 +47,6 @@ private:
 
 	float getanimendtime(int animnum);
 
-	void getskeletonpernode(std::shared_ptr<vknode>treenode);
 	void updatenodematrices(std::shared_ptr<vknode>treenode);
 	void updatejointmatrices(std::shared_ptr<vknode>treenode);
 	void updatejointdualquats(std::shared_ptr<vknode>treenode);
@@ -69,8 +67,6 @@ private:
 
 	std::vector<bool> madditiveanimationmask{};
 	std::vector<bool> minvertedadditiveanimationmask{};
-
-	std::shared_ptr<vkmesh> mskeletonmesh = nullptr;
 
 	modelsettings mmodelsettings{};
 	iksolver miksolver{};

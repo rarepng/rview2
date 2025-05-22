@@ -850,9 +850,9 @@ void ui::render(vkobjs& renderData,VkCommandBuffer& cbuffer) {
     //renderData.mtx2.unlock();
 }
 
-void ui::cleanup(vkobjs& renderData) {
+void ui::cleanup(vkobjs& mvkobjs) {
     ImGui_ImplVulkan_Shutdown();
-    vkDestroyDescriptorPool(renderData.rdvkbdevice.device, renderData.rdimguidescriptorpool, nullptr);
+    vkDestroyDescriptorPool(mvkobjs.rdvkbdevice.device, mvkobjs.rdimguidescriptorpool, nullptr);
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
 }

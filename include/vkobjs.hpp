@@ -9,16 +9,7 @@
 #include <memory>
 #include <shared_mutex>
 
-struct vkvert {
-	glm::vec3 pos;
-	glm::vec3 col;
-	glm::vec2 uv;
-};
 
-
-struct vkmesh {
-	std::vector<vkvert> verts;
-};
 enum class skinningmode {
 	linear=0,
 	dualquat
@@ -36,24 +27,6 @@ enum class ikmode {
 	off=0,
 	ccd,
 	fabrik
-};
-
-struct spell {
-	const unsigned int spellid;
-	bool active;
-	bool ready;
-	bool cast;
-	unsigned int cooldownticks;
-	unsigned int activeticks;
-	unsigned int cdelapsed;
-	unsigned int activeelapsed;
-	unsigned int size;
-	glm::vec3 pos;
-	double dmg;
-};
-
-struct playerobjs {
-	std::vector<spell> spells;
 };
 
 struct vktexdata {
@@ -112,31 +85,6 @@ struct vkpushconstants {
 	float t{ 0.0f };
 	bool decaying{ false };
 	float dmg{ 0.0f };
-};
-
-
-enum struct pausestate {
-	resumed,
-	paused
-};
-
-
-enum struct gamestate0 {
-	normal,
-	dead,
-	won,
-	menu
-	
-};
-enum struct gamestage {
-	combat,
-	shop
-};
-enum struct wavetype {
-	horde,
-	boss,
-	pvp,
-	event0
 };
 
 
@@ -236,11 +184,6 @@ struct vkobjs {
 	VkSemaphore rdrendersemaphore = VK_NULL_HANDLE;
 	VkFence rdrenderfence = VK_NULL_HANDLE;
 	VkFence rduploadfence = VK_NULL_HANDLE;
-
-
-
-
-
 
 	VkDescriptorPool rdimguidescriptorpool = VK_NULL_HANDLE;
 
