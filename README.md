@@ -12,34 +12,30 @@ can load any gltf model, pbr materials, textures, alpha blending, fk and ik anim
 full support for glsl shaders ( compile with glslc/glslangvalidator for vulkan ). gltf extensions are wip.
 
 ## Downloads
-
+needed for default models:
 [⏬resources](https://drive.google.com/file/d/1ZwYuB17yq-yRpswRISuvSG-_R7j5GKM9/view?usp=sharing)
+
 ### latest binaries
-[🐧linux](https://github.com/rarepng/raw/releases/download/alpha/rawl.7z)<br><br>
-[🪟windows](https://github.com/rarepng/raw/releases/download/alpha/raw.7z)
+wip
 
 ## Game controls:
 
-left click - move to location<br>
-right click - toggle camera rotation with mouse<br>
-R - teleporting ability<br>
-F - damaging ability<br>
-F4 - fullscreen/window<br>
-F3 - network settings, only in main menu<br>
-ESC - pause in game, exit in main menu<br>
+left click - move default model to location<br>
+ESC - exit<br>
 wasdeq - camera controls, for debugging<br><br>
-to play online the host has to forward the port if not on the same local network.
+Debug Menu - allows u to choose model to move/scale/rotate/change animation etc.<br>
+Drag & Drop - any model can be loaded if u drag and drop it in the window<br>
 
 
 ## notes:
 All builds are x64.
-I am no longer maintaing MSVC builds for the time being. it's slow and very buggy especially around mutexes. windows builds are compiled with mingw.
-The binary is only linked to the libraries statically for the time being (minimal/no so/dlls).
+windows builds are compiled with mingw.
+The binary is only linked to the libraries statically.
 
 ## build requirements
 * c++20 compiler
-* vulkan( vulkan 1.3, vkbootstrap and vma_mem_alloc)
-* glfw
+* vulkan 1.4
+* sdl3
 * glm
 * 🌟 fastgltf -> simdJSON
 * stb
@@ -57,9 +53,6 @@ The binary is only linked to the libraries statically for the time being (minima
 - install openssl on linux or build OpenSSL and ensure it's compiled and configured with mingw64 with no-shared and make sure OPENSSL_ROOT_DIR is set, msys2 can be used to make it easier, instructions follow if needed.
 - make sure resources are in resources directory
 - clone recursively```git clone --recursive``` or run either ```git pull --recurse-submodules``` or ```git submodule update --init --recursive``` after cloning to install the dependancy submodules
-- ~~if on windows place {GameNetworkingSockets.dll, libcrypto-3-x64.dll,libprotobuf.dll } next to exe~~
-- ~~if on linux make sure openssl, protobuf and gamenetworkingsockets are installed and/or their shared libraries are in lib path, you can run `ldconfig` after installation~~
-- previous 2 points useless for now because no shared/dynamic builds at the time being only links statically to these libraries.
 
 ## linux
 - download resources and extract to resources directory in project root
@@ -87,35 +80,7 @@ The binary is only linked to the libraries statically for the time being (minima
 - build the project:
 	- cmake --build build
 
-
-### cmake notes
-on rare occasions shaders don't get compiled or copied by cmake, you can compile them manually with glslc and copy them to build/shaders/ <br>
-sometimes resources don't get copied too. copy to build/resources/
-
 #### feel free to contact me if u need help
-
-## new demo
-### 3 part multiplayer<br>
-<video src=https://github.com/user-attachments/assets/6d03127e-c95a-4dc3-931c-8750e5c5f008>https://rarepng.github.io/vidz/0_1.mp4</video>
-<video src=https://github.com/user-attachments/assets/c01b2221-fbd6-42c1-a831-639ce9b4352b>https://rarepng.github.io/vidz/0_2.mp4</video>
-<video src=https://github.com/user-attachments/assets/de65abb7-434f-45c6-a867-2995c5120fe6>https://rarepng.github.io/vidz/0_3.mp4</video>
-
-### invisible window/surface<br>
-<video src=https://github.com/user-attachments/assets/0938a768-0667-4380-956e-6ef949bd083e>invisible</video>
-
-## old demo
-### outline and screen space shaders
-<video src=https://github.com/rarepng/engine/assets/153374928/3d27590c-4bc7-42e4-b4b2-26ca9753ddff></video>
-### instancing
-<video src=https://github.com/rarepng/engine/assets/153374928/d85023e9-e746-4230-af61-36fb7b283cc4></video>
-
-## todo
-- shared library/linking build
-- hot reload for shaders
-- integrating slang in cmake
-- migrate to sdl3 in place of glfw3
-- hot reload for gamestate as shared object
-- reflection renderpass
 
 
 
