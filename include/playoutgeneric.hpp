@@ -1,50 +1,45 @@
 #pragma once
+#include "genericinstance.hpp"
+#include "vkobjs.hpp"
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 #include <vulkan/vulkan.h>
-#include "vkobjs.hpp"
-#include "genericinstance.hpp"
 
 class playoutgeneric {
 public:
-	bool loadmodel(vkobjs& objs, std::string fname);
-	bool createinstances(vkobjs& objs, int count, bool rand);
-	bool createdecayinstances(vkobjs& objs);
-	bool createubo(vkobjs& objs);
-	bool createssbomat(vkobjs& objs);
-	bool createssbouint(vkobjs& objs);
-	bool createssbodq(vkobjs& objs);
-	bool createssbodecay(vkobjs& objs);
-	bool createplayout(vkobjs& objs);
-	bool createpline(vkobjs& objs, std::string vfile, std::string ffile);
-	bool createpline2(vkobjs& objs, std::string vfile, std::string ffile);
-	bool createdecaypline(vkobjs& objs, std::string vfile, std::string ffile);
-	bool setup(vkobjs& objs, std::string fname, int count,std::string vfile, std::string ffile);
-	void draw(vkobjs& objs);
-	void drawdecays(vkobjs& objs, double& decaytime, bool* decaying);
+	bool loadmodel(vkobjs &objs, std::string fname);
+	bool createinstances(vkobjs &objs, int count, bool rand);
+	bool createdecayinstances(vkobjs &objs);
+	bool createubo(vkobjs &objs);
+	bool createssbomat(vkobjs &objs);
+	bool createssbouint(vkobjs &objs);
+	bool createssbodq(vkobjs &objs);
+	bool createssbodecay(vkobjs &objs);
+	bool createplayout(vkobjs &objs);
+	bool createpline(vkobjs &objs, std::string vfile, std::string ffile);
+	bool createpline2(vkobjs &objs, std::string vfile, std::string ffile);
+	bool createdecaypline(vkobjs &objs, std::string vfile, std::string ffile);
+	bool setup(vkobjs &objs, std::string fname, int count, std::string vfile, std::string ffile);
+	void draw(vkobjs &objs);
+	void drawdecays(vkobjs &objs, double &decaytime, bool *decaying);
 	void updateanims();
 	void updatemats();
 	void freezedecay();
-	void cleanuplines(vkobjs& objs);
-	void cleanupbuffers(vkobjs& objs);
-	void cleanupmodels(vkobjs& objs);
-	void uploadvboebo(vkobjs& objs, VkCommandBuffer& cbuffer);
-	void uploadubossbo(vkobjs& objs, std::vector<glm::mat4>& cammats);
+	void cleanuplines(vkobjs &objs);
+	void cleanupbuffers(vkobjs &objs);
+	void cleanupmodels(vkobjs &objs);
+	void uploadvboebo(vkobjs &objs, VkCommandBuffer &cbuffer);
+	void uploadubossbo(vkobjs &objs, std::vector<glm::mat4> &cammats);
 
 	std::shared_ptr<genericinstance> getinst(int i);
 	std::shared_ptr<genericinstance> getdecayinst(int i);
 
-
 	unsigned int getnuminstances();
 
-	bool ready{ false };
-
+	bool ready{false};
 
 private:
-
-
-
 	std::vector<VkDescriptorSetLayout> desclayouts{};
 
 	VkPipelineLayout rdgltfpipelinelayout = VK_NULL_HANDLE;
@@ -55,15 +50,13 @@ private:
 	VkPipeline decaypline = VK_NULL_HANDLE;
 	VkPipeline decayplineuint = VK_NULL_HANDLE;
 
-
-
 	std::vector<vkubodata> rdperspviewmatrixubo{};
 	vkshaderstoragebufferdata rdjointmatrixssbo{};
 	vkshaderstoragebufferdata uintssbo{};
 	vkshaderstoragebufferdata rdjointdualquatssbo{};
 	vkshaderstoragebufferdata rdjointdecay{};
 
-	bool uploadreq{ true };
+	bool uploadreq{true};
 
 	size_t totaltricount{};
 	int numinstancess{};
@@ -76,14 +69,10 @@ private:
 
 	std::string mmodelfilename;
 	std::shared_ptr<genericmodel> mgltf = nullptr;
-	std::vector < std::shared_ptr < genericinstance >> minstances;
-	std::vector < std::shared_ptr < genericinstance >> decayinstances;
-
-
+	std::vector<std::shared_ptr<genericinstance>> minstances;
+	std::vector<std::shared_ptr<genericinstance>> decayinstances;
 
 	std::vector<glm::mat4> jointmats{};
 	std::vector<glm::mat4> decaymat{};
 	std::vector<glm::mat2x4> jointdqs{};
-
-
 };

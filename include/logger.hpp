@@ -2,10 +2,9 @@
 #include <cstdio>
 class logger {
 public:
-	template <typename... Args>
-	static void log(unsigned int lvl, Args ... args) {
+	template <typename... Args> static void log(unsigned int lvl, Args... args) {
 		if (lvl <= mlvl) {
-			std::printf(args ...);
+			std::printf(args...);
 			std::fflush(stdout);
 		}
 	}
@@ -14,5 +13,5 @@ public:
 	}
 
 private:
-	inline static unsigned int mlvl{ 1 };
+	inline static unsigned int mlvl{1};
 };

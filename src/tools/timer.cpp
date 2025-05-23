@@ -13,5 +13,6 @@ float timer::stop() {
 		return 0;
 	}
 	mstate = false;
-	return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-mstart).count()/1000.0f;
+	return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - mstart).count() /
+	       1000.0f;
 }

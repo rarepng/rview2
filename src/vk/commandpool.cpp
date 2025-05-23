@@ -1,7 +1,7 @@
 #include "commandpool.hpp"
 #include <VkBootstrap.h>
 
-bool commandpool::init(vkobjs& rdata,VkCommandPool& vkpool) {
+bool commandpool::init(vkobjs &rdata, VkCommandPool &vkpool) {
 	VkCommandPoolCreateInfo poolcreateinfo{};
 	poolcreateinfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolcreateinfo.queueFamilyIndex = rdata.rdvkbdevice.get_queue_index(vkb::QueueType::graphics).value();
@@ -12,10 +12,8 @@ bool commandpool::init(vkobjs& rdata,VkCommandPool& vkpool) {
 	}
 
 	return true;
-
 }
 
-
-void commandpool::cleanup(vkobjs& rdata, VkCommandPool& vkpool) {
+void commandpool::cleanup(vkobjs &rdata, VkCommandPool &vkpool) {
 	vkDestroyCommandPool(rdata.rdvkbdevice.device, vkpool, nullptr);
 }

@@ -1,62 +1,52 @@
 #pragma once
 #include <vector>
 
-
-
-#include "vkobjs.hpp"
 #include "modelsettings.hpp"
+#include "vkobjs.hpp"
 
-enum struct ppick {
-	rock,
-	paper,
-	scissor
-};
-enum struct gstate{
-	tie,
-	ai,
-	player
-};
+enum struct ppick { rock, paper, scissor };
+enum struct gstate { tie, ai, player };
 
-struct selection{
+struct selection {
 	std::vector<size_t> n_instances{};
-	std::vector<std::vector<modelsettings*>> instancesettings{};
+	std::vector<std::vector<modelsettings *>> instancesettings{};
 	size_t midx{0};
 	size_t iidx{0};
 };
 
 class ui {
 public:
-	bool init(vkobjs& mvkobjs);
-    void createdbgframe(vkobjs& mvkobjs, selection& settingsz);
-	bool createloadingscreen(vkobjs& mvkobjs);
-	bool createpausebuttons(vkobjs& mvkobjs);
+	bool init(vkobjs &mvkobjs);
+	void createdbgframe(vkobjs &mvkobjs, selection &settingsz);
+	bool createloadingscreen(vkobjs &mvkobjs);
+	bool createpausebuttons(vkobjs &mvkobjs);
 	void addchat(std::string s);
-	void render(vkobjs& mvkobjs,VkCommandBuffer& cbuffer);
-	void cleanup(vkobjs& mvkobjs);
-	bool setnetwork{ false };
+	void render(vkobjs &mvkobjs, VkCommandBuffer &cbuffer);
+	void cleanup(vkobjs &mvkobjs);
+	bool setnetwork{false};
 	void backspace();
-	bool chatfocus{ false };
+	bool chatfocus{false};
 	std::vector<int> playerwave;
+
 private:
 	std::string inputxt{};
 	std::vector<std::string> chattxts;
 
-	//unsigned int playergold;
+	// unsigned int playergold;
 
 	ppick mpick;
 	ppick aipick;
 	gstate mstate;
 
-	unsigned int nframes{ 0 };
+	unsigned int nframes{0};
 
-	bool aipicking{ false };
+	bool aipicking{false};
 
+	int selectednetwork{0};
 
-	int selectednetwork{ 0 };
-
-	bool offline{ true };
-	bool hosting{ false };
-	bool connectingtohost{ false };
+	bool offline{true};
+	bool hosting{false};
+	bool connectingtohost{false};
 
 	float mfps = 0.0f;
 	float mavgalpha = 0.96f;

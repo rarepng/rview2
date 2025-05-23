@@ -1,75 +1,70 @@
 #include "vkwind.hpp"
 #include "backends/imgui_impl_sdl3.h"
-#include <iostream>
-#include <future>
-#include <thread>
 #include <chrono>
+#include <future>
+#include <iostream>
+#include <thread>
 
-#include <imgui.h>
+#include "mouse.hpp"
 #include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_vulkan.h>
+#include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
-#include "mouse.hpp"
 
 bool vkwind::init(std::string title) {
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
+	if (!SDL_Init(SDL_INIT_VIDEO)) {
 		return false;
-    }
-    static const SDL_DisplayMode* mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay()); // wrong time
-    //mwind = SDL_CreateWindow(title.c_str(), 900, 600, SDL_WINDOW_BORDERLESS | SDL_WINDOW_VULKAN | SDL_WINDOW_TRANSPARENT | SDL_WINDOW_RESIZABLE);
-    mwind = SDL_CreateWindow(title.c_str(), 900, 600,  SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+	}
+	static const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay()); // wrong time
+	// mwind = SDL_CreateWindow(title.c_str(), 900, 600, SDL_WINDOW_BORDERLESS | SDL_WINDOW_VULKAN |
+	// SDL_WINDOW_TRANSPARENT | SDL_WINDOW_RESIZABLE);
+	mwind = SDL_CreateWindow(title.c_str(), 900, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 
-    if (!mwind) {
-        SDL_Quit();
+	if (!mwind) {
+		SDL_Quit();
 		return false;
 	}
 
-    mvkrenderer = std::make_unique<vkrenderer>(mwind,mode,&shutdown,e);
+	mvkrenderer = std::make_unique<vkrenderer>(mwind, mode, &shutdown, e);
 
-
-	//mouse
-	mouse mmouse{ "resources/mouser.png" };
-    SDL_Surface* iconer{IMG_Load("resources/icon0.png")};
-    SDL_SetCursor(mmouse.cursor);
-    SDL_SetWindowIcon(mwind, iconer);
-
+	// mouse
+	mouse mmouse{"resources/mouser.png"};
+	SDL_Surface *iconer{IMG_Load("resources/icon0.png")};
+	SDL_SetCursor(mmouse.cursor);
+	SDL_SetWindowIcon(mwind, iconer);
 
 	if (!mvkrenderer->init()) {
-        SDL_Quit();
+		SDL_Quit();
 		return false;
 	}
 	mvkrenderer->setsize(900, 600);
 
 	mui = mvkrenderer->getuihandle();
 
-
 	return true;
-
 }
 
-
 void vkwind::frameupdate() {
-    if (!shutdown) {
-        mvkrenderer->initscene();
-        mvkrenderer->quicksetup();
-        // has to recreate swapchain atleast 3 times before uploading image to gpu because of mailbox present mode but im not sure why exactly
-        mvkrenderer->drawblank();
-        mvkrenderer->drawblank();
-        mvkrenderer->drawblank();
-        mvkrenderer->uploadfordraw();
-        while (!shutdown) {
-            if (!mvkrenderer->draw()) {
-                break;
-            }
-            SDL_PollEvent(e);
+	if (!shutdown) {
+		mvkrenderer->initscene();
+		mvkrenderer->quicksetup();
+		// has to recreate swapchain atleast 3 times before uploading image to gpu because of mailbox present mode but im
+		// not sure why exactly
+		mvkrenderer->drawblank();
+		mvkrenderer->drawblank();
+		mvkrenderer->drawblank();
+		mvkrenderer->uploadfordraw();
+		while (!shutdown) {
+			if (!mvkrenderer->draw()) {
+				break;
+			}
+			SDL_PollEvent(e);
 		}
 	}
 }
 
 void vkwind::cleanup() {
-        mvkrenderer->cleanup();
-    SDL_DestroyWindow(mwind);
-    SDL_Quit();
+	mvkrenderer->cleanup();
+	SDL_DestroyWindow(mwind);
+	SDL_Quit();
 }
-
-

@@ -1,7 +1,7 @@
 #include "commandbuffer.hpp"
 #include <VkBootstrap.h>
 
-bool commandbuffer::init(vkobjs& rdata, VkCommandPool& vkpool, VkCommandBuffer& incommandbuffer) {
+bool commandbuffer::init(vkobjs &rdata, VkCommandPool &vkpool, VkCommandBuffer &incommandbuffer) {
 	VkCommandBufferAllocateInfo bufferallocinfo{};
 	bufferallocinfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	bufferallocinfo.commandPool = vkpool;
@@ -12,9 +12,8 @@ bool commandbuffer::init(vkobjs& rdata, VkCommandPool& vkpool, VkCommandBuffer& 
 	}
 
 	return true;
-
 }
 
-void commandbuffer::cleanup(vkobjs& rdata, VkCommandPool& vkpool, VkCommandBuffer& incommandbuffer) {
+void commandbuffer::cleanup(vkobjs &rdata, VkCommandPool &vkpool, VkCommandBuffer &incommandbuffer) {
 	vkFreeCommandBuffers(rdata.rdvkbdevice.device, vkpool, 1, &incommandbuffer);
 }

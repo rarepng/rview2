@@ -1,7 +1,7 @@
 #include "framebuffer.hpp"
 #include <vector>
 
-bool framebuffer::init(vkobjs& rdata) {
+bool framebuffer::init(vkobjs &rdata) {
 	rdata.rdswapchainimages = rdata.rdvkbswapchain.get_images().value();
 	rdata.rdswapchainimageviews = rdata.rdvkbswapchain.get_image_views().value();
 
@@ -9,10 +9,7 @@ bool framebuffer::init(vkobjs& rdata) {
 	rdata.rdframebuffers.resize(rdata.rdswapchainimageviews.size());
 
 	for (unsigned int i = 0; i < rdata.rdswapchainimageviews.size(); ++i) {
-		VkImageView a[] = {
-			rdata.rdswapchainimageviews.at(i),
-			rdata.rddepthimageview
-		};
+		VkImageView a[] = {rdata.rdswapchainimageviews.at(i), rdata.rddepthimageview};
 
 		VkFramebufferCreateInfo fbinfo{};
 		fbinfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -21,7 +18,7 @@ bool framebuffer::init(vkobjs& rdata) {
 		fbinfo.pAttachments = a;
 		fbinfo.width = rdata.rdvkbswapchain.extent.width;
 		fbinfo.height = rdata.rdvkbswapchain.extent.height;
-        fbinfo.layers = 1;
+		fbinfo.layers = 1;
 
 		if (vkCreateFramebuffer(rdata.rdvkbdevice.device, &fbinfo, nullptr, &rdata.rdframebuffers[i]) != VK_SUCCESS) {
 			return false;
@@ -29,16 +26,13 @@ bool framebuffer::init(vkobjs& rdata) {
 	}
 	return true;
 }
-bool framebuffer::initref(vkobjs& rdata) {
+bool framebuffer::initref(vkobjs &rdata) {
 
 	rdata.rdframebufferrefs.reserve(rdata.rdswapchainimageviews.size());
 	rdata.rdframebufferrefs.resize(rdata.rdswapchainimageviews.size());
 
 	for (unsigned int i = 0; i < rdata.rdswapchainimageviews.size(); ++i) {
-		VkImageView a[] = {
-			rdata.rdswapchainimageviews.at(i),
-			rdata.rddepthimageviewref
-		};
+		VkImageView a[] = {rdata.rdswapchainimageviews.at(i), rdata.rddepthimageviewref};
 
 		VkFramebufferCreateInfo fbinfo{};
 		fbinfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -55,8 +49,8 @@ bool framebuffer::initref(vkobjs& rdata) {
 	}
 	return true;
 }
-void framebuffer::cleanup(vkobjs& rdata) {
-	for (auto& fb : rdata.rdframebuffers) {
+void framebuffer::cleanup(vkobjs &rdata) {
+	for (auto &fb : rdata.rdframebuffers) {
 		vkDestroyFramebuffer(rdata.rdvkbdevice.device, fb, nullptr);
 	}
 }

@@ -1,6 +1,6 @@
-#include <fstream>
 #include <cerrno>
 #include <cstring>
+#include <fstream>
 
 #include "vkshader.hpp"
 
@@ -8,13 +8,10 @@ VkShaderModule vkshader::loadshader(VkDevice dev, std::string filename) {
 	std::string shadertxt;
 	shadertxt = loadfiletostr(filename);
 
-	
-	
-
 	VkShaderModuleCreateInfo shadercreateinfo{};
 	shadercreateinfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	shadercreateinfo.codeSize = shadertxt.size();
-	shadercreateinfo.pCode = reinterpret_cast<const uint32_t*>(shadertxt.c_str());
+	shadercreateinfo.pCode = reinterpret_cast<const uint32_t *>(shadertxt.c_str());
 
 	VkShaderModule shadermod;
 	if (vkCreateShaderModule(dev, &shadercreateinfo, nullptr, &shadermod) != VK_SUCCESS) {
@@ -34,21 +31,13 @@ std::string vkshader::loadfiletostr(std::string filename) {
 
 		str.assign((std::istreambuf_iterator<char>(infile)), std::istreambuf_iterator<char>());
 		infile.close();
-	}
-	else {
+	} else {
 		return std::string();
 	}
-
-
 
 	if (infile.bad() || infile.fail()) {
 		return std::string();
 	}
-
-
-
-
-
 
 	infile.close();
 	return str;

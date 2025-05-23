@@ -1,29 +1,29 @@
 #pragma once
-#include <string>
-#include <memory>
-#include <vulkan/vulkan.h>
+#include "ui.hpp"
+#include "vkrenderer.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
-#include "vkrenderer.hpp"
-#include "ui.hpp"
+#include <memory>
+#include <string>
+#include <vulkan/vulkan.h>
 
 class vkwind {
 public:
+	bool upreq{true};
 
-	bool upreq{ true };
-
-    bool init(std::string title);
+	bool init(std::string title);
 	void framemainmenuupdate();
 	void frameupdate();
 	void cleanup();
 	bool initgame();
-    bool initmenu();
+	bool initmenu();
 	int mh;
 	int mw;
-    SDL_Event* e{new SDL_Event{}};
-    bool shutdown{false};
+	SDL_Event *e{new SDL_Event{}};
+	bool shutdown{false};
+
 private:
-    SDL_Window* mwind = nullptr;
+	SDL_Window *mwind = nullptr;
 	std::unique_ptr<vkrenderer> mvkrenderer;
-	ui* mui=nullptr;
+	ui *mui = nullptr;
 };

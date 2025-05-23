@@ -1,40 +1,24 @@
 #pragma once
 #define GLM_ENABLE_EXPERIMENTAL
-#include <vector>
-#include <glm/glm.hpp>
-#include <vulkan/vulkan.h>
 #include <SDL3/SDL.h>
 #include <VkBootstrap.h>
-#include <vk_mem_alloc.h>
+#include <glm/glm.hpp>
 #include <memory>
 #include <shared_mutex>
+#include <vector>
+#include <vk_mem_alloc.h>
+#include <vulkan/vulkan.h>
 
-
-enum class skinningmode {
-	linear=0,
-	dualquat
-};
-enum class replaydirection {
-	forward=0,
-	backward
-};
-enum class blendmode {
-	fadeinout=0,
-	crossfade,
-	additive
-};
-enum class ikmode {
-	off=0,
-	ccd,
-	fabrik
-};
+enum class skinningmode { linear = 0, dualquat };
+enum class replaydirection { forward = 0, backward };
+enum class blendmode { fadeinout = 0, crossfade, additive };
+enum class ikmode { off = 0, ccd, fabrik };
 
 struct vktexdata {
 	VkImage teximg = VK_NULL_HANDLE;
 	VkImageView teximgview = VK_NULL_HANDLE;
 	VkSampler texsampler = VK_NULL_HANDLE;
 	VmaAllocation teximgalloc = nullptr;
-
 };
 struct vktexdatapls {
 	VkDescriptorPool texdescriptorpool = VK_NULL_HANDLE;
@@ -44,7 +28,7 @@ struct vktexdatapls {
 
 struct vkvertexbufferdata {
 
-	size_t rdvertexbuffersize{ 0 };
+	size_t rdvertexbuffersize{0};
 	VkBuffer rdvertexbuffer = VK_NULL_HANDLE;
 	VmaAllocation rdvertexbufferalloc = nullptr;
 	VkBuffer stagingbhandle = VK_NULL_HANDLE;
@@ -52,7 +36,7 @@ struct vkvertexbufferdata {
 };
 
 struct vkebodata {
-	size_t bsize{ 0 };
+	size_t bsize{0};
 	VkBuffer bhandle = VK_NULL_HANDLE;
 	VmaAllocation balloc = nullptr;
 	VkBuffer stagingbhandle = VK_NULL_HANDLE;
@@ -60,7 +44,7 @@ struct vkebodata {
 };
 
 struct vkubodata {
-	size_t rduniformbuffersize{ 0 };
+	size_t rduniformbuffersize{0};
 	VkBuffer rdubobuffer = VK_NULL_HANDLE;
 	VmaAllocation rdubobufferalloc = nullptr;
 
@@ -70,7 +54,7 @@ struct vkubodata {
 };
 
 struct vkshaderstoragebufferdata {
-	size_t rdssbobuffersize{ 0 };
+	size_t rdssbobuffersize{0};
 	VkBuffer rdssbobuffer = VK_NULL_HANDLE;
 	VmaAllocation rdssbobufferalloc = nullptr;
 
@@ -82,67 +66,56 @@ struct vkshaderstoragebufferdata {
 struct vkpushconstants {
 	int pkmodelstride;
 	unsigned int texidx;
-	float t{ 0.0f };
-	bool decaying{ false };
-	float dmg{ 0.0f };
+	float t{0.0f};
+	bool decaying{false};
+	float dmg{0.0f};
 };
-
 
 struct vkobjs {
 
-	inline static const std::shared_ptr<std::shared_mutex>  mtx2{ std::make_shared<std::shared_mutex>() };
-	inline static const std::shared_ptr<std::shared_mutex>  uploadmtx{ std::make_shared<std::shared_mutex>() };
+	inline static const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
+	inline static const std::shared_ptr<std::shared_mutex> uploadmtx{std::make_shared<std::shared_mutex>()};
 
-
-    SDL_Window* rdwind = nullptr;
-    // GLFWmonitor* rdmonitor = nullptr;
-    const SDL_DisplayMode* rdmode;
-	bool rdfullscreen{ false };
+	SDL_Window *rdwind = nullptr;
+	// GLFWmonitor* rdmonitor = nullptr;
+	const SDL_DisplayMode *rdmode;
+	bool rdfullscreen{false};
 	int rdwidth = 0;
 	int rdheight = 0;
 	unsigned int rdtricount = 0;
 	unsigned int rdgltftricount = 0;
 	float rdfov = 1.0472f;
-	bool rdswitchshader{ false };
+	bool rdswitchshader{false};
 
+	SDL_Event *e;
 
+	float frametime{0.0f};
+	float updateanimtime{0.0f};
+	float updatemattime{0.0f};
+	float uploadubossbotime{0.0f};
+	float iksolvetime{0.0f};
+	float rduigeneratetime{0.0f};
+	float rduidrawtime{0.0f};
 
-    SDL_Event* e;
+	bool *mshutdown{nullptr};
 
-	float frametime{ 0.0f };
-	float updateanimtime{ 0.0f };
-	float updatemattime{ 0.0f };
-	float uploadubossbotime{ 0.0f };
-	float iksolvetime{ 0.0f };
-	float rduigeneratetime{ 0.0f };
-	float rduidrawtime{ 0.0f };
+	bool *decaying;
 
+	float loadingprog{0.0f};
 
-    bool* mshutdown{nullptr};
+	int rdcamforward{0};
+	int rdcamright{0};
+	int rdcamup{0};
 
+	double tickdiff{0.0f};
 
+	float rdazimuth{15.0f};
+	float rdelevation{-25.0f};
+	glm::vec3 rdcamwpos{350.0f, 350.0f, 1000.0f};
 
-	bool* decaying;
+	glm::vec3 raymarchpos{0.0f};
 
-	float loadingprog{ 0.0f };
-
-
-	int rdcamforward{ 0 };
-	int rdcamright{ 0 };
-	int rdcamup{ 0 };
-
-	double tickdiff{ 0.0f };
-
-	float rdazimuth{ 15.0f };
-	float rdelevation{ -25.0f };
-	glm::vec3 rdcamwpos{ 350.0f,350.0f,1000.0f };
-
-
-
-	glm::vec3 raymarchpos{ 0.0f };
-
-
-	VmaAllocator rdallocator=nullptr;
+	VmaAllocator rdallocator = nullptr;
 
 	vkb::Instance rdvkbinstance{};
 	vkb::PhysicalDevice rdvkbphysdev{};
@@ -167,18 +140,11 @@ struct vkobjs {
 	VkFormat rddepthformatref;
 	VmaAllocation rddepthimageallocref = VK_NULL_HANDLE;
 
-
-
 	VkRenderPass rdrenderpass = VK_NULL_HANDLE;
 	VkRenderPass rdrenderpass2 = VK_NULL_HANDLE;
 
-
-
-
-
-
-	std::vector<VkCommandPool> rdcommandpool = { VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE };
-	std::vector<VkCommandBuffer> rdcommandbuffer = { VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE };
+	std::vector<VkCommandPool> rdcommandpool = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::vector<VkCommandBuffer> rdcommandbuffer = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
 
 	VkSemaphore rdpresentsemaphore = VK_NULL_HANDLE;
 	VkSemaphore rdrendersemaphore = VK_NULL_HANDLE;
@@ -186,7 +152,6 @@ struct vkobjs {
 	VkFence rduploadfence = VK_NULL_HANDLE;
 
 	VkDescriptorPool rdimguidescriptorpool = VK_NULL_HANDLE;
-
 };
 
 struct vkgltfobjs {
