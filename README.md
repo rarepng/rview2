@@ -11,14 +11,14 @@ vulkan 1.4 simple cross platform multiplayer gltf file viewer.
 can load any gltf model, pbr materials, textures, alpha blending, fk and ik animations, actions and non-linear animations
 full support for glsl shaders ( compile with glslc/glslangvalidator for vulkan ). gltf extensions are wip.
 
-## Downloads
+## downloads
 needed for default models:
 [⏬resources](https://drive.google.com/file/d/1ZwYuB17yq-yRpswRISuvSG-_R7j5GKM9/view?usp=sharing)
 
 ### latest binaries
 wip
 
-## Game controls:
+## controls:
 
 left click - move default model to location<br>
 ESC - exit<br>
@@ -81,7 +81,3 @@ The binary is only linked to the libraries statically.
 	- cmake --build build
 
 #### feel free to contact me if u need help
-
-
-
-
