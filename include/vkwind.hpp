@@ -12,11 +12,8 @@ public:
 	bool upreq{true};
 
 	bool init(std::string title);
-	void framemainmenuupdate();
 	void frameupdate();
 	void cleanup();
-	bool initgame();
-	bool initmenu();
 	int mh;
 	int mw;
 	SDL_Event *e{new SDL_Event{}};

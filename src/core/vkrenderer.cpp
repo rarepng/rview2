@@ -36,9 +36,6 @@ vkrenderer::vkrenderer(SDL_Window *wind, const SDL_DisplayMode *mode, bool *mshu
 	mvkobjs.rdmode = mode;
 	mvkobjs.e = e;
 	mvkobjs.mshutdown = mshutdown;
-
-	mpersviewmats.emplace_back(glm::mat4{1.0f});
-	mpersviewmats.emplace_back(glm::mat4{1.0f});
 }
 bool vkrenderer::init() {
 	std::srand(static_cast<int>(time(NULL)));
@@ -114,6 +111,12 @@ bool vkrenderer::deviceinit() {
 	vkb::InstanceBuilder instbuild{};
 
 	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 4).build();
+
+	if(!instret){
+		std::cout << instret.full_error().type << std::endl;
+		std::cout << instret.full_error().vk_result << std::endl;
+		return false;
+	}
 
 	mvkobjs.rdvkbinstance = instret.value();
 

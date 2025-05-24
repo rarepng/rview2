@@ -9,8 +9,6 @@
 class vkclip {
 public:
 	vkclip(std::string name);
-	// void addchan(std::shared_ptr<tinygltf::Model> model, const tinygltf::Animation& anim, const
-	// tinygltf::AnimationChannel& chann);
 	void addchan(const fastgltf::Asset &model, const fastgltf::Animation &anim, const fastgltf::AnimationChannel &chann);
 	void setFrame(std::vector<std::shared_ptr<vknode>> nodes, std::vector<bool> additivemask, float time);
 	void blendFrame(std::vector<std::shared_ptr<vknode>> nodes, std::vector<bool> additivemask, float time,

@@ -6,9 +6,6 @@
 class vktexture {
 public:
 	static bool loadtexturefile(vkobjs &rdata, vktexdata &texdata, vktexdatapls &texdatapls, std::string texfile);
-	// static bool loadtexture(vkobjs& rdata, std::vector<vktexdata>& texdata, std::shared_ptr<tinygltf::Model> mmodel);
-	// static bool loadtexlayoutpool(vkobjs& rdata, std::vector<vktexdata>& texdata, vktexdatapls& texdatapls,
-	// std::shared_ptr<tinygltf::Model> mmodel);
 	static bool loadtexture(vkobjs &rdata, std::vector<vktexdata> &texdata, fastgltf::Asset &mmodel);
 	static bool loadtexlayoutpool(vkobjs &rdata, std::vector<vktexdata> &texdata, vktexdatapls &texdatapls,
 	                              fastgltf::Asset &mmodel);

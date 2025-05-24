@@ -10,8 +10,6 @@ enum class animType { ROTATION, TRANSLATION, SCALE };
 enum class interpolationType { STEP, LINEAR, CUBICSPLINE };
 class vkchannel {
 public:
-	// void loadchannel(std::shared_ptr<tinygltf::Model> model, const tinygltf::Animation& anim, const
-	// tinygltf::AnimationChannel& chann);
 	void loadchannel(const fastgltf::Asset &model, const fastgltf::Animation &anim,
 	                 const fastgltf::AnimationChannel &chann);
 	int getTargetNode();

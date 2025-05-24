@@ -31,30 +31,21 @@ public:
 	bool uploadfordraw();
 	bool uploadfordraw(std::shared_ptr<playoutgeneric> &x);
 	bool draw();
-	bool drawpause();
 	bool drawloading();
 	bool drawblank();
-	void cleanloading();
-	void toggleshader();
 	void cleanup();
 	void handleclick();
 	void handlemouse(double x, double y);
 	bool initscene();
-	void initshop();
 	ui *getuihandle();
-	void startmoving();
 	void moveplayer();
-	bool checkphp();
 
 	void sdlevent(SDL_Event *e);
 
-	glm::vec3 raymarch();
 
 	void checkforanimupdates();
 
 	void updateanims();
-
-	void gametick();
 
 	bool quicksetup();
 
@@ -144,28 +135,19 @@ private:
 
 	VkDeviceSize mminuniformbufferoffsetalignment = 0;
 
-	std::vector<glm::mat4> mpersviewmats{};
+	std::vector<glm::mat4> mpersviewmats{glm::mat4{1.0f},glm::mat4{1.0f}};
 
-	bool switchshader{false};
-
-	bool setupplayer();
-	bool setupmodels();
-	bool setupmodels2();
 	bool deviceinit();
 	bool getqueue();
 	bool createdepthbuffer();
 	bool createswapchain();
 	bool createrenderpass();
-	bool setupstaticmodels();
-	bool setupstaticmodels2();
 	bool createframebuffer();
 	bool createcommandpool();
 	bool createcommandbuffer();
 	bool createsyncobjects();
 	bool initui();
 	bool initgameui();
-
-	bool initmenubackground();
 
 	bool initvma();
 

@@ -74,10 +74,9 @@ struct vkpushconstants {
 struct vkobjs {
 
 	inline static const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
-	inline static const std::shared_ptr<std::shared_mutex> uploadmtx{std::make_shared<std::shared_mutex>()};
 
 	SDL_Window *rdwind = nullptr;
-	// GLFWmonitor* rdmonitor = nullptr;
+	
 	const SDL_DisplayMode *rdmode;
 	bool rdfullscreen{false};
 	int rdwidth = 0;
@@ -99,7 +98,7 @@ struct vkobjs {
 
 	bool *mshutdown{nullptr};
 
-	bool *decaying;
+	bool *decaying{nullptr};
 
 	float loadingprog{0.0f};
 

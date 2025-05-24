@@ -23,8 +23,6 @@ public:
 	void drawinstanced(vkobjs &objs, VkPipelineLayout &vkplayout, VkPipeline &vkpline, VkPipeline &vkplineuint,
 	                   int instancecount, int stride);
 	void cleanup(vkobjs &objs);
-	void uploadvertexbuffers(vkobjs &objs);
-	void uploadindexbuffers(vkobjs &objs);
 	void uploadvboebo(vkobjs &objs, VkCommandBuffer &cbuffer);
 	std::vector<vktexdata> gettexdata();
 	vktexdatapls gettexdatapls();

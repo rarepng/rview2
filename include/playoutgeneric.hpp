@@ -18,11 +18,8 @@ public:
 	bool createssbodecay(vkobjs &objs);
 	bool createplayout(vkobjs &objs);
 	bool createpline(vkobjs &objs, std::string vfile, std::string ffile);
-	bool createpline2(vkobjs &objs, std::string vfile, std::string ffile);
-	bool createdecaypline(vkobjs &objs, std::string vfile, std::string ffile);
 	bool setup(vkobjs &objs, std::string fname, int count, std::string vfile, std::string ffile);
 	void draw(vkobjs &objs);
-	void drawdecays(vkobjs &objs, double &decaytime, bool *decaying);
 	void updateanims();
 	void updatemats();
 	void freezedecay();
@@ -34,8 +31,6 @@ public:
 
 	std::shared_ptr<genericinstance> getinst(int i);
 	std::shared_ptr<genericinstance> getdecayinst(int i);
-
-	unsigned int getnuminstances();
 
 	bool ready{false};
 
