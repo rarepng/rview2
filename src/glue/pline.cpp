@@ -59,12 +59,6 @@ bool pline::init(vkobjs &objs, VkPipelineLayout &playout, VkPipeline &pipeline, 
 		                                      static_cast<unsigned int>(posnoruvjointweightattsout.size()),
 		                                      VK_FORMAT_R32G32B32A32_UINT, 0});
 	}
-	// if (atts & 8) {
-	//     vertexBindings.push_back({ (unsigned int)vertexBindings.size(),sizeof(glm::vec4), VK_VERTEX_INPUT_RATE_VERTEX
-	//     }); posnoruvjointweightattsout.push_back({ static_cast<unsigned
-	//     int>(posnoruvjointweightattsout.size()),static_cast<unsigned
-	//     int>(posnoruvjointweightattsout.size()),VK_FORMAT_R16G16B16A16_UINT ,0 });
-	// }
 	if (atts & 16) {
 		vertexBindings.push_back({(unsigned int)vertexBindings.size(), sizeof(glm::vec4), VK_VERTEX_INPUT_RATE_VERTEX});
 		posnoruvjointweightattsout.push_back({static_cast<unsigned int>(posnoruvjointweightattsout.size()),

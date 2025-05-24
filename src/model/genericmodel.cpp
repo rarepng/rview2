@@ -98,13 +98,6 @@ void genericmodel::getinvbindmats() {
 
 void genericmodel::getanims() {
 	manimclips.reserve(mmodel2.animations.size());
-	// for (auto& anim0 : mmodel->animations) {
-	//     std::shared_ptr<vkclip> clip0=std::make_shared<vkclip>(anim0.name);
-	//     for (auto& c : anim0.channels) {
-	//         clip0->addchan(mmodel, anim0, c);
-	//     }
-	//     manimclips.push_back(clip0);
-	// }
 	for (auto &anim0 : mmodel2.animations) {
 		std::shared_ptr<vkclip> clip0 = std::make_shared<vkclip>(static_cast<std::string>(anim0.name));
 		for (auto &c : anim0.channels) {
@@ -121,11 +114,6 @@ std::vector<std::shared_ptr<vkclip>> genericmodel::getanimclips() {
 void genericmodel::getnodes(std::shared_ptr<vknode> treeNode) {
 	int nodeNum = treeNode->getnum();
 	const auto &childNodes = mmodel2.nodes.at(nodeNum).children;
-
-	// auto removeIt = std::remove_if(childNodes.begin(), childNodes.end(),
-	//     [&](size_t& num) { return mmodel2.nodes.at(num).skinIndex != -1; }
-	//);
-	// childNodes.erase(removeIt, childNodes.end());
 
 	treeNode->addchildren(childNodes);
 
@@ -241,40 +229,6 @@ void genericmodel::createvboebo(vkobjs &objs) { //& joint vector
 				}
 			}
 
-			// const fastgltf::Accessor& posacc = mmodel2.accessors[it->findAttribute("POSITION")->accessorIndex];
-			// if(!posacc.bufferViewIndex.has_value())continue; //gltf standard -> every primitive's verts must have position;
-
-			// vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(0), posacc.count *
-			// fastgltf::getElementByteSize(posacc.type,posacc.componentType));
-
-			// const fastgltf::Accessor& noracc = mmodel2.accessors[it->findAttribute("NORMAL")->accessorIndex];
-
-			// if(it->materialIndex.has_value()){
-			//     if(mmodel2.materials.at(it->materialIndex.value()).pbrData.baseColorTexture.has_value()){
-			//         const auto& texidx =
-			//         mmodel2.materials.at(it->materialIndex.value()).pbrData.baseColorTexture->texCoordIndex;
-			//         // while(const auto& tcoord{it->findAttribute("TEXCOORD_" + std::to_string(texidx))->accessorIndex}!=);
-			//         const fastgltf::Accessor& texacc = mmodel2.accessors[it->findAttribute("TEXCOORD_" +
-			//         std::to_string(texidx))->accessorIndex]; if(&texacc!=&posacc) vkvbo::init(objs,
-			//         mgltfobjs.vbodata.at(i).at(idx).at(2), texacc.count *
-			//         fastgltf::getElementByteSize(texacc.type,texacc.componentType));
-			//     }
-			// }
-			// const fastgltf::Accessor& joiacc = mmodel2.accessors[it->findAttribute("JOINTS_0")->accessorIndex];
-			// const fastgltf::Accessor& weiacc = mmodel2.accessors[it->findAttribute("WEIGHTS_0")->accessorIndex];
-			// const fastgltf::Accessor& noacc = mmodel2.accessors[it->findAttribute("nothing")->accessorIndex];
-			// if(&noracc!=&noacc)
-			// vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(1), noracc.count *
-			// fastgltf::getElementByteSize(noracc.type,noracc.componentType));
-			// // if(joiacc){  //todo
-			// // if(weiacc){  //todo
-			// // std::cout << joiacc.componentType << std::endl;
-			// // if(joiacc.)
-			// // if()
-			// if(&joiacc!=&noacc){
-			// vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(3), joiacc.count *
-			// fastgltf::getElementByteSize(joiacc.type,joiacc.componentType));
-
 			if (mmodel2.skins.size()) {
 				const fastgltf::Accessor &joiacc = mmodel2.accessors[it->findAttribute("JOINTS_0")->accessorIndex];
 				meshjointtype.at(i) = joiacc.componentType != fastgltf::ComponentType::UnsignedByte;
@@ -305,17 +259,6 @@ void genericmodel::createvboebo(vkobjs &objs) { //& joint vector
 						jointuintofx.at(i) = 0;
 				}
 			}
-
-			// std::vector<fastgltf::ComponentType>
-			// byters{fastgltf::ComponentType::Byte,fastgltf::ComponentType::UnsignedByte};
-
-			// meshjointtype.at(i) = std::any_of(byters.begin(),byters.end(),[&joiacc](fastgltf::ComponentType x){
-			//     return joiacc.componentType == x;
-			// });
-
-			// if(&weiacc!=&noacc)
-			// vkvbo::init(objs, mgltfobjs.vbodata.at(i).at(idx).at(4), weiacc.count *
-			// fastgltf::getElementByteSize(weiacc.type,weiacc.componentType));
 
 			mgltfobjs.vbodata.at(i).at(idx).shrink_to_fit(); // useless cause resize
 		}
@@ -381,7 +324,7 @@ void genericmodel::drawinstanced(vkobjs &objs, VkPipelineLayout &vkplayout, VkPi
 	std::vector<std::vector<vkpushconstants>> pushes(mgltfobjs.vbodata.size());
 
 	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1,
-	                        &mgltfobjs.texpls.texdescriptorset, 0, nullptr);
+	                        &mgltfobjs.texpls.dset, 0, nullptr);
 
 	for (int i{0}; i < mgltfobjs.vbodata.size(); i++) {
 		pushes[i].reserve(mgltfobjs.vbodata.at(i).size());
@@ -391,7 +334,7 @@ void genericmodel::drawinstanced(vkobjs &objs, VkPipelineLayout &vkplayout, VkPi
 		: vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkpline);
 
 		for (int j{0}; j < mgltfobjs.vbodata.at(i).size(); j++) {
-			pushes[i][j].pkmodelstride = stride;
+			pushes[i][j].stride = stride;
 			if (mmodel2.meshes.at(i).primitives.at(j).materialIndex.has_value() &&
 			        mmodel2.materials.at(mmodel2.meshes.at(i).primitives.at(j).materialIndex.value())
 			        .pbrData.baseColorTexture.has_value()) {
@@ -410,11 +353,11 @@ void genericmodel::drawinstanced(vkobjs &objs, VkPipelineLayout &vkplayout, VkPi
 			                   &pushes.at(i).at(j));
 			// rework bindings
 			for (int k{0}; k < mgltfobjs.vbodata.at(i).at(j).size(); k++) {
-				if (mgltfobjs.vbodata.at(i).at(j).at(k).rdvertexbuffer != VK_NULL_HANDLE)
-					vkCmdBindVertexBuffers(objs.rdcommandbuffer[0], k, 1, &mgltfobjs.vbodata.at(i).at(j).at(k).rdvertexbuffer,
+				if (mgltfobjs.vbodata.at(i).at(j).at(k).buffer != VK_NULL_HANDLE)
+					vkCmdBindVertexBuffers(objs.rdcommandbuffer[0], k, 1, &mgltfobjs.vbodata.at(i).at(j).at(k).buffer,
 					                       &offset);
 			}
-			vkCmdBindIndexBuffer(objs.rdcommandbuffer[0], mgltfobjs.ebodata.at(i).at(j).bhandle, 0, VK_INDEX_TYPE_UINT16);
+			vkCmdBindIndexBuffer(objs.rdcommandbuffer[0], mgltfobjs.ebodata.at(i).at(j).buffer, 0, VK_INDEX_TYPE_UINT16);
 			vkCmdDrawIndexed(objs.rdcommandbuffer[0], static_cast<uint32_t>(gettricount(i, j) * 3), instancecount, 0, 0, 0);
 		}
 	}
@@ -442,10 +385,10 @@ void genericmodel::cleanup(vkobjs &objs) {
 	// mmodel.reset();
 }
 
-std::vector<vktexdata> genericmodel::gettexdata() {
+std::vector<texdata> genericmodel::gettexdata() {
 	return mgltfobjs.tex;
 }
 
-vktexdatapls genericmodel::gettexdatapls() {
+texdatapls genericmodel::gettexdatapls() {
 	return mgltfobjs.texpls;
 }

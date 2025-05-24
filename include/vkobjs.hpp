@@ -14,57 +14,59 @@ enum class replaydirection { forward = 0, backward };
 enum class blendmode { fadeinout = 0, crossfade, additive };
 enum class ikmode { off = 0, ccd, fabrik };
 
-struct vktexdata {
-	VkImage teximg = VK_NULL_HANDLE;
-	VkImageView teximgview = VK_NULL_HANDLE;
-	VkSampler texsampler = VK_NULL_HANDLE;
-	VmaAllocation teximgalloc = nullptr;
+struct texdata {
+	VkImage img = VK_NULL_HANDLE;
+	VkImageView imgview = VK_NULL_HANDLE;
+	VkSampler imgsampler = VK_NULL_HANDLE;
+	VmaAllocation alloc = nullptr;
 };
-struct vktexdatapls {
-	VkDescriptorPool texdescriptorpool = VK_NULL_HANDLE;
-	VkDescriptorSetLayout texdescriptorlayout = VK_NULL_HANDLE;
-	VkDescriptorSet texdescriptorset = VK_NULL_HANDLE;
-};
-
-struct vkvertexbufferdata {
-
-	size_t rdvertexbuffersize{0};
-	VkBuffer rdvertexbuffer = VK_NULL_HANDLE;
-	VmaAllocation rdvertexbufferalloc = nullptr;
-	VkBuffer stagingbhandle = VK_NULL_HANDLE;
-	VmaAllocation stagingballoc = nullptr;
+struct texdatapls {
+	VkDescriptorPool dpool = VK_NULL_HANDLE;
+	VkDescriptorSetLayout dlayout = VK_NULL_HANDLE;
+	VkDescriptorSet dset = VK_NULL_HANDLE;
 };
 
-struct vkebodata {
-	size_t bsize{0};
-	VkBuffer bhandle = VK_NULL_HANDLE;
-	VmaAllocation balloc = nullptr;
-	VkBuffer stagingbhandle = VK_NULL_HANDLE;
-	VmaAllocation stagingballoc = nullptr;
+struct vbodata {
+
+	size_t size{0};
+	VkBuffer buffer = VK_NULL_HANDLE;
+	VmaAllocation alloc = nullptr;
+	//staging
+	VkBuffer sbuffer = VK_NULL_HANDLE;
+	VmaAllocation salloc = nullptr;
 };
 
-struct vkubodata {
-	size_t rduniformbuffersize{0};
-	VkBuffer rdubobuffer = VK_NULL_HANDLE;
-	VmaAllocation rdubobufferalloc = nullptr;
-
-	VkDescriptorPool rdubodescriptorpool = VK_NULL_HANDLE;
-	VkDescriptorSetLayout rdubodescriptorlayout = VK_NULL_HANDLE;
-	VkDescriptorSet rdubodescriptorset = VK_NULL_HANDLE;
+struct ebodata {
+	size_t size{0};
+	VkBuffer buffer = VK_NULL_HANDLE;
+	VmaAllocation alloc = nullptr;
+	//staging
+	VkBuffer sbuffer = VK_NULL_HANDLE;
+	VmaAllocation salloc = nullptr;
 };
 
-struct vkshaderstoragebufferdata {
-	size_t rdssbobuffersize{0};
-	VkBuffer rdssbobuffer = VK_NULL_HANDLE;
-	VmaAllocation rdssbobufferalloc = nullptr;
+struct ubodata {
+	size_t size{0};
+	VkBuffer buffer = VK_NULL_HANDLE;
+	VmaAllocation alloc = nullptr;
 
-	VkDescriptorPool rdssbodescriptorpool = VK_NULL_HANDLE;
-	VkDescriptorSetLayout rdssbodescriptorlayout = VK_NULL_HANDLE;
-	VkDescriptorSet rdssbodescriptorset = VK_NULL_HANDLE;
+	VkDescriptorPool dpool = VK_NULL_HANDLE;
+	VkDescriptorSetLayout dlayout = VK_NULL_HANDLE;
+	VkDescriptorSet dset = VK_NULL_HANDLE;
+};
+
+struct ssbodata {
+	size_t size{0};
+	VkBuffer buffer = VK_NULL_HANDLE;
+	VmaAllocation alloc = nullptr;
+
+	VkDescriptorPool dpool = VK_NULL_HANDLE;
+	VkDescriptorSetLayout dlayout = VK_NULL_HANDLE;
+	VkDescriptorSet dset = VK_NULL_HANDLE;
 };
 
 struct vkpushconstants {
-	int pkmodelstride;
+	int stride;
 	unsigned int texidx;
 	float t{0.0f};
 	bool decaying{false};
@@ -79,10 +81,10 @@ struct vkobjs {
 	
 	const SDL_DisplayMode *rdmode;
 	bool rdfullscreen{false};
-	int rdwidth = 0;
-	int rdheight = 0;
-	unsigned int rdtricount = 0;
-	unsigned int rdgltftricount = 0;
+	int rdwidth{0};
+	int rdheight{0};
+	unsigned int rdtricount{0};
+	unsigned int rdgltftricount{0};
 	float rdfov = 1.0472f;
 	bool rdswitchshader{false};
 
@@ -97,8 +99,6 @@ struct vkobjs {
 	float rduidrawtime{0.0f};
 
 	bool *mshutdown{nullptr};
-
-	bool *decaying{nullptr};
 
 	float loadingprog{0.0f};
 
@@ -126,8 +126,9 @@ struct vkobjs {
 	std::vector<VkFramebuffer> rdframebuffers;
 	std::vector<VkFramebuffer> rdframebufferrefs;
 
-	VkQueue rdgraphicsqueue = VK_NULL_HANDLE;
-	VkQueue rdpresentqueue = VK_NULL_HANDLE;
+	VkQueue graphicsQ = VK_NULL_HANDLE;
+	VkQueue presentQ = VK_NULL_HANDLE;
+	VkQueue computeQ = VK_NULL_HANDLE;
 
 	VkImage rddepthimage = VK_NULL_HANDLE;
 	VkImageView rddepthimageview = VK_NULL_HANDLE;
@@ -154,8 +155,8 @@ struct vkobjs {
 };
 
 struct vkgltfobjs {
-	std::vector<std::vector<std::vector<vkvertexbufferdata>>> vbodata{};
-	std::vector<std::vector<vkebodata>> ebodata{};
-	std::vector<vktexdata> tex{};
-	vktexdatapls texpls{};
+	std::vector<std::vector<std::vector<vbodata>>> vbodata{};
+	std::vector<std::vector<ebodata>> ebodata{};
+	std::vector<texdata> tex{};
+	texdatapls texpls{};
 };

@@ -162,15 +162,13 @@ bool vkrenderer::deviceinit() {
 	auto devbuilderret = devbuilder.build();
 	mvkobjs.rdvkbdevice = devbuilderret.value();
 
-	VkSurfaceCapabilitiesKHR surcap;
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mvkobjs.rdvkbdevice.physical_device, mvkobjs.rdvkbphysdev.surface, &surcap);
-
-	unsigned int excount{};
-
-	vkEnumerateDeviceExtensionProperties(mvkobjs.rdvkbdevice.physical_device, nullptr, &excount, nullptr);
-	std::vector<VkExtensionProperties> exvec(excount);
-
-	vkEnumerateDeviceExtensionProperties(mvkobjs.rdvkbdevice.physical_device, nullptr, &excount, nullptr);
+	// VkSurfaceCapabilitiesKHR surcap;
+	// vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mvkobjs.rdvkbdevice.physical_device, mvkobjs.rdvkbphysdev.surface, &surcap);
+	// unsigned int excount{};
+	// vkEnumerateDeviceExtensionProperties(mvkobjs.rdvkbdevice.physical_device, nullptr, &excount, nullptr);
+	// std::vector<VkExtensionProperties> exvec(excount);
+	// vkEnumerateDeviceExtensionProperties(mvkobjs.rdvkbdevice.physical_device, nullptr, &excount, exvec.data());
+	// for(const auto& x:exvec)std::cout << "ext name: " << x.extensionName << " " << std::endl << "version: " << x.specVersion << std::endl;
 
 	return true;
 }
@@ -186,10 +184,11 @@ bool vkrenderer::initvma() {
 }
 bool vkrenderer::getqueue() {
 	auto graphqueueret = mvkobjs.rdvkbdevice.get_queue(vkb::QueueType::graphics);
-	mvkobjs.rdgraphicsqueue = graphqueueret.value();
-
+	mvkobjs.graphicsQ = graphqueueret.value();
 	auto presentqueueret = mvkobjs.rdvkbdevice.get_queue(vkb::QueueType::present);
-	mvkobjs.rdpresentqueue = presentqueueret.value();
+	mvkobjs.presentQ = presentqueueret.value();
+	auto computequeueret = mvkobjs.rdvkbdevice.get_queue(vkb::QueueType::compute);
+	mvkobjs.computeQ = computequeueret.value();
 
 	return true;
 }
@@ -421,7 +420,7 @@ bool vkrenderer::uploadfordraw() {
 	swinfo.semaphoreCount = 1;
 
 	mvkobjs.mtx2->lock();
-	if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
+	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
 		return false;
 	}
 	mvkobjs.mtx2->unlock();
@@ -437,7 +436,7 @@ bool vkrenderer::uploadfordraw() {
 	presentinfo.pImageIndices = &imgidx;
 
 	mvkobjs.mtx2->lock();
-	size_t res2 = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
+	size_t res2 = vkQueuePresentKHR(mvkobjs.presentQ, &presentinfo);
 
 	mvkobjs.mtx2->unlock();
 
@@ -505,7 +504,7 @@ bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric> &x) {
 	swinfo.semaphoreCount = 1;
 
 	mvkobjs.mtx2->lock();
-	if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
+	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
 		return false;
 	}
 	mvkobjs.mtx2->unlock();
@@ -521,7 +520,7 @@ bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric> &x) {
 	presentinfo.pImageIndices = &imgidx;
 
 	mvkobjs.mtx2->lock();
-	size_t res2 = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
+	size_t res2 = vkQueuePresentKHR(mvkobjs.presentQ, &presentinfo);
 
 	mvkobjs.mtx2->unlock();
 
@@ -930,7 +929,7 @@ bool vkrenderer::draw() {
 	submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer.at(0);
 
 	mvkobjs.mtx2->lock();
-	if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
+	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
 		return false;
 	}
 	mvkobjs.mtx2->unlock();
@@ -946,7 +945,7 @@ bool vkrenderer::draw() {
 	presentinfo.pImageIndices = &imgidx;
 
 	mvkobjs.mtx2->lock();
-	res = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
+	res = vkQueuePresentKHR(mvkobjs.presentQ, &presentinfo);
 
 	mvkobjs.mtx2->unlock();
 
@@ -1051,7 +1050,7 @@ bool vkrenderer::drawloading() {
 	submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer[1];
 
 	mvkobjs.mtx2->lock();
-	if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
+	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
 		return false;
 	}
 	mvkobjs.mtx2->unlock();
@@ -1067,7 +1066,7 @@ bool vkrenderer::drawloading() {
 	presentinfo.pImageIndices = &imgidx;
 
 	mvkobjs.mtx2->lock();
-	res = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
+	res = vkQueuePresentKHR(mvkobjs.presentQ, &presentinfo);
 	mvkobjs.mtx2->unlock();
 	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
 		return recreateswapchain();
@@ -1165,7 +1164,7 @@ bool vkrenderer::drawblank() {
 	submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer[0];
 
 	mvkobjs.mtx2->lock();
-	if (vkQueueSubmit(mvkobjs.rdgraphicsqueue, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
+	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
 		return false;
 	}
 	mvkobjs.mtx2->unlock();
@@ -1181,7 +1180,7 @@ bool vkrenderer::drawblank() {
 	presentinfo.pImageIndices = &imgidx;
 
 	mvkobjs.mtx2->lock();
-	res = vkQueuePresentKHR(mvkobjs.rdpresentqueue, &presentinfo);
+	res = vkQueuePresentKHR(mvkobjs.presentQ, &presentinfo);
 
 	mvkobjs.mtx2->unlock();
 

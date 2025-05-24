@@ -45,11 +45,11 @@ private:
 	VkPipeline decaypline = VK_NULL_HANDLE;
 	VkPipeline decayplineuint = VK_NULL_HANDLE;
 
-	std::vector<vkubodata> rdperspviewmatrixubo{};
-	vkshaderstoragebufferdata rdjointmatrixssbo{};
-	vkshaderstoragebufferdata uintssbo{};
-	vkshaderstoragebufferdata rdjointdualquatssbo{};
-	vkshaderstoragebufferdata rdjointdecay{};
+	std::vector<ubodata> rdperspviewmatrixubo{};
+	ssbodata rdjointmatrixssbo{};
+	ssbodata uintssbo{};
+	ssbodata rdjointdualquatssbo{};
+	ssbodata rdjointdecay{};
 
 	bool uploadreq{true};
 

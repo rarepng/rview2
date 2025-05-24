@@ -63,7 +63,7 @@ bool playoutgeneric::createdecayinstances(vkobjs &objs) {
 bool playoutgeneric::createubo(vkobjs &objs) {
 	if (!ubo::init(objs, rdperspviewmatrixubo))
 		return false;
-	desclayouts.push_back(rdperspviewmatrixubo[0].rdubodescriptorlayout);
+	desclayouts.push_back(rdperspviewmatrixubo[0].dlayout);
 	return true;
 }
 
@@ -72,7 +72,7 @@ bool playoutgeneric::createssbomat(vkobjs &objs) {
 	              sizeof(glm::mat4);
 	if (!ssbo::init(objs, rdjointmatrixssbo, size))
 		return false;
-	desclayouts.push_back(rdjointmatrixssbo.rdssbodescriptorlayout);
+	desclayouts.push_back(rdjointmatrixssbo.dlayout);
 	return true;
 }
 bool playoutgeneric::createssbouint(vkobjs &objs) {
@@ -80,7 +80,7 @@ bool playoutgeneric::createssbouint(vkobjs &objs) {
 	              sizeof(glm::mat4);
 	if (!ssbo::init(objs, uintssbo, size))
 		return false;
-	desclayouts.push_back(uintssbo.rdssbodescriptorlayout);
+	desclayouts.push_back(uintssbo.dlayout);
 	return true;
 }
 
@@ -89,7 +89,7 @@ bool playoutgeneric::createssbodq(vkobjs &objs) {
 	              sizeof(glm::mat2x4);
 	if (!ssbo::init(objs, rdjointdualquatssbo, size))
 		return false;
-	desclayouts.push_back(rdjointdualquatssbo.rdssbodescriptorlayout);
+	desclayouts.push_back(rdjointdualquatssbo.dlayout);
 	return true;
 }
 bool playoutgeneric::createssbodecay(vkobjs &objs) {
@@ -97,13 +97,13 @@ bool playoutgeneric::createssbodecay(vkobjs &objs) {
 	              sizeof(glm::mat4);
 	if (!ssbo::init(objs, rdjointdecay, size))
 		return false;
-	desclayouts.push_back(rdjointdecay.rdssbodescriptorlayout);
+	desclayouts.push_back(rdjointdecay.dlayout);
 	return true;
 }
 
 bool playoutgeneric::createplayout(vkobjs &objs) {
-	vktexdatapls texdatapls0 = mgltf->gettexdatapls();
-	desclayouts.insert(desclayouts.begin(), texdatapls0.texdescriptorlayout);
+	texdatapls texdatapls0 = mgltf->gettexdatapls();
+	desclayouts.insert(desclayouts.begin(), texdatapls0.dlayout);
 	if (!playout::init(objs, rdgltfpipelinelayout, desclayouts, sizeof(vkpushconstants)))
 		return false;
 	return true;
@@ -135,15 +135,15 @@ void playoutgeneric::uploadvboebo(vkobjs &objs, VkCommandBuffer &cbuffer) {
 
 void playoutgeneric::uploadubossbo(vkobjs &objs, std::vector<glm::mat4> &cammats) {
 	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1,
-	                        &rdperspviewmatrixubo[0].rdubodescriptorset, 0, nullptr);
+	                        &rdperspviewmatrixubo[0].dset, 0, nullptr);
 	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1,
-	                        &rdjointmatrixssbo.rdssbodescriptorset, 0, nullptr);
+	                        &rdjointmatrixssbo.dset, 0, nullptr);
 	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 3, 1,
-	                        &rdjointdualquatssbo.rdssbodescriptorset, 0, nullptr);
+	                        &rdjointdualquatssbo.dset, 0, nullptr);
 	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 4, 1,
-	                        &rdjointdecay.rdssbodescriptorset, 0, nullptr);
+	                        &rdjointdecay.dset, 0, nullptr);
 	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 5, 1,
-	                        &uintssbo.rdssbodescriptorset, 0, nullptr);
+	                        &uintssbo.dset, 0, nullptr);
 
 	ubo::upload(objs, rdperspviewmatrixubo, cammats, 0);
 	ssbo::upload(objs, rdjointmatrixssbo, jointmats);
@@ -223,15 +223,15 @@ void playoutgeneric::draw(vkobjs &objs) {
 		stridedq = minstances.at(0)->getjointdualquatssize();
 
 		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1,
-		                        &rdperspviewmatrixubo[0].rdubodescriptorset, 0, nullptr);
+		                        &rdperspviewmatrixubo[0].dset, 0, nullptr);
 		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1,
-		                        &rdjointmatrixssbo.rdssbodescriptorset, 0, nullptr);
+		                        &rdjointmatrixssbo.dset, 0, nullptr);
 		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 3, 1,
-		                        &rdjointdualquatssbo.rdssbodescriptorset, 0, nullptr);
+		                        &rdjointdualquatssbo.dset, 0, nullptr);
 		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 4, 1,
-		                        &rdjointdecay.rdssbodescriptorset, 0, nullptr);
+		                        &rdjointdecay.dset, 0, nullptr);
 		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 5, 1,
-		                        &uintssbo.rdssbodescriptorset, 0, nullptr);
+		                        &uintssbo.dset, 0, nullptr);
 
 		mgltf->drawinstanced(objs, rdgltfpipelinelayout, rdgltfgpupipeline, rdgltfgpupipelineuint, numinstancess, stride);
 	}

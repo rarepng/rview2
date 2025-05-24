@@ -24,8 +24,8 @@ public:
 	                   int instancecount, int stride);
 	void cleanup(vkobjs &objs);
 	void uploadvboebo(vkobjs &objs, VkCommandBuffer &cbuffer);
-	std::vector<vktexdata> gettexdata();
-	vktexdatapls gettexdatapls();
+	std::vector<texdata> gettexdata();
+	texdatapls gettexdatapls();
 	std::string getmodelfname();
 	int getnodecount();
 	gltfnodedata getgltfnodes();

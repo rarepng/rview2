@@ -2,7 +2,7 @@
 
 #include <VkBootstrap.h>
 
-bool ssbomesh::init(vkobjs &objs, vkshaderstoragebufferdata &SSBOData) {
+bool ssbomesh::init(vkobjs &objs, ssbodata &SSBOData) {
 	VkBufferCreateInfo bufferInfo{};
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	bufferInfo.size = 2; //////////////////////////////////////////////////////fix
@@ -11,7 +11,7 @@ bool ssbomesh::init(vkobjs &objs, vkshaderstoragebufferdata &SSBOData) {
 	VmaAllocationCreateInfo vmaAllocInfo{};
 	vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-	if (vmaCreateBuffer(objs.rdallocator, &bufferInfo, &vmaAllocInfo, &SSBOData.rdssbobuffer, &SSBOData.rdssbobufferalloc,
+	if (vmaCreateBuffer(objs.rdallocator, &bufferInfo, &vmaAllocInfo, &SSBOData.buffer, &SSBOData.alloc,
 	                    nullptr) != VK_SUCCESS) {
 		return false;
 	}
@@ -29,7 +29,7 @@ bool ssbomesh::init(vkobjs &objs, vkshaderstoragebufferdata &SSBOData) {
 	ssboCreateInfo.pBindings = &ssboBind;
 
 	if (vkCreateDescriptorSetLayout(objs.rdvkbdevice.device, &ssboCreateInfo, nullptr,
-	                                &SSBOData.rdssbodescriptorlayout) != VK_SUCCESS) {
+	                                &SSBOData.dlayout) != VK_SUCCESS) {
 		return false;
 	}
 
@@ -43,65 +43,65 @@ bool ssbomesh::init(vkobjs &objs, vkshaderstoragebufferdata &SSBOData) {
 	descriptorPool.pPoolSizes = &poolSize;
 	descriptorPool.maxSets = 1;
 
-	if (vkCreateDescriptorPool(objs.rdvkbdevice.device, &descriptorPool, nullptr, &SSBOData.rdssbodescriptorpool) !=
+	if (vkCreateDescriptorPool(objs.rdvkbdevice.device, &descriptorPool, nullptr, &SSBOData.dpool) !=
 	        VK_SUCCESS) {
 		return false;
 	}
 
 	VkDescriptorSetAllocateInfo descriptorAllocateInfo{};
 	descriptorAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descriptorAllocateInfo.descriptorPool = SSBOData.rdssbodescriptorpool;
+	descriptorAllocateInfo.descriptorPool = SSBOData.dpool;
 	descriptorAllocateInfo.descriptorSetCount = 1;
-	descriptorAllocateInfo.pSetLayouts = &SSBOData.rdssbodescriptorlayout;
+	descriptorAllocateInfo.pSetLayouts = &SSBOData.dlayout;
 
-	if (vkAllocateDescriptorSets(objs.rdvkbdevice.device, &descriptorAllocateInfo, &SSBOData.rdssbodescriptorset) !=
+	if (vkAllocateDescriptorSets(objs.rdvkbdevice.device, &descriptorAllocateInfo, &SSBOData.dset) !=
 	        VK_SUCCESS) {
 		return false;
 	}
 
 	VkDescriptorBufferInfo ssboInfo{};
-	ssboInfo.buffer = SSBOData.rdssbobuffer;
+	ssboInfo.buffer = SSBOData.buffer;
 	ssboInfo.offset = 0;
 	ssboInfo.range = 2; //////////////////////////////////////////////////////////////fix
 
 	VkWriteDescriptorSet writeDescriptorSet{};
 	writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	writeDescriptorSet.dstSet = SSBOData.rdssbodescriptorset;
+	writeDescriptorSet.dstSet = SSBOData.dset;
 	writeDescriptorSet.dstBinding = 0;
 	writeDescriptorSet.descriptorCount = 1;
 	writeDescriptorSet.pBufferInfo = &ssboInfo;
 
 	vkUpdateDescriptorSets(objs.rdvkbdevice.device, 1, &writeDescriptorSet, 0, nullptr);
 
-	SSBOData.rdssbobuffersize = 2; /////////////////////////////////////////////////////fix
+	SSBOData.size = 2; /////////////////////////////////////////////////////fix
 	return true;
 }
 
-void ssbomesh::upload(vkobjs &objs, vkshaderstoragebufferdata &ssbodata, std::vector<glm::mat4> &mats) {
+void ssbomesh::upload(vkobjs &objs, ssbodata &ssbodata, std::vector<glm::mat4> &mats) {
 	if (mats.size() == 0) {
 		return;
 	}
 
 	void *data;
-	vmaMapMemory(objs.rdallocator, ssbodata.rdssbobufferalloc, &data);
-	std::memcpy(data, mats.data(), ssbodata.rdssbobuffersize);
-	vmaUnmapMemory(objs.rdallocator, ssbodata.rdssbobufferalloc);
+	vmaMapMemory(objs.rdallocator, ssbodata.alloc, &data);
+	std::memcpy(data, mats.data(), ssbodata.size);
+	vmaUnmapMemory(objs.rdallocator, ssbodata.alloc);
 }
 
-void ssbomesh::upload(vkobjs &objs, vkshaderstoragebufferdata &ssbodata, std::vector<glm::mat2x4> mats) {
+void ssbomesh::upload(vkobjs &objs, ssbodata &ssbodata, std::vector<glm::mat2x4> mats) {
 	if (mats.size() == 0) {
 		return;
 	}
 
 	void *data;
-	vmaMapMemory(objs.rdallocator, ssbodata.rdssbobufferalloc, &data);
-	std::memcpy(data, mats.data(), ssbodata.rdssbobuffersize);
-	vmaUnmapMemory(objs.rdallocator, ssbodata.rdssbobufferalloc);
+	vmaMapMemory(objs.rdallocator, ssbodata.alloc, &data);
+	std::memcpy(data, mats.data(), ssbodata.size);
+	vmaUnmapMemory(objs.rdallocator, ssbodata.alloc);
 }
 
-void ssbomesh::cleanup(vkobjs &objs, vkshaderstoragebufferdata &ssbodata) {
-	vkDestroyDescriptorPool(objs.rdvkbdevice.device, ssbodata.rdssbodescriptorpool, nullptr);
-	vkDestroyDescriptorSetLayout(objs.rdvkbdevice.device, ssbodata.rdssbodescriptorlayout, nullptr);
-	vmaDestroyBuffer(objs.rdallocator, ssbodata.rdssbobuffer, ssbodata.rdssbobufferalloc);
+void ssbomesh::cleanup(vkobjs &objs, ssbodata &ssbodata) {
+	vkDestroyDescriptorPool(objs.rdvkbdevice.device, ssbodata.dpool, nullptr);
+	vkDestroyDescriptorSetLayout(objs.rdvkbdevice.device, ssbodata.dlayout, nullptr);
+	vmaDestroyBuffer(objs.rdallocator, ssbodata.buffer, ssbodata.alloc);
 }

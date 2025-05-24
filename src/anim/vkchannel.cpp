@@ -1,60 +1,4 @@
 #include "vkchannel.hpp"
-// void vkchannel::loadchannel(std::shared_ptr<tinygltf::Model> model,const tinygltf::Animation& anim,const
-// tinygltf::AnimationChannel& chann) { 	targetNode = chann.target_node; 	const tinygltf::Accessor& inacc =
-//model->accessors.at(anim.samplers.at(chann.sampler).input); 	const tinygltf::BufferView& inbuffview =
-//model->bufferViews.at(inacc.bufferView); 	const tinygltf::Buffer& inbuff = model->buffers.at(inbuffview.buffer);
-//	std::vector<float> times{};
-//	times.reserve(inacc.count);
-//	times.resize(inacc.count);
-//
-//	std::memcpy(times.data(), &inbuff.data[inbuffview.byteOffset + inacc.byteOffset], inacc.count*4);
-//	setTimings(times);
-//	const tinygltf::AnimationSampler sampler = anim.samplers.at(chann.sampler);
-//
-//	if (sampler.interpolation.compare("STEP") == 0) {
-//		interpolationtype0 = interpolationType::STEP;
-//	}else if (sampler.interpolation.compare("LINEAR") == 0) {
-//		interpolationtype0 = interpolationType::LINEAR;
-//	} else {
-//		interpolationtype0 = interpolationType::CUBICSPLINE;
-//	}
-//
-//
-//	const tinygltf::Accessor& outacc = model->accessors.at(anim.samplers.at(chann.sampler).output);
-//	const tinygltf::BufferView& outbuffview = model->bufferViews.at(outacc.bufferView);
-//	const tinygltf::Buffer& outbuff = model->buffers.at(outbuffview.buffer);
-//	if (chann.target_path.compare("rotation") == 0) {
-//		animtype0 = animType::ROTATION;
-//		std::vector<glm::quat> rotations0;
-//		rotations0.reserve(outacc.count);
-//		rotations0.resize(outacc.count);
-//		rot.reserve(outacc.count);
-//		rot.resize(outacc.count);
-//
-//		std::memcpy(rotations0.data(), &outbuff.data[outbuffview.byteOffset + outacc.byteOffset], outacc.count *
-//4 * 4); 		setRots(rotations0);
-//	}
-//	else if (chann.target_path.compare("translation") == 0) {
-//		animtype0 = animType::TRANSLATION;
-//		std::vector<glm::vec3> translations;
-//		translations.reserve(outacc.count);
-//		translations.resize(outacc.count);
-//		trans.reserve(outacc.count);
-//		trans.resize(outacc.count);
-//		std::memcpy(translations.data(), &outbuff.data[outbuffview.byteOffset + outacc.byteOffset], outacc.count
-//* 4 * 3); 		setTranses(translations);
-//	}
-//	else {
-//		animtype0 = animType::SCALE;
-//		std::vector<glm::vec3> scalings;
-//		scalings.reserve(outacc.count);
-//		scalings.resize(outacc.count);
-//		scale.reserve(outacc.count);
-//		scale.resize(outacc.count);
-//		std::memcpy(scalings.data(), &outbuff.data[outbuffview.byteOffset + outacc.byteOffset], outacc.count * 4
-//* 3); 		setScales(scalings);
-//	}
-// }
 
 void vkchannel::loadchannel(const fastgltf::Asset &model, const fastgltf::Animation &anim,
                             const fastgltf::AnimationChannel &chann) {
@@ -171,13 +115,6 @@ glm::vec<3, float> vkchannel::getScale(float time) {
 			break;
 		}
 	}
-	// for (size_t i{ 0 }; i < timing.size(); ++i) {
-	//	if (timing.at(i) > time) {
-	//		next = i;
-	//		break;
-	//	}
-	//	prev = i;
-	// }
 	if (prev == next) {
 		return scale.at(prev);
 	}
@@ -233,14 +170,6 @@ glm::vec<3, float> vkchannel::getTranslate(float time) {
 			break;
 		}
 	}
-
-	// for (size_t i{ 0 }; i < timing.size(); ++i) {
-	//	if (timing.at(i) > time) {
-	//		next = i;
-	//		break;
-	//	}
-	//	prev = i;
-	// }
 	if (prev == next) {
 		return trans.at(prev);
 	}
@@ -296,15 +225,6 @@ glm::qua<float> vkchannel::getRotate(float time) {
 			break;
 		}
 	}
-
-	// for (size_t i{ 0 }; i < timing.size(); ++i) {
-	//	if (timing.at(i) > time) {
-	//		next = i;
-	//		break;
-	//	}
-	//	prev = i;
-	// }
-
 	if (prev == next) {
 		return rot.at(prev);
 	}

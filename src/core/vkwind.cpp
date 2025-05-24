@@ -5,7 +5,6 @@
 #include <iostream>
 #include <thread>
 
-#include "mouse.hpp"
 #include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_vulkan.h>
 #include <imgui.h>
@@ -15,10 +14,11 @@ bool vkwind::init(std::string title) {
 	if (!SDL_Init(SDL_INIT_VIDEO)) {
 		return false;
 	}
-	static const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay()); // wrong time
-	// mwind = SDL_CreateWindow(title.c_str(), 900, 600, SDL_WINDOW_BORDERLESS | SDL_WINDOW_VULKAN |
-	// SDL_WINDOW_TRANSPARENT | SDL_WINDOW_RESIZABLE);
-	mwind = SDL_CreateWindow(title.c_str(), 900, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+	static const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
+
+	std::cout << SDL_GetError() << std::endl;
+
+	mwind = SDL_CreateWindow(title.c_str(), 900, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE); // SDL_WINDOW_BORDERLESS | SDL_WINDOW_TRANSPARENT
 
 	if (!mwind) {
 		SDL_Quit();
@@ -27,11 +27,8 @@ bool vkwind::init(std::string title) {
 
 	mvkrenderer = std::make_unique<vkrenderer>(mwind, mode, &shutdown, e);
 
-	// mouse
-	mouse mmouse{"resources/mouser.png"};
-	SDL_Surface *iconer{IMG_Load("resources/icon0.png")};
-	SDL_SetCursor(mmouse.cursor);
-	SDL_SetWindowIcon(mwind, iconer);
+	SDL_SetCursor(SDL_CreateColorCursor(IMG_Load("resources/mouser.png"), 0, 0));
+	SDL_SetWindowIcon(mwind, IMG_Load("resources/icon0.png"));
 
 	if (!mvkrenderer->init()) {
 		SDL_Quit();

@@ -53,7 +53,7 @@ bool ui::init(vkobjs &renderData) {
 	imguiIinitInfo.Instance = renderData.rdvkbinstance.instance;
 	imguiIinitInfo.PhysicalDevice = renderData.rdvkbphysdev.physical_device;
 	imguiIinitInfo.Device = renderData.rdvkbdevice.device;
-	imguiIinitInfo.Queue = renderData.rdgraphicsqueue;
+	imguiIinitInfo.Queue = renderData.graphicsQ;
 	imguiIinitInfo.DescriptorPool = renderData.rdimguidescriptorpool;
 	imguiIinitInfo.MinImageCount = 2;
 	imguiIinitInfo.ImageCount = renderData.rdswapchainimages.size();
@@ -114,12 +114,8 @@ bool ui::init(vkobjs &renderData) {
 		return false;
 	}
 
-	// if (vkWaitForFences(renderData.rdvkbdevice.device, 1, &renderData.rdrenderfence, VK_TRUE, INT64_MAX) != VK_SUCCESS)
-	// {
-	//     return false;
-	// }
 	renderData.mtx2->lock();
-	if (vkQueueSubmit(renderData.rdgraphicsqueue, 1, &submitInfo, imguiBufferFence) != VK_SUCCESS) {
+	if (vkQueueSubmit(renderData.graphicsQ, 1, &submitInfo, imguiBufferFence) != VK_SUCCESS) {
 		return false;
 	}
 	renderData.mtx2->unlock();
@@ -132,9 +128,6 @@ bool ui::init(vkobjs &renderData) {
 	commandbuffer::cleanup(renderData, renderData.rdcommandpool[1], imguiCommandBuffer);
 
 	ImGui::StyleColorsDark();
-
-	// ImGui_ImplGlfw_RestoreCallbacks(renderData.rdwind);
-	// ImGui_ImplGlfw_InstallCallbacks(renderData.rdwind);
 
 	ImGui_ImplSDL3_ProcessEvent(renderData.e);
 

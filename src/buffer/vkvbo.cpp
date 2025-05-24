@@ -1,6 +1,6 @@
 #include "vkvbo.hpp"
 
-bool vkvbo::init(vkobjs &mvkobjs, vkvertexbufferdata &vbdata, size_t bsize) {
+bool vkvbo::init(vkobjs &mvkobjs, vbodata &vbdata, size_t bsize) {
 	VkBufferCreateInfo binfo{};
 	binfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	binfo.size = bsize;
@@ -10,7 +10,7 @@ bool vkvbo::init(vkobjs &mvkobjs, vkvertexbufferdata &vbdata, size_t bsize) {
 	VmaAllocationCreateInfo bainfo{};
 	bainfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-	if (vmaCreateBuffer(mvkobjs.rdallocator, &binfo, &bainfo, &vbdata.rdvertexbuffer, &vbdata.rdvertexbufferalloc,
+	if (vmaCreateBuffer(mvkobjs.rdallocator, &binfo, &bainfo, &vbdata.buffer, &vbdata.alloc,
 	                    nullptr) != VK_SUCCESS)
 		return false;
 
@@ -22,22 +22,22 @@ bool vkvbo::init(vkobjs &mvkobjs, vkvertexbufferdata &vbdata, size_t bsize) {
 	VmaAllocationCreateInfo stagingainfo{};
 	stagingainfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
 
-	if (vmaCreateBuffer(mvkobjs.rdallocator, &stagingbinfo, &stagingainfo, &vbdata.stagingbhandle, &vbdata.stagingballoc,
+	if (vmaCreateBuffer(mvkobjs.rdallocator, &stagingbinfo, &stagingainfo, &vbdata.sbuffer, &vbdata.salloc,
 	                    nullptr) != VK_SUCCESS)
 		return false;
 
-	vbdata.rdvertexbuffersize = bsize;
+	vbdata.size = bsize;
 	return true;
 }
 
-bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vkvertexbufferdata &vbdata,
+bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
                    std::vector<glm::vec3> vertexData) {
 
 	/* copy data to staging buffer*/
 	void *data;
-	vmaMapMemory(mvkobjs.rdallocator, vbdata.stagingballoc, &data);
-	std::memcpy(data, vertexData.data(), vbdata.rdvertexbuffersize);
-	vmaUnmapMemory(mvkobjs.rdallocator, vbdata.stagingballoc);
+	vmaMapMemory(mvkobjs.rdallocator, vbdata.salloc, &data);
+	std::memcpy(data, vertexData.data(), vbdata.size);
+	vmaUnmapMemory(mvkobjs.rdallocator, vbdata.salloc);
 
 	VkBufferMemoryBarrier vertexBufferBarrier{};
 	vertexBufferBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -45,30 +45,29 @@ bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vkvertexbufferdata
 	vertexBufferBarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
 	vertexBufferBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	vertexBufferBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	vertexBufferBarrier.buffer = vbdata.stagingbhandle;
+	vertexBufferBarrier.buffer = vbdata.sbuffer;
 	vertexBufferBarrier.offset = 0;
-	vertexBufferBarrier.size = vbdata.rdvertexbuffersize;
+	vertexBufferBarrier.size = vbdata.size;
 
 	VkBufferCopy stagingBufferCopy{};
 	stagingBufferCopy.srcOffset = 0;
 	stagingBufferCopy.dstOffset = 0;
-	stagingBufferCopy.size = vbdata.rdvertexbuffersize;
+	stagingBufferCopy.size = vbdata.size;
 
-	vkCmdCopyBuffer(cbuffer, vbdata.stagingbhandle, vbdata.rdvertexbuffer, 1, &stagingBufferCopy);
+	vkCmdCopyBuffer(cbuffer, vbdata.sbuffer, vbdata.buffer, 1, &stagingBufferCopy);
 	vkCmdPipelineBarrier(cbuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1,
 	                     &vertexBufferBarrier, 0, nullptr);
 
 	return true;
 }
 
-bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vkvertexbufferdata &vbdata,
+bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
                    std::vector<glm::vec2> vertexData) {
 
-	/* copy data to staging buffer*/
 	void *data;
-	vmaMapMemory(mvkobjs.rdallocator, vbdata.stagingballoc, &data);
-	std::memcpy(data, vertexData.data(), vbdata.rdvertexbuffersize);
-	vmaUnmapMemory(mvkobjs.rdallocator, vbdata.stagingballoc);
+	vmaMapMemory(mvkobjs.rdallocator, vbdata.salloc, &data);
+	std::memcpy(data, vertexData.data(), vbdata.size);
+	vmaUnmapMemory(mvkobjs.rdallocator, vbdata.salloc);
 
 	VkBufferMemoryBarrier vertexBufferBarrier{};
 	vertexBufferBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -76,73 +75,33 @@ bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vkvertexbufferdata
 	vertexBufferBarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
 	vertexBufferBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	vertexBufferBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	vertexBufferBarrier.buffer = vbdata.stagingbhandle;
+	vertexBufferBarrier.buffer = vbdata.sbuffer;
 	vertexBufferBarrier.offset = 0;
-	vertexBufferBarrier.size = vbdata.rdvertexbuffersize;
+	vertexBufferBarrier.size = vbdata.size;
 
 	VkBufferCopy stagingBufferCopy{};
 	stagingBufferCopy.srcOffset = 0;
 	stagingBufferCopy.dstOffset = 0;
-	stagingBufferCopy.size = vbdata.rdvertexbuffersize;
+	stagingBufferCopy.size = vbdata.size;
 
-	vkCmdCopyBuffer(cbuffer, vbdata.stagingbhandle, vbdata.rdvertexbuffer, 1, &stagingBufferCopy);
+	vkCmdCopyBuffer(cbuffer, vbdata.sbuffer, vbdata.buffer, 1, &stagingBufferCopy);
 	vkCmdPipelineBarrier(cbuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1,
 	                     &vertexBufferBarrier, 0, nullptr);
 
 	return true;
 }
 
-//
-// bool vkvbo::upload(vkobjs& mvkobjs, vkvertexbufferdata& vbdata, const tinygltf::Buffer& buffer, const
-// tinygltf::BufferView& bufferview, const tinygltf::Accessor& acc) {
-//
-//
-//    //if (vbdata.rdvertexbuffersize < bufferview.byteLength) {
-//    //    cleanup(mvkobjs, vbdata);
-//    //    if (!init(mvkobjs, vbdata, bufferview.byteLength)) return false;
-//    //    vbdata.rdvertexbuffersize = bufferview.byteLength;
-//    //}
-//
-//    void* d;
-//
-//    vmaMapMemory(mvkobjs.rdallocator, vbdata.stagingballoc, &d);
-//    std::memcpy(d, &buffer.data[bufferview.byteOffset + acc.byteOffset], bufferview.byteLength);
-//    vmaUnmapMemory(mvkobjs.rdallocator, vbdata.stagingballoc);
-//
-//
-//
-//    VkBufferMemoryBarrier vbbarrier{};
-//    vbbarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-//    vbbarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-//    vbbarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-//    vbbarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-//    vbbarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-//    vbbarrier.buffer = vbdata.stagingbhandle;
-//    vbbarrier.offset = 0;
-//    vbbarrier.size = vbdata.rdvertexbuffersize;
-//
-//    VkBufferCopy stagingbuffercopy{};
-//    stagingbuffercopy.srcOffset = 0;
-//    stagingbuffercopy.dstOffset = 0;
-//    stagingbuffercopy.size = vbdata.rdvertexbuffersize;
-//
-//    vkCmdCopyBuffer(mvkobjs.rdcommandbuffer[0], vbdata.stagingbhandle, vbdata.rdvertexbuffer, 1, &stagingbuffercopy);
-//    vkCmdPipelineBarrier(mvkobjs.rdcommandbuffer[0], VK_PIPELINE_STAGE_TRANSFER_BIT,
-//    VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &vbbarrier, 0, nullptr);
-//
-//    return true;
-//}
-bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vkvertexbufferdata &vbdata,
+bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
                    const fastgltf::Buffer &buffer, const fastgltf::BufferView &bufferview,
                    const fastgltf::Accessor &acc) {
 
 	std::visit(fastgltf::visitor{[](auto &arg) {},
 	[&](const fastgltf::sources::Array &vector) {
 		void *d;
-		vmaMapMemory(mvkobjs.rdallocator, vbdata.stagingballoc, &d);
+		vmaMapMemory(mvkobjs.rdallocator, vbdata.salloc, &d);
 		std::memcpy(d, vector.bytes.data() + bufferview.byteOffset + acc.byteOffset,
 		            bufferview.byteLength); // acc.count*type
-		vmaUnmapMemory(mvkobjs.rdallocator, vbdata.stagingballoc);
+		vmaUnmapMemory(mvkobjs.rdallocator, vbdata.salloc);
 	}},
 	buffer.data);
 
@@ -152,36 +111,30 @@ bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vkvertexbufferdata
 	vbbarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
 	vbbarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	vbbarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	vbbarrier.buffer = vbdata.stagingbhandle;
+	vbbarrier.buffer = vbdata.sbuffer;
 	vbbarrier.offset = 0;
-	vbbarrier.size = vbdata.rdvertexbuffersize;
+	vbbarrier.size = vbdata.size;
 
 	VkBufferCopy stagingbuffercopy{};
 	stagingbuffercopy.srcOffset = 0;
 	stagingbuffercopy.dstOffset = 0;
-	stagingbuffercopy.size = vbdata.rdvertexbuffersize;
+	stagingbuffercopy.size = vbdata.size;
 
-	vkCmdCopyBuffer(cbuffer, vbdata.stagingbhandle, vbdata.rdvertexbuffer, 1, &stagingbuffercopy);
+	vkCmdCopyBuffer(cbuffer, vbdata.sbuffer, vbdata.buffer, 1, &stagingbuffercopy);
 	vkCmdPipelineBarrier(cbuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1,
 	                     &vbbarrier, 0, nullptr);
 
 	return true;
 }
 
-bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vkvertexbufferdata &vbdata,
+bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
                    const std::vector<unsigned int> &jointz, const unsigned int count, const unsigned int ofx) {
-
-	// if (vbdata.rdvertexbuffersize < bufferview.byteLength) {
-	//     cleanup(mvkobjs, vbdata);
-	//     if (!init(mvkobjs, vbdata, bufferview.byteLength)) return false;
-	//     vbdata.rdvertexbuffersize = bufferview.byteLength;
-	// }
 
 	void *d;
 
-	vmaMapMemory(mvkobjs.rdallocator, vbdata.stagingballoc, &d);
+	vmaMapMemory(mvkobjs.rdallocator, vbdata.salloc, &d);
 	std::memcpy(d, jointz.data() + ofx, count * sizeof(unsigned int) * 4);
-	vmaUnmapMemory(mvkobjs.rdallocator, vbdata.stagingballoc);
+	vmaUnmapMemory(mvkobjs.rdallocator, vbdata.salloc);
 
 	VkBufferMemoryBarrier vbbarrier{};
 	vbbarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -189,23 +142,23 @@ bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vkvertexbufferdata
 	vbbarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
 	vbbarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	vbbarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	vbbarrier.buffer = vbdata.stagingbhandle;
+	vbbarrier.buffer = vbdata.sbuffer;
 	vbbarrier.offset = 0;
-	vbbarrier.size = vbdata.rdvertexbuffersize;
+	vbbarrier.size = vbdata.size;
 
 	VkBufferCopy stagingbuffercopy{};
 	stagingbuffercopy.srcOffset = 0;
 	stagingbuffercopy.dstOffset = 0;
-	stagingbuffercopy.size = vbdata.rdvertexbuffersize;
+	stagingbuffercopy.size = vbdata.size;
 
-	vkCmdCopyBuffer(cbuffer, vbdata.stagingbhandle, vbdata.rdvertexbuffer, 1, &stagingbuffercopy);
+	vkCmdCopyBuffer(cbuffer, vbdata.sbuffer, vbdata.buffer, 1, &stagingbuffercopy);
 	vkCmdPipelineBarrier(cbuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1,
 	                     &vbbarrier, 0, nullptr);
 
 	return true;
 }
 
-void vkvbo::cleanup(vkobjs &mvkobjs, vkvertexbufferdata &vbdata) {
-	vmaDestroyBuffer(mvkobjs.rdallocator, vbdata.stagingbhandle, vbdata.stagingballoc);
-	vmaDestroyBuffer(mvkobjs.rdallocator, vbdata.rdvertexbuffer, vbdata.rdvertexbufferalloc);
+void vkvbo::cleanup(vkobjs &mvkobjs, vbodata &vbdata) {
+	vmaDestroyBuffer(mvkobjs.rdallocator, vbdata.sbuffer, vbdata.salloc);
+	vmaDestroyBuffer(mvkobjs.rdallocator, vbdata.buffer, vbdata.alloc);
 }
