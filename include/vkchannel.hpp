@@ -1,33 +1,25 @@
 #pragma once
 #define GLM_ENABLE_EXPERIMENTAL
 #include <vector>
-//#include <tinygltf/tiny_gltf.h>
+// #include <tinygltf/tiny_gltf.h>
 #include <fastgltf/core.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 
-
-enum class animType {
-	ROTATION,
-	TRANSLATION,
-	SCALE
-};
-enum class interpolationType {
-	STEP,
-	LINEAR,
-	CUBICSPLINE
-};
+enum class animType { ROTATION, TRANSLATION, SCALE };
+enum class interpolationType { STEP, LINEAR, CUBICSPLINE };
 class vkchannel {
 public:
-	//void loadchannel(std::shared_ptr<tinygltf::Model> model, const tinygltf::Animation& anim, const tinygltf::AnimationChannel& chann);
-	void loadchannel(const fastgltf::Asset& model, const fastgltf::Animation& anim, const fastgltf::AnimationChannel& chann);
+	void loadchannel(const fastgltf::Asset &model, const fastgltf::Animation &anim,
+	                 const fastgltf::AnimationChannel &chann);
 	int getTargetNode();
 	animType getAnimType();
-	//interpolationType getInterpolationType();
+	// interpolationType getInterpolationType();
 	glm::vec<3, float> getScale(float time);
 	glm::vec<3, float> getTranslate(float time);
 	glm::qua<float> getRotate(float time);
 	float getMaxTime();
+
 private:
 	int targetNode = -1;
 	animType animtype0 = animType::ROTATION;

@@ -1,23 +1,22 @@
 #pragma once
 #define GLM_ENABLE_EXPERIMENTAL
-#include <vector>
-#include <memory>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <memory>
+#include <vector>
 
 #include "genericmodel.hpp"
-#include "vknode.hpp"
-#include "vkclip.hpp"
 #include "iksolver.hpp"
-#include "vkobjs.hpp"
 #include "modelsettings.hpp"
+#include "vkclip.hpp"
+#include "vknode.hpp"
+#include "vkobjs.hpp"
 
-class genericinstance{
+class genericinstance {
 public:
-	genericinstance(std::shared_ptr<genericmodel>model, glm::vec3 worldpos, bool randomize = false);
+	genericinstance(std::shared_ptr<genericmodel> model, glm::vec3 worldpos, bool randomize = false);
 	~genericinstance();
 	void resetnodedata();
-	std::shared_ptr<vkmesh> getskeleton();
 	void setskeletonsplitnode(int nodenum);
 	int getjointmatrixsize();
 	int getjointdualquatssize();
@@ -26,8 +25,8 @@ public:
 
 	void updateanimation();
 
-	void setinstancesettings(modelsettings& settings);
-	modelsettings& getinstancesettings();
+	void setinstancesettings(modelsettings &settings);
+	modelsettings &getinstancesettings();
 	void checkforupdates();
 
 	glm::vec3 getwpos();
@@ -37,8 +36,7 @@ public:
 	void setinversekindematicsnode(int effectornodenum, int ikchainrootnodenum);
 	void setnumikiterations(int iterations);
 
-	glm::vec3* getinstpos();
-
+	glm::vec3 *getinstpos();
 
 private:
 	void playanimation(int animnum, float speeddivider, float blendfactor, replaydirection direction);
@@ -48,14 +46,13 @@ private:
 
 	float getanimendtime(int animnum);
 
-	void getskeletonpernode(std::shared_ptr<vknode>treenode);
-	void updatenodematrices(std::shared_ptr<vknode>treenode);
-	void updatejointmatrices(std::shared_ptr<vknode>treenode);
-	void updatejointdualquats(std::shared_ptr<vknode>treenode);
-	void updateadditivemask(std::shared_ptr<vknode>treenode,int splitnodenum);
+	void updatenodematrices(std::shared_ptr<vknode> treenode);
+	void updatejointmatrices(std::shared_ptr<vknode> treenode);
+	void updatejointdualquats(std::shared_ptr<vknode> treenode);
+	void updateadditivemask(std::shared_ptr<vknode> treenode, int splitnodenum);
 
 	std::shared_ptr<genericmodel> mgltfmodel = nullptr;
-	unsigned int mnodecount{ 0 };
+	unsigned int mnodecount{0};
 
 	std::shared_ptr<vknode> mrootnode = nullptr;
 	std::vector<std::shared_ptr<vknode>> mnodelist{};
@@ -70,11 +67,8 @@ private:
 	std::vector<bool> madditiveanimationmask{};
 	std::vector<bool> minvertedadditiveanimationmask{};
 
-	std::shared_ptr<vkmesh> mskeletonmesh = nullptr;
-
 	modelsettings mmodelsettings{};
 	iksolver miksolver{};
 	void solveikbyccd(glm::vec3 target);
 	void solveikbyfabrik(glm::vec3 target);
-
 };

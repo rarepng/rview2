@@ -1,9 +1,8 @@
 #pragma once
-#include <vulkan/vulkan.h>
 #include "vkobjs.hpp"
+#include <vulkan/vulkan.h>
 class renderpass {
 public:
-	static bool init(vkobjs& rdata);
-	static bool initref(vkobjs& rdata);
-	static void cleanup(vkobjs& rdata);
+	static bool init(vkobjs &rdata);
+	static void cleanup(vkobjs &rdata);
 };

@@ -7,6 +7,13 @@ include(ExternalProject)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+add_compile_options(
+    "$<$<CONFIG:Debug>:-Wall>"
+    "$<$<CONFIG:Debug>:-Wextra>"
+    "$<$<CONFIG:Debug>:-Wunused-variable>"
+)
 
 find_package(Vulkan REQUIRED)
 
@@ -167,32 +174,33 @@ file(GLOB shaders ${PROJECT_BINARY_DIR}/shaders/*)
 list(LENGTH shaders shader_len)
 
 file(GLOB_RECURSE GLSL_SOURCE_FILES
-    "${PROJECT_SOURCE_DIR}/shaders/*.frag"
-    "${PROJECT_SOURCE_DIR}/shaders/*.vert"
+    # "${PROJECT_SOURCE_DIR}/shaders/*.frag"
+    # "${PROJECT_SOURCE_DIR}/shaders/*.vert"
+    "${PROJECT_SOURCE_DIR}/shaders/*.slang"
     )
   foreach(GLSL ${GLSL_SOURCE_FILES})
-    get_filename_component(GLSL_EXT "${GLSL}" EXT)
-    # string(SUBSTRING "${GLSL_EXT}" 1 -1 GLSL_EXT)
-    if(GLSL_EXT STREQUAL ".frag")
-        set(SLANG_STAGE "fragment")
-    elseif(GLSL_EXT STREQUAL ".vert")
-        set(SLANG_STAGE "vertex")
-    elseif(GLSL_EXT STREQUAL ".comp")
-        set(SLANG_STAGE "compute")
-    endif()
+    # get_filename_component(GLSL_EXT "${GLSL}" EXT)
+    # if(GLSL_EXT STREQUAL ".frag")
+    #     set(SLANG_STAGE "fragment")
+    # elseif(GLSL_EXT STREQUAL ".vert")
+    #     set(SLANG_STAGE "vertex")
+    # elseif(GLSL_EXT STREQUAL ".comp")
+    #     set(SLANG_STAGE "compute")
+    # endif()
     file(TO_CMAKE_PATH "${GLSL}" GLSL_NATIVE)
     cmake_path(GET GLSL_NATIVE FILENAME SPIRV_NAME)
-      set(SPIRV "${PROJECT_BINARY_DIR}/shaders/${SPIRV_NAME}.spv")
+      set(VXSPIRV "${PROJECT_BINARY_DIR}/shaders/${SPIRV_NAME}.vx.spv")
+      set(PXSPIRV "${PROJECT_BINARY_DIR}/shaders/${SPIRV_NAME}.px.spv")
       add_custom_command(
-        OUTPUT ${SPIRV}
+        OUTPUT ${VXSPIRV}
+        OUTPUT ${PXSPIRV}
         COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders"
-        # compiling pure glsl files for now
-        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -default-downstream-compiler glsl glslang -lang glsl -entry main $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage ${SLANG_STAGE} -matrix-layout-row-major -target spirv -capability SPIRV_1_6 ${GLSL_NATIVE} -o ${SPIRV}"
-        # COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> ${GLSL_NATIVE} -o ${SPIRV}"
-        # COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/glslc $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> --target-env=vulkan1.4 --target-spv=spv1.6 -std=460 -c ${GLSL_NATIVE} -o ${SPIRV}"
-        DEPENDS ${GLSL_NATIVE}
-      )
-      list(APPEND SPIRV_BINARY_FILES ${SPIRV})
+        # COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -default-downstream-compiler glsl glslang -lang glsl -entry main $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage ${SLANG_STAGE} -matrix-layout-row-major -target spirv -capability SPIRV_1_6 ${GLSL_NATIVE} -o ${SPIRV}"        DEPENDS ${GLSL_NATIVE}
+        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -entry vxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage vertex -target spirv -capability SPIRV_1_6 ${GLSL_NATIVE} -o ${VXSPIRV}"        DEPENDS ${GLSL_NATIVE}
+        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -entry pxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage pixel -target spirv -capability SPIRV_1_6 ${GLSL_NATIVE} -o ${PXSPIRV}"        DEPENDS ${GLSL_NATIVE}
+        )
+      list(APPEND SPIRV_BINARY_FILES ${VXSPIRV})
+      list(APPEND SPIRV_BINARY_FILES ${PXSPIRV})
   endforeach()
     set_source_files_properties(${SPIRV_BINARY_FILES} PROPERTIES GENERATED TRUE)
   add_custom_target(shaders ALL DEPENDS ${SPIRV_BINARY_FILES})

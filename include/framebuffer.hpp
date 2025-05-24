@@ -1,10 +1,9 @@
 #pragma once
-#include <vulkan/vulkan.h>
 #include "vkobjs.hpp"
+#include <vulkan/vulkan.h>
 
 class framebuffer {
 public:
-	static bool init(vkobjs& rdata);
-	static bool initref(vkobjs& rdata);
-	static void cleanup(vkobjs& rdata);
+	static bool init(vkobjs &rdata);
+	static void cleanup(vkobjs &rdata);
 };

@@ -5,6 +5,7 @@
 class vkshader {
 public:
 	static VkShaderModule loadshader(VkDevice dev, std::string filename);
+
 private:
 	static std::string loadfiletostr(std::string filename);
 };

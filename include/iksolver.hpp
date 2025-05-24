@@ -1,7 +1,7 @@
 #pragma once
-#include <vector>
-#include <memory>
 #include <glm/glm.hpp>
+#include <memory>
+#include <vector>
 
 #include "vknode.hpp"
 
@@ -14,6 +14,7 @@ public:
 	void setnumiterations(unsigned int iterations);
 	bool solveccd(glm::vec3 target);
 	bool solvefabrik(glm::vec3 target);
+
 private:
 	std::vector<std::shared_ptr<vknode>> mnodes{};
 	std::vector<float> mbonelengths{};
@@ -22,6 +23,6 @@ private:
 	void solvefabrikbackward(glm::vec3 base);
 	void adjustfabriknodes();
 	std::vector<glm::vec3> mfabriknodeposes{};
-	unsigned int miterations{ 0 };
+	unsigned int miterations{0};
 	float mthreshold = 0.00001f;
 };

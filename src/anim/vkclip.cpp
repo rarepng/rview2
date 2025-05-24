@@ -1,17 +1,13 @@
 #include "vkclip.hpp"
-vkclip::vkclip(std::string name) :animname(name) {}
-//void vkclip::addchan(std::shared_ptr<tinygltf::Model> model, const tinygltf::Animation& anim, const tinygltf::AnimationChannel& chann) {
-//	std::shared_ptr<vkchannel> chan = std::make_shared<vkchannel>();
-//	chan->loadchannel(model, anim, chann);
-//	animchannels.push_back(chan);
-//}
-void vkclip::addchan(const fastgltf::Asset& model, const fastgltf::Animation& anim, const fastgltf::AnimationChannel& chann) {
+vkclip::vkclip(std::string name) : animname(name) {}
+void vkclip::addchan(const fastgltf::Asset &model, const fastgltf::Animation &anim,
+                     const fastgltf::AnimationChannel &chann) {
 	std::shared_ptr<vkchannel> chan = std::make_shared<vkchannel>();
 	chan->loadchannel(model, anim, chann);
 	animchannels.push_back(chan);
 }
-void vkclip::setFrame(std::vector<std::shared_ptr<vknode>> nodes,std::vector<bool> additivemask, float time) {
-	for (auto& chann : animchannels) {
+void vkclip::setFrame(std::vector<std::shared_ptr<vknode>> nodes, std::vector<bool> additivemask, float time) {
+	for (auto &chann : animchannels) {
 		int tnode = chann->getTargetNode();
 		if (additivemask.at(tnode)) {
 			switch (chann->getAnimType()) {
@@ -27,16 +23,16 @@ void vkclip::setFrame(std::vector<std::shared_ptr<vknode>> nodes,std::vector<boo
 			}
 		}
 	}
-	for (auto& node0 : nodes) {
+	for (auto &node0 : nodes) {
 		if (node0) {
 			node0->calculatelocalmat();
 		}
 	}
 }
 
-
-void vkclip::blendFrame(std::vector<std::shared_ptr<vknode>> nodes, std::vector<bool> additivemask, float time,float blendfactor) {
-	for (auto& chann : animchannels) {
+void vkclip::blendFrame(std::vector<std::shared_ptr<vknode>> nodes, std::vector<bool> additivemask, float time,
+                        float blendfactor) {
+	for (auto &chann : animchannels) {
 		int tnode = chann->getTargetNode();
 		if (additivemask.at(tnode)) {
 			switch (chann->getAnimType()) {
@@ -52,13 +48,12 @@ void vkclip::blendFrame(std::vector<std::shared_ptr<vknode>> nodes, std::vector<
 			}
 		}
 	}
-	for (auto& node0 : nodes) {
+	for (auto &node0 : nodes) {
 		if (node0) {
 			node0->calculatelocalmat();
 		}
 	}
 }
-
 
 std::string vkclip::getName() {
 	return animname;

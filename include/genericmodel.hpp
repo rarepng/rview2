@@ -1,15 +1,15 @@
 #pragma once
+#include "vkclip.hpp"
+#include "vknode.hpp"
+#include "vkobjs.hpp"
+#include <fastgltf/core.hpp>
+#include <fastgltf/tools.hpp>
+#include <fastgltf/types.hpp>
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
-#include <map>
 #include <vulkan/vulkan.h>
-#include <fastgltf/core.hpp>
-#include <fastgltf/types.hpp>
-#include <fastgltf/tools.hpp>
-#include "vknode.hpp"
-#include "vkclip.hpp"
-#include "vkobjs.hpp"
 
 struct gltfnodedata {
 	std::shared_ptr<vknode> rootnode;
@@ -18,35 +18,32 @@ struct gltfnodedata {
 
 class genericmodel {
 public:
-	bool loadmodel(vkobjs& objs,std::string fname);
-	void draw(vkobjs& objs);
-	void drawinstanced(vkobjs& objs, VkPipelineLayout& vkplayout, VkPipeline& vkpline, VkPipeline& vkplineuint, int instancecount, int stride);
-	void cleanup(vkobjs& objs);
-	void uploadvertexbuffers(vkobjs& objs);
-	void uploadindexbuffers(vkobjs& objs);
-	void uploadvboebo(vkobjs& objs, VkCommandBuffer& cbuffer);
-	std::vector<vktexdata> gettexdata();
-	vktexdatapls gettexdatapls();
+	bool loadmodel(vkobjs &objs, std::string fname);
+	void draw(vkobjs &objs);
+	void drawinstanced(vkobjs &objs, VkPipelineLayout &vkplayout, VkPipeline &vkpline, VkPipeline &vkplineuint,
+	                   int instancecount, int stride);
+	void cleanup(vkobjs &objs);
+	void uploadvboebo(vkobjs &objs, VkCommandBuffer &cbuffer);
+	std::vector<texdata> gettexdata();
+	texdatapls gettexdatapls();
 	std::string getmodelfname();
 	int getnodecount();
 	gltfnodedata getgltfnodes();
-	size_t gettricount(size_t i,size_t j);
+	size_t gettricount(size_t i, size_t j);
 
 	std::vector<glm::mat4> getinversebindmats();
 	std::vector<unsigned int> getnodetojoint();
 
 	std::vector<std::shared_ptr<vkclip>> getanimclips();
 
-	void resetnodedata(std::shared_ptr<vknode>treenode);
+	void resetnodedata(std::shared_ptr<vknode> treenode);
 
 private:
-
 	std::vector<bool> meshjointtype{};
 
 	std::vector<unsigned int> jointuintofx{0};
 
-
-	void createvboebo(vkobjs& objs);
+	void createvboebo(vkobjs &objs);
 
 	void getjointdata();
 	void getweightdata();
@@ -55,23 +52,16 @@ private:
 	void getnodes(std::shared_ptr<vknode> treenode);
 	void getnodedata(std::shared_ptr<vknode> treenode);
 
-	std::vector<std::shared_ptr<vknode>> getnodelist(std::vector<std::shared_ptr<vknode>>& nlist, int nodenum);
+	std::vector<std::shared_ptr<vknode>> getnodelist(std::vector<std::shared_ptr<vknode>> &nlist, int nodenum);
 
-	int mjnodecount{ 0 };
+	int mjnodecount{0};
 
 	fastgltf::Asset mmodel2;
 
-	
-	const std::unordered_map<fastgltf::AccessorType,uint8_t> numotypes{
-		{fastgltf::AccessorType::Vec2,2},
-		{fastgltf::AccessorType::Vec3,3},
-		{fastgltf::AccessorType::Vec4,4},
-		{fastgltf::AccessorType::Mat2,4},
-		{fastgltf::AccessorType::Mat3,9},
-		{fastgltf::AccessorType::Mat4,16},
-		{fastgltf::AccessorType::Scalar,1},
-		{fastgltf::AccessorType::Invalid,0}
-	};
+	const std::unordered_map<fastgltf::AccessorType, uint8_t> numotypes{
+		{fastgltf::AccessorType::Vec2, 2},   {fastgltf::AccessorType::Vec3, 3},	{fastgltf::AccessorType::Vec4, 4},
+		{fastgltf::AccessorType::Mat2, 4},   {fastgltf::AccessorType::Mat3, 9},	{fastgltf::AccessorType::Mat4, 16},
+		{fastgltf::AccessorType::Scalar, 1}, {fastgltf::AccessorType::Invalid, 0}};
 
 	std::vector<glm::mat4> minversebindmats{};
 
@@ -80,16 +70,15 @@ private:
 
 	std::vector<std::shared_ptr<vkclip>> manimclips{};
 
-
 	vkgltfobjs mgltfobjs{};
 
 	std::vector<unsigned short> jointz{};
 	std::vector<unsigned char> jointzchar{};
 	std::vector<unsigned int> jointzint{};
 
-	unsigned int jointofx{ 0 };
+	unsigned int jointofx{0};
 
-
-
-    std::map<std::string, unsigned int> atts = { {"POSITION",0},{"NORMAL",1},{"TEXCOORD_0",2},{"JOINTS_0",3},{"WEIGHTS_0",4} };
+	std::map<std::string, unsigned int> atts = {
+		{"POSITION", 0}, {"NORMAL", 1}, {"TEXCOORD_0", 2}, {"JOINTS_0", 3}, {"WEIGHTS_0", 4}
+	};
 };
