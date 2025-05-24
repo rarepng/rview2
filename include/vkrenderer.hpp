@@ -92,8 +92,6 @@ private:
 
 	bool mmodeluploadrequired{true};
 
-	bool playermoving{false};
-
 	glm::vec3 playermoveto{0.0f};
 	glm::vec3 playerlookto{0.0f};
 
@@ -147,7 +145,6 @@ private:
 	bool createcommandbuffer();
 	bool createsyncobjects();
 	bool initui();
-	bool initgameui();
 
 	bool initvma();
 

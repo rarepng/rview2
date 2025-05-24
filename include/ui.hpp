@@ -8,7 +8,6 @@ enum struct ppick { rock, paper, scissor };
 enum struct gstate { tie, ai, player };
 
 struct selection {
-	std::vector<size_t> n_instances{};
 	std::vector<std::vector<modelsettings *>> instancesettings{};
 	size_t midx{0};
 	size_t iidx{0};

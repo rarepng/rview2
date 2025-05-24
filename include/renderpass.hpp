@@ -4,6 +4,5 @@
 class renderpass {
 public:
 	static bool init(vkobjs &rdata);
-	static bool initref(vkobjs &rdata);
 	static void cleanup(vkobjs &rdata);
 };

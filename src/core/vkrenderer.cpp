@@ -70,8 +70,6 @@ bool vkrenderer::initscene() {
 	mplayer.reserve(playerfname.size());
 	mplayer.resize(playerfname.size());
 
-	selectiondata.n_instances.reserve(playercount.size());
-	selectiondata.n_instances.resize(playercount.size());
 
 	selectiondata.instancesettings.reserve(playercount.size());
 	selectiondata.instancesettings.resize(playercount.size());
@@ -81,7 +79,6 @@ bool vkrenderer::initscene() {
 	for (auto &i : mplayer) {
 		selectiondata.instancesettings.at(idx).reserve(playercount[idx]);
 		selectiondata.instancesettings.at(idx).resize(playercount[idx]);
-		selectiondata.n_instances.at(idx) = playercount[idx];
 		i = std::make_shared<playoutgeneric>();
 		if (!i->setup(mvkobjs, playerfname[idx], playercount[idx], playershaders[idx][0], playershaders[idx][1]))
 			return false;
@@ -310,12 +307,6 @@ bool vkrenderer::initui() {
 		return false;
 	return true;
 }
-bool vkrenderer::initgameui() {
-	if (!mui.init(mvkobjs)) {
-		return false;
-	}
-	return true;
-}
 void vkrenderer::cleanup() {
 	vkDeviceWaitIdle(mvkobjs.rdvkbdevice.device);
 
@@ -325,9 +316,6 @@ void vkrenderer::cleanup() {
 	for (const auto &i : mplayer)
 		i->cleanupmodels(mvkobjs);
 	mui.cleanup(mvkobjs);
-
-	// cleanmainmenu();
-	// cleanloading();
 
 	vksyncobjects::cleanup(mvkobjs);
 	commandbuffer::cleanup(mvkobjs, mvkobjs.rdcommandpool[0], mvkobjs.rdcommandbuffer[0]);
@@ -616,7 +604,7 @@ void vkrenderer::sdlevent(SDL_Event *e) {
 }
 void vkrenderer::moveplayer() {
 	// currently selected
-	modelsettings &s = mplayer[0]->getinst(0)->getinstancesettings();
+	modelsettings &s = mplayer[selectiondata.midx]->getinst(selectiondata.iidx)->getinstancesettings();
 	s.msworldpos = playermoveto;
 }
 void vkrenderer::handleclick() {
@@ -738,7 +726,7 @@ void vkrenderer::movecam() {
 
 			if (d < 10000.0f) {
 				// currently selected
-				modelsettings &s = mplayer[0]->getinst(0)->getinstancesettings();
+				modelsettings &s = mplayer[selectiondata.midx]->getinst(selectiondata.iidx)->getinstancesettings();
 
 				playerlookto = glm::normalize(mvkobjs.rdcamwpos + cfor * d - s.msworldpos);
 				movediff = glm::vec2(glm::abs(glm::vec3((mvkobjs.rdcamwpos + cfor * d) - s.msworldpos)).x,
@@ -749,8 +737,6 @@ void vkrenderer::movecam() {
 					mvkobjs.raymarchpos = mvkobjs.rdcamwpos + cfor * d;
 
 					s.msworldrot.y = glm::degrees(glm::atan(playerlookto.x, playerlookto.z));
-
-					playermoving = true;
 				}
 			}
 		}
@@ -791,7 +777,6 @@ bool vkrenderer::draw() {
 		uploadfordraw(*it);
 		mplayer.push_back(std::move(*it));
 		mplayerbuffer.erase(it);
-		selectiondata.n_instances.push_back(1); // initialize as 1 instance
 		selectiondata.instancesettings.emplace_back();
 		selectiondata.instancesettings.back().emplace_back(&mplayer.back()->getinst(0)->getinstancesettings());
 	}
