@@ -5,7 +5,7 @@ bool ubo::init(vkobjs &mvkobjs, std::vector<ubodata> &ubodata) {
 	ubodata.reserve(2);
 	ubodata.resize(2);
 
-	for (int i{0}; i < ubodata.size(); i++) {
+	for (size_t i{0}; i < ubodata.size(); i++) {
 		VkBufferCreateInfo binfo{};
 		binfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		if (i < 1)
@@ -75,7 +75,7 @@ bool ubo::init(vkobjs &mvkobjs, std::vector<ubodata> &ubodata) {
 	uinfo[1].offset = 0;
 	uinfo[1].range = sizeof(unsigned int);
 
-	for (int i{0}; i < ubodata.size(); i++) {
+	for (size_t i{0}; i < ubodata.size(); i++) {
 		VkWriteDescriptorSet writedset{};
 		writedset.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writedset.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -109,7 +109,7 @@ void ubo::upload(vkobjs &mvkobjs, std::vector<ubodata> &ubodata, unsigned int te
 }
 
 void ubo::cleanup(vkobjs &mvkobjs, std::vector<ubodata> &ubodata) {
-	for (int i{0}; i < ubodata.size(); i++) {
+	for (size_t i{0}; i < ubodata.size(); i++) {
 		vkDestroyDescriptorPool(mvkobjs.rdvkbdevice.device, ubodata[i].dpool, nullptr);
 		vkDestroyDescriptorSetLayout(mvkobjs.rdvkbdevice.device, ubodata[i].dlayout, nullptr);
 		vmaDestroyBuffer(mvkobjs.rdallocator, ubodata[i].buffer, ubodata[i].alloc);

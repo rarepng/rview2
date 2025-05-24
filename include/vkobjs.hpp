@@ -69,7 +69,6 @@ struct vkpushconstants {
 	int stride;
 	unsigned int texidx;
 	float t{0.0f};
-	bool decaying{false};
 	float dmg{0.0f};
 };
 

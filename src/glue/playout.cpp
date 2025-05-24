@@ -5,7 +5,6 @@
 bool playout::init(vkobjs &mvkobjs, VkPipelineLayout &vkplayout, std::vector<VkDescriptorSetLayout> layoutz,
                    size_t pushc_size) {
 
-	size_t totalcount{0};
 
 	VkPushConstantRange pCs{};
 	pCs.offset = 0;

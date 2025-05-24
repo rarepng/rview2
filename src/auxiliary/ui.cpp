@@ -546,7 +546,7 @@ void ui::createdbgframe(vkobjs &renderData, selection &settings) {
 			            .at(settings.iidx)
 			            ->msclipnames.at(settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimclip)
 			            .c_str())) {
-				for (int i = 0; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.size(); ++i) {
+				for (size_t i {0}; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.size(); ++i) {
 					const bool isSelected = (settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimclip == i);
 					if (ImGui::Selectable(
 					            settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.at(i).c_str(),
@@ -614,7 +614,7 @@ void ui::createdbgframe(vkobjs &renderData, selection &settings) {
 				            ->msclipnames
 				            .at(settings.instancesettings.at(settings.midx).at(settings.iidx)->mscrossblenddestanimclip)
 				            .c_str())) {
-					for (int i = 0; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.size(); ++i) {
+					for (size_t i {0}; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.size(); ++i) {
 						const bool isSelected =
 						    (settings.instancesettings.at(settings.midx).at(settings.iidx)->mscrossblenddestanimclip == i);
 						if (ImGui::Selectable(
@@ -645,7 +645,7 @@ void ui::createdbgframe(vkobjs &renderData, selection &settings) {
 				            .at(settings.iidx)
 				            ->msskelnodenames.at(settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelsplitnode)
 				            .c_str())) {
-					for (int i = 0; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.size();
+					for (size_t i {0}; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.size();
 					        ++i) {
 						if (settings.instancesettings.at(settings.midx)
 						        .at(settings.iidx)
@@ -705,7 +705,7 @@ void ui::createdbgframe(vkobjs &renderData, selection &settings) {
 				                      ->msskelnodenames
 				                      .at(settings.instancesettings.at(settings.midx).at(settings.iidx)->msikeffectornode)
 				                      .c_str())) {
-					for (int i = 0; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.size();
+					for (size_t i {0}; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.size();
 					        ++i) {
 						if (settings.instancesettings.at(settings.midx)
 						        .at(settings.iidx)
@@ -734,7 +734,7 @@ void ui::createdbgframe(vkobjs &renderData, selection &settings) {
 				            .at(settings.iidx)
 				            ->msskelnodenames.at(settings.instancesettings.at(settings.midx).at(settings.iidx)->msikrootnode)
 				            .c_str())) {
-					for (int i = 0; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.size();
+					for (size_t i{0}; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.size();
 					        ++i) {
 						if (settings.instancesettings.at(settings.midx)
 						        .at(settings.iidx)

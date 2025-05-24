@@ -326,14 +326,14 @@ void genericmodel::drawinstanced(vkobjs &objs, VkPipelineLayout &vkplayout, VkPi
 	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1,
 	                        &mgltfobjs.texpls.dset, 0, nullptr);
 
-	for (int i{0}; i < mgltfobjs.vbodata.size(); i++) {
+	for (size_t i{0}; i < mgltfobjs.vbodata.size(); i++) {
 		pushes[i].reserve(mgltfobjs.vbodata.at(i).size());
 		pushes[i].resize(mgltfobjs.vbodata.at(i).size());
 
 		meshjointtype[i] ? vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplineuint)
 		: vkCmdBindPipeline(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkpline);
 
-		for (int j{0}; j < mgltfobjs.vbodata.at(i).size(); j++) {
+		for (size_t j{0}; j < mgltfobjs.vbodata.at(i).size(); j++) {
 			pushes[i][j].stride = stride;
 			if (mmodel2.meshes.at(i).primitives.at(j).materialIndex.has_value() &&
 			        mmodel2.materials.at(mmodel2.meshes.at(i).primitives.at(j).materialIndex.value())
@@ -347,12 +347,11 @@ void genericmodel::drawinstanced(vkobjs &objs, VkPipelineLayout &vkplayout, VkPi
 				pushes[i][j].texidx = 0;
 			}
 			pushes[i][j].t = static_cast<float>(SDL_GetTicks()) / 1000.0f;
-			pushes[i][j].decaying = false;
 
 			vkCmdPushConstants(objs.rdcommandbuffer[0], vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants),
 			                   &pushes.at(i).at(j));
 			// rework bindings
-			for (int k{0}; k < mgltfobjs.vbodata.at(i).at(j).size(); k++) {
+			for (size_t k{0}; k < mgltfobjs.vbodata.at(i).at(j).size(); k++) {
 				if (mgltfobjs.vbodata.at(i).at(j).at(k).buffer != VK_NULL_HANDLE)
 					vkCmdBindVertexBuffers(objs.rdcommandbuffer[0], k, 1, &mgltfobjs.vbodata.at(i).at(j).at(k).buffer,
 					                       &offset);
@@ -365,19 +364,19 @@ void genericmodel::drawinstanced(vkobjs &objs, VkPipelineLayout &vkplayout, VkPi
 
 void genericmodel::cleanup(vkobjs &objs) {
 
-	for (int i{0}; i < mgltfobjs.vbodata.size(); i++) {
-		for (int j{0}; j < mgltfobjs.vbodata.at(i).size(); j++) {
-			for (int k{0}; k < mgltfobjs.vbodata.at(i).at(j).size(); k++) {
+	for (size_t i{0}; i < mgltfobjs.vbodata.size(); i++) {
+		for (size_t j{0}; j < mgltfobjs.vbodata.at(i).size(); j++) {
+			for (size_t k{0}; k < mgltfobjs.vbodata.at(i).at(j).size(); k++) {
 				vkvbo::cleanup(objs, mgltfobjs.vbodata.at(i).at(j).at(k));
 			}
 		}
 	}
-	for (int i{0}; i < mgltfobjs.ebodata.size(); i++) {
-		for (int j{0}; j < mgltfobjs.ebodata.at(i).size(); j++) {
+	for (size_t i{0}; i < mgltfobjs.ebodata.size(); i++) {
+		for (size_t j{0}; j < mgltfobjs.ebodata.at(i).size(); j++) {
 			vkebo::cleanup(objs, mgltfobjs.ebodata.at(i).at(j));
 		}
 	}
-	for (int i{0}; i < mgltfobjs.tex.size(); i++) {
+	for (size_t i{0}; i < mgltfobjs.tex.size(); i++) {
 		vktexture::cleanup(objs, mgltfobjs.tex[i]);
 	}
 	vktexture::cleanuppls(objs, mgltfobjs.texpls);

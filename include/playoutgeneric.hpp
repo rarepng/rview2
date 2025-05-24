@@ -9,20 +9,15 @@
 class playoutgeneric {
 public:
 	bool loadmodel(vkobjs &objs, std::string fname);
-	bool createinstances(vkobjs &objs, int count, bool rand);
-	bool createdecayinstances(vkobjs &objs);
+	bool createinstances(vkobjs &objs, size_t count, bool rand);
 	bool createubo(vkobjs &objs);
 	bool createssbomat(vkobjs &objs);
-	bool createssbouint(vkobjs &objs);
-	bool createssbodq(vkobjs &objs);
-	bool createssbodecay(vkobjs &objs);
 	bool createplayout(vkobjs &objs);
 	bool createpline(vkobjs &objs, std::string vfile, std::string ffile);
-	bool setup(vkobjs &objs, std::string fname, int count, std::string vfile, std::string ffile);
+	bool setup(vkobjs &objs, std::string fname, size_t count, std::string vfile, std::string ffile);
 	void draw(vkobjs &objs);
 	void updateanims();
 	void updatemats();
-	void freezedecay();
 	void cleanuplines(vkobjs &objs);
 	void cleanupbuffers(vkobjs &objs);
 	void cleanupmodels(vkobjs &objs);
@@ -30,7 +25,6 @@ public:
 	void uploadubossbo(vkobjs &objs, std::vector<glm::mat4> &cammats);
 
 	std::shared_ptr<genericinstance> getinst(int i);
-	std::shared_ptr<genericinstance> getdecayinst(int i);
 
 	bool ready{false};
 
@@ -40,16 +34,9 @@ private:
 	VkPipelineLayout rdgltfpipelinelayout = VK_NULL_HANDLE;
 	VkPipeline rdgltfgpupipeline = VK_NULL_HANDLE;
 	VkPipeline rdgltfgpupipelineuint = VK_NULL_HANDLE;
-	VkPipeline rdgltfgpudqpipeline = VK_NULL_HANDLE;
-	VkPipeline rdgltfgpudqpipelineuint = VK_NULL_HANDLE;
-	VkPipeline decaypline = VK_NULL_HANDLE;
-	VkPipeline decayplineuint = VK_NULL_HANDLE;
 
 	std::vector<ubodata> rdperspviewmatrixubo{};
 	ssbodata rdjointmatrixssbo{};
-	ssbodata uintssbo{};
-	ssbodata rdjointdualquatssbo{};
-	ssbodata rdjointdecay{};
 
 	bool uploadreq{true};
 
@@ -57,7 +44,6 @@ private:
 	int numinstancess{};
 
 	int stride{};
-	int stridedq{};
 
 	int numdqs{};
 	int nummats{};
@@ -65,9 +51,7 @@ private:
 	std::string mmodelfilename;
 	std::shared_ptr<genericmodel> mgltf = nullptr;
 	std::vector<std::shared_ptr<genericinstance>> minstances;
-	std::vector<std::shared_ptr<genericinstance>> decayinstances;
 
 	std::vector<glm::mat4> jointmats{};
-	std::vector<glm::mat4> decaymat{};
 	std::vector<glm::mat2x4> jointdqs{};
 };

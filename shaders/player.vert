@@ -3,7 +3,7 @@
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aTexCoord;
-layout(location = 3) in u8vec4 aJointNum;
+layout(location = 3) in uvec4 aJointNum;
 // layout (location = 3) in u16vec4 aJointNum;
 //  layout (location = 3) in uvec4 aJointNum;
 layout(location = 4) in vec4 aJointWeight;
@@ -19,7 +19,6 @@ layout(push_constant) uniform Constants {
   int aModelStride;
   uint txid;
   float t;
-  bool decaying;
 };
 
 layout(set = 1, binding = 0) uniform Matrices {
@@ -42,8 +41,5 @@ void main() {
   newcolor = aJointNum;
   txidx = txid;
   t2 = t;
-  if (decaying)
-    dec = 1.0;
-  else
-    dec = 0.0;
+  dec = 0.0;
 }

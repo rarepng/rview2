@@ -424,7 +424,7 @@ bool vkrenderer::uploadfordraw() {
 	presentinfo.pImageIndices = &imgidx;
 
 	mvkobjs.mtx2->lock();
-	size_t res2 = vkQueuePresentKHR(mvkobjs.presentQ, &presentinfo);
+	VkResult res2 = vkQueuePresentKHR(mvkobjs.presentQ, &presentinfo);
 
 	mvkobjs.mtx2->unlock();
 
@@ -486,10 +486,10 @@ bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric> &x) {
 	submitinfo.commandBufferCount = 1;
 	submitinfo.pCommandBuffers = &mvkobjs.rdcommandbuffer.at(0);
 
-	VkSemaphoreWaitInfo swinfo{};
-	swinfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
-	swinfo.pSemaphores = &mvkobjs.rdpresentsemaphore;
-	swinfo.semaphoreCount = 1;
+	// VkSemaphoreWaitInfo swinfo{};
+	// swinfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+	// swinfo.pSemaphores = &mvkobjs.rdpresentsemaphore;
+	// swinfo.semaphoreCount = 1;
 
 	mvkobjs.mtx2->lock();
 	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.rdrenderfence) != VK_SUCCESS) {
@@ -609,7 +609,7 @@ void vkrenderer::moveplayer() {
 }
 void vkrenderer::handleclick() {
 	ImGuiIO &io = ImGui::GetIO();
-	if (SDL_GetMouseState(nullptr, nullptr) >= 0 && SDL_GetMouseState(nullptr, nullptr) < ImGuiMouseButton_COUNT) {
+	if (SDL_GetMouseState(nullptr, nullptr) < ImGuiMouseButton_COUNT) {
 		io.AddMouseButtonEvent(SDL_GetMouseState(nullptr, nullptr), SDL_GetMouseState(nullptr, nullptr));
 	}
 	if (io.WantCaptureMouse)

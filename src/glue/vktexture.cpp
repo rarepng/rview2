@@ -284,7 +284,7 @@ bool vktexture::loadtexture(vkobjs &rdata, std::vector<texdata> &texdata, fastgl
 
 	texdata.reserve(mmodel.images.size());
 	texdata.resize(mmodel.images.size());
-	for (int i{0}; i < mmodel.images.size(); i++) {
+	for (size_t i{0}; i < mmodel.images.size(); i++) {
 
 		int w, h, c;
 
@@ -527,7 +527,7 @@ bool vktexture::loadtexlayoutpool(vkobjs &rdata, std::vector<texdata> &texdata, 
 	texturebind.pImmutableSamplers = nullptr;
 	texturebind.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	for (int i{0}; i < mmodel.images.size(); i++) {
+	for (size_t i{0}; i < mmodel.images.size(); i++) {
 
 		descriptorimginfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		descriptorimginfo[i].imageView = texdata[i].imgview;

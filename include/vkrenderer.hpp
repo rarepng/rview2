@@ -73,10 +73,7 @@ private:
 
 	glm::vec2 movediff{};
 
-	double decaystart{};
 	bool inmenu{true};
-
-	unsigned int deathanddecaycd{120};
 
 	bool paused{false};
 
@@ -105,7 +102,6 @@ private:
 	double lifetime{0.0};
 	double lifetime2{0.0};
 
-	double decaytime{0.0};
 
 	bool mlock{};
 	int mousex{0};
@@ -118,7 +114,7 @@ private:
 
 	std::vector<unsigned int> playercount{1};
 	std::vector<std::string> playerfname{{"resources/p0.glb"}};
-	const std::vector<std::vector<std::string>> playershaders{{"shaders/player.vert.spv", "shaders/player.frag.spv"}};
+	const std::vector<std::vector<std::string>> playershaders{{"shaders/gen.slang.vx.spv", "shaders/gen.slang.px.spv"}};
 
 	ui mui{};
 	timer mframetimer{};

@@ -21,7 +21,7 @@ void iksolver::setnodes(std::vector<std::shared_ptr<vknode>> nodes) {
 
 void iksolver::calculatebonelengths() {
 	mbonelengths.resize(mnodes.size() - 1);
-	for (int i = 0; i < mnodes.size() - 1; ++i) {
+	for (size_t i{0}; i < mnodes.size() - 1; ++i) {
 		std::shared_ptr<vknode> startNode = mnodes.at(i);
 		std::shared_ptr<vknode> endNode = mnodes.at(i + 1);
 
