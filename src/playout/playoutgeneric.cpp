@@ -93,9 +93,9 @@ void playoutgeneric::uploadvboebo(vkobjs &objs, VkCommandBuffer &cbuffer) {
 }
 
 void playoutgeneric::uploadubossbo(vkobjs &objs, std::vector<glm::mat4> &cammats) {
-	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1,
+	vkCmdBindDescriptorSets(objs.cbuffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1,
 	                        &rdperspviewmatrixubo[0].dset, 0, nullptr);
-	vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1,
+	vkCmdBindDescriptorSets(objs.cbuffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1,
 	                        &rdjointmatrixssbo.dset, 0, nullptr);
 
 	ubo::upload(objs, rdperspviewmatrixubo, cammats, 0);
@@ -152,9 +152,9 @@ void playoutgeneric::draw(vkobjs &objs) {
 	if (minstances[0]->getinstancesettings().msdrawmodel) {
 		stride = minstances.at(0)->getjointmatrixsize();
 
-		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1,
+		vkCmdBindDescriptorSets(objs.cbuffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1,
 		                        &rdperspviewmatrixubo[0].dset, 0, nullptr);
-		vkCmdBindDescriptorSets(objs.rdcommandbuffer[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1,
+		vkCmdBindDescriptorSets(objs.cbuffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1,
 		                        &rdjointmatrixssbo.dset, 0, nullptr);
 
 		mgltf->drawinstanced(objs, rdgltfpipelinelayout, rdgltfgpupipeline, rdgltfgpupipelineuint, numinstancess, stride);

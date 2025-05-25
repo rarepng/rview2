@@ -17,7 +17,7 @@ bool pline::init(vkobjs &objs, VkPipelineLayout &playout, VkPipeline &pipeline, 
 	shaderStageInfo.reserve(sfiles.size());
 	shaderStageInfo.resize(sfiles.size());
 	for (size_t i{0}; i < sfiles.size(); i++) {
-		shaders[i] = vkshader::loadshader(objs.rdvkbdevice.device, sfiles[i]);
+		shaders[i] = vkshader::loadshader(objs.vkdevice.device, sfiles[i]);
 
 		shaderStageInfo[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		// shaderStageInfo[i].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -81,14 +81,14 @@ bool pline::init(vkobjs &objs, VkPipelineLayout &playout, VkPipeline &pipeline, 
 	VkViewport viewport{};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = static_cast<float>(objs.rdvkbswapchain.extent.width);
-	viewport.height = static_cast<float>(objs.rdvkbswapchain.extent.height);
+	viewport.width = static_cast<float>(objs.schain.extent.width);
+	viewport.height = static_cast<float>(objs.schain.extent.height);
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor{};
 	scissor.offset = {0, 0};
-	scissor.extent = objs.rdvkbswapchain.extent;
+	scissor.extent = objs.schain.extent;
 
 	VkPipelineViewportStateCreateInfo viewportStateInfo{};
 	viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -170,19 +170,19 @@ bool pline::init(vkobjs &objs, VkPipelineLayout &playout, VkPipeline &pipeline, 
 	pipelineCreateInfo.subpass = 0;
 	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-	if (vkCreateGraphicsPipelines(objs.rdvkbdevice.device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline) !=
+	if (vkCreateGraphicsPipelines(objs.vkdevice.device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline) !=
 	        VK_SUCCESS) {
-		vkDestroyPipelineLayout(objs.rdvkbdevice.device, playout, nullptr);
+		vkDestroyPipelineLayout(objs.vkdevice.device, playout, nullptr);
 		return false;
 	}
 
 	for (const auto &i : shaders) {
-		vkDestroyShaderModule(objs.rdvkbdevice.device, i, nullptr);
+		vkDestroyShaderModule(objs.vkdevice.device, i, nullptr);
 	}
 
 	return true;
 }
 
 void pline::cleanup(vkobjs &objs, VkPipeline &pipeline) {
-	vkDestroyPipeline(objs.rdvkbdevice.device, pipeline, nullptr);
+	vkDestroyPipeline(objs.vkdevice.device, pipeline, nullptr);
 }

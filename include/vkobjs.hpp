@@ -69,23 +69,21 @@ struct vkpushconstants {
 	int stride;
 	unsigned int texidx;
 	float t{0.0f};
-	float dmg{0.0f};
 };
 
 struct vkobjs {
 
 	inline static const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
 
-	SDL_Window *rdwind = nullptr;
+	SDL_Window *wind = nullptr;
 	
 	const SDL_DisplayMode *rdmode;
-	bool rdfullscreen{false};
-	int rdwidth{0};
-	int rdheight{0};
-	unsigned int rdtricount{0};
-	unsigned int rdgltftricount{0};
-	float rdfov = 1.0472f;
-	bool rdswitchshader{false};
+	bool fullscreen{false};
+	int width{0};
+	int height{0};
+	unsigned int tricount{0};
+	unsigned int gltftricount{0};
+	float fov = 1.0472f;
 
 	SDL_Event *e;
 
@@ -101,29 +99,28 @@ struct vkobjs {
 
 	float loadingprog{0.0f};
 
-	int rdcamforward{0};
-	int rdcamright{0};
-	int rdcamup{0};
+	int camfor{0};
+	int camright{0};
+	int camup{0};
 
 	double tickdiff{0.0f};
 
-	float rdazimuth{15.0f};
-	float rdelevation{-25.0f};
-	glm::vec3 rdcamwpos{350.0f, 350.0f, 1000.0f};
+	float azimuth{15.0f};
+	float elevation{-25.0f};
+	glm::vec3 camwpos{350.0f, 350.0f, 1000.0f};
 
 	glm::vec3 raymarchpos{0.0f};
 
-	VmaAllocator rdallocator = nullptr;
+	VmaAllocator alloc = nullptr;
 
-	vkb::Instance rdvkbinstance{};
-	vkb::PhysicalDevice rdvkbphysdev{};
-	vkb::Device rdvkbdevice{};
-	vkb::Swapchain rdvkbswapchain{};
+	vkb::Instance inst{};
+	vkb::PhysicalDevice physdev{};
+	vkb::Device vkdevice{};
+	vkb::Swapchain schain{};
 
-	std::vector<VkImage> rdswapchainimages;
-	std::vector<VkImageView> rdswapchainimageviews;
-	std::vector<VkFramebuffer> rdframebuffers;
-	std::vector<VkFramebuffer> rdframebufferrefs;
+	std::vector<VkImage> schainimgs;
+	std::vector<VkImageView> schainimgviews;
+	std::vector<VkFramebuffer> fbuffers;
 
 	VkQueue graphicsQ = VK_NULL_HANDLE;
 	VkQueue presentQ = VK_NULL_HANDLE;
@@ -140,22 +137,21 @@ struct vkobjs {
 	VmaAllocation rddepthimageallocref = VK_NULL_HANDLE;
 
 	VkRenderPass rdrenderpass = VK_NULL_HANDLE;
-	VkRenderPass rdrenderpass2 = VK_NULL_HANDLE;
 
-	std::vector<VkCommandPool> rdcommandpool = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-	std::vector<VkCommandBuffer> rdcommandbuffer = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::vector<VkCommandPool> cpools = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::vector<VkCommandBuffer> cbuffers = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
 
-	VkSemaphore rdpresentsemaphore = VK_NULL_HANDLE;
-	VkSemaphore rdrendersemaphore = VK_NULL_HANDLE;
-	VkFence rdrenderfence = VK_NULL_HANDLE;
-	VkFence rduploadfence = VK_NULL_HANDLE;
+	VkSemaphore presentsemaphore = VK_NULL_HANDLE;
+	VkSemaphore rendersemaphore = VK_NULL_HANDLE;
+	VkFence renderfence = VK_NULL_HANDLE;
+	VkFence uploadfence = VK_NULL_HANDLE;
 
-	VkDescriptorPool rdimguidescriptorpool = VK_NULL_HANDLE;
+	VkDescriptorPool imguidpool = VK_NULL_HANDLE;
 };
 
 struct vkgltfobjs {
-	std::vector<std::vector<std::vector<vbodata>>> vbodata{};
-	std::vector<std::vector<ebodata>> ebodata{};
-	std::vector<texdata> tex{};
+	std::vector<std::vector<std::vector<vbodata>>> vbos{};
+	std::vector<std::vector<ebodata>> ebos{};
+	std::vector<texdata> texs{};
 	texdatapls texpls{};
 };

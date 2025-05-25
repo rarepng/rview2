@@ -10,7 +10,7 @@ bool vkvbo::init(vkobjs &mvkobjs, vbodata &vbdata, size_t bsize) {
 	VmaAllocationCreateInfo bainfo{};
 	bainfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-	if (vmaCreateBuffer(mvkobjs.rdallocator, &binfo, &bainfo, &vbdata.buffer, &vbdata.alloc,
+	if (vmaCreateBuffer(mvkobjs.alloc, &binfo, &bainfo, &vbdata.buffer, &vbdata.alloc,
 	                    nullptr) != VK_SUCCESS)
 		return false;
 
@@ -22,7 +22,7 @@ bool vkvbo::init(vkobjs &mvkobjs, vbodata &vbdata, size_t bsize) {
 	VmaAllocationCreateInfo stagingainfo{};
 	stagingainfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
 
-	if (vmaCreateBuffer(mvkobjs.rdallocator, &stagingbinfo, &stagingainfo, &vbdata.sbuffer, &vbdata.salloc,
+	if (vmaCreateBuffer(mvkobjs.alloc, &stagingbinfo, &stagingainfo, &vbdata.sbuffer, &vbdata.salloc,
 	                    nullptr) != VK_SUCCESS)
 		return false;
 
@@ -35,9 +35,9 @@ bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
 
 	/* copy data to staging buffer*/
 	void *data;
-	vmaMapMemory(mvkobjs.rdallocator, vbdata.salloc, &data);
+	vmaMapMemory(mvkobjs.alloc, vbdata.salloc, &data);
 	std::memcpy(data, vertexData.data(), vbdata.size);
-	vmaUnmapMemory(mvkobjs.rdallocator, vbdata.salloc);
+	vmaUnmapMemory(mvkobjs.alloc, vbdata.salloc);
 
 	VkBufferMemoryBarrier vertexBufferBarrier{};
 	vertexBufferBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -65,9 +65,9 @@ bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
                    std::vector<glm::vec2> vertexData) {
 
 	void *data;
-	vmaMapMemory(mvkobjs.rdallocator, vbdata.salloc, &data);
+	vmaMapMemory(mvkobjs.alloc, vbdata.salloc, &data);
 	std::memcpy(data, vertexData.data(), vbdata.size);
-	vmaUnmapMemory(mvkobjs.rdallocator, vbdata.salloc);
+	vmaUnmapMemory(mvkobjs.alloc, vbdata.salloc);
 
 	VkBufferMemoryBarrier vertexBufferBarrier{};
 	vertexBufferBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -98,10 +98,10 @@ bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
 	std::visit(fastgltf::visitor{[](auto &arg) {},
 	[&](const fastgltf::sources::Array &vector) {
 		void *d;
-		vmaMapMemory(mvkobjs.rdallocator, vbdata.salloc, &d);
+		vmaMapMemory(mvkobjs.alloc, vbdata.salloc, &d);
 		std::memcpy(d, vector.bytes.data() + bufferview.byteOffset + acc.byteOffset,
 		            bufferview.byteLength); // acc.count*type
-		vmaUnmapMemory(mvkobjs.rdallocator, vbdata.salloc);
+		vmaUnmapMemory(mvkobjs.alloc, vbdata.salloc);
 	}},
 	buffer.data);
 
@@ -132,9 +132,9 @@ bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
 
 	void *d;
 
-	vmaMapMemory(mvkobjs.rdallocator, vbdata.salloc, &d);
+	vmaMapMemory(mvkobjs.alloc, vbdata.salloc, &d);
 	std::memcpy(d, jointz.data() + ofx, count * sizeof(unsigned int) * 4);
-	vmaUnmapMemory(mvkobjs.rdallocator, vbdata.salloc);
+	vmaUnmapMemory(mvkobjs.alloc, vbdata.salloc);
 
 	VkBufferMemoryBarrier vbbarrier{};
 	vbbarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -159,6 +159,6 @@ bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
 }
 
 void vkvbo::cleanup(vkobjs &mvkobjs, vbodata &vbdata) {
-	vmaDestroyBuffer(mvkobjs.rdallocator, vbdata.sbuffer, vbdata.salloc);
-	vmaDestroyBuffer(mvkobjs.rdallocator, vbdata.buffer, vbdata.alloc);
+	vmaDestroyBuffer(mvkobjs.alloc, vbdata.sbuffer, vbdata.salloc);
+	vmaDestroyBuffer(mvkobjs.alloc, vbdata.buffer, vbdata.alloc);
 }

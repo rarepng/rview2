@@ -3,7 +3,7 @@
 
 bool renderpass::init(vkobjs &rdata) {
 	VkAttachmentDescription colora{};
-	colora.format = rdata.rdvkbswapchain.image_format;
+	colora.format = rdata.schain.image_format;
 	colora.samples = VK_SAMPLE_COUNT_1_BIT;
 	colora.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colora.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -65,12 +65,12 @@ bool renderpass::init(vkobjs &rdata) {
 	renderpassinfo.dependencyCount = 2;
 	renderpassinfo.pDependencies = deps;
 
-	if (vkCreateRenderPass(rdata.rdvkbdevice.device, &renderpassinfo, nullptr, &rdata.rdrenderpass) != VK_SUCCESS) {
+	if (vkCreateRenderPass(rdata.vkdevice.device, &renderpassinfo, nullptr, &rdata.rdrenderpass) != VK_SUCCESS) {
 		return false;
 	}
 
 	return true;
 }
 void renderpass::cleanup(vkobjs &rdata) {
-	vkDestroyRenderPass(rdata.rdvkbdevice.device, rdata.rdrenderpass, nullptr);
+	vkDestroyRenderPass(rdata.vkdevice.device, rdata.rdrenderpass, nullptr);
 }

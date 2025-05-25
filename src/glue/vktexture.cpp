@@ -37,7 +37,7 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 
 	VmaAllocationCreateInfo iainfo{};
 	iainfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-	if (vmaCreateImage(rdata.rdallocator, &imginfo, &iainfo, &texdata.img, &texdata.alloc, nullptr) !=
+	if (vmaCreateImage(rdata.alloc, &imginfo, &iainfo, &texdata.img, &texdata.alloc, nullptr) !=
 	        VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vmaCreateImage");
 		return false;
@@ -54,16 +54,16 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 	VmaAllocationCreateInfo stagingallocinfo{};
 	stagingallocinfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
 
-	if (vmaCreateBuffer(rdata.rdallocator, &stagingbufferinfo, &stagingallocinfo, &stagingbuffer, &stagingbufferalloc,
+	if (vmaCreateBuffer(rdata.alloc, &stagingbufferinfo, &stagingallocinfo, &stagingbuffer, &stagingbufferalloc,
 	                    nullptr) != VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vmaCreateBuffer");
 		return false;
 	}
 
 	void *tmp;
-	vmaMapMemory(rdata.rdallocator, stagingbufferalloc, &tmp);
+	vmaMapMemory(rdata.alloc, stagingbufferalloc, &tmp);
 	std::memcpy(tmp, data, (imgsize));
-	vmaUnmapMemory(rdata.rdallocator, stagingbufferalloc);
+	vmaUnmapMemory(rdata.alloc, stagingbufferalloc);
 
 	stbi_image_free(data);
 
@@ -108,7 +108,7 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 	stagingbuffershaderbarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
 	VkCommandBuffer stagingcommandbuffer;
-	if (!commandbuffer::init(rdata, rdata.rdcommandpool[2], stagingcommandbuffer)) {
+	if (!commandbuffer::init(rdata, rdata.cpools[2], stagingcommandbuffer)) {
 		logger::log(0, "crashed in texture at commandbuffer::init");
 		return false;
 	}
@@ -155,11 +155,11 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 	fenceinfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceinfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-	if (vkCreateFence(rdata.rdvkbdevice.device, &fenceinfo, nullptr, &stagingbufferfence) != VK_SUCCESS) {
+	if (vkCreateFence(rdata.vkdevice.device, &fenceinfo, nullptr, &stagingbufferfence) != VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vkCreateFence");
 		return false;
 	}
-	if (vkResetFences(rdata.rdvkbdevice.device, 1, &stagingbufferfence) != VK_SUCCESS) {
+	if (vkResetFences(rdata.vkdevice.device, 1, &stagingbufferfence) != VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vkResetFences");
 		return false;
 	}
@@ -169,14 +169,14 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 		return false;
 	}
 	rdata.mtx2->unlock();
-	if (vkWaitForFences(rdata.rdvkbdevice.device, 1, &stagingbufferfence, VK_TRUE, INT64_MAX) != VK_SUCCESS) {
+	if (vkWaitForFences(rdata.vkdevice.device, 1, &stagingbufferfence, VK_TRUE, INT64_MAX) != VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vkWaitForFences");
 		return false;
 	}
 
-	vkDestroyFence(rdata.rdvkbdevice.device, stagingbufferfence, nullptr);
-	commandbuffer::cleanup(rdata, rdata.rdcommandpool[2], stagingcommandbuffer);
-	vmaDestroyBuffer(rdata.rdallocator, stagingbuffer, stagingbufferalloc);
+	vkDestroyFence(rdata.vkdevice.device, stagingbufferfence, nullptr);
+	commandbuffer::cleanup(rdata, rdata.cpools[2], stagingcommandbuffer);
+	vmaDestroyBuffer(rdata.alloc, stagingbuffer, stagingbufferalloc);
 
 	VkImageViewCreateInfo texviewinfo{};
 	texviewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -189,7 +189,7 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 	texviewinfo.subresourceRange.baseArrayLayer = 0;
 	texviewinfo.subresourceRange.layerCount = 1;
 
-	if (vkCreateImageView(rdata.rdvkbdevice.device, &texviewinfo, nullptr, &texdata.imgview) != VK_SUCCESS) {
+	if (vkCreateImageView(rdata.vkdevice.device, &texviewinfo, nullptr, &texdata.imgview) != VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vkCreateImageView");
 		return false;
 	}
@@ -212,7 +212,7 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 	texsamplerinfo.anisotropyEnable = VK_FALSE;
 	texsamplerinfo.maxAnisotropy = 1.0f;
 
-	if (vkCreateSampler(rdata.rdvkbdevice.device, &texsamplerinfo, nullptr, &texdata.imgsampler) != VK_SUCCESS) {
+	if (vkCreateSampler(rdata.vkdevice.device, &texsamplerinfo, nullptr, &texdata.imgsampler) != VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vkCreateSampler");
 		return false;
 	}
@@ -229,7 +229,7 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 	texcreateinfo.bindingCount = 1;
 	texcreateinfo.pBindings = &texturebind;
 
-	if (vkCreateDescriptorSetLayout(rdata.rdvkbdevice.device, &texcreateinfo, nullptr, &texdatapls.dlayout) !=
+	if (vkCreateDescriptorSetLayout(rdata.vkdevice.device, &texcreateinfo, nullptr, &texdatapls.dlayout) !=
 	        VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vkCreateDescriptorSetLayout");
 		return false;
@@ -245,7 +245,7 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 	descriptorpool.pPoolSizes = &poolsize;
 	descriptorpool.maxSets = 16;
 
-	if (vkCreateDescriptorPool(rdata.rdvkbdevice.device, &descriptorpool, nullptr, &texdatapls.dpool) !=
+	if (vkCreateDescriptorPool(rdata.vkdevice.device, &descriptorpool, nullptr, &texdatapls.dpool) !=
 	        VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vkCreateDescriptorPool");
 		return false;
@@ -257,7 +257,7 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 	descallocinfo.descriptorSetCount = 1;
 	descallocinfo.pSetLayouts = &texdatapls.dlayout;
 
-	if (vkAllocateDescriptorSets(rdata.rdvkbdevice.device, &descallocinfo, &texdatapls.dset) != VK_SUCCESS) {
+	if (vkAllocateDescriptorSets(rdata.vkdevice.device, &descallocinfo, &texdatapls.dset) != VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vkAllocateDescriptorSets");
 		return false;
 	}
@@ -275,7 +275,7 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 	writedescset.descriptorCount = 1;
 	writedescset.pImageInfo = &descriptorimginfo;
 
-	vkUpdateDescriptorSets(rdata.rdvkbdevice.device, 1, &writedescset, 0, nullptr);
+	vkUpdateDescriptorSets(rdata.vkdevice.device, 1, &writedescset, 0, nullptr);
 
 	return true;
 }
@@ -325,7 +325,7 @@ bool vktexture::loadtexture(vkobjs &rdata, std::vector<texdata> &texdata, fastgl
 
 		VmaAllocationCreateInfo iainfo{};
 		iainfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-		if (vmaCreateImage(rdata.rdallocator, &imginfo, &iainfo, &texdata[i].img, &texdata[i].alloc, nullptr) !=
+		if (vmaCreateImage(rdata.alloc, &imginfo, &iainfo, &texdata[i].img, &texdata[i].alloc, nullptr) !=
 		        VK_SUCCESS) {
 			logger::log(0, "crashed in texture at vmaCreateImage");
 			return false;
@@ -342,18 +342,18 @@ bool vktexture::loadtexture(vkobjs &rdata, std::vector<texdata> &texdata, fastgl
 		VmaAllocationCreateInfo stagingallocinfo{};
 		stagingallocinfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
 
-		if (vmaCreateBuffer(rdata.rdallocator, &stagingbufferinfo, &stagingallocinfo, &stagingbuffer, &stagingbufferalloc,
+		if (vmaCreateBuffer(rdata.alloc, &stagingbufferinfo, &stagingallocinfo, &stagingbuffer, &stagingbufferalloc,
 		                    nullptr) != VK_SUCCESS) {
 			logger::log(0, "crashed in texture at vmaCreateBuffer");
 			return false;
 		}
 
 		void *tmp;
-		vmaMapMemory(rdata.rdallocator, stagingbufferalloc, &tmp);
+		vmaMapMemory(rdata.alloc, stagingbufferalloc, &tmp);
 		std::memcpy(
 		    tmp, data,
 		    (imgsize)); ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		vmaUnmapMemory(rdata.rdallocator, stagingbufferalloc);
+		vmaUnmapMemory(rdata.alloc, stagingbufferalloc);
 
 		stbi_image_free(data);
 
@@ -398,7 +398,7 @@ bool vktexture::loadtexture(vkobjs &rdata, std::vector<texdata> &texdata, fastgl
 		stagingbuffershaderbarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
 		VkCommandBuffer stagingcommandbuffer;
-		if (!commandbuffer::init(rdata, rdata.rdcommandpool[2], stagingcommandbuffer)) {
+		if (!commandbuffer::init(rdata, rdata.cpools[2], stagingcommandbuffer)) {
 			logger::log(0, "crashed in texture at commandbuffer::init");
 			return false;
 		}
@@ -445,11 +445,11 @@ bool vktexture::loadtexture(vkobjs &rdata, std::vector<texdata> &texdata, fastgl
 		fenceinfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		fenceinfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-		if (vkCreateFence(rdata.rdvkbdevice.device, &fenceinfo, nullptr, &stagingbufferfence) != VK_SUCCESS) {
+		if (vkCreateFence(rdata.vkdevice.device, &fenceinfo, nullptr, &stagingbufferfence) != VK_SUCCESS) {
 			logger::log(0, "crashed in texture at vkCreateFence");
 			return false;
 		}
-		if (vkResetFences(rdata.rdvkbdevice.device, 1, &stagingbufferfence) != VK_SUCCESS) {
+		if (vkResetFences(rdata.vkdevice.device, 1, &stagingbufferfence) != VK_SUCCESS) {
 			logger::log(0, "crashed in texture at vkResetFences");
 			return false;
 		}
@@ -462,14 +462,14 @@ bool vktexture::loadtexture(vkobjs &rdata, std::vector<texdata> &texdata, fastgl
 
 		rdata.mtx2->unlock();
 
-		if (vkWaitForFences(rdata.rdvkbdevice.device, 1, &stagingbufferfence, VK_TRUE, INT64_MAX) != VK_SUCCESS) {
+		if (vkWaitForFences(rdata.vkdevice.device, 1, &stagingbufferfence, VK_TRUE, INT64_MAX) != VK_SUCCESS) {
 			logger::log(0, "crashed in texture at vkWaitForFences");
 			return false;
 		}
 
-		vkDestroyFence(rdata.rdvkbdevice.device, stagingbufferfence, nullptr);
-		commandbuffer::cleanup(rdata, rdata.rdcommandpool[2], stagingcommandbuffer);
-		vmaDestroyBuffer(rdata.rdallocator, stagingbuffer, stagingbufferalloc);
+		vkDestroyFence(rdata.vkdevice.device, stagingbufferfence, nullptr);
+		commandbuffer::cleanup(rdata, rdata.cpools[2], stagingcommandbuffer);
+		vmaDestroyBuffer(rdata.alloc, stagingbuffer, stagingbufferalloc);
 
 		VkImageViewCreateInfo texviewinfo{};
 		texviewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -482,7 +482,7 @@ bool vktexture::loadtexture(vkobjs &rdata, std::vector<texdata> &texdata, fastgl
 		texviewinfo.subresourceRange.baseArrayLayer = 0;
 		texviewinfo.subresourceRange.layerCount = 1;
 
-		if (vkCreateImageView(rdata.rdvkbdevice.device, &texviewinfo, nullptr, &texdata[i].imgview) != VK_SUCCESS) {
+		if (vkCreateImageView(rdata.vkdevice.device, &texviewinfo, nullptr, &texdata[i].imgview) != VK_SUCCESS) {
 			logger::log(0, "crashed in texture at vkCreateImageView");
 			return false;
 		}
@@ -505,7 +505,7 @@ bool vktexture::loadtexture(vkobjs &rdata, std::vector<texdata> &texdata, fastgl
 		texsamplerinfo.anisotropyEnable = VK_FALSE;
 		texsamplerinfo.maxAnisotropy = 1.0f;
 
-		if (vkCreateSampler(rdata.rdvkbdevice.device, &texsamplerinfo, nullptr, &texdata[i].imgsampler) != VK_SUCCESS) {
+		if (vkCreateSampler(rdata.vkdevice.device, &texsamplerinfo, nullptr, &texdata[i].imgsampler) != VK_SUCCESS) {
 			logger::log(0, "crashed in texture at vkCreateSampler");
 			return false;
 		}
@@ -539,7 +539,7 @@ bool vktexture::loadtexlayoutpool(vkobjs &rdata, std::vector<texdata> &texdata, 
 	texcreateinfo.bindingCount = 1; // mmodel->images.size();
 	texcreateinfo.pBindings = &texturebind;
 
-	if (vkCreateDescriptorSetLayout(rdata.rdvkbdevice.device, &texcreateinfo, nullptr, &texdatapls.dlayout) !=
+	if (vkCreateDescriptorSetLayout(rdata.vkdevice.device, &texcreateinfo, nullptr, &texdatapls.dlayout) !=
 	        VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vkCreateDescriptorSetLayout");
 		return false;
@@ -555,7 +555,7 @@ bool vktexture::loadtexlayoutpool(vkobjs &rdata, std::vector<texdata> &texdata, 
 	descriptorpool.pPoolSizes = &poolsize;
 	descriptorpool.maxSets = 16;
 
-	if (vkCreateDescriptorPool(rdata.rdvkbdevice.device, &descriptorpool, nullptr, &texdatapls.dpool) !=
+	if (vkCreateDescriptorPool(rdata.vkdevice.device, &descriptorpool, nullptr, &texdatapls.dpool) !=
 	        VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vkCreateDescriptorPool");
 		return false;
@@ -567,7 +567,7 @@ bool vktexture::loadtexlayoutpool(vkobjs &rdata, std::vector<texdata> &texdata, 
 	descallocinfo.descriptorSetCount = 1;
 	descallocinfo.pSetLayouts = &texdatapls.dlayout;
 
-	if (vkAllocateDescriptorSets(rdata.rdvkbdevice.device, &descallocinfo, &texdatapls.dset) != VK_SUCCESS) {
+	if (vkAllocateDescriptorSets(rdata.vkdevice.device, &descallocinfo, &texdatapls.dset) != VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vkAllocateDescriptorSets");
 		return false;
 	}
@@ -581,18 +581,18 @@ bool vktexture::loadtexlayoutpool(vkobjs &rdata, std::vector<texdata> &texdata, 
 	// writedescset.pBufferInfo = 0;
 	writedescset.descriptorCount = mmodel.images.size();
 	writedescset.pImageInfo = descriptorimginfo.data();
-	vkUpdateDescriptorSets(rdata.rdvkbdevice.device, 1, &writedescset, 0, nullptr);
+	vkUpdateDescriptorSets(rdata.vkdevice.device, 1, &writedescset, 0, nullptr);
 
 	return true;
 }
 
 void vktexture::cleanup(vkobjs &rdata, texdata &texdata) {
-	vkDestroySampler(rdata.rdvkbdevice.device, texdata.imgsampler, nullptr);
-	vkDestroyImageView(rdata.rdvkbdevice.device, texdata.imgview, nullptr);
-	vmaDestroyImage(rdata.rdallocator, texdata.img, texdata.alloc);
+	vkDestroySampler(rdata.vkdevice.device, texdata.imgsampler, nullptr);
+	vkDestroyImageView(rdata.vkdevice.device, texdata.imgview, nullptr);
+	vmaDestroyImage(rdata.alloc, texdata.img, texdata.alloc);
 }
 
 void vktexture::cleanuppls(vkobjs &rdata, texdatapls &texdatapls) {
-	vkDestroyDescriptorPool(rdata.rdvkbdevice.device, texdatapls.dpool, nullptr);
-	vkDestroyDescriptorSetLayout(rdata.rdvkbdevice.device, texdatapls.dlayout, nullptr);
+	vkDestroyDescriptorPool(rdata.vkdevice.device, texdatapls.dpool, nullptr);
+	vkDestroyDescriptorSetLayout(rdata.vkdevice.device, texdatapls.dlayout, nullptr);
 }

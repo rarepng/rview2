@@ -9,17 +9,17 @@ bool vksyncobjects::init(vkobjs &rdata) {
 	VkSemaphoreCreateInfo semaphoreinfo{};
 	semaphoreinfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	if (vkCreateSemaphore(rdata.rdvkbdevice.device, &semaphoreinfo, nullptr, &rdata.rdpresentsemaphore) != VK_SUCCESS ||
-	        vkCreateSemaphore(rdata.rdvkbdevice.device, &semaphoreinfo, nullptr, &rdata.rdrendersemaphore) != VK_SUCCESS ||
-	        vkCreateFence(rdata.rdvkbdevice.device, &fenceinfo, nullptr, &rdata.rdrenderfence) != VK_SUCCESS ||
-	        vkCreateFence(rdata.rdvkbdevice.device, &fenceinfo, nullptr, &rdata.rduploadfence) != VK_SUCCESS) {
+	if (vkCreateSemaphore(rdata.vkdevice.device, &semaphoreinfo, nullptr, &rdata.presentsemaphore) != VK_SUCCESS ||
+	        vkCreateSemaphore(rdata.vkdevice.device, &semaphoreinfo, nullptr, &rdata.rendersemaphore) != VK_SUCCESS ||
+	        vkCreateFence(rdata.vkdevice.device, &fenceinfo, nullptr, &rdata.renderfence) != VK_SUCCESS ||
+	        vkCreateFence(rdata.vkdevice.device, &fenceinfo, nullptr, &rdata.uploadfence) != VK_SUCCESS) {
 		return false;
 	}
 	return true;
 }
 void vksyncobjects::cleanup(vkobjs &rdata) {
-	vkDestroySemaphore(rdata.rdvkbdevice.device, rdata.rdpresentsemaphore, nullptr);
-	vkDestroySemaphore(rdata.rdvkbdevice.device, rdata.rdrendersemaphore, nullptr);
-	vkDestroyFence(rdata.rdvkbdevice.device, rdata.rdrenderfence, nullptr);
-	vkDestroyFence(rdata.rdvkbdevice.device, rdata.rduploadfence, nullptr);
+	vkDestroySemaphore(rdata.vkdevice.device, rdata.presentsemaphore, nullptr);
+	vkDestroySemaphore(rdata.vkdevice.device, rdata.rendersemaphore, nullptr);
+	vkDestroyFence(rdata.vkdevice.device, rdata.renderfence, nullptr);
+	vkDestroyFence(rdata.vkdevice.device, rdata.uploadfence, nullptr);
 }

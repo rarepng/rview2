@@ -17,11 +17,11 @@ bool playout::init(vkobjs &mvkobjs, VkPipelineLayout &vkplayout, std::vector<VkD
 	plinfo.pSetLayouts = layoutz.data();
 	plinfo.pushConstantRangeCount = 1; ////////////////////////////////
 	plinfo.pPushConstantRanges = &pCs;
-	if (vkCreatePipelineLayout(mvkobjs.rdvkbdevice.device, &plinfo, nullptr, &vkplayout) != VK_SUCCESS)
+	if (vkCreatePipelineLayout(mvkobjs.vkdevice.device, &plinfo, nullptr, &vkplayout) != VK_SUCCESS)
 		return false;
 	return true;
 }
 
 void playout::cleanup(vkobjs &mvkobjs, VkPipelineLayout &vkplayout) {
-	vkDestroyPipelineLayout(mvkobjs.rdvkbdevice.device, vkplayout, nullptr);
+	vkDestroyPipelineLayout(mvkobjs.vkdevice.device, vkplayout, nullptr);
 }

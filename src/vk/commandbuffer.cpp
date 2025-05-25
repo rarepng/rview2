@@ -7,7 +7,7 @@ bool commandbuffer::init(vkobjs &rdata, VkCommandPool &vkpool, VkCommandBuffer &
 	bufferallocinfo.commandPool = vkpool;
 	bufferallocinfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	bufferallocinfo.commandBufferCount = 1;
-	if (vkAllocateCommandBuffers(rdata.rdvkbdevice.device, &bufferallocinfo, &incommandbuffer) != VK_SUCCESS) {
+	if (vkAllocateCommandBuffers(rdata.vkdevice.device, &bufferallocinfo, &incommandbuffer) != VK_SUCCESS) {
 		return false;
 	}
 
@@ -15,5 +15,5 @@ bool commandbuffer::init(vkobjs &rdata, VkCommandPool &vkpool, VkCommandBuffer &
 }
 
 void commandbuffer::cleanup(vkobjs &rdata, VkCommandPool &vkpool, VkCommandBuffer &incommandbuffer) {
-	vkFreeCommandBuffers(rdata.rdvkbdevice.device, vkpool, 1, &incommandbuffer);
+	vkFreeCommandBuffers(rdata.vkdevice.device, vkpool, 1, &incommandbuffer);
 }

@@ -11,7 +11,7 @@ bool ssbo::init(vkobjs &objs, ssbodata &SSBOData, size_t bufferSize) {
 	VmaAllocationCreateInfo vmaAllocInfo{};
 	vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-	if (vmaCreateBuffer(objs.rdallocator, &bufferInfo, &vmaAllocInfo, &SSBOData.buffer, &SSBOData.alloc,
+	if (vmaCreateBuffer(objs.alloc, &bufferInfo, &vmaAllocInfo, &SSBOData.buffer, &SSBOData.alloc,
 	                    nullptr) != VK_SUCCESS) {
 		return false;
 	}
@@ -28,7 +28,7 @@ bool ssbo::init(vkobjs &objs, ssbodata &SSBOData, size_t bufferSize) {
 	ssboCreateInfo.bindingCount = 1;
 	ssboCreateInfo.pBindings = &ssboBind;
 
-	if (vkCreateDescriptorSetLayout(objs.rdvkbdevice.device, &ssboCreateInfo, nullptr,
+	if (vkCreateDescriptorSetLayout(objs.vkdevice.device, &ssboCreateInfo, nullptr,
 	                                &SSBOData.dlayout) != VK_SUCCESS) {
 		return false;
 	}
@@ -43,7 +43,7 @@ bool ssbo::init(vkobjs &objs, ssbodata &SSBOData, size_t bufferSize) {
 	descriptorPool.pPoolSizes = &poolSize;
 	descriptorPool.maxSets = 1;
 
-	if (vkCreateDescriptorPool(objs.rdvkbdevice.device, &descriptorPool, nullptr, &SSBOData.dpool) !=
+	if (vkCreateDescriptorPool(objs.vkdevice.device, &descriptorPool, nullptr, &SSBOData.dpool) !=
 	        VK_SUCCESS) {
 		return false;
 	}
@@ -54,7 +54,7 @@ bool ssbo::init(vkobjs &objs, ssbodata &SSBOData, size_t bufferSize) {
 	descriptorAllocateInfo.descriptorSetCount = 1;
 	descriptorAllocateInfo.pSetLayouts = &SSBOData.dlayout;
 
-	if (vkAllocateDescriptorSets(objs.rdvkbdevice.device, &descriptorAllocateInfo, &SSBOData.dset) !=
+	if (vkAllocateDescriptorSets(objs.vkdevice.device, &descriptorAllocateInfo, &SSBOData.dset) !=
 	        VK_SUCCESS) {
 		return false;
 	}
@@ -72,7 +72,7 @@ bool ssbo::init(vkobjs &objs, ssbodata &SSBOData, size_t bufferSize) {
 	writeDescriptorSet.descriptorCount = 1;
 	writeDescriptorSet.pBufferInfo = &ssboInfo;
 
-	vkUpdateDescriptorSets(objs.rdvkbdevice.device, 1, &writeDescriptorSet, 0, nullptr);
+	vkUpdateDescriptorSets(objs.vkdevice.device, 1, &writeDescriptorSet, 0, nullptr);
 
 	SSBOData.size = bufferSize;
 	return true;
@@ -84,9 +84,9 @@ void ssbo::upload(vkobjs &objs, ssbodata &ssbodata, std::vector<glm::mat4> mats)
 	}
 
 	void *data;
-	vmaMapMemory(objs.rdallocator, ssbodata.alloc, &data);
+	vmaMapMemory(objs.alloc, ssbodata.alloc, &data);
 	std::memcpy(data, mats.data(), ssbodata.size);
-	vmaUnmapMemory(objs.rdallocator, ssbodata.alloc);
+	vmaUnmapMemory(objs.alloc, ssbodata.alloc);
 }
 
 void ssbo::upload(vkobjs &objs, ssbodata &ssbodata, std::vector<glm::mat2x4> mats) {
@@ -95,9 +95,9 @@ void ssbo::upload(vkobjs &objs, ssbodata &ssbodata, std::vector<glm::mat2x4> mat
 	}
 
 	void *data;
-	vmaMapMemory(objs.rdallocator, ssbodata.alloc, &data);
+	vmaMapMemory(objs.alloc, ssbodata.alloc, &data);
 	std::memcpy(data, mats.data(), ssbodata.size);
-	vmaUnmapMemory(objs.rdallocator, ssbodata.alloc);
+	vmaUnmapMemory(objs.alloc, ssbodata.alloc);
 }
 void ssbo::upload(vkobjs &objs, ssbodata &ssbodata, const std::vector<double> &mats) {
 	if (mats.size() == 0) {
@@ -105,13 +105,13 @@ void ssbo::upload(vkobjs &objs, ssbodata &ssbodata, const std::vector<double> &m
 	}
 
 	void *data;
-	vmaMapMemory(objs.rdallocator, ssbodata.alloc, &data);
+	vmaMapMemory(objs.alloc, ssbodata.alloc, &data);
 	std::memcpy(data, mats.data(), ssbodata.size);
-	vmaUnmapMemory(objs.rdallocator, ssbodata.alloc);
+	vmaUnmapMemory(objs.alloc, ssbodata.alloc);
 }
 
 void ssbo::cleanup(vkobjs &objs, ssbodata &ssbodata) {
-	vkDestroyDescriptorPool(objs.rdvkbdevice.device, ssbodata.dpool, nullptr);
-	vkDestroyDescriptorSetLayout(objs.rdvkbdevice.device, ssbodata.dlayout, nullptr);
-	vmaDestroyBuffer(objs.rdallocator, ssbodata.buffer, ssbodata.alloc);
+	vkDestroyDescriptorPool(objs.vkdevice.device, ssbodata.dpool, nullptr);
+	vkDestroyDescriptorSetLayout(objs.vkdevice.device, ssbodata.dlayout, nullptr);
+	vmaDestroyBuffer(objs.alloc, ssbodata.buffer, ssbodata.alloc);
 }

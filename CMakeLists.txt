@@ -173,6 +173,7 @@ endif()
 file(GLOB shaders ${PROJECT_BINARY_DIR}/shaders/*)
 list(LENGTH shaders shader_len)
 
+#wip
 file(GLOB_RECURSE GLSL_SOURCE_FILES
     # "${PROJECT_SOURCE_DIR}/shaders/*.frag"
     # "${PROJECT_SOURCE_DIR}/shaders/*.vert"

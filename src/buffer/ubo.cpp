@@ -17,7 +17,7 @@ bool ubo::init(vkobjs &mvkobjs, std::vector<ubodata> &ubodata) {
 		VmaAllocationCreateInfo vmaallocinfo{};
 		vmaallocinfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-		if (vmaCreateBuffer(mvkobjs.rdallocator, &binfo, &vmaallocinfo, &ubodata[i].buffer,
+		if (vmaCreateBuffer(mvkobjs.alloc, &binfo, &vmaallocinfo, &ubodata[i].buffer,
 		                    &ubodata[i].alloc, nullptr) != VK_SUCCESS)
 			return false;
 	}
@@ -40,7 +40,7 @@ bool ubo::init(vkobjs &mvkobjs, std::vector<ubodata> &ubodata) {
 	uboinfo.bindingCount = 2;
 	uboinfo.pBindings = &ubobind.at(0);
 
-	if (vkCreateDescriptorSetLayout(mvkobjs.rdvkbdevice.device, &uboinfo, nullptr, &ubodata[0].dlayout) !=
+	if (vkCreateDescriptorSetLayout(mvkobjs.vkdevice.device, &uboinfo, nullptr, &ubodata[0].dlayout) !=
 	        VK_SUCCESS)
 		return false;
 
@@ -54,7 +54,7 @@ bool ubo::init(vkobjs &mvkobjs, std::vector<ubodata> &ubodata) {
 	dpoolinfo.pPoolSizes = &poolsize;
 	dpoolinfo.maxSets = 1;
 
-	if (vkCreateDescriptorPool(mvkobjs.rdvkbdevice.device, &dpoolinfo, nullptr, &ubodata[0].dpool) !=
+	if (vkCreateDescriptorPool(mvkobjs.vkdevice.device, &dpoolinfo, nullptr, &ubodata[0].dpool) !=
 	        VK_SUCCESS)
 		return false;
 
@@ -64,7 +64,7 @@ bool ubo::init(vkobjs &mvkobjs, std::vector<ubodata> &ubodata) {
 	dallocinfo.descriptorSetCount = 1;
 	dallocinfo.pSetLayouts = &ubodata[0].dlayout;
 
-	if (vkAllocateDescriptorSets(mvkobjs.rdvkbdevice.device, &dallocinfo, &ubodata[0].dset) != VK_SUCCESS)
+	if (vkAllocateDescriptorSets(mvkobjs.vkdevice.device, &dallocinfo, &ubodata[0].dset) != VK_SUCCESS)
 		return false;
 
 	std::vector<VkDescriptorBufferInfo> uinfo(2);
@@ -84,7 +84,7 @@ bool ubo::init(vkobjs &mvkobjs, std::vector<ubodata> &ubodata) {
 		writedset.descriptorCount = 1;
 		writedset.pBufferInfo = &uinfo.at(i);
 
-		vkUpdateDescriptorSets(mvkobjs.rdvkbdevice.device, 1, &writedset, 0, nullptr);
+		vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &writedset, 0, nullptr);
 
 		if (i < 1)
 			ubodata[i].size = 2 * sizeof(glm::mat4);
@@ -96,22 +96,22 @@ bool ubo::init(vkobjs &mvkobjs, std::vector<ubodata> &ubodata) {
 }
 void ubo::upload(vkobjs &mvkobjs, std::vector<ubodata> &ubodata, std::vector<glm::mat4> mats, unsigned int texidx) {
 	void *data;
-	vmaMapMemory(mvkobjs.rdallocator, ubodata[0].alloc, &data);
+	vmaMapMemory(mvkobjs.alloc, ubodata[0].alloc, &data);
 	std::memcpy(data, mats.data(), ubodata[0].size);
-	vmaUnmapMemory(mvkobjs.rdallocator, ubodata[0].alloc);
+	vmaUnmapMemory(mvkobjs.alloc, ubodata[0].alloc);
 }
 
 void ubo::upload(vkobjs &mvkobjs, std::vector<ubodata> &ubodata, unsigned int texidx) {
 	void *data;
-	vmaMapMemory(mvkobjs.rdallocator, ubodata[1].alloc, &data);
+	vmaMapMemory(mvkobjs.alloc, ubodata[1].alloc, &data);
 	std::memcpy(data, &texidx, ubodata[1].size);
-	vmaUnmapMemory(mvkobjs.rdallocator, ubodata[1].alloc);
+	vmaUnmapMemory(mvkobjs.alloc, ubodata[1].alloc);
 }
 
 void ubo::cleanup(vkobjs &mvkobjs, std::vector<ubodata> &ubodata) {
 	for (size_t i{0}; i < ubodata.size(); i++) {
-		vkDestroyDescriptorPool(mvkobjs.rdvkbdevice.device, ubodata[i].dpool, nullptr);
-		vkDestroyDescriptorSetLayout(mvkobjs.rdvkbdevice.device, ubodata[i].dlayout, nullptr);
-		vmaDestroyBuffer(mvkobjs.rdallocator, ubodata[i].buffer, ubodata[i].alloc);
+		vkDestroyDescriptorPool(mvkobjs.vkdevice.device, ubodata[i].dpool, nullptr);
+		vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, ubodata[i].dlayout, nullptr);
+		vmaDestroyBuffer(mvkobjs.alloc, ubodata[i].buffer, ubodata[i].alloc);
 	}
 }

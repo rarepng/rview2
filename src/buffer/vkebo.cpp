@@ -11,7 +11,7 @@ bool vkebo::init(vkobjs &objs, ebodata &indexbufferdata, size_t buffersize) {
 	VmaAllocationCreateInfo bainfo{};
 	bainfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-	if (vmaCreateBuffer(objs.rdallocator, &binfo, &bainfo, &indexbufferdata.buffer, &indexbufferdata.alloc, nullptr) !=
+	if (vmaCreateBuffer(objs.alloc, &binfo, &bainfo, &indexbufferdata.buffer, &indexbufferdata.alloc, nullptr) !=
 	        VK_SUCCESS)
 		return false;
 
@@ -23,7 +23,7 @@ bool vkebo::init(vkobjs &objs, ebodata &indexbufferdata, size_t buffersize) {
 	VmaAllocationCreateInfo stagingallocinfo{};
 	stagingallocinfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
 
-	if (vmaCreateBuffer(objs.rdallocator, &stagingbinfo, &stagingallocinfo, &indexbufferdata.sbuffer,
+	if (vmaCreateBuffer(objs.alloc, &stagingbinfo, &stagingallocinfo, &indexbufferdata.sbuffer,
 	                    &indexbufferdata.salloc, nullptr) != VK_SUCCESS)
 		return false;
 
@@ -36,9 +36,9 @@ bool vkebo::upload(vkobjs &objs, VkCommandBuffer &cbuffer, ebodata &indexbufferd
                    std::vector<unsigned short> indicez) {
 
 	void *d;
-	vmaMapMemory(objs.rdallocator, indexbufferdata.salloc, &d);
+	vmaMapMemory(objs.alloc, indexbufferdata.salloc, &d);
 	std::memcpy(d, indicez.data(), indicez.size() * sizeof(unsigned short));
-	vmaUnmapMemory(objs.rdallocator, indexbufferdata.salloc);
+	vmaUnmapMemory(objs.alloc, indexbufferdata.salloc);
 
 	VkBufferMemoryBarrier vbbarrier{};
 	vbbarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -68,10 +68,10 @@ bool vkebo::upload(vkobjs &objs, VkCommandBuffer &cbuffer, ebodata &indexbufferd
 	std::visit(fastgltf::visitor{[](auto &arg) {},
 	[&](const fastgltf::sources::Array &vector) {
 		void *d;
-		vmaMapMemory(objs.rdallocator, indexbufferdata.salloc, &d);
+		vmaMapMemory(objs.alloc, indexbufferdata.salloc, &d);
 		std::memcpy(d, vector.bytes.data() + bufferview.byteOffset,
 		            count * 2); // bufferview.byteLength
-		vmaUnmapMemory(objs.rdallocator, indexbufferdata.salloc);
+		vmaUnmapMemory(objs.alloc, indexbufferdata.salloc);
 	}},
 	buffer.data);
 
@@ -98,6 +98,6 @@ bool vkebo::upload(vkobjs &objs, VkCommandBuffer &cbuffer, ebodata &indexbufferd
 }
 
 void vkebo::cleanup(vkobjs &objs, ebodata &indexbufferdata) {
-	vmaDestroyBuffer(objs.rdallocator, indexbufferdata.sbuffer, indexbufferdata.salloc);
-	vmaDestroyBuffer(objs.rdallocator, indexbufferdata.buffer, indexbufferdata.alloc);
+	vmaDestroyBuffer(objs.alloc, indexbufferdata.sbuffer, indexbufferdata.salloc);
+	vmaDestroyBuffer(objs.alloc, indexbufferdata.buffer, indexbufferdata.alloc);
 }

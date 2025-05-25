@@ -2,32 +2,32 @@
 #include <vector>
 
 bool framebuffer::init(vkobjs &rdata) {
-	rdata.rdswapchainimages = rdata.rdvkbswapchain.get_images().value();
-	rdata.rdswapchainimageviews = rdata.rdvkbswapchain.get_image_views().value();
+	rdata.schainimgs = rdata.schain.get_images().value();
+	rdata.schainimgviews = rdata.schain.get_image_views().value();
 
-	rdata.rdframebuffers.reserve(rdata.rdswapchainimageviews.size());
-	rdata.rdframebuffers.resize(rdata.rdswapchainimageviews.size());
+	rdata.fbuffers.reserve(rdata.schainimgviews.size());
+	rdata.fbuffers.resize(rdata.schainimgviews.size());
 
-	for (unsigned int i = 0; i < rdata.rdswapchainimageviews.size(); ++i) {
-		VkImageView a[] = {rdata.rdswapchainimageviews.at(i), rdata.rddepthimageview};
+	for (unsigned int i = 0; i < rdata.schainimgviews.size(); ++i) {
+		VkImageView a[] = {rdata.schainimgviews.at(i), rdata.rddepthimageview};
 
 		VkFramebufferCreateInfo fbinfo{};
 		fbinfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		fbinfo.renderPass = rdata.rdrenderpass;
 		fbinfo.attachmentCount = 2;
 		fbinfo.pAttachments = a;
-		fbinfo.width = rdata.rdvkbswapchain.extent.width;
-		fbinfo.height = rdata.rdvkbswapchain.extent.height;
+		fbinfo.width = rdata.schain.extent.width;
+		fbinfo.height = rdata.schain.extent.height;
 		fbinfo.layers = 1;
 
-		if (vkCreateFramebuffer(rdata.rdvkbdevice.device, &fbinfo, nullptr, &rdata.rdframebuffers[i]) != VK_SUCCESS) {
+		if (vkCreateFramebuffer(rdata.vkdevice.device, &fbinfo, nullptr, &rdata.fbuffers[i]) != VK_SUCCESS) {
 			return false;
 		}
 	}
 	return true;
 }
 void framebuffer::cleanup(vkobjs &rdata) {
-	for (auto &fb : rdata.rdframebuffers) {
-		vkDestroyFramebuffer(rdata.rdvkbdevice.device, fb, nullptr);
+	for (auto &fb : rdata.fbuffers) {
+		vkDestroyFramebuffer(rdata.vkdevice.device, fb, nullptr);
 	}
 }

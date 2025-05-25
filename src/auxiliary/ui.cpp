@@ -43,20 +43,20 @@ bool ui::init(vkobjs &renderData) {
 	imguiPoolInfo.poolSizeCount = std::size(imguiPoolSizes);
 	imguiPoolInfo.pPoolSizes = imguiPoolSizes;
 
-	if (vkCreateDescriptorPool(renderData.rdvkbdevice.device, &imguiPoolInfo, nullptr,
-	                           &renderData.rdimguidescriptorpool)) {
+	if (vkCreateDescriptorPool(renderData.vkdevice.device, &imguiPoolInfo, nullptr,
+	                           &renderData.imguidpool)) {
 		return false;
 	}
-	ImGui_ImplSDL3_InitForVulkan(renderData.rdwind);
+	ImGui_ImplSDL3_InitForVulkan(renderData.wind);
 
 	ImGui_ImplVulkan_InitInfo imguiIinitInfo{};
-	imguiIinitInfo.Instance = renderData.rdvkbinstance.instance;
-	imguiIinitInfo.PhysicalDevice = renderData.rdvkbphysdev.physical_device;
-	imguiIinitInfo.Device = renderData.rdvkbdevice.device;
+	imguiIinitInfo.Instance = renderData.inst.instance;
+	imguiIinitInfo.PhysicalDevice = renderData.physdev.physical_device;
+	imguiIinitInfo.Device = renderData.vkdevice.device;
 	imguiIinitInfo.Queue = renderData.graphicsQ;
-	imguiIinitInfo.DescriptorPool = renderData.rdimguidescriptorpool;
+	imguiIinitInfo.DescriptorPool = renderData.imguidpool;
 	imguiIinitInfo.MinImageCount = 2;
-	imguiIinitInfo.ImageCount = renderData.rdswapchainimages.size();
+	imguiIinitInfo.ImageCount = renderData.schainimgs.size();
 	imguiIinitInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 	imguiIinitInfo.RenderPass = renderData.rdrenderpass;
 
@@ -66,7 +66,7 @@ bool ui::init(vkobjs &renderData) {
 
 	VkCommandBuffer imguiCommandBuffer;
 
-	if (!commandbuffer::init(renderData, renderData.rdcommandpool[1], imguiCommandBuffer)) {
+	if (!commandbuffer::init(renderData, renderData.cpools[1], imguiCommandBuffer)) {
 		return false;
 	}
 
@@ -106,11 +106,11 @@ bool ui::init(vkobjs &renderData) {
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-	if (vkCreateFence(renderData.rdvkbdevice.device, &fenceInfo, nullptr, &imguiBufferFence) != VK_SUCCESS) {
+	if (vkCreateFence(renderData.vkdevice.device, &fenceInfo, nullptr, &imguiBufferFence) != VK_SUCCESS) {
 		return false;
 	}
 
-	if (vkResetFences(renderData.rdvkbdevice.device, 1, &imguiBufferFence) != VK_SUCCESS) {
+	if (vkResetFences(renderData.vkdevice.device, 1, &imguiBufferFence) != VK_SUCCESS) {
 		return false;
 	}
 
@@ -120,12 +120,12 @@ bool ui::init(vkobjs &renderData) {
 	}
 	renderData.mtx2->unlock();
 
-	if (vkWaitForFences(renderData.rdvkbdevice.device, 1, &imguiBufferFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
+	if (vkWaitForFences(renderData.vkdevice.device, 1, &imguiBufferFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
 		return false;
 	}
 
-	vkDestroyFence(renderData.rdvkbdevice.device, imguiBufferFence, nullptr);
-	commandbuffer::cleanup(renderData, renderData.rdcommandpool[1], imguiCommandBuffer);
+	vkDestroyFence(renderData.vkdevice.device, imguiBufferFence, nullptr);
+	commandbuffer::cleanup(renderData, renderData.cpools[1], imguiCommandBuffer);
 
 	ImGui::StyleColorsDark();
 
@@ -232,9 +232,9 @@ void ui::createdbgframe(vkobjs &renderData, selection &settings) {
 		if (ImGui::CollapsingHeader("General")) {
 			ImGui::Text("Triangles:");
 			ImGui::SameLine();
-			ImGui::Text("%s", std::to_string(renderData.rdtricount + renderData.rdgltftricount).c_str());
+			ImGui::Text("%s", std::to_string(renderData.tricount + renderData.gltftricount).c_str());
 
-			std::string windowDims = std::to_string(renderData.rdwidth) + "x" + std::to_string(renderData.rdheight);
+			std::string windowDims = std::to_string(renderData.width) + "x" + std::to_string(renderData.height);
 			ImGui::Text("Window Dimensions:");
 			ImGui::SameLine();
 			ImGui::Text("%s", windowDims.c_str());
@@ -419,19 +419,19 @@ void ui::createdbgframe(vkobjs &renderData, selection &settings) {
 		if (ImGui::CollapsingHeader("Camera")) {
 			ImGui::Text("Camera Position:");
 			ImGui::SameLine();
-			ImGui::Text("%s", glm::to_string(renderData.rdcamwpos).c_str());
+			ImGui::Text("%s", glm::to_string(renderData.camwpos).c_str());
 
 			ImGui::Text("View Azimuth:");
 			ImGui::SameLine();
-			ImGui::Text("%s", std::to_string(renderData.rdazimuth).c_str());
+			ImGui::Text("%s", std::to_string(renderData.azimuth).c_str());
 
 			ImGui::Text("View Elevation:");
 			ImGui::SameLine();
-			ImGui::Text("%s", std::to_string(renderData.rdelevation).c_str());
+			ImGui::Text("%s", std::to_string(renderData.elevation).c_str());
 
 			ImGui::Text("Field of View");
 			ImGui::SameLine();
-			ImGui::Text("%s", std::to_string(renderData.rdfov).c_str());
+			ImGui::Text("%s", std::to_string(renderData.fov).c_str());
 			// ImGui::SliderFloat("##FOV", &renderData.rdfov, 40.0f, 150.0f, "%f", flags);
 		}
 
@@ -832,8 +832,8 @@ bool ui::createpausebuttons(vkobjs &mvkobjs) {
 	if (ImGui::BeginMenuBar()) {
 		if (ImGui::BeginMenu("settings")) {
 			if (ImGui::MenuItem("windowed", "F4")) {
-				mvkobjs.rdfullscreen = !mvkobjs.rdfullscreen;
-				SDL_SetWindowFullscreen(mvkobjs.rdwind, mvkobjs.rdfullscreen);
+				mvkobjs.fullscreen = !mvkobjs.fullscreen;
+				SDL_SetWindowFullscreen(mvkobjs.wind, mvkobjs.fullscreen);
 			}
 			ImGui::EndMenu();
 		}
@@ -879,7 +879,7 @@ void ui::render(vkobjs &renderData, VkCommandBuffer &cbuffer) {
 
 void ui::cleanup(vkobjs &mvkobjs) {
 	ImGui_ImplVulkan_Shutdown();
-	vkDestroyDescriptorPool(mvkobjs.rdvkbdevice.device, mvkobjs.rdimguidescriptorpool, nullptr);
+	vkDestroyDescriptorPool(mvkobjs.vkdevice.device, mvkobjs.imguidpool, nullptr);
 	ImGui_ImplSDL3_Shutdown();
 	ImGui::DestroyContext();
 }
