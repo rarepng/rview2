@@ -45,13 +45,13 @@ struct jmats {
 }
 
 [vk_push_constant]
-layout(push_constant) uniform consts Constants;
+ConstantBuffer<consts> Constants;
 
 [[vk_binding(0, 1)]]
 ConstantBuffer<cams> cammats;
 
 [[vk_binding(0, 2)]]
-StructuredBuffer<jmats> jmatbuffer[];
+StructuredBuffer<jmats> jmatbuffer;
 
 [[vk_binding(1, 1)]]
 ConstantBuffer<texidx> texid2;
@@ -60,10 +60,10 @@ ConstantBuffer<texidx> texid2;
 [shader("vertex")]
 VXout vxmain(VXin vxin) {
 	// float4x4 skinmat = JointMatrices[0].jointMat[vxin.aJointNum.x].scale(vxin.aJointWeight.x.toFloat()).add(JointMatrices[0].jointMat[vxin.aJointNum.y].scale(vxin.aJointWeight.y.toFloat()).add(JointMatrices[0].jointMat[vxin.aJointNum.z].scale(vxin.aJointWeight.z.toFloat())).add(JointMatrices[0].jointMat[vxin.aJointNum.w].scale(vxin.aJointWeight.w.toFloat())));
-	float4x4 skinmat = jmatbuffer[0][vxin.aJointNum.x].jointmats * vxin.aJointWeight.x +
-					   jmatbuffer[0][vxin.aJointNum.y].jointmats * vxin.aJointWeight.y +
-					   jmatbuffer[0][vxin.aJointNum.z].jointmats * vxin.aJointWeight.z +
-					   jmatbuffer[0][vxin.aJointNum.w].jointmats * vxin.aJointWeight.w ;
+	float4x4 skinmat = jmatbuffer[vxin.aJointNum.x].jointmats * vxin.aJointWeight.x +
+					   jmatbuffer[vxin.aJointNum.y].jointmats * vxin.aJointWeight.y +
+					   jmatbuffer[vxin.aJointNum.z].jointmats * vxin.aJointWeight.z +
+					   jmatbuffer[vxin.aJointNum.w].jointmats * vxin.aJointWeight.w ;
 	VXout out;
 	float4x4 x = mul(cammats.projection, cammats.view);
 	float4x4 y = mul(x, skinmat);
