@@ -78,28 +78,8 @@ bool ssbo::init(vkobjs &objs, ssbodata &SSBOData, size_t bufferSize) {
 	return true;
 }
 
-void ssbo::upload(vkobjs &objs, ssbodata &ssbodata, std::vector<glm::mat4> mats) {
-	if (mats.size() == 0) {
-		return;
-	}
-
-	void *data;
-	vmaMapMemory(objs.alloc, ssbodata.alloc, &data);
-	std::memcpy(data, mats.data(), ssbodata.size);
-	vmaUnmapMemory(objs.alloc, ssbodata.alloc);
-}
-
-void ssbo::upload(vkobjs &objs, ssbodata &ssbodata, std::vector<glm::mat2x4> mats) {
-	if (mats.size() == 0) {
-		return;
-	}
-
-	void *data;
-	vmaMapMemory(objs.alloc, ssbodata.alloc, &data);
-	std::memcpy(data, mats.data(), ssbodata.size);
-	vmaUnmapMemory(objs.alloc, ssbodata.alloc);
-}
-void ssbo::upload(vkobjs &objs, ssbodata &ssbodata, const std::vector<double> &mats) {
+template<typename T>
+void ssbo::upload(const vkobjs &objs,const ssbodata &ssbodata, const std::vector<T> &mats) {
 	if (mats.size() == 0) {
 		return;
 	}

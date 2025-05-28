@@ -8,8 +8,7 @@
 class ssbo {
 public:
 	static bool init(vkobjs &objs, ssbodata &ssbodata, size_t buffersize);
-	static void upload(vkobjs &objs, ssbodata &ssbodata, std::vector<glm::mat4> mats);
-	static void upload(vkobjs &objs, ssbodata &ssbodata, std::vector<glm::mat2x4> mats);
-	static void upload(vkobjs &objs, ssbodata &ssbodata, const std::vector<double> &mats);
+	template<typename T>
+	static void upload(const vkobjs &objs,const ssbodata &ssbodata, const std::vector<T> &mats);
 	static void cleanup(vkobjs &objs, ssbodata &ssbodata);
 };
