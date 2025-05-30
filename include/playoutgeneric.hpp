@@ -22,7 +22,7 @@ public:
 	void cleanupbuffers(vkobjs &objs);
 	void cleanupmodels(vkobjs &objs);
 	void uploadvboebo(vkobjs &objs, VkCommandBuffer &cbuffer);
-	void uploadubossbo(vkobjs &objs, std::vector<glm::mat4> &cammats);
+	void uploadubossbo(vkobjs &objs,std::vector<glm::mat4> &cammats);
 
 	std::shared_ptr<genericinstance> getinst(int i);
 

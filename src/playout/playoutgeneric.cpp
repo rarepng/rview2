@@ -2,7 +2,7 @@
 #include "modelsettings.hpp"
 #include "playout.hpp"
 #include "pline.hpp"
-#include "ssbo.hpp"
+#include "buffer/ssbo.hpp"
 #include "ubo.hpp"
 
 bool playoutgeneric::setup(vkobjs &objs, std::string fname, size_t count, std::string vfile, std::string ffile) {
@@ -97,8 +97,7 @@ void playoutgeneric::uploadubossbo(vkobjs &objs, std::vector<glm::mat4> &cammats
 	                        &rdperspviewmatrixubo[0].dset, 0, nullptr);
 	vkCmdBindDescriptorSets(objs.cbuffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1,
 	                        &rdjointmatrixssbo.dset, 0, nullptr);
-
-	ubo::upload(objs, rdperspviewmatrixubo, cammats, 0);
+	ubo::upload(objs, rdperspviewmatrixubo, cammats);
 	ssbo::upload(objs, rdjointmatrixssbo, jointmats);
 }
 

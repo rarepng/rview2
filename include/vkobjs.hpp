@@ -9,6 +9,9 @@
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
+
+
+
 enum class skinningmode { linear = 0, dualquat };
 enum class replaydirection { forward = 0, backward };
 enum class blendmode { fadeinout = 0, crossfade, additive };
@@ -65,6 +68,15 @@ struct ssbodata {
 	VkDescriptorSet dset = VK_NULL_HANDLE;
 };
 
+struct buffdata {
+	size_t size{0};
+	VkBuffer buffer = VK_NULL_HANDLE;
+	VmaAllocation alloc = nullptr;
+
+	VkDescriptorPool dpool = VK_NULL_HANDLE;
+	VkDescriptorSetLayout dlayout = VK_NULL_HANDLE;
+	VkDescriptorSet dset = VK_NULL_HANDLE;
+};
 struct vkpushconstants {
 	int stride;
 	unsigned int texidx;
@@ -154,4 +166,14 @@ struct vkgltfobjs {
 	std::vector<std::vector<ebodata>> ebos{};
 	std::vector<texdata> texs{};
 	texdatapls texpls{};
+};
+namespace rpool{
+	 static inline bool create(){
+		return true;
+	 }
+};
+namespace rbuffer{
+  static inline bool create(vkobjs& objs, buffdata &bdata, size_t bsize, bool btype, size_t bstage,size_t ){
+	return true;
+  }
 };

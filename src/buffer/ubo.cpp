@@ -94,18 +94,11 @@ bool ubo::init(vkobjs &mvkobjs, std::vector<ubodata> &ubodata) {
 
 	return true;
 }
-void ubo::upload(vkobjs &mvkobjs, std::vector<ubodata> &ubodata, std::vector<glm::mat4> mats, unsigned int texidx) {
+void ubo::upload(vkobjs &mvkobjs, std::vector<ubodata> &ubodata, std::vector<glm::mat4> mats) {
 	void *data;
 	vmaMapMemory(mvkobjs.alloc, ubodata[0].alloc, &data);
 	std::memcpy(data, mats.data(), ubodata[0].size);
 	vmaUnmapMemory(mvkobjs.alloc, ubodata[0].alloc);
-}
-
-void ubo::upload(vkobjs &mvkobjs, std::vector<ubodata> &ubodata, unsigned int texidx) {
-	void *data;
-	vmaMapMemory(mvkobjs.alloc, ubodata[1].alloc, &data);
-	std::memcpy(data, &texidx, ubodata[1].size);
-	vmaUnmapMemory(mvkobjs.alloc, ubodata[1].alloc);
 }
 
 void ubo::cleanup(vkobjs &mvkobjs, std::vector<ubodata> &ubodata) {

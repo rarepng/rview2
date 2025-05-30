@@ -114,7 +114,7 @@ private:
 
 	std::vector<unsigned int> playercount{1};
 	std::vector<std::string> playerfname{{"resources/p0.glb"}};
-	const std::vector<std::vector<std::string>> playershaders{{"shaders/gen.slang.vx.spv", "shaders/gen.slang.px.spv"}};
+	const std::vector<std::vector<std::string>> playershaders{{"shaders/vx.spv", "shaders/px.spv"}};
 
 	ui mui{};
 	timer mframetimer{};
