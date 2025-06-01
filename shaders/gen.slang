@@ -19,6 +19,14 @@ struct VXin {
 	// uint4 joi1 : JOINTS_1;
 	// float4 wei1 : WEIGHTS_1;
 }
+struct Particle {
+	float2 position;
+	float2 velocity;
+	float4 color;
+};
+
+StructuredBuffer<Particle> pin;
+RWStructuredBuffer<Particle> pout;
 
 struct PXin {
 	float3 normal;
@@ -28,7 +36,11 @@ struct PXin {
 	float32_t t2;
 	float32_t dec;
 }
+struct CXin {
+	uint3 tid : SV_DispatchThreadID;
+	Particle p;
 
+}
 struct PXout {
 	float4 color;
 }
@@ -105,6 +117,6 @@ PXout pxmain(PXin pxin) {
 
 [shader("compute")]
 [[numthreads(256, 1, 1)]]
-void cxmain(uint3 tid: SV_DispatchThreadID) {
-
+void cxmain(CXin cx) {
+	pout[cx.tid.x].position = pin[cx.tid.x].position + pin[cx.tid.x].velocity.xy * 0.0001;
 }

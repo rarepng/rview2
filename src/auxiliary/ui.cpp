@@ -23,25 +23,25 @@ bool ui::init(vkobjs &renderData) {
 	io.Fonts->AddFontFromFileTTF("resources/comicbd.ttf", 29.0f);
 	io.Fonts->AddFontFromFileTTF("resources/bruce.ttf", 52.0f);
 
-	VkDescriptorPoolSize imguiPoolSizes[] = {{VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
-		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
-		{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000},
-		{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000},
-		{VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000},
-		{VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000},
-		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000},
-		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000},
-		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000},
-		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000},
-		{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000}
+	std::vector<VkDescriptorPoolSize> imguiPoolSizes = {{VK_DESCRIPTOR_TYPE_SAMPLER, 24},
+		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 24},
+		{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 24},
+		{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 24},
+		{VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 24},
+		{VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 24},
+		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 24},
+		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 24},
+		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 24},
+		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 24},
+		{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 24}
 	};
 
 	VkDescriptorPoolCreateInfo imguiPoolInfo{};
 	imguiPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	imguiPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-	imguiPoolInfo.maxSets = 1000;
-	imguiPoolInfo.poolSizeCount = std::size(imguiPoolSizes);
-	imguiPoolInfo.pPoolSizes = imguiPoolSizes;
+	imguiPoolInfo.maxSets = 24;
+	imguiPoolInfo.poolSizeCount = imguiPoolSizes.size();
+	imguiPoolInfo.pPoolSizes = imguiPoolSizes.data();
 
 	if (vkCreateDescriptorPool(renderData.vkdevice.device, &imguiPoolInfo, nullptr,
 	                           &renderData.imguidpool)) {

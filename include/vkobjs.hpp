@@ -168,12 +168,22 @@ struct vkgltfobjs {
 	texdatapls texpls{};
 };
 namespace rpool{
-	 static inline bool create(){
-		return true;
+	 static inline bool create(const std::vector<VkDescriptorPoolSize>& pools,const VkDevice& dev,VkDescriptorPool* dpool){
+		VkDescriptorPoolCreateInfo descriptorPool{};
+		descriptorPool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		descriptorPool.poolSizeCount = pools.size();
+		descriptorPool.pPoolSizes = pools.data();
+		descriptorPool.maxSets = 1024; //not sure
+
+		return vkCreateDescriptorPool(dev, &descriptorPool, nullptr, dpool) == VK_SUCCESS;
+	 }
+	static inline void destroy(const VkDevice& dev,VkDescriptorPool dpool){
+		vkDestroyDescriptorPool(dev, dpool, nullptr);
 	 }
 };
 namespace rbuffer{
-  static inline bool create(vkobjs& objs, buffdata &bdata, size_t bsize, bool btype, size_t bstage,size_t ){
+  static inline bool create(const VkDevice& dev,VmaAllocator alloc,std::vector<VkBufferCreateInfo> binfos,std::vector<VkBuffer> buffs){
+	// for()
 	return true;
   }
 };

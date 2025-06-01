@@ -7,13 +7,18 @@
 
 namespace ssbo {
   static inline bool init(vkobjs &objs, ssbodata &ssboData, size_t buffersize) {
+
+    std::vector<VkDescriptorPoolSize> pool0{{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1}};
+    if(!rpool::create(pool0,objs.vkdevice.device,&ssboData.dpool))return false;
+
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.size = buffersize;
-    bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    bufferInfo.usage = VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT;
 
     VmaAllocationCreateInfo vmaAllocInfo{};
-    vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+    vmaAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    vmaAllocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
     if (vmaCreateBuffer(objs.alloc, &bufferInfo, &vmaAllocInfo, &ssboData.buffer, &ssboData.alloc, nullptr) !=
 	VK_SUCCESS) {
@@ -36,19 +41,6 @@ namespace ssbo {
       return false;
     }
 
-    VkDescriptorPoolSize poolSize{};
-    poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    poolSize.descriptorCount = 1;
-
-    VkDescriptorPoolCreateInfo descriptorPool{};
-    descriptorPool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    descriptorPool.poolSizeCount = 1;
-    descriptorPool.pPoolSizes = &poolSize;
-    descriptorPool.maxSets = 1;
-
-    if (vkCreateDescriptorPool(objs.vkdevice.device, &descriptorPool, nullptr, &ssboData.dpool) != VK_SUCCESS) {
-      return false;
-    }
 
     VkDescriptorSetAllocateInfo descriptorAllocateInfo{};
     descriptorAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -95,7 +87,7 @@ namespace ssbo {
     vmaUnmapMemory(objs.alloc, ssbodata.alloc);
   }
 static inline void cleanup(vkobjs &objs, ssbodata &ssbodata) {
-    vkDestroyDescriptorPool(objs.vkdevice.device, ssbodata.dpool, nullptr);
+    rpool::destroy(objs.vkdevice.device, ssbodata.dpool);
     vkDestroyDescriptorSetLayout(objs.vkdevice.device, ssbodata.dlayout, nullptr);
     vmaDestroyBuffer(objs.alloc, ssbodata.buffer, ssbodata.alloc);
   }
