@@ -28,6 +28,9 @@
 #include <SDL3/SDL_vulkan.h>
 // #include <unistd.h>
 
+#include "exp/particle.hpp"
+
+
 float map2(glm::vec3 x) {
 	return std::max(x.y, 0.0f);
 }
