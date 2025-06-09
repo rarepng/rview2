@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 4.0)
 project(rview2 LANGUAGES CXX)
 
 
 include(ExternalProject)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -211,12 +211,12 @@ list(LENGTH shaders shader_len)
       add_custom_command(
         OUTPUT ${PROJECT_BINARY_DIR}/shaders/vx.spv ${PROJECT_BINARY_DIR}/shaders/px.spv ${PROJECT_BINARY_DIR}/shaders/cx.spv ${PROJECT_BINARY_DIR}/shaders/pvx.spv ${PROJECT_BINARY_DIR}/shaders/ppx.spv ${PROJECT_BINARY_DIR}/shaders/pcx.spv
         COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders"
-        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -entry vxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage vertex -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/gen.slang -o ${PROJECT_BINARY_DIR}/shaders/vx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/gen.slang
-        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -entry pxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage pixel -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/gen.slang -o ${PROJECT_BINARY_DIR}/shaders/px.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/gen.slang
-        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -entry cxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage compute -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/gen.slang -o ${PROJECT_BINARY_DIR}/shaders/cx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/gen.slang
-        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -entry vxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage vertex -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/particle.slang -o ${PROJECT_BINARY_DIR}/shaders/pvx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/particle.slang
-        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -entry pxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage pixel -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/particle.slang -o ${PROJECT_BINARY_DIR}/shaders/ppx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/particle.slang
-        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -entry cxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage compute -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/particle.slang -o ${PROJECT_BINARY_DIR}/shaders/pcx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/particle.slang
+        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/../../silver/usr/slang/slangc -entry vxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage vertex -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/gen.slang -o ${PROJECT_BINARY_DIR}/shaders/vx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/gen.slang
+        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/../../silver/usr/slang/slangc -entry pxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage pixel -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/gen.slang -o ${PROJECT_BINARY_DIR}/shaders/px.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/gen.slang
+        # COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SD/bin/slangc -entry cxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage compute -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/gen.slang -o ${PROJECT_BINARY_DIR}/shaders/cx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/gen.slang
+        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/../../silver/usr/slang/slangc -entry vxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage vertex -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/particle.slang -o ${PROJECT_BINARY_DIR}/shaders/pvx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/particle.slang
+        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/../../silver/usr/slang/slangc -entry pxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage pixel -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/particle.slang -o ${PROJECT_BINARY_DIR}/shaders/ppx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/particle.slang
+        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/../../silver/usr/slang/slangc -entry cxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage compute -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/particle.slang -o ${PROJECT_BINARY_DIR}/shaders/pcx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/particle.slang
         )
       list(APPEND SPIRV_BINARY_FILES ${PROJECT_BINARY_DIR}/shaders/vx.spv ${PROJECT_BINARY_DIR}/shaders/px.spv ${PROJECT_BINARY_DIR}/shaders/cx.spv ${PROJECT_BINARY_DIR}/shaders/pvx.spv ${PROJECT_BINARY_DIR}/shaders/ppx.spv ${PROJECT_BINARY_DIR}/shaders/pcx.spv)
     set_source_files_properties(${SPIRV_BINARY_FILES} PROPERTIES GENERATED TRUE)

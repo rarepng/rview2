@@ -66,7 +66,7 @@ bool ui::init(vkobjs &renderData) {
 
 	VkCommandBuffer imguiCommandBuffer;
 
-	if (!commandbuffer::init(renderData, renderData.cpools[1], imguiCommandBuffer)) {
+	if (!commandbuffer::init(renderData, renderData.cpools[3], imguiCommandBuffer)) {
 		return false;
 	}
 
@@ -125,7 +125,7 @@ bool ui::init(vkobjs &renderData) {
 	}
 
 	vkDestroyFence(renderData.vkdevice.device, imguiBufferFence, nullptr);
-	commandbuffer::cleanup(renderData, renderData.cpools[1], imguiCommandBuffer);
+	commandbuffer::cleanup(renderData, renderData.cpools[3], imguiCommandBuffer);
 
 	ImGui::StyleColorsDark();
 

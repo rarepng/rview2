@@ -4,6 +4,7 @@
 // #define _DEBUG
 
 #include "vkrenderer.hpp"
+#include "exp/particle.hpp"
 
 #include <backends/imgui_impl_glfw.h>
 #include <imgui.h>
@@ -94,6 +95,8 @@ bool vkrenderer::initscene() {
 	playercount.clear();
 	playercount.shrink_to_fit();
 
+	if(!particle::createeverything(mvkobjs))return false;
+
 	return true;
 }
 ui *vkrenderer::getuihandle() {
@@ -110,7 +113,7 @@ bool vkrenderer::quicksetup() {
 bool vkrenderer::deviceinit() {
 	vkb::InstanceBuilder instbuild{};
 
-	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 4).build();
+	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 3).build();
 
 	if(!instret){
 		std::cout << instret.full_error().type << std::endl;
@@ -124,7 +127,7 @@ bool vkrenderer::deviceinit() {
 	res = SDL_Vulkan_CreateSurface(mvkobjs.wind, mvkobjs.inst, nullptr, &msurface);
 
 	vkb::PhysicalDeviceSelector physicaldevsel{mvkobjs.inst};
-	auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1, 4).select();
+	auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1, 3).select();
 
 	VkPhysicalDeviceVulkan14Features physfeatures14;
 	VkPhysicalDeviceVulkan13Features physfeatures13;
@@ -145,7 +148,7 @@ bool vkrenderer::deviceinit() {
 	physfeatures14.pNext = VK_NULL_HANDLE;
 
 	vkGetPhysicalDeviceFeatures2(firstphysicaldevselret.value(), &physfeatures);
-	auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 4)
+	auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3)
 	                               .set_surface(msurface)
 	                               .set_required_features(physfeatures.features)
 	                               .set_required_features_11(physfeatures11)
@@ -287,16 +290,22 @@ bool vkrenderer::createframebuffer() {
 bool vkrenderer::createcommandpool() {
 	if (!commandpool::init(mvkobjs, mvkobjs.cpools[0]))
 		return false;
-	if (!commandpool::init(mvkobjs, mvkobjs.cpools[1]))
+	if (!commandpool::initcompute(mvkobjs, mvkobjs.cpools[1]))
 		return false;
 	if (!commandpool::init(mvkobjs, mvkobjs.cpools[2]))
+		return false;
+	if (!commandpool::init(mvkobjs, mvkobjs.cpools[3]))
 		return false;
 	return true;
 }
 bool vkrenderer::createcommandbuffer() {
 	if (!commandbuffer::init(mvkobjs, mvkobjs.cpools[0], mvkobjs.cbuffers[0]))
 		return false;
-	if (!commandbuffer::init(mvkobjs, mvkobjs.cpools[1], mvkobjs.cbuffers[1]))
+	if (!commandbuffer::init(mvkobjs, mvkobjs.cpools[0], mvkobjs.cbuffers[1]))
+		return false;
+	if (!commandbuffer::init(mvkobjs, mvkobjs.cpools[0], mvkobjs.cbuffers[2]))
+		return false;
+	if (!commandbuffer::init(mvkobjs, mvkobjs.cpools[1], mvkobjs.cbuffers[3]))
 		return false;
 	return true;
 }
@@ -313,8 +322,8 @@ bool vkrenderer::initui() {
 void vkrenderer::cleanup() {
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
 
-	commandbuffer::cleanup(mvkobjs, mvkobjs.cpools[1], mvkobjs.cbuffers[1]);
-	commandpool::cleanup(mvkobjs, mvkobjs.cpools[1]);
+	particle::destroyeveryting(mvkobjs);
+
 
 	for (const auto &i : mplayer)
 		i->cleanupmodels(mvkobjs);
@@ -322,8 +331,13 @@ void vkrenderer::cleanup() {
 
 	vksyncobjects::cleanup(mvkobjs);
 	commandbuffer::cleanup(mvkobjs, mvkobjs.cpools[0], mvkobjs.cbuffers[0]);
+	commandbuffer::cleanup(mvkobjs, mvkobjs.cpools[0], mvkobjs.cbuffers[1]);
+	commandbuffer::cleanup(mvkobjs, mvkobjs.cpools[0], mvkobjs.cbuffers[2]);
+	commandbuffer::cleanup(mvkobjs, mvkobjs.cpools[1], mvkobjs.cbuffers[3]);
 	commandpool::cleanup(mvkobjs, mvkobjs.cpools[0]);
+	commandpool::cleanup(mvkobjs, mvkobjs.cpools[1]);
 	commandpool::cleanup(mvkobjs, mvkobjs.cpools[2]);
+	commandpool::cleanup(mvkobjs, mvkobjs.cpools[3]);
 	framebuffer::cleanup(mvkobjs);
 
 	for (const auto &i : mplayer)
@@ -511,7 +525,7 @@ bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric> &x) {
 	presentinfo.pImageIndices = &imgidx;
 
 	mvkobjs.mtx2->lock();
-	size_t res2 = vkQueuePresentKHR(mvkobjs.presentQ, &presentinfo);
+	VkResult res2 = vkQueuePresentKHR(mvkobjs.presentQ, &presentinfo);
 
 	mvkobjs.mtx2->unlock();
 
@@ -766,6 +780,13 @@ void vkrenderer::updateanims() {
 }
 
 bool vkrenderer::draw() {
+
+
+
+	particle::drawcomp(mvkobjs);
+
+
+
 	double tick = static_cast<double>(SDL_GetTicks()) / 1000.0;
 	mvkobjs.tickdiff = tick - mlasttick;
 	mvkobjs.frametime = mframetimer.stop();
@@ -874,6 +895,13 @@ bool vkrenderer::draw() {
 
 	vkCmdSetViewport(mvkobjs.cbuffers[0], 0, 1, &viewport);
 	vkCmdSetScissor(mvkobjs.cbuffers[0], 0, 1, &scissor);
+
+	VkDeviceSize coffsets{0};
+	vkCmdBindPipeline(mvkobjs.cbuffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, particle::gpline);
+	vkCmdBindVertexBuffers(mvkobjs.cbuffers[0],0,1,&particle::ssbobuffsnallocs.at(0).first,&coffsets);
+	vkCmdDraw(mvkobjs.cbuffers[0],8192,1,0,0);
+
+
 	for (const auto &i : mplayer)
 		i->draw(mvkobjs);
 
@@ -881,6 +909,11 @@ bool vkrenderer::draw() {
 	lifetime2 = static_cast<double>(SDL_GetTicks()) / 1000.0;
 
 	mui.createdbgframe(mvkobjs, selectiondata);
+
+	
+
+
+
 
 	mui.render(mvkobjs, mvkobjs.cbuffers[0]);
 
@@ -906,9 +939,9 @@ bool vkrenderer::draw() {
 
 	VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	submitinfo.pWaitDstStageMask = &waitstage;
-
-	submitinfo.waitSemaphoreCount = 1;
-	submitinfo.pWaitSemaphores = &mvkobjs.presentsemaphore;
+	std::array<VkSemaphore,2> waitsemas{mvkobjs.presentsemaphore,particle::computeFinishedSemaphores.at(0)};
+	submitinfo.waitSemaphoreCount = 2;
+	submitinfo.pWaitSemaphores = waitsemas.data();
 
 	submitinfo.signalSemaphoreCount = 1;
 	submitinfo.pSignalSemaphores = &mvkobjs.rendersemaphore;

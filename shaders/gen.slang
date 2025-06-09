@@ -113,10 +113,3 @@ PXout pxmain(PXin pxin) {
 
 	return out;
 }
-
-
-[shader("compute")]
-[[numthreads(256, 1, 1)]]
-void cxmain(CXin cx) {
-	pout[cx.tid.x].position = pin[cx.tid.x].position + pin[cx.tid.x].velocity.xy * 0.0001;
-}

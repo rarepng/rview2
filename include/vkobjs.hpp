@@ -150,8 +150,8 @@ struct vkobjs {
 
 	VkRenderPass rdrenderpass = VK_NULL_HANDLE;
 
-	std::vector<VkCommandPool> cpools = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-	std::vector<VkCommandBuffer> cbuffers = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::vector<VkCommandPool> cpools = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::vector<VkCommandBuffer> cbuffers = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
 
 	VkSemaphore presentsemaphore = VK_NULL_HANDLE;
 	VkSemaphore rendersemaphore = VK_NULL_HANDLE;
