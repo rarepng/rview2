@@ -129,15 +129,15 @@ static inline bool createeverything(vkobjs &objs) {
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		vkResetCommandBuffer(objs.cbuffers[2], 0);
-		vkBeginCommandBuffer(objs.cbuffers[2], &beginInfo);
-		vkCmdCopyBuffer2(objs.cbuffers[2], &copyInfo);
-		vkEndCommandBuffer(objs.cbuffers[2]);
+		vkResetCommandBuffer(objs.cbuffers_graphics.at(2), 0);
+		vkBeginCommandBuffer(objs.cbuffers_graphics.at(2), &beginInfo);
+		vkCmdCopyBuffer2(objs.cbuffers_graphics.at(2), &copyInfo);
+		vkEndCommandBuffer(objs.cbuffers_graphics.at(2));
 
 		VkSubmitInfo submitinfo{};
 		submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitinfo.commandBufferCount = 1;
-		submitinfo.pCommandBuffers = &objs.cbuffers.at(2);
+		submitinfo.pCommandBuffers = &objs.cbuffers_graphics.at(2);
 		if (vkWaitForFences(objs.vkdevice.device, 1, &objs.renderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
 			return false;
 		}
@@ -366,7 +366,7 @@ static inline bool createeverything(vkobjs &objs) {
 	        VK_SUCCESS) {
 		return false;
 	}
-	
+
 	vkDestroyShaderModule(objs.vkdevice.device, c, VK_NULL_HANDLE);
 
 	createSyncObjects(objs);
@@ -379,18 +379,18 @@ static inline bool drawcomp(vkobjs &objs) {
 
 	vkResetFences(objs.vkdevice.device,1,&computeInFlightFences.at(0));
 
-	if (vkResetCommandBuffer(objs.cbuffers[3], 0) != VK_SUCCESS)
+	if (vkResetCommandBuffer(objs.cbuffers_compute.at(0), 0) != VK_SUCCESS)
 		return false;
 
 	VkCommandBufferBeginInfo cmdbgninfo{};
 	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-	if (vkBeginCommandBuffer(objs.cbuffers[3], &cmdbgninfo) != VK_SUCCESS)
+	if (vkBeginCommandBuffer(objs.cbuffers_compute.at(0), &cmdbgninfo) != VK_SUCCESS)
 		return false;
 
-	vkCmdBindPipeline(objs.cbuffers[3], VK_PIPELINE_BIND_POINT_COMPUTE, cpline);
+	vkCmdBindPipeline(objs.cbuffers_compute.at(0), VK_PIPELINE_BIND_POINT_COMPUTE, cpline);
 
-    vkCmdBindDescriptorSets(objs.cbuffers[3],VK_PIPELINE_BIND_POINT_COMPUTE,cplayout,0,1,&cdset,0,VK_NULL_HANDLE);
+	vkCmdBindDescriptorSets(objs.cbuffers_compute.at(0),VK_PIPELINE_BIND_POINT_COMPUTE,cplayout,0,1,&cdset,0,VK_NULL_HANDLE);
 	// VkBindDescriptorSetsInfo dsetinfo{};
 	// dsetinfo.sType = VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO;
 	// dsetinfo.layout = cplayout;
@@ -400,18 +400,18 @@ static inline bool drawcomp(vkobjs &objs) {
 	// dsetinfo.pDynamicOffsets = VK_NULL_HANDLE;
 	// dsetinfo.pNext = VK_NULL_HANDLE;
 	// dsetinfo.stageFlags = ;
-    // dsetinfo.pDescriptorSets = &cdset;
-	// vkCmdBindDescriptorSets2(objs.cbuffers[2], &dsetinfo);
+	// dsetinfo.pDescriptorSets = &cdset;
+	// vkCmdBindDescriptorSets2(objs.cbuffers_graphics.at(2), &dsetinfo);
 
-	vkCmdDispatch(objs.cbuffers[3], Ps.size() / 256, 1, 1);
+	vkCmdDispatch(objs.cbuffers_compute.at(0), Ps.size() / 256, 1, 1);
 
-	if (vkEndCommandBuffer(objs.cbuffers[3]) != VK_SUCCESS)
+	if (vkEndCommandBuffer(objs.cbuffers_compute.at(0)) != VK_SUCCESS)
 		return false;
 
 	VkSubmitInfo submitinfo{};
 	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &objs.cbuffers.at(3);
+	submitinfo.pCommandBuffers = &objs.cbuffers_compute.at(0);
 	submitinfo.signalSemaphoreCount = 1;
 	submitinfo.pSignalSemaphores = computeFinishedSemaphores.data();
 

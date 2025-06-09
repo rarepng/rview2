@@ -323,15 +323,15 @@ void genericmodel::drawinstanced(vkobjs &objs, VkPipelineLayout &vkplayout, VkPi
 	VkDeviceSize offset = 0;
 	std::vector<std::vector<vkpushconstants>> pushes(mgltfobjs.vbos.size());
 
-	vkCmdBindDescriptorSets(objs.cbuffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1,
+	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1,
 	                        &mgltfobjs.texpls.dset, 0, nullptr);
 
 	for (size_t i{0}; i < mgltfobjs.vbos.size(); i++) {
 		pushes[i].reserve(mgltfobjs.vbos.at(i).size());
 		pushes[i].resize(mgltfobjs.vbos.at(i).size());
 
-		meshjointtype[i] ? vkCmdBindPipeline(objs.cbuffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplineuint)
-		: vkCmdBindPipeline(objs.cbuffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkpline);
+		meshjointtype[i] ? vkCmdBindPipeline(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, vkplineuint)
+		: vkCmdBindPipeline(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, vkpline);
 
 		for (size_t j{0}; j < mgltfobjs.vbos.at(i).size(); j++) {
 			pushes[i][j].stride = stride;
@@ -348,16 +348,16 @@ void genericmodel::drawinstanced(vkobjs &objs, VkPipelineLayout &vkplayout, VkPi
 			}
 			pushes[i][j].t = static_cast<float>(SDL_GetTicks()) / 1000.0f;
 
-			vkCmdPushConstants(objs.cbuffers[0], vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants),
+			vkCmdPushConstants(objs.cbuffers_graphics.at(0), vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants),
 			                   &pushes.at(i).at(j));
 			// rework bindings
 			for (size_t k{0}; k < mgltfobjs.vbos.at(i).at(j).size(); k++) {
 				if (mgltfobjs.vbos.at(i).at(j).at(k).buffer != VK_NULL_HANDLE)
-					vkCmdBindVertexBuffers(objs.cbuffers[0], k, 1, &mgltfobjs.vbos.at(i).at(j).at(k).buffer,
+					vkCmdBindVertexBuffers(objs.cbuffers_graphics.at(0), k, 1, &mgltfobjs.vbos.at(i).at(j).at(k).buffer,
 					                       &offset);
 			}
-			vkCmdBindIndexBuffer(objs.cbuffers[0], mgltfobjs.ebos.at(i).at(j).buffer, 0, VK_INDEX_TYPE_UINT16);
-			vkCmdDrawIndexed(objs.cbuffers[0], static_cast<uint32_t>(gettricount(i, j) * 3), instancecount, 0, 0, 0);
+			vkCmdBindIndexBuffer(objs.cbuffers_graphics.at(0), mgltfobjs.ebos.at(i).at(j).buffer, 0, VK_INDEX_TYPE_UINT16);
+			vkCmdDrawIndexed(objs.cbuffers_graphics.at(0), static_cast<uint32_t>(gettricount(i, j) * 3), instancecount, 0, 0, 0);
 		}
 	}
 }

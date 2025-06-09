@@ -1,6 +1,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "vktexture.hpp"
-#include "commandbuffer.hpp"
+#include "vk/commandbuffer.hpp"
 #include "logger.hpp"
 #include <VkBootstrap.h>
 #include <cstring>
@@ -107,13 +107,13 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 	stagingbuffershaderbarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	stagingbuffershaderbarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-	VkCommandBuffer stagingcommandbuffer;
-	if (!commandbuffer::init(rdata, rdata.cpools[2], stagingcommandbuffer)) {
+	std::array<VkCommandBuffer,1> stagingcommandbuffer;
+	if (!commandbuffer::create(rdata, rdata.cpools_graphics.at(1), stagingcommandbuffer)) {
 		logger::log(0, "crashed in texture at commandbuffer::init");
 		return false;
 	}
 
-	if (vkResetCommandBuffer(stagingcommandbuffer, 0) != VK_SUCCESS) {
+	if (vkResetCommandBuffer(stagingcommandbuffer.at(0), 0) != VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vkResetCommandBuffer");
 		return false;
 	}
@@ -122,19 +122,19 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 	cmdbegininfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdbegininfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	if (vkBeginCommandBuffer(stagingcommandbuffer, &cmdbegininfo) != VK_SUCCESS) {
+	if (vkBeginCommandBuffer(stagingcommandbuffer.at(0), &cmdbegininfo) != VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vkBeginCommandBuffer");
 		return false;
 	}
 
-	vkCmdPipelineBarrier(stagingcommandbuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
+	vkCmdPipelineBarrier(stagingcommandbuffer.at(0), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
 	                     nullptr, 0, nullptr, 1, &stagingbuffertransferbarrier);
-	vkCmdCopyBufferToImage(stagingcommandbuffer, stagingbuffer, texdata.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+	vkCmdCopyBufferToImage(stagingcommandbuffer.at(0), stagingbuffer, texdata.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
 	                       &stagingbuffercopy);
-	vkCmdPipelineBarrier(stagingcommandbuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+	vkCmdPipelineBarrier(stagingcommandbuffer.at(0), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
 	                     0, nullptr, 0, nullptr, 1, &stagingbuffershaderbarrier);
 
-	if (vkEndCommandBuffer(stagingcommandbuffer) != VK_SUCCESS) {
+	if (vkEndCommandBuffer(stagingcommandbuffer.at(0)) != VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vkEndCommandBuffer");
 		return false;
 	}
@@ -147,7 +147,7 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 	submitinfo.signalSemaphoreCount = 0;
 	submitinfo.pSignalSemaphores = nullptr;
 	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &stagingcommandbuffer;
+	submitinfo.pCommandBuffers = stagingcommandbuffer.data();
 
 	VkFence stagingbufferfence;
 
@@ -175,7 +175,7 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 	}
 
 	vkDestroyFence(rdata.vkdevice.device, stagingbufferfence, nullptr);
-	commandbuffer::cleanup(rdata, rdata.cpools[2], stagingcommandbuffer);
+	commandbuffer::destroy(rdata, rdata.cpools_graphics.at(1), stagingcommandbuffer);
 	vmaDestroyBuffer(rdata.alloc, stagingbuffer, stagingbufferalloc);
 
 	VkImageViewCreateInfo texviewinfo{};
@@ -397,13 +397,13 @@ bool vktexture::loadtexture(vkobjs &rdata, std::vector<texdata> &texdata, fastgl
 		stagingbuffershaderbarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		stagingbuffershaderbarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-		VkCommandBuffer stagingcommandbuffer;
-		if (!commandbuffer::init(rdata, rdata.cpools[2], stagingcommandbuffer)) {
+		std::array<VkCommandBuffer,1> stagingcommandbuffer;
+		if (!commandbuffer::create(rdata, rdata.cpools_graphics.at(1), stagingcommandbuffer)) {
 			logger::log(0, "crashed in texture at commandbuffer::init");
 			return false;
 		}
 
-		if (vkResetCommandBuffer(stagingcommandbuffer, 0) != VK_SUCCESS) {
+		if (vkResetCommandBuffer(stagingcommandbuffer.at(0), 0) != VK_SUCCESS) {
 			logger::log(0, "crashed in texture at vkResetCommandBuffer");
 			return false;
 		}
@@ -412,19 +412,19 @@ bool vktexture::loadtexture(vkobjs &rdata, std::vector<texdata> &texdata, fastgl
 		cmdbegininfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		cmdbegininfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-		if (vkBeginCommandBuffer(stagingcommandbuffer, &cmdbegininfo) != VK_SUCCESS) {
+		if (vkBeginCommandBuffer(stagingcommandbuffer.at(0), &cmdbegininfo) != VK_SUCCESS) {
 			logger::log(0, "crashed in texture at vkBeginCommandBuffer");
 			return false;
 		}
 
-		vkCmdPipelineBarrier(stagingcommandbuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
+		vkCmdPipelineBarrier(stagingcommandbuffer.at(0), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
 		                     nullptr, 0, nullptr, 1, &stagingbuffertransferbarrier);
-		vkCmdCopyBufferToImage(stagingcommandbuffer, stagingbuffer, texdata[i].img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		vkCmdCopyBufferToImage(stagingcommandbuffer.at(0), stagingbuffer, texdata[i].img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		                       1, &stagingbuffercopy);
-		vkCmdPipelineBarrier(stagingcommandbuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+		vkCmdPipelineBarrier(stagingcommandbuffer.at(0), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
 		                     0, nullptr, 0, nullptr, 1, &stagingbuffershaderbarrier);
 
-		if (vkEndCommandBuffer(stagingcommandbuffer) != VK_SUCCESS) {
+		if (vkEndCommandBuffer(stagingcommandbuffer.at(0)) != VK_SUCCESS) {
 			logger::log(0, "crashed in texture at vkEndCommandBuffer");
 			return false;
 		}
@@ -437,7 +437,7 @@ bool vktexture::loadtexture(vkobjs &rdata, std::vector<texdata> &texdata, fastgl
 		submitinfo.signalSemaphoreCount = 0;
 		submitinfo.pSignalSemaphores = nullptr;
 		submitinfo.commandBufferCount = 1;
-		submitinfo.pCommandBuffers = &stagingcommandbuffer;
+		submitinfo.pCommandBuffers = stagingcommandbuffer.data();
 
 		VkFence stagingbufferfence;
 
@@ -468,7 +468,7 @@ bool vktexture::loadtexture(vkobjs &rdata, std::vector<texdata> &texdata, fastgl
 		}
 
 		vkDestroyFence(rdata.vkdevice.device, stagingbufferfence, nullptr);
-		commandbuffer::cleanup(rdata, rdata.cpools[2], stagingcommandbuffer);
+		commandbuffer::destroy(rdata, rdata.cpools_graphics.at(1), stagingcommandbuffer);
 		vmaDestroyBuffer(rdata.alloc, stagingbuffer, stagingbufferalloc);
 
 		VkImageViewCreateInfo texviewinfo{};

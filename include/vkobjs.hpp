@@ -8,6 +8,7 @@
 #include <vector>
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
+#include <span>
 
 
 
@@ -88,7 +89,7 @@ struct vkobjs {
 	inline static const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
 
 	SDL_Window *wind = nullptr;
-	
+
 	const SDL_DisplayMode *rdmode;
 	bool fullscreen{false};
 	int width{0};
@@ -150,8 +151,10 @@ struct vkobjs {
 
 	VkRenderPass rdrenderpass = VK_NULL_HANDLE;
 
-	std::vector<VkCommandPool> cpools = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-	std::vector<VkCommandBuffer> cbuffers = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::array<VkCommandPool,3> cpools_graphics = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::array<VkCommandPool,1> cpools_compute = {VK_NULL_HANDLE};
+	std::array<VkCommandBuffer,3> cbuffers_graphics = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::array<VkCommandBuffer,1> cbuffers_compute = {VK_NULL_HANDLE};
 
 	VkSemaphore presentsemaphore = VK_NULL_HANDLE;
 	VkSemaphore rendersemaphore = VK_NULL_HANDLE;
@@ -167,23 +170,23 @@ struct vkgltfobjs {
 	std::vector<texdata> texs{};
 	texdatapls texpls{};
 };
-namespace rpool{
-	 static inline bool create(const std::vector<VkDescriptorPoolSize>& pools,const VkDevice& dev,VkDescriptorPool* dpool){
-		VkDescriptorPoolCreateInfo descriptorPool{};
-		descriptorPool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		descriptorPool.poolSizeCount = pools.size();
-		descriptorPool.pPoolSizes = pools.data();
-		descriptorPool.maxSets = 1024; //not sure
+namespace rpool {
+static inline bool create(const std::vector<VkDescriptorPoolSize>& pools,const VkDevice& dev,VkDescriptorPool* dpool) {
+	VkDescriptorPoolCreateInfo descriptorPool{};
+	descriptorPool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	descriptorPool.poolSizeCount = pools.size();
+	descriptorPool.pPoolSizes = pools.data();
+	descriptorPool.maxSets = 1024; //not sure
 
-		return vkCreateDescriptorPool(dev, &descriptorPool, nullptr, dpool) == VK_SUCCESS;
-	 }
-	static inline void destroy(const VkDevice& dev,VkDescriptorPool dpool){
-		vkDestroyDescriptorPool(dev, dpool, nullptr);
-	 }
+	return vkCreateDescriptorPool(dev, &descriptorPool, nullptr, dpool) == VK_SUCCESS;
+}
+static inline void destroy(const VkDevice& dev,VkDescriptorPool dpool) {
+	vkDestroyDescriptorPool(dev, dpool, nullptr);
+}
 };
-namespace rbuffer{
-  static inline bool create(const VkDevice& dev,VmaAllocator alloc,std::vector<VkBufferCreateInfo> binfos,std::vector<VkBuffer> buffs){
+namespace rbuffer {
+static inline bool create(const VkDevice& dev,VmaAllocator alloc,std::vector<VkBufferCreateInfo> binfos,std::vector<VkBuffer> buffs) {
 	// for()
 	return true;
-  }
+}
 };

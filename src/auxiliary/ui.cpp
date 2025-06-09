@@ -10,7 +10,7 @@
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 
-#include "commandbuffer.hpp"
+#include "vk/commandbuffer.hpp"
 #include "ui.hpp"
 
 bool ui::init(vkobjs &renderData) {
@@ -64,13 +64,13 @@ bool ui::init(vkobjs &renderData) {
 
 	ImGui_ImplVulkan_Init(&imguiIinitInfo);
 
-	VkCommandBuffer imguiCommandBuffer;
+	std::array<VkCommandBuffer,1> imguiCommandBuffer;
 
-	if (!commandbuffer::init(renderData, renderData.cpools[3], imguiCommandBuffer)) {
+	if (!commandbuffer::create(renderData, renderData.cpools_graphics.at(2), imguiCommandBuffer)) {
 		return false;
 	}
 
-	if (vkResetCommandBuffer(imguiCommandBuffer, 0) != VK_SUCCESS) {
+	if (vkResetCommandBuffer(imguiCommandBuffer.at(0), 0) != VK_SUCCESS) {
 		return false;
 	}
 
@@ -78,7 +78,7 @@ bool ui::init(vkobjs &renderData) {
 	cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	if (vkBeginCommandBuffer(imguiCommandBuffer, &cmdBeginInfo) != VK_SUCCESS) {
+	if (vkBeginCommandBuffer(imguiCommandBuffer.at(0), &cmdBeginInfo) != VK_SUCCESS) {
 		return false;
 	}
 
@@ -86,7 +86,7 @@ bool ui::init(vkobjs &renderData) {
 	ImGui_ImplVulkan_CreateFontsTexture();
 	renderData.mtx2->unlock();
 
-	if (vkEndCommandBuffer(imguiCommandBuffer) != VK_SUCCESS) {
+	if (vkEndCommandBuffer(imguiCommandBuffer.at(0)) != VK_SUCCESS) {
 		return false;
 	}
 
@@ -98,7 +98,7 @@ bool ui::init(vkobjs &renderData) {
 	submitInfo.signalSemaphoreCount = 0;
 	submitInfo.pSignalSemaphores = nullptr;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &imguiCommandBuffer;
+	submitInfo.pCommandBuffers = imguiCommandBuffer.data();
 
 	VkFence imguiBufferFence;
 
@@ -125,7 +125,7 @@ bool ui::init(vkobjs &renderData) {
 	}
 
 	vkDestroyFence(renderData.vkdevice.device, imguiBufferFence, nullptr);
-	commandbuffer::cleanup(renderData, renderData.cpools[3], imguiCommandBuffer);
+	commandbuffer::destroy(renderData, renderData.cpools_graphics.at(2), imguiCommandBuffer);
 
 	ImGui::StyleColorsDark();
 
