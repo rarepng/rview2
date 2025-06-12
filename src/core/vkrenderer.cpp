@@ -125,6 +125,10 @@ bool vkrenderer::deviceinit() {
 
 	bool res{false};
 	res = SDL_Vulkan_CreateSurface(mvkobjs.wind, mvkobjs.inst, nullptr, &msurface);
+	if(!res) {
+		std::cout << "SDL failed to create surface" << std::endl;
+		return false;
+	}
 
 	vkb::PhysicalDeviceSelector physicaldevsel{mvkobjs.inst};
 	auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1, 3).select();
@@ -290,7 +294,7 @@ bool vkrenderer::createframebuffer() {
 bool vkrenderer::createcommandpool() {
 	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_graphics,vkb::QueueType::graphics))
 		return false;
-	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_compute,vkb::QueueType::graphics))
+	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_compute,vkb::QueueType::compute))
 		return false;
 	return true;
 }
@@ -490,11 +494,6 @@ bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric> &x) {
 
 	submitinfo.commandBufferCount = 1;
 	submitinfo.pCommandBuffers = &mvkobjs.cbuffers_graphics.at(0);
-
-	// VkSemaphoreWaitInfo swinfo{};
-	// swinfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
-	// swinfo.pSemaphores = &mvkobjs.rdpresentsemaphore;
-	// swinfo.semaphoreCount = 1;
 
 	mvkobjs.mtx2->lock();
 	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.renderfence) != VK_SUCCESS) {
@@ -835,14 +834,10 @@ bool vkrenderer::draw() {
 		}
 	}
 
-	VkClearValue colorclearvalue;
-	colorclearvalue.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
-
-	VkClearValue depthvalue;
-	depthvalue.depthStencil.depth = 1.0f;
-
-	VkClearValue clearvals[] = {colorclearvalue, depthvalue};
-
+	std::array<VkClearValue, 2> colorclearvalue{
+		VkClearValue{.color={0.0f, 0.0f, 0.0f, 1.0f}},//no idea why i have to put VkClearValue here but not in the secon one, doesnt work without it
+		{.depthStencil={1.0f,0}}
+	};
 	VkRenderPassBeginInfo rpinfo{};
 	rpinfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	rpinfo.renderPass = mvkobjs.rdrenderpass;
@@ -853,7 +848,7 @@ bool vkrenderer::draw() {
 	rpinfo.framebuffer = mvkobjs.fbuffers[imgidx];
 
 	rpinfo.clearValueCount = 2;
-	rpinfo.pClearValues = clearvals;
+	rpinfo.pClearValues = colorclearvalue.data();
 
 	VkViewport viewport{};
 	viewport.x = 0.0f;
