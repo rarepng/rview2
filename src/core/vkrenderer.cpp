@@ -838,6 +838,12 @@ bool vkrenderer::draw() {
 		VkClearValue{.color={0.0f, 0.0f, 0.0f, 1.0f}},//no idea why i have to put VkClearValue here but not in the secon one, doesnt work without it
 		{.depthStencil={1.0f,0}}
 	};
+	
+	// VkRenderingInfo rinfo{};
+	// rinfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+	// rinfo.renderArea.extent = mvkobjs.schain.extent;
+	// rinfo.renderArea.offset = {0, 0};
+
 	VkRenderPassBeginInfo rpinfo{};
 	rpinfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	rpinfo.renderPass = mvkobjs.rdrenderpass;
@@ -875,6 +881,8 @@ bool vkrenderer::draw() {
 		return false;
 
 	vkCmdBeginRenderPass(mvkobjs.cbuffers_graphics.at(0), &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
+	// try switching to rendering instead of renderpass
+	// vkCmdBeginRendering()
 
 	vkCmdSetViewport(mvkobjs.cbuffers_graphics.at(0), 0, 1, &viewport);
 	vkCmdSetScissor(mvkobjs.cbuffers_graphics.at(0), 0, 1, &scissor);
