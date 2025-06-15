@@ -133,7 +133,7 @@ struct vkobjs {
 
 	std::vector<VkImage> schainimgs;
 	std::vector<VkImageView> schainimgviews;
-	std::vector<VkFramebuffer> fbuffers;
+	std::vector<VkFramebuffer> fbuffers = {VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
 
 	VkQueue graphicsQ = VK_NULL_HANDLE;
 	VkQueue presentQ = VK_NULL_HANDLE;

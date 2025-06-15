@@ -20,7 +20,7 @@
 
 #include "vk/commandbuffer.hpp"
 #include "vk/commandpool.hpp"
-#include "framebuffer.hpp"
+#include "vk/framebuffer.hpp"
 #include "renderpass.hpp"
 #include "vksyncobjects.hpp"
 // #ifdef _DEBUG
@@ -263,7 +263,7 @@ bool vkrenderer::recreateswapchain() {
 	SDL_GetWindowSize(mvkobjs.wind, &mvkobjs.width, &mvkobjs.height);
 
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
-	framebuffer::cleanup(mvkobjs);
+	framebuffer::destroy(mvkobjs.vkdevice.device,mvkobjs.fbuffers);
 	vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.rddepthimageview, nullptr);
 	vmaDestroyImage(mvkobjs.alloc, mvkobjs.rddepthimage, mvkobjs.rddepthimagealloc);
 
@@ -287,7 +287,7 @@ bool vkrenderer::createrenderpass() {
 	return true;
 }
 bool vkrenderer::createframebuffer() {
-	if (!framebuffer::init(mvkobjs))
+	if (!framebuffer::create(mvkobjs))
 		return false;
 	return true;
 }
@@ -330,7 +330,13 @@ void vkrenderer::cleanup() {
 	commandbuffer::destroy(mvkobjs, mvkobjs.cpools_compute.at(0), mvkobjs.cbuffers_compute);
 	commandpool::destroy(mvkobjs, mvkobjs.cpools_graphics);
 	commandpool::destroy(mvkobjs, mvkobjs.cpools_compute);
-	framebuffer::cleanup(mvkobjs);
+	// for(auto& x:mvkobjs.fbuffers){
+	// vkDestroyFramebuffer(mvkobjs.vkdevice.device,x,nullptr);
+	// }
+	// vkDestroyFramebuffer(mvkobjs.vkdevice.device,mvkobjs.fbuffers.at(0),nullptr);
+	// vkDestroyFramebuffer(mvkobjs.vkdevice.device,mvkobjs.fbuffers.at(1),nullptr);
+	// vkDestroyFramebuffer(mvkobjs.vkdevice.device,mvkobjs.fbuffers.at(2),nullptr);
+	framebuffer::destroy(mvkobjs.vkdevice.device,mvkobjs.fbuffers);
 
 	for (const auto &i : mplayer)
 		i->cleanuplines(mvkobjs);
