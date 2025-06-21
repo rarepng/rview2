@@ -18,7 +18,7 @@ static VkPipelineLayout gplayout{};
 static VkDescriptorSetLayout cdlayout{};
 static VkDescriptorSet cdset{};
 
-static std::vector<P> Ps(8192);
+static std::vector<P> Ps(7999);
 
 static std::vector<VkSemaphore> computeFinishedSemaphores(1);
 static std::vector<VkFence> computeInFlightFences(1);

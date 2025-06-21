@@ -12,12 +12,12 @@ struct VXin {
 	uint4 joi0 : JOINTS_0;
 	float4 wei0 : WEIGHTS_0;
 	// float2 tex1 : TEXCOORD_1;
+	// uint4 joi1 : JOINTS_1;
+	// float4 wei1 : WEIGHTS_1;
 	// float2 tex2 : TEXCOORD_2;
 	// float2 tex3 : TEXCOORD_3;
 	// float2 tex4 : TEXCOORD_4;
 	// float2 tex5 : TEXCOORD_5;
-	// uint4 joi1 : JOINTS_1;
-	// float4 wei1 : WEIGHTS_1;
 }
 struct Particle {
 	float2 position;

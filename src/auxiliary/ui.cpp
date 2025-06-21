@@ -78,18 +78,6 @@ bool ui::init(vkobjs &renderData) {
 	cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	if (vkBeginCommandBuffer(imguiCommandBuffer.at(0), &cmdBeginInfo) != VK_SUCCESS) {
-		return false;
-	}
-
-	renderData.mtx2->lock();
-	ImGui_ImplVulkan_CreateFontsTexture();
-	renderData.mtx2->unlock();
-
-	if (vkEndCommandBuffer(imguiCommandBuffer.at(0)) != VK_SUCCESS) {
-		return false;
-	}
-
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.pWaitDstStageMask = nullptr;
