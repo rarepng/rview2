@@ -171,7 +171,7 @@ struct vkgltfobjs {
 	texdatapls texpls{};
 };
 namespace rpool {
-static inline bool create(const std::vector<VkDescriptorPoolSize>& pools,const VkDevice& dev,VkDescriptorPool* dpool) {
+static inline bool create(const std::span<VkDescriptorPoolSize>& pools,const VkDevice& dev,VkDescriptorPool* dpool) {
 	VkDescriptorPoolCreateInfo descriptorPool{};
 	descriptorPool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	descriptorPool.poolSizeCount = pools.size();

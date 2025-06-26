@@ -43,20 +43,11 @@ bool ubo::init(vkobjs &mvkobjs, std::vector<ubodata> &ubodata) {
 	if (vkCreateDescriptorSetLayout(mvkobjs.vkdevice.device, &uboinfo, nullptr, &ubodata[0].dlayout) !=
 	        VK_SUCCESS)
 		return false;
+	std::array<VkDescriptorPoolSize,1> poolsize{};
+	poolsize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolsize[0].descriptorCount = 1 * (ubodata.size() * sizeof(glm::mat4) + sizeof(unsigned int));
 
-	VkDescriptorPoolSize poolsize{};
-	poolsize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolsize.descriptorCount = 1 * (ubodata.size() * sizeof(glm::mat4) + sizeof(unsigned int));
-
-	VkDescriptorPoolCreateInfo dpoolinfo{};
-	dpoolinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	dpoolinfo.poolSizeCount = 1;
-	dpoolinfo.pPoolSizes = &poolsize;
-	dpoolinfo.maxSets = 1;
-
-	if (vkCreateDescriptorPool(mvkobjs.vkdevice.device, &dpoolinfo, nullptr, &ubodata[0].dpool) !=
-	        VK_SUCCESS)
-		return false;
+	rpool::create(poolsize,mvkobjs.vkdevice.device, &ubodata[0].dpool);
 
 	VkDescriptorSetAllocateInfo dallocinfo{};
 	dallocinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
