@@ -49,7 +49,7 @@ struct ebodata {
 	VmaAllocation salloc = nullptr;
 };
 
-struct ubodata {
+struct ubodata {                                                                                                                                                              
 	size_t size{0};
 	VkBuffer buffer = VK_NULL_HANDLE;
 	VmaAllocation alloc = nullptr;
@@ -84,7 +84,7 @@ struct vkpushconstants {
 	float t{0.0f};
 };
 
-struct vkobjs {
+struct rvk {
 
 	inline static const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
 
@@ -160,7 +160,12 @@ struct vkobjs {
 	VkSemaphore rendersemaphore = VK_NULL_HANDLE;
 	VkFence renderfence = VK_NULL_HANDLE;
 	VkFence uploadfence = VK_NULL_HANDLE;
+	
+	inline static constexpr size_t idxubopool{0};
+	inline static constexpr size_t idxtexpool{1};
+	inline static constexpr size_t idxssbopool{2};
 
+	std::array<VkDescriptorPool,3> dpools = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
 	VkDescriptorPool imguidpool = VK_NULL_HANDLE;
 };
 

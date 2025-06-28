@@ -4,7 +4,7 @@
 #include <vulkan/vulkan.h>
 class ubo {
 public:
-	static bool init(vkobjs &mvkobjs, std::vector<ubodata> &ubodata);
-	static void upload(vkobjs &mvkobjs, std::vector<ubodata> &ubodata, std::vector<glm::mat4> mats);
-	static void cleanup(vkobjs &mvkobjs, std::vector<ubodata> &ubodata);
+	static bool init(rvk &mvkobjs, std::vector<ubodata> &ubodata);
+	static void upload(rvk &mvkobjs, std::vector<ubodata> &ubodata, std::vector<glm::mat4> mats);
+	static void cleanup(rvk &mvkobjs, std::vector<ubodata> &ubodata);
 };

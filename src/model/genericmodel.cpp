@@ -15,7 +15,7 @@
 #include "vkebo.hpp"
 #include "vkvbo.hpp"
 
-bool genericmodel::loadmodel(vkobjs &objs, std::string fname) {
+bool genericmodel::loadmodel(rvk &objs, std::string fname) {
 
 	fastgltf::Parser fastparser{};
 	auto buff = fastgltf::MappedGltfFile::FromPath(fname);
@@ -164,7 +164,7 @@ std::vector<unsigned int> genericmodel::getnodetojoint() {
 	return mnodetojoint;
 }
 
-void genericmodel::createvboebo(vkobjs &objs) { //& joint vector
+void genericmodel::createvboebo(rvk &objs) { //& joint vector
 
 	jointuintofx.reserve(mmodel2.meshes.size());
 	jointuintofx.resize(mmodel2.meshes.size());
@@ -265,7 +265,7 @@ void genericmodel::createvboebo(vkobjs &objs) { //& joint vector
 	}
 }
 
-void genericmodel::uploadvboebo(vkobjs &objs, VkCommandBuffer &cbuffer) {
+void genericmodel::uploadvboebo(rvk &objs, VkCommandBuffer &cbuffer) {
 	for (size_t i{0}; i < mmodel2.meshes.size(); i++) {
 		for (auto it = mmodel2.meshes[i].primitives.begin(); it < mmodel2.meshes[i].primitives.end(); it++) {
 
@@ -318,7 +318,7 @@ size_t genericmodel::gettricount(size_t i, size_t j) {
 	return c;
 }
 
-void genericmodel::drawinstanced(vkobjs &objs, VkPipelineLayout &vkplayout, VkPipeline &vkpline,
+void genericmodel::drawinstanced(rvk &objs, VkPipelineLayout &vkplayout, VkPipeline &vkpline,
                                  VkPipeline &vkplineuint, int instancecount, int stride) {
 	VkDeviceSize offset = 0;
 	std::vector<std::vector<vkpushconstants>> pushes(mgltfobjs.vbos.size());
@@ -362,7 +362,7 @@ void genericmodel::drawinstanced(vkobjs &objs, VkPipelineLayout &vkplayout, VkPi
 	}
 }
 
-void genericmodel::cleanup(vkobjs &objs) {
+void genericmodel::cleanup(rvk &objs) {
 
 	for (size_t i{0}; i < mgltfobjs.vbos.size(); i++) {
 		for (size_t j{0}; j < mgltfobjs.vbos.at(i).size(); j++) {

@@ -102,7 +102,7 @@ bool vkrenderer::initscene() {
 ui *vkrenderer::getuihandle() {
 	return &mui;
 }
-vkobjs &vkrenderer::getvkobjs() {
+rvk &vkrenderer::getvkobjs() {
 	return mvkobjs;
 }
 bool vkrenderer::quicksetup() {

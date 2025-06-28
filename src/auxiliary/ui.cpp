@@ -13,7 +13,7 @@
 #include "vk/commandbuffer.hpp"
 #include "ui.hpp"
 
-bool ui::init(vkobjs &renderData) {
+bool ui::init(rvk &renderData) {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	// std::shared_ptr<ImGuiContext> x=std::make_shared<ImGuiContext>(ImGui::CreateContext());
@@ -140,7 +140,7 @@ bool ui::init(vkobjs &renderData) {
 	return true;
 }
 
-void ui::createdbgframe(vkobjs &renderData, selection &settings) {
+void ui::createdbgframe(rvk &renderData, selection &settings) {
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
 	ImGui::NewFrame();
@@ -750,7 +750,7 @@ void ui::createdbgframe(vkobjs &renderData, selection &settings) {
 	}
 }
 
-bool ui::createloadingscreen(vkobjs &mvkobjs) {
+bool ui::createloadingscreen(rvk &mvkobjs) {
 
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
@@ -780,7 +780,7 @@ bool ui::createloadingscreen(vkobjs &mvkobjs) {
 	return true;
 }
 
-bool ui::createpausebuttons(vkobjs &mvkobjs) {
+bool ui::createpausebuttons(rvk &mvkobjs) {
 
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
@@ -857,7 +857,7 @@ void ui::addchat(std::string s) {
 	chattxts.push_back(s);
 }
 
-void ui::render(vkobjs &renderData, VkCommandBuffer &cbuffer) {
+void ui::render(rvk &renderData, VkCommandBuffer &cbuffer) {
 	ImGui::Render();
 
 	// renderData.mtx2.lock();
@@ -865,7 +865,7 @@ void ui::render(vkobjs &renderData, VkCommandBuffer &cbuffer) {
 	// renderData.mtx2.unlock();
 }
 
-void ui::cleanup(vkobjs &mvkobjs) {
+void ui::cleanup(rvk &mvkobjs) {
 	ImGui_ImplVulkan_Shutdown();
 	vkDestroyDescriptorPool(mvkobjs.vkdevice.device, mvkobjs.imguidpool, nullptr);
 	ImGui_ImplSDL3_Shutdown();

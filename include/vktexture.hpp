@@ -5,10 +5,10 @@
 #include <fastgltf/core.hpp>
 class vktexture {
 public:
-	static bool loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &texdatapls, std::string texfile);
-	static bool loadtexture(vkobjs &rdata, std::vector<texdata> &texdata, fastgltf::Asset &mmodel);
-	static bool loadtexlayoutpool(vkobjs &rdata, std::vector<texdata> &texdata, texdatapls &texdatapls,
+	static bool loadtexturefile(rvk &rdata, texdata &texdata, texdatapls &texdatapls, std::string texfile);
+	static bool loadtexture(rvk &rdata, std::vector<texdata> &texdata, fastgltf::Asset &mmodel);
+	static bool loadtexlayoutpool(rvk &rdata, std::vector<texdata> &texdata, texdatapls &texdatapls,
 	                              fastgltf::Asset &mmodel);
-	static void cleanup(vkobjs &rdata, texdata &texdata);
-	static void cleanuppls(vkobjs &rdata, texdatapls &texdatapls);
+	static void cleanup(rvk &rdata, texdata &texdata);
+	static void cleanuppls(rvk &rdata, texdatapls &texdatapls);
 };

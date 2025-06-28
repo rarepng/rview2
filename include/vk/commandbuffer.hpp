@@ -4,7 +4,7 @@
 #include <span>
 namespace commandbuffer {
 
-static inline bool create(vkobjs &rdata, VkCommandPool &vkpool,const std::span<VkCommandBuffer> &cbuffs) {
+static inline bool create(rvk &rdata, VkCommandPool &vkpool,const std::span<VkCommandBuffer> &cbuffs) {
 	VkCommandBufferAllocateInfo bufferallocinfo{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 		.commandPool = vkpool,
@@ -17,7 +17,7 @@ static inline bool create(vkobjs &rdata, VkCommandPool &vkpool,const std::span<V
 	return true;
 }
 
-static inline void destroy(vkobjs &rdata, VkCommandPool &vkpool,const std::span<VkCommandBuffer> &cbuffs) {
+static inline void destroy(rvk &rdata, VkCommandPool &vkpool,const std::span<VkCommandBuffer> &cbuffs) {
 	vkFreeCommandBuffers(rdata.vkdevice.device, vkpool, cbuffs.size(), cbuffs.data());
 }
 

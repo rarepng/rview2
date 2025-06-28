@@ -5,7 +5,7 @@
 #include "buffer/ssbo.hpp"
 #include "ubo.hpp"
 
-bool playoutgeneric::setup(vkobjs &objs, std::string fname, size_t count, std::string vfile, std::string ffile) {
+bool playoutgeneric::setup(rvk &objs, std::string fname, size_t count, std::string vfile, std::string ffile) {
 	if (!createubo(objs))
 		return false;
 	if (!loadmodel(objs, fname))
@@ -25,14 +25,14 @@ bool playoutgeneric::setup(vkobjs &objs, std::string fname, size_t count, std::s
 	return true;
 }
 
-bool playoutgeneric::loadmodel(vkobjs &objs, std::string fname) {
+bool playoutgeneric::loadmodel(rvk &objs, std::string fname) {
 	mgltf = std::make_shared<genericmodel>();
 	if (!mgltf->loadmodel(objs, fname))
 		return false;
 	return true;
 }
 
-bool playoutgeneric::createinstances(vkobjs &objs, size_t count, bool rand) {
+bool playoutgeneric::createinstances(rvk &objs, size_t count, bool rand) {
 	size_t numTriangles{};
 	for (size_t i{0}; i < count; ++i) {
 		minstances.emplace_back(std::make_shared<genericinstance>(mgltf, glm::vec3{0.0f, 0.0f, 0.0f}, rand));
@@ -45,14 +45,14 @@ bool playoutgeneric::createinstances(vkobjs &objs, size_t count, bool rand) {
 		return false;
 	return true;
 }
-bool playoutgeneric::createubo(vkobjs &objs) {
+bool playoutgeneric::createubo(rvk &objs) {
 	if (!ubo::init(objs, rdperspviewmatrixubo))
 		return false;
 	desclayouts.push_back(rdperspviewmatrixubo[0].dlayout);
 	return true;
 }
 
-bool playoutgeneric::createssbomat(vkobjs &objs) {
+bool playoutgeneric::createssbomat(rvk &objs) {
 	size_t size = numinstancess * SDL_clamp(minstances[0]->getjointmatrixsize(), 1, minstances[0]->getjointmatrixsize()) *
 	              sizeof(glm::mat4);
 	if (!ssbo::init(objs, rdjointmatrixssbo, size))
@@ -60,7 +60,7 @@ bool playoutgeneric::createssbomat(vkobjs &objs) {
 	desclayouts.push_back(rdjointmatrixssbo.dlayout);
 	return true;
 }
-bool playoutgeneric::createplayout(vkobjs &objs) {
+bool playoutgeneric::createplayout(rvk &objs) {
 	texdatapls texdatapls0 = mgltf->gettexdatapls();
 	desclayouts.insert(desclayouts.begin(), texdatapls0.dlayout);
 	if (!playout::init(objs, rdgltfpipelinelayout, desclayouts, sizeof(vkpushconstants)))
@@ -68,7 +68,7 @@ bool playoutgeneric::createplayout(vkobjs &objs) {
 	return true;
 }
 
-bool playoutgeneric::createpline(vkobjs &objs, std::string vfile, std::string ffile) {
+bool playoutgeneric::createpline(rvk &objs, std::string vfile, std::string ffile) {
 	if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpupipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31,
 	                 std::vector<std::string> {vfile, ffile}))
 		return false;
@@ -85,14 +85,14 @@ void playoutgeneric::updateanims() {
 	}
 }
 
-void playoutgeneric::uploadvboebo(vkobjs &objs, VkCommandBuffer &cbuffer) {
+void playoutgeneric::uploadvboebo(rvk &objs, VkCommandBuffer &cbuffer) {
 	if (uploadreq) {
 		mgltf->uploadvboebo(objs, cbuffer);
 		uploadreq = false;
 	}
 }
 
-void playoutgeneric::uploadubossbo(vkobjs &objs, std::vector<glm::mat4> &cammats) {
+void playoutgeneric::uploadubossbo(rvk &objs, std::vector<glm::mat4> &cammats) {
 	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 1, 1,
 	                        &rdperspviewmatrixubo[0].dset, 0, nullptr);
 	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, rdgltfpipelinelayout, 2, 1,
@@ -131,23 +131,23 @@ void playoutgeneric::updatemats() {
 	}
 }
 
-void playoutgeneric::cleanuplines(vkobjs &objs) {
+void playoutgeneric::cleanuplines(rvk &objs) {
 	pline::cleanup(objs, rdgltfgpupipeline);
 	pline::cleanup(objs, rdgltfgpupipelineuint);
 	playout::cleanup(objs, rdgltfpipelinelayout);
 }
 
-void playoutgeneric::cleanupbuffers(vkobjs &objs) {
+void playoutgeneric::cleanupbuffers(rvk &objs) {
 	ubo::cleanup(objs, rdperspviewmatrixubo);
 	ssbo::cleanup(objs, rdjointmatrixssbo);
 }
 
-void playoutgeneric::cleanupmodels(vkobjs &objs) {
+void playoutgeneric::cleanupmodels(rvk &objs) {
 	mgltf->cleanup(objs);
 	mgltf.reset();
 }
 
-void playoutgeneric::draw(vkobjs &objs) {
+void playoutgeneric::draw(rvk &objs) {
 	if (minstances[0]->getinstancesettings().msdrawmodel) {
 		stride = minstances.at(0)->getjointmatrixsize();
 

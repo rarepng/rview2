@@ -6,7 +6,7 @@
 #include <cstring>
 #include <stb_image.h>
 
-bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &texdatapls, std::string filename) {
+bool vktexture::loadtexturefile(rvk &rdata, texdata &texdata, texdatapls &texdatapls, std::string filename) {
 
 	int w;
 	int h;
@@ -235,25 +235,14 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 		return false;
 	}
 
-	VkDescriptorPoolSize poolsize{};
-	poolsize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolsize.descriptorCount = imgsize;
-
-	VkDescriptorPoolCreateInfo descriptorpool{};
-	descriptorpool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorpool.poolSizeCount = 1;
-	descriptorpool.pPoolSizes = &poolsize;
-	descriptorpool.maxSets = 16;
-
-	if (vkCreateDescriptorPool(rdata.vkdevice.device, &descriptorpool, nullptr, &texdatapls.dpool) !=
-	        VK_SUCCESS) {
-		logger::log(0, "crashed in texture at vkCreateDescriptorPool");
-		return false;
-	}
+	std::array<VkDescriptorPoolSize,1> poolsize{};
+	poolsize[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolsize[0].descriptorCount = imgsize;
+	rpool::create(poolsize,rdata.vkdevice.device,&rdata.dpools[rvk::idxtexpool]);
 
 	VkDescriptorSetAllocateInfo descallocinfo{};
 	descallocinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descallocinfo.descriptorPool = texdatapls.dpool;
+	descallocinfo.descriptorPool = rdata.dpools[rvk::idxtexpool];
 	descallocinfo.descriptorSetCount = 1;
 	descallocinfo.pSetLayouts = &texdatapls.dlayout;
 
@@ -280,7 +269,7 @@ bool vktexture::loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &tex
 	return true;
 }
 
-bool vktexture::loadtexture(vkobjs &rdata, std::vector<texdata> &texdata, fastgltf::Asset &mmodel) {
+bool vktexture::loadtexture(rvk &rdata, std::vector<texdata> &texdata, fastgltf::Asset &mmodel) {
 
 	texdata.reserve(mmodel.images.size());
 	texdata.resize(mmodel.images.size());
@@ -513,7 +502,7 @@ bool vktexture::loadtexture(vkobjs &rdata, std::vector<texdata> &texdata, fastgl
 
 	return true;
 }
-bool vktexture::loadtexlayoutpool(vkobjs &rdata, std::vector<texdata> &texdata, texdatapls &texdatapls,
+bool vktexture::loadtexlayoutpool(rvk &rdata, std::vector<texdata> &texdata, texdatapls &texdatapls,
                                   fastgltf::Asset &mmodel) {
 
 	VkDescriptorSetLayoutBinding texturebind;
@@ -545,25 +534,16 @@ bool vktexture::loadtexlayoutpool(vkobjs &rdata, std::vector<texdata> &texdata, 
 		return false;
 	}
 
-	VkDescriptorPoolSize poolsize{};
-	poolsize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolsize.descriptorCount = mmodel.images.size() * 1024 * 1024 * 4;
+	std::array<VkDescriptorPoolSize,1> poolsize{};
+	poolsize[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolsize[0].descriptorCount = mmodel.images.size() * 1024 * 1024 * 4;
 
-	VkDescriptorPoolCreateInfo descriptorpool{};
-	descriptorpool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorpool.poolSizeCount = 1;
-	descriptorpool.pPoolSizes = &poolsize;
-	descriptorpool.maxSets = 16;
 
-	if (vkCreateDescriptorPool(rdata.vkdevice.device, &descriptorpool, nullptr, &texdatapls.dpool) !=
-	        VK_SUCCESS) {
-		logger::log(0, "crashed in texture at vkCreateDescriptorPool");
-		return false;
-	}
+	rpool::create(poolsize,rdata.vkdevice.device,&rdata.dpools[rvk::idxtexpool]);
 
 	VkDescriptorSetAllocateInfo descallocinfo{};
 	descallocinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descallocinfo.descriptorPool = texdatapls.dpool;
+	descallocinfo.descriptorPool = rdata.dpools[rvk::idxtexpool];
 	descallocinfo.descriptorSetCount = 1;
 	descallocinfo.pSetLayouts = &texdatapls.dlayout;
 
@@ -586,13 +566,13 @@ bool vktexture::loadtexlayoutpool(vkobjs &rdata, std::vector<texdata> &texdata, 
 	return true;
 }
 
-void vktexture::cleanup(vkobjs &rdata, texdata &texdata) {
+void vktexture::cleanup(rvk &rdata, texdata &texdata) {
 	vkDestroySampler(rdata.vkdevice.device, texdata.imgsampler, nullptr);
 	vkDestroyImageView(rdata.vkdevice.device, texdata.imgview, nullptr);
 	vmaDestroyImage(rdata.alloc, texdata.img, texdata.alloc);
 }
 
-void vktexture::cleanuppls(vkobjs &rdata, texdatapls &texdatapls) {
-	vkDestroyDescriptorPool(rdata.vkdevice.device, texdatapls.dpool, nullptr);
+void vktexture::cleanuppls(rvk &rdata, texdatapls &texdatapls) {
+	vkDestroyDescriptorPool(rdata.vkdevice.device, rdata.dpools[rvk::idxtexpool], nullptr);
 	vkDestroyDescriptorSetLayout(rdata.vkdevice.device, texdatapls.dlayout, nullptr);
 }

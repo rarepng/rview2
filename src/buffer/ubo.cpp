@@ -1,7 +1,7 @@
 #include "ubo.hpp"
 #include <VkBootstrap.h>
 
-bool ubo::init(vkobjs &mvkobjs, std::vector<ubodata> &ubodata) {
+bool ubo::init(rvk &mvkobjs, std::vector<ubodata> &ubodata) {
 	ubodata.reserve(2);
 	ubodata.resize(2);
 
@@ -85,14 +85,14 @@ bool ubo::init(vkobjs &mvkobjs, std::vector<ubodata> &ubodata) {
 
 	return true;
 }
-void ubo::upload(vkobjs &mvkobjs, std::vector<ubodata> &ubodata, std::vector<glm::mat4> mats) {
+void ubo::upload(rvk &mvkobjs, std::vector<ubodata> &ubodata, std::vector<glm::mat4> mats) {
 	void *data;
 	vmaMapMemory(mvkobjs.alloc, ubodata[0].alloc, &data);
 	std::memcpy(data, mats.data(), ubodata[0].size);
 	vmaUnmapMemory(mvkobjs.alloc, ubodata[0].alloc);
 }
 
-void ubo::cleanup(vkobjs &mvkobjs, std::vector<ubodata> &ubodata) {
+void ubo::cleanup(rvk &mvkobjs, std::vector<ubodata> &ubodata) {
 	for (size_t i{0}; i < ubodata.size(); i++) {
 		vkDestroyDescriptorPool(mvkobjs.vkdevice.device, ubodata[i].dpool, nullptr);
 		vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, ubodata[i].dlayout, nullptr);

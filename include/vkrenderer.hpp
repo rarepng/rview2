@@ -49,7 +49,7 @@ public:
 
 	bool quicksetup();
 
-	vkobjs &getvkobjs();
+	rvk &getvkobjs();
 
 	bool newconnection{false};
 
@@ -65,7 +65,7 @@ private:
 
 	std::mutex getinstsettingsmtx{};
 
-	vkobjs mvkobjs{};
+	rvk mvkobjs{};
 
 	double dummy{0.0};
 
