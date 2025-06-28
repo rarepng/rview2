@@ -1,6 +1,6 @@
 #pragma once
 #include "genericinstance.hpp"
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 #include <memory>
 #include <string>
 #include <vector>

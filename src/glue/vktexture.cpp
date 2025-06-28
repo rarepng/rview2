@@ -6,7 +6,7 @@
 #include <cstring>
 #include <stb_image.h>
 
-bool vktexture::loadtexturefile(rvk &rdata, texdata &texdata, texdatapls &texdatapls, std::string filename) {
+bool vktexture::loadtexturefile(rvk &rdata, texdata &texdata, texdataset &texdatapls, std::string filename) {
 
 	int w;
 	int h;
@@ -502,7 +502,7 @@ bool vktexture::loadtexture(rvk &rdata, std::vector<texdata> &texdata, fastgltf:
 
 	return true;
 }
-bool vktexture::loadtexlayoutpool(rvk &rdata, std::vector<texdata> &texdata, texdatapls &texdatapls,
+bool vktexture::loadtexlayoutpool(rvk &rdata, std::vector<texdata> &texdata, texdataset &texdatapls,
                                   fastgltf::Asset &mmodel) {
 
 	VkDescriptorSetLayoutBinding texturebind;
@@ -572,7 +572,7 @@ void vktexture::cleanup(rvk &rdata, texdata &texdata) {
 	vmaDestroyImage(rdata.alloc, texdata.img, texdata.alloc);
 }
 
-void vktexture::cleanuppls(rvk &rdata, texdatapls &texdatapls) {
+void vktexture::cleanuppls(rvk &rdata, texdataset &texdatapls) {
 	vkDestroyDescriptorPool(rdata.vkdevice.device, rdata.dpools[rvk::idxtexpool], nullptr);
 	vkDestroyDescriptorSetLayout(rdata.vkdevice.device, texdatapls.dlayout, nullptr);
 }

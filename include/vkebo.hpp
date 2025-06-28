@@ -1,7 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.h>
 // #include <tinygltf/tiny_gltf.h>
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 #include <fastgltf/core.hpp>
 class vkebo {
 public:

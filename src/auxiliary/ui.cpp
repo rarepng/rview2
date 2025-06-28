@@ -42,9 +42,9 @@ bool ui::init(rvk &renderData) {
 	imguiPoolInfo.maxSets = 24;
 	imguiPoolInfo.poolSizeCount = imguiPoolSizes.size();
 	imguiPoolInfo.pPoolSizes = imguiPoolSizes.data();
-
+	
 	if (vkCreateDescriptorPool(renderData.vkdevice.device, &imguiPoolInfo, nullptr,
-	                           &renderData.imguidpool)) {
+	                           &renderData.dpools[rvk::idximguipool])) {
 		return false;
 	}
 	ImGui_ImplSDL3_InitForVulkan(renderData.wind);
@@ -54,7 +54,7 @@ bool ui::init(rvk &renderData) {
 	imguiIinitInfo.PhysicalDevice = renderData.physdev.physical_device;
 	imguiIinitInfo.Device = renderData.vkdevice.device;
 	imguiIinitInfo.Queue = renderData.graphicsQ;
-	imguiIinitInfo.DescriptorPool = renderData.imguidpool;
+	imguiIinitInfo.DescriptorPool = renderData.dpools[rvk::idximguipool];
 	imguiIinitInfo.MinImageCount = 2;
 	imguiIinitInfo.ImageCount = renderData.schainimgs.size();
 	imguiIinitInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
@@ -73,7 +73,7 @@ bool ui::init(rvk &renderData) {
 	if (vkResetCommandBuffer(imguiCommandBuffer.at(0), 0) != VK_SUCCESS) {
 		return false;
 	}
-
+	
 	VkCommandBufferBeginInfo cmdBeginInfo{};
 	cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -867,7 +867,7 @@ void ui::render(rvk &renderData, VkCommandBuffer &cbuffer) {
 
 void ui::cleanup(rvk &mvkobjs) {
 	ImGui_ImplVulkan_Shutdown();
-	vkDestroyDescriptorPool(mvkobjs.vkdevice.device, mvkobjs.imguidpool, nullptr);
+	vkDestroyDescriptorPool(mvkobjs.vkdevice.device, mvkobjs.dpools[rvk::idximguipool], nullptr);
 	ImGui_ImplSDL3_Shutdown();
 	ImGui::DestroyContext();
 }

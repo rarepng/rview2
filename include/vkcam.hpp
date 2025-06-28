@@ -1,7 +1,7 @@
 #pragma once
 #define GLM_ENABLE_EXPERIMENTAL
 
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 #include <glm/glm.hpp>
 
 class vkcam {

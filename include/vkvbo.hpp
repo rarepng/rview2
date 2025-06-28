@@ -1,6 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.h>
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 #include <fastgltf/core.hpp>
 class vkvbo {
 public:

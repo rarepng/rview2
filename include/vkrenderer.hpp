@@ -21,7 +21,7 @@
 
 #include "playoutgeneric.hpp"
 
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 
 class vkrenderer {
 public:

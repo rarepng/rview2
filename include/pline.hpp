@@ -1,5 +1,5 @@
 #pragma once
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 #include <string>
 #include <vulkan/vulkan.h>
 

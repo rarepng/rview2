@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 #include <vulkan/vulkan.h>
 
 namespace framebuffer {

@@ -388,6 +388,6 @@ std::vector<texdata> genericmodel::gettexdata() {
 	return mgltfobjs.texs;
 }
 
-texdatapls genericmodel::gettexdatapls() {
+texdataset genericmodel::gettexdatapls() {
 	return mgltfobjs.texpls;
 }

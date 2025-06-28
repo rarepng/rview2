@@ -61,7 +61,7 @@ bool playoutgeneric::createssbomat(rvk &objs) {
 	return true;
 }
 bool playoutgeneric::createplayout(rvk &objs) {
-	texdatapls texdatapls0 = mgltf->gettexdatapls();
+	texdataset texdatapls0 = mgltf->gettexdatapls();
 	desclayouts.insert(desclayouts.begin(), texdatapls0.dlayout);
 	if (!playout::init(objs, rdgltfpipelinelayout, desclayouts, sizeof(vkpushconstants)))
 		return false;

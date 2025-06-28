@@ -1,5 +1,5 @@
 #pragma once
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 #include <VkBootstrap.h>
 #include <vulkan/vulkan.h>
 class vksyncobjects {

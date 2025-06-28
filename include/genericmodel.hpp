@@ -1,7 +1,7 @@
 #pragma once
 #include "vkclip.hpp"
 #include "vknode.hpp"
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 #include <fastgltf/core.hpp>
 #include <fastgltf/tools.hpp>
 #include <fastgltf/types.hpp>
@@ -25,7 +25,7 @@ public:
 	void cleanup(rvk &objs);
 	void uploadvboebo(rvk &objs, VkCommandBuffer &cbuffer);
 	std::vector<texdata> gettexdata();
-	texdatapls gettexdatapls();
+	texdataset gettexdatapls();
 	std::string getmodelfname();
 	int getnodecount();
 	gltfnodedata getgltfnodes();

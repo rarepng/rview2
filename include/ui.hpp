@@ -2,7 +2,7 @@
 #include <vector>
 
 #include "modelsettings.hpp"
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 
 enum struct ppick { rock, paper, scissor };
 enum struct gstate { tie, ai, player };
