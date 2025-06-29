@@ -40,6 +40,7 @@ public:
 	ui *getuihandle();
 	void moveplayer();
 
+
 	void sdlevent(SDL_Event *e);
 
 
@@ -131,6 +132,7 @@ private:
 
 	std::vector<glm::mat4> mpersviewmats{glm::mat4{1.0f},glm::mat4{1.0f}};
 
+	bool createpools();
 	bool deviceinit();
 	bool getqueue();
 	bool createdepthbuffer();

@@ -8,9 +8,6 @@
 namespace ssbo {
 static inline bool init(rvk &objs, ssbodata &ssboData, size_t buffersize) {
 
-	std::vector<VkDescriptorPoolSize> pool0{{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1}};
-	if(!rpool::create(pool0,objs.vkdevice.device,&objs.dpools[rvk::idxssbopool]))return false;
-
 	VkBufferCreateInfo bufferInfo{};
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	bufferInfo.size = buffersize;
@@ -44,7 +41,7 @@ static inline bool init(rvk &objs, ssbodata &ssboData, size_t buffersize) {
 
 	VkDescriptorSetAllocateInfo descriptorAllocateInfo{};
 	descriptorAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descriptorAllocateInfo.descriptorPool = objs.dpools[rvk::idxssbopool];
+	descriptorAllocateInfo.descriptorPool = objs.dpools[rvk::idxinitpool];
 	descriptorAllocateInfo.descriptorSetCount = 1;
 	descriptorAllocateInfo.pSetLayouts = &ssboData.dlayout;
 
@@ -87,7 +84,6 @@ static inline void upload(const rvk &objs, const ssbodata &ssbodata, const std::
 	vmaUnmapMemory(objs.alloc, ssbodata.alloc);
 }
 static inline void cleanup(rvk &objs, ssbodata &ssbodata) {
-	rpool::destroy(objs.vkdevice.device, objs.dpools[rvk::idxssbopool]);
 	vkDestroyDescriptorSetLayout(objs.vkdevice.device, ssbodata.dlayout, nullptr);
 	vmaDestroyBuffer(objs.alloc, ssbodata.buffer, ssbodata.alloc);
 }

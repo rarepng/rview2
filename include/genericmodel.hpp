@@ -37,6 +37,7 @@ public:
 	std::vector<std::shared_ptr<vkclip>> getanimclips();
 
 	void resetnodedata(std::shared_ptr<vknode> treenode);
+	bool skinned{true};
 
 private:
 	std::vector<bool> meshjointtype{};

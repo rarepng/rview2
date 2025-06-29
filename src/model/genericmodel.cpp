@@ -26,7 +26,7 @@ bool genericmodel::loadmodel(rvk &objs, std::string fname) {
 	mgltfobjs.texs.resize(mmodel2.images.size());
 	if (!vktexture::loadtexture(objs, mgltfobjs.texs, mmodel2))
 		return false;
-	if (!vktexture::loadtexlayoutpool(objs, mgltfobjs.texs, mgltfobjs.texpls, mmodel2))
+	if (!vktexture::loadtexlayout(objs, mgltfobjs.texs, mgltfobjs.texpls, mmodel2))
 		return false;
 
 	createvboebo(objs);
@@ -38,6 +38,8 @@ bool genericmodel::loadmodel(rvk &objs, std::string fname) {
 		mjnodecount = mmodel2.nodes.size();
 
 		getanims();
+	}else{
+		skinned=false;
 	}
 	return true;
 }

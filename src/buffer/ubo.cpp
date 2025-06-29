@@ -43,15 +43,11 @@ bool ubo::init(rvk &mvkobjs, std::vector<ubodata> &ubodata) {
 	if (vkCreateDescriptorSetLayout(mvkobjs.vkdevice.device, &uboinfo, nullptr, &ubodata[0].dlayout) !=
 	        VK_SUCCESS)
 		return false;
-	std::array<VkDescriptorPoolSize,1> poolsize{};
-	poolsize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolsize[0].descriptorCount = 1 * (ubodata.size() * sizeof(glm::mat4) + sizeof(unsigned int));
-
-	rpool::create(poolsize,mvkobjs.vkdevice.device, &mvkobjs.dpools[rvk::idxubopool]);
+		
 
 	VkDescriptorSetAllocateInfo dallocinfo{};
 	dallocinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	dallocinfo.descriptorPool = mvkobjs.dpools[rvk::idxubopool];
+	dallocinfo.descriptorPool = mvkobjs.dpools[rvk::idxinitpool];
 	dallocinfo.descriptorSetCount = 1;
 	dallocinfo.pSetLayouts = &ubodata[0].dlayout;
 
@@ -94,7 +90,6 @@ void ubo::upload(rvk &mvkobjs, std::vector<ubodata> &ubodata, std::vector<glm::m
 
 void ubo::cleanup(rvk &mvkobjs, std::vector<ubodata> &ubodata) {
 	for (size_t i{0}; i < ubodata.size(); i++) {
-		vkDestroyDescriptorPool(mvkobjs.vkdevice.device, mvkobjs.dpools[rvk::idxubopool], nullptr);
 		vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, ubodata[i].dlayout, nullptr);
 		vmaDestroyBuffer(mvkobjs.alloc, ubodata[i].buffer, ubodata[i].alloc);
 	}

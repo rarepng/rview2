@@ -23,7 +23,7 @@ bool ui::init(rvk &renderData) {
 	io.Fonts->AddFontFromFileTTF("resources/comicbd.ttf", 29.0f);
 	io.Fonts->AddFontFromFileTTF("resources/bruce.ttf", 52.0f);
 
-	std::vector<VkDescriptorPoolSize> imguiPoolSizes = {{VK_DESCRIPTOR_TYPE_SAMPLER, 24},
+	std::array<VkDescriptorPoolSize,11> imguiPoolSizes{{{VK_DESCRIPTOR_TYPE_SAMPLER, 24},
 		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 24},
 		{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 24},
 		{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 24},
@@ -34,7 +34,7 @@ bool ui::init(rvk &renderData) {
 		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 24},
 		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 24},
 		{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 24}
-	};
+	}};
 
 	VkDescriptorPoolCreateInfo imguiPoolInfo{};
 	imguiPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -64,56 +64,6 @@ bool ui::init(rvk &renderData) {
 
 	ImGui_ImplVulkan_Init(&imguiIinitInfo);
 
-	std::array<VkCommandBuffer,1> imguiCommandBuffer;
-
-	if (!commandbuffer::create(renderData, renderData.cpools_graphics.at(2), imguiCommandBuffer)) {
-		return false;
-	}
-
-	if (vkResetCommandBuffer(imguiCommandBuffer.at(0), 0) != VK_SUCCESS) {
-		return false;
-	}
-	
-	VkCommandBufferBeginInfo cmdBeginInfo{};
-	cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	VkSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.pWaitDstStageMask = nullptr;
-	submitInfo.waitSemaphoreCount = 0;
-	submitInfo.pWaitSemaphores = nullptr;
-	submitInfo.signalSemaphoreCount = 0;
-	submitInfo.pSignalSemaphores = nullptr;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = imguiCommandBuffer.data();
-
-	VkFence imguiBufferFence;
-
-	VkFenceCreateInfo fenceInfo{};
-	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-	if (vkCreateFence(renderData.vkdevice.device, &fenceInfo, nullptr, &imguiBufferFence) != VK_SUCCESS) {
-		return false;
-	}
-
-	if (vkResetFences(renderData.vkdevice.device, 1, &imguiBufferFence) != VK_SUCCESS) {
-		return false;
-	}
-
-	renderData.mtx2->lock();
-	if (vkQueueSubmit(renderData.graphicsQ, 1, &submitInfo, imguiBufferFence) != VK_SUCCESS) {
-		return false;
-	}
-	renderData.mtx2->unlock();
-
-	if (vkWaitForFences(renderData.vkdevice.device, 1, &imguiBufferFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-		return false;
-	}
-
-	vkDestroyFence(renderData.vkdevice.device, imguiBufferFence, nullptr);
-	commandbuffer::destroy(renderData, renderData.cpools_graphics.at(2), imguiCommandBuffer);
 
 	ImGui::StyleColorsDark();
 
@@ -867,7 +817,6 @@ void ui::render(rvk &renderData, VkCommandBuffer &cbuffer) {
 
 void ui::cleanup(rvk &mvkobjs) {
 	ImGui_ImplVulkan_Shutdown();
-	vkDestroyDescriptorPool(mvkobjs.vkdevice.device, mvkobjs.dpools[rvk::idximguipool], nullptr);
 	ImGui_ImplSDL3_Shutdown();
 	ImGui::DestroyContext();
 }

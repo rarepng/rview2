@@ -14,6 +14,7 @@ public:
 	bool createssbomat(rvk &objs);
 	bool createplayout(rvk &objs);
 	bool createpline(rvk &objs, std::string vfile, std::string ffile);
+	bool createplinestatic(rvk &objs, std::string vfile, std::string ffile);
 	bool setup(rvk &objs, std::string fname, size_t count, std::string vfile, std::string ffile);
 	void draw(rvk &objs);
 	void updateanims();
@@ -34,6 +35,7 @@ private:
 	VkPipelineLayout rdgltfpipelinelayout = VK_NULL_HANDLE;
 	VkPipeline rdgltfgpupipeline = VK_NULL_HANDLE;
 	VkPipeline rdgltfgpupipelineuint = VK_NULL_HANDLE;
+	VkPipeline staticpline = VK_NULL_HANDLE;
 
 	std::vector<ubodata> rdperspviewmatrixubo{};
 	ssbodata rdjointmatrixssbo{};

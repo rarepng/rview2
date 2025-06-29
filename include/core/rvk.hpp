@@ -148,12 +148,13 @@ struct rvk {
 	VkFence renderfence = VK_NULL_HANDLE;
 	VkFence uploadfence = VK_NULL_HANDLE;
 	
-	inline static constexpr size_t idxubopool{0};
-	inline static constexpr size_t idxtexpool{1};
-	inline static constexpr size_t idxssbopool{2};
-	inline static constexpr size_t idximguipool{3};
-	inline static constexpr size_t idxparticlepool{4};
-	std::array<VkDescriptorPool,5> dpools = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
+	inline static constexpr size_t idxinitpool{0};
+	inline static constexpr size_t idximguipool{1};
+	inline static constexpr size_t idxruntimepool0{2};
+	inline static constexpr size_t idxruntimepool1{3};
+	inline static constexpr size_t idxruntimepool2{4};
+	inline static constexpr size_t idxruntimepool3{5};
+	std::array<VkDescriptorPool,6> dpools = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
 };
 
 struct vkgltfobjs {

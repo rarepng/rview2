@@ -1,8 +1,8 @@
 #include "playoutgeneric.hpp"
+#include "buffer/ssbo.hpp"
 #include "modelsettings.hpp"
 #include "playout.hpp"
 #include "pline.hpp"
-#include "buffer/ssbo.hpp"
 #include "ubo.hpp"
 
 bool playoutgeneric::setup(rvk &objs, std::string fname, size_t count, std::string vfile, std::string ffile) {
@@ -12,14 +12,17 @@ bool playoutgeneric::setup(rvk &objs, std::string fname, size_t count, std::stri
 		return false;
 	if (!createinstances(objs, count, false))
 		return false;
-	if (!createssbomat(objs))
-		return false;
-
-	if (!createplayout(objs))
-		return false;
-	if (!createpline(objs, vfile, ffile))
-		return false;
-
+	if (mgltf->skinned) {
+		if (!createssbomat(objs))
+			return false;
+		if (!createplayout(objs))
+			return false;
+		if (!createpline(objs, vfile, ffile))
+			return false;
+	} else {
+		if (!createplinestatic(objs, vfile, ffile))
+			return false;
+	}
 	ready = true;
 
 	return true;
