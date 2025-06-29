@@ -5,16 +5,16 @@
 #include <string>
 #include <vector>
 #include <vulkan/vulkan.h>
-
 class playoutgeneric {
 public:
 	bool loadmodel(rvk &objs, std::string fname);
 	bool createinstances(rvk &objs, size_t count, bool rand);
 	bool createubo(rvk &objs);
 	bool createssbomat(rvk &objs);
-	bool createplayout(rvk &objs);
-	bool createpline(rvk &objs, std::string vfile, std::string ffile);
-	bool createplinestatic(rvk &objs, std::string vfile, std::string ffile);
+	static bool createskinnedplayout(rvk &objs);
+	static bool createstaticplayout(rvk &objs);
+	static bool createpline(rvk &objs, std::string vfile, std::string ffile);
+	static bool createplinestatic(rvk &objs, std::string vfile, std::string ffile);
 	bool setup(rvk &objs, std::string fname, size_t count, std::string vfile, std::string ffile);
 	void draw(rvk &objs);
 	void updateanims();
@@ -28,14 +28,15 @@ public:
 	std::shared_ptr<genericinstance> getinst(int i);
 
 	bool ready{false};
+	
+	inline static VkPipelineLayout rdgltfpipelinelayout = VK_NULL_HANDLE;
+	inline static VkPipeline rdgltfgpupipeline = VK_NULL_HANDLE;
+	inline static VkPipeline rdgltfgpupipelineuint = VK_NULL_HANDLE;
+	inline static VkPipeline staticpline = VK_NULL_HANDLE;
 
 private:
 	std::vector<VkDescriptorSetLayout> desclayouts{};
 
-	VkPipelineLayout rdgltfpipelinelayout = VK_NULL_HANDLE;
-	VkPipeline rdgltfgpupipeline = VK_NULL_HANDLE;
-	VkPipeline rdgltfgpupipelineuint = VK_NULL_HANDLE;
-	VkPipeline staticpline = VK_NULL_HANDLE;
 
 	std::vector<ubodata> rdperspviewmatrixubo{};
 	ssbodata rdjointmatrixssbo{};

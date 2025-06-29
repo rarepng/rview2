@@ -200,7 +200,7 @@ bool vkrenderer::getqueue() {
 	return true;
 }
 bool vkrenderer::createpools(){
-	std::array<VkDescriptorPoolSize,3> poolz{{{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,6},{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,2},{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1}}};
+	std::array<VkDescriptorPoolSize,3> poolz{{{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,24},{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,2},{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1}}};
 	return rpool::create(poolz,mvkobjs.vkdevice.device, &mvkobjs.dpools[rvk::idxinitpool]);
 }
 bool vkrenderer::createdepthbuffer() {
@@ -337,6 +337,10 @@ void vkrenderer::cleanup() {
 	for(auto& x:mvkobjs.dpools)
 	rpool::destroy(mvkobjs.vkdevice.device,x);
 	framebuffer::destroy(mvkobjs.vkdevice.device,mvkobjs.fbuffers);
+
+	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device,rvk::ubolayout,nullptr);
+	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device,*rvk::texlayout,nullptr);
+	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device,rvk::ssbolayout,nullptr);
 
 	for (const auto &i : mplayer)
 		i->cleanuplines(mvkobjs);

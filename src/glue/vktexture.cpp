@@ -5,6 +5,7 @@
 #include <VkBootstrap.h>
 #include <cstring>
 #include <stb_image.h>
+#include <iostream>
 
 bool vktexture::loadtexture(rvk &rdata, std::vector<texdata> &texdata, fastgltf::Asset &mmodel) {
 
@@ -239,19 +240,12 @@ bool vktexture::loadtexture(rvk &rdata, std::vector<texdata> &texdata, fastgltf:
 
 	return true;
 }
-bool vktexture::loadtexlayout(rvk &rdata, std::vector<texdata> &texdata, texdataset &texdatapls,
+bool vktexture::loadtexset(rvk &rdata, std::vector<texdata> &texdata, VkDescriptorSetLayout &dlayout,VkDescriptorSet &dset,
                                   fastgltf::Asset &mmodel) {
 
-	VkDescriptorSetLayoutBinding texturebind;
 	std::vector<VkDescriptorImageInfo> descriptorimginfo;
 	descriptorimginfo.reserve(mmodel.images.size());
 	descriptorimginfo.resize(mmodel.images.size());
-
-	texturebind.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	texturebind.binding = 0;
-	texturebind.descriptorCount = mmodel.images.size();
-	texturebind.pImmutableSamplers = nullptr;
-	texturebind.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	for (size_t i{0}; i < mmodel.images.size(); i++) {
 
@@ -260,24 +254,14 @@ bool vktexture::loadtexlayout(rvk &rdata, std::vector<texdata> &texdata, texdata
 		descriptorimginfo[i].sampler = texdata[i].imgsampler;
 	}
 
-	VkDescriptorSetLayoutCreateInfo texcreateinfo{};
-	texcreateinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	texcreateinfo.bindingCount = 1; // mmodel->images.size();
-	texcreateinfo.pBindings = &texturebind;
-
-	if (vkCreateDescriptorSetLayout(rdata.vkdevice.device, &texcreateinfo, nullptr, &texdatapls.dlayout) !=
-	        VK_SUCCESS) {
-		logger::log(0, "crashed in texture at vkCreateDescriptorSetLayout");
-		return false;
-	}
 
 	VkDescriptorSetAllocateInfo descallocinfo{};
 	descallocinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	descallocinfo.descriptorPool = rdata.dpools[rvk::idxinitpool];
 	descallocinfo.descriptorSetCount = 1;
-	descallocinfo.pSetLayouts = &texdatapls.dlayout;
+	descallocinfo.pSetLayouts = &dlayout;
 
-	if (vkAllocateDescriptorSets(rdata.vkdevice.device, &descallocinfo, &texdatapls.dset) != VK_SUCCESS) {
+	if (vkAllocateDescriptorSets(rdata.vkdevice.device, &descallocinfo, &dset) != VK_SUCCESS) {
 		logger::log(0, "crashed in texture at vkAllocateDescriptorSets");
 		return false;
 	}
@@ -285,7 +269,7 @@ bool vktexture::loadtexlayout(rvk &rdata, std::vector<texdata> &texdata, texdata
 	VkWriteDescriptorSet writedescset{};
 	writedescset.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	writedescset.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	writedescset.dstSet = texdatapls.dset;
+	writedescset.dstSet = dset;
 	writedescset.dstArrayElement = 0;
 	writedescset.dstBinding = 0;
 	// writedescset.pBufferInfo = 0;
@@ -301,7 +285,29 @@ void vktexture::cleanup(rvk &rdata, texdata &texdata) {
 	vkDestroyImageView(rdata.vkdevice.device, texdata.imgview, nullptr);
 	vmaDestroyImage(rdata.alloc, texdata.img, texdata.alloc);
 }
+bool vktexture::createlayout(rvk &core){
+	
+	VkDescriptorSetLayoutBinding texturebind;
+	texturebind.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	texturebind.binding = 0;
+	texturebind.descriptorCount = 24;//max ~24 images per gltf file
+	texturebind.pImmutableSamplers = nullptr;
+	texturebind.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-void vktexture::cleanuppls(rvk &rdata, texdataset &texdatapls) {
-	vkDestroyDescriptorSetLayout(rdata.vkdevice.device, texdatapls.dlayout, nullptr);
+	VkDescriptorSetLayoutCreateInfo texcreateinfo{};
+	texcreateinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	texcreateinfo.bindingCount = 1;
+	texcreateinfo.pBindings = &texturebind;
+
+	if (vkCreateDescriptorSetLayout(core.vkdevice.device, &texcreateinfo, nullptr, rvk::texlayout.get()) !=
+	        VK_SUCCESS) {
+		std::cout << "texture set layout crashed" << std::endl;
+		return false;
+	}
+	return true;
+
 }
+
+// void vktexture::cleanuppls(rvk &rdata, texdataset &texdatapls) {
+// 	vkDestroyDescriptorSetLayout(rdata.vkdevice.device, texdatapls.dlayout, nullptr);
+// }

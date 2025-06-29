@@ -2,7 +2,7 @@
 
 #include "VkBootstrap.h"
 
-bool playout::init(rvk &mvkobjs, VkPipelineLayout &vkplayout, std::vector<VkDescriptorSetLayout> layoutz,
+bool playout::init(rvk &mvkobjs, VkPipelineLayout &vkplayout, std::span<VkDescriptorSetLayout> layoutz,
                    size_t pushc_size) {
 
 

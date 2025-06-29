@@ -22,28 +22,14 @@ static inline bool init(rvk &objs, ssbodata &ssboData, size_t buffersize) {
 		return false;
 	}
 
-	VkDescriptorSetLayoutBinding ssboBind{};
-	ssboBind.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	ssboBind.binding = 0;
-	ssboBind.descriptorCount = 1;
-	ssboBind.pImmutableSamplers = nullptr;
-	ssboBind.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-	VkDescriptorSetLayoutCreateInfo ssboCreateInfo{};
-	ssboCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	ssboCreateInfo.bindingCount = 1;
-	ssboCreateInfo.pBindings = &ssboBind;
-
-	if (vkCreateDescriptorSetLayout(objs.vkdevice.device, &ssboCreateInfo, nullptr, &ssboData.dlayout) != VK_SUCCESS) {
-		return false;
-	}
 
 
 	VkDescriptorSetAllocateInfo descriptorAllocateInfo{};
 	descriptorAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	descriptorAllocateInfo.descriptorPool = objs.dpools[rvk::idxinitpool];
 	descriptorAllocateInfo.descriptorSetCount = 1;
-	descriptorAllocateInfo.pSetLayouts = &ssboData.dlayout;
+	descriptorAllocateInfo.pSetLayouts = &rvk::ssbolayout;
 
 	if (vkAllocateDescriptorSets(objs.vkdevice.device, &descriptorAllocateInfo, &ssboData.dset) != VK_SUCCESS) {
 		return false;
@@ -68,6 +54,25 @@ static inline bool init(rvk &objs, ssbodata &ssboData, size_t buffersize) {
 
 	return true;
 }
+
+static inline bool createlayout(rvk &core,VkDescriptorSetLayout& dlayout){
+	VkDescriptorSetLayoutBinding ssboBind{};
+	ssboBind.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	ssboBind.binding = 0;
+	ssboBind.descriptorCount = 1;
+	ssboBind.pImmutableSamplers = nullptr;
+	ssboBind.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	VkDescriptorSetLayoutCreateInfo ssboCreateInfo{};
+	ssboCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	ssboCreateInfo.bindingCount = 1;
+	ssboCreateInfo.pBindings = &ssboBind;
+
+	if (vkCreateDescriptorSetLayout(core.vkdevice.device, &ssboCreateInfo, nullptr, &dlayout) != VK_SUCCESS) {
+		return false;
+	}
+	return true;
+}
 // template <typename T>
 // concept vectoradjacent = requires(T x){
 //   {x.size()} -> std::convertible_to<size_t>;
@@ -84,7 +89,6 @@ static inline void upload(const rvk &objs, const ssbodata &ssbodata, const std::
 	vmaUnmapMemory(objs.alloc, ssbodata.alloc);
 }
 static inline void cleanup(rvk &objs, ssbodata &ssbodata) {
-	vkDestroyDescriptorSetLayout(objs.vkdevice.device, ssbodata.dlayout, nullptr);
 	vmaDestroyBuffer(objs.alloc, ssbodata.buffer, ssbodata.alloc);
 }
 };

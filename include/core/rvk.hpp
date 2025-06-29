@@ -24,11 +24,6 @@ struct texdata {
 	VkSampler imgsampler = VK_NULL_HANDLE;
 	VmaAllocation alloc = nullptr;
 };
-struct texdataset {
-	VkDescriptorSetLayout dlayout = VK_NULL_HANDLE;
-	VkDescriptorSet dset = VK_NULL_HANDLE;
-};
-
 struct vbodata {
 
 	size_t size{0};
@@ -53,7 +48,6 @@ struct ubodata {
 	VkBuffer buffer = VK_NULL_HANDLE;
 	VmaAllocation alloc = nullptr;
 
-	VkDescriptorSetLayout dlayout = VK_NULL_HANDLE;
 	VkDescriptorSet dset = VK_NULL_HANDLE;
 };
 
@@ -62,7 +56,6 @@ struct ssbodata {
 	VkBuffer buffer = VK_NULL_HANDLE;
 	VmaAllocation alloc = nullptr;
 
-	VkDescriptorSetLayout dlayout = VK_NULL_HANDLE;
 	VkDescriptorSet dset = VK_NULL_HANDLE;
 };
 struct vkpushconstants {
@@ -118,6 +111,12 @@ struct rvk {
 	vkb::Device vkdevice{};
 	vkb::Swapchain schain{};
 
+	
+	
+	inline static std::shared_ptr<VkDescriptorSetLayout> texlayout = std::make_shared<VkDescriptorSetLayout>();
+	inline static VkDescriptorSetLayout ubolayout = VK_NULL_HANDLE;
+	inline static VkDescriptorSetLayout ssbolayout = VK_NULL_HANDLE;
+
 	std::vector<VkImage> schainimgs;
 	std::vector<VkImageView> schainimgviews;
 	std::vector<VkFramebuffer> fbuffers = {VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
@@ -161,7 +160,7 @@ struct vkgltfobjs {
 	std::vector<std::vector<std::vector<vbodata>>> vbos{};
 	std::vector<std::vector<ebodata>> ebos{};
 	std::vector<texdata> texs{};
-	texdataset texpls{};
+	VkDescriptorSet dset = VK_NULL_HANDLE;
 };
 namespace rpool {
 static inline bool create(const std::span<VkDescriptorPoolSize>& pools,const VkDevice& dev,VkDescriptorPool* dpool) {

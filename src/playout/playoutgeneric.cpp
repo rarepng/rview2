@@ -6,26 +6,33 @@
 #include "ubo.hpp"
 
 bool playoutgeneric::setup(rvk &objs, std::string fname, size_t count, std::string vfile, std::string ffile) {
-	if (!createubo(objs))
-		return false;
 	if (!loadmodel(objs, fname))
 		return false;
 	if (!createinstances(objs, count, false))
 		return false;
+	static const bool _ = [&]{
+	if(!ssbo::createlayout(objs,rvk::ssbolayout))
+		return false;
+	if (!createubo(objs))
+		return false;
+	if (!createskinnedplayout(objs))
+		return false;
+	if (!createstaticplayout(objs))
+		return false;
+	if (!createplinestatic(objs, vfile, ffile))
+		return false;
+	if (!createpline(objs, vfile, ffile))
+		return false;
+	return true;
+	}();
+	
 	if (mgltf->skinned) {
 		if (!createssbomat(objs))
 			return false;
-		if (!createplayout(objs))
-			return false;
-		if (!createpline(objs, vfile, ffile))
-			return false;
-	} else {
-		if (!createplinestatic(objs, vfile, ffile))
-			return false;
 	}
-	ready = true;
 
-	return true;
+	ready = true;
+	return _;
 }
 
 bool playoutgeneric::loadmodel(rvk &objs, std::string fname) {
@@ -49,9 +56,9 @@ bool playoutgeneric::createinstances(rvk &objs, size_t count, bool rand) {
 	return true;
 }
 bool playoutgeneric::createubo(rvk &objs) {
+	ubo::createlayout(objs,rvk::ubolayout);
 	if (!ubo::init(objs, rdperspviewmatrixubo))
 		return false;
-	desclayouts.push_back(rdperspviewmatrixubo[0].dlayout);
 	return true;
 }
 
@@ -60,14 +67,18 @@ bool playoutgeneric::createssbomat(rvk &objs) {
 	              sizeof(glm::mat4);
 	if (!ssbo::init(objs, rdjointmatrixssbo, size))
 		return false;
-	desclayouts.push_back(rdjointmatrixssbo.dlayout);
 	return true;
 }
-bool playoutgeneric::createplayout(rvk &objs) {
-	texdataset texdatapls0 = mgltf->gettexdatapls();
-	desclayouts.insert(desclayouts.begin(), texdatapls0.dlayout);
-	if (!playout::init(objs, rdgltfpipelinelayout, desclayouts, sizeof(vkpushconstants)))
+bool playoutgeneric::createskinnedplayout(rvk &objs) {
+	std::array<VkDescriptorSetLayout,3> dlayouts{*rvk::texlayout,rvk::ubolayout,rvk::ssbolayout};
+	if (!playout::init(objs, rdgltfpipelinelayout, dlayouts, sizeof(vkpushconstants)))
 		return false;
+	return true;
+}
+bool playoutgeneric::createstaticplayout(rvk &objs) {
+	// std::array<VkDescriptorSetLayout,2> dlayouts{*rvk::texlayout,rvk::ubolayout};
+	// if (!playout::init(objs, rdgltfpipelinelayout, dlayouts, sizeof(vkpushconstants)))
+	// 	return false;
 	return true;
 }
 
@@ -78,6 +89,9 @@ bool playoutgeneric::createpline(rvk &objs, std::string vfile, std::string ffile
 	if (!pline::init(objs, rdgltfpipelinelayout, rdgltfgpupipelineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31,
 	                 std::vector<std::string> {vfile, ffile}, true))
 		return false;
+	return true;
+}
+bool playoutgeneric::createplinestatic(rvk &objs, std::string vfile, std::string ffile) {
 	return true;
 }
 

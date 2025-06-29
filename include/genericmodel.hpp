@@ -25,7 +25,6 @@ public:
 	void cleanup(rvk &objs);
 	void uploadvboebo(rvk &objs, VkCommandBuffer &cbuffer);
 	std::vector<texdata> gettexdata();
-	texdataset gettexdatapls();
 	std::string getmodelfname();
 	int getnodecount();
 	gltfnodedata getgltfnodes();

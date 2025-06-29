@@ -24,9 +24,12 @@ bool genericmodel::loadmodel(rvk &objs, std::string fname) {
 
 	mgltfobjs.texs.reserve(mmodel2.images.size());
 	mgltfobjs.texs.resize(mmodel2.images.size());
+	if (!vktexture::createlayout(objs))
+		return false;
+
 	if (!vktexture::loadtexture(objs, mgltfobjs.texs, mmodel2))
 		return false;
-	if (!vktexture::loadtexlayout(objs, mgltfobjs.texs, mgltfobjs.texpls, mmodel2))
+	if (!vktexture::loadtexset(objs, mgltfobjs.texs, *rvk::texlayout, mgltfobjs.dset, mmodel2))
 		return false;
 
 	createvboebo(objs);
@@ -326,7 +329,7 @@ void genericmodel::drawinstanced(rvk &objs, VkPipelineLayout &vkplayout, VkPipel
 	std::vector<std::vector<vkpushconstants>> pushes(mgltfobjs.vbos.size());
 
 	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1,
-	                        &mgltfobjs.texpls.dset, 0, nullptr);
+	                        &mgltfobjs.dset, 0, nullptr);
 
 	for (size_t i{0}; i < mgltfobjs.vbos.size(); i++) {
 		pushes[i].reserve(mgltfobjs.vbos.at(i).size());
@@ -381,7 +384,7 @@ void genericmodel::cleanup(rvk &objs) {
 	for (size_t i{0}; i < mgltfobjs.texs.size(); i++) {
 		vktexture::cleanup(objs, mgltfobjs.texs[i]);
 	}
-	vktexture::cleanuppls(objs, mgltfobjs.texpls);
+	// vktexture::cleanuppls(objs, mgltfobjs.texpls);
 
 	// mmodel.reset();
 }
@@ -390,6 +393,6 @@ std::vector<texdata> genericmodel::gettexdata() {
 	return mgltfobjs.texs;
 }
 
-texdataset genericmodel::gettexdatapls() {
-	return mgltfobjs.texpls;
-}
+// texdataset genericmodel::gettexdatapls() {
+// 	return mgltfobjs.texpls;
+// }
