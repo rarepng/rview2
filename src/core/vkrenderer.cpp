@@ -4,6 +4,7 @@
 // #define _DEBUG
 
 #include "vkrenderer.hpp"
+#include "exp/particle.hpp"
 
 #include <backends/imgui_impl_glfw.h>
 #include <imgui.h>
@@ -17,9 +18,9 @@
 #include <glm/gtx/spline.hpp>
 #include <iostream>
 
-#include "commandbuffer.hpp"
-#include "commandpool.hpp"
-#include "framebuffer.hpp"
+#include "vk/commandbuffer.hpp"
+#include "vk/commandpool.hpp"
+#include "vk/framebuffer.hpp"
 #include "renderpass.hpp"
 #include "vksyncobjects.hpp"
 // #ifdef _DEBUG
@@ -27,6 +28,9 @@
 // #endif
 #include <SDL3/SDL_vulkan.h>
 // #include <unistd.h>
+
+#include "exp/particle.hpp"
+
 
 float map2(glm::vec3 x) {
 	return std::max(x.y, 0.0f);
@@ -51,7 +55,7 @@ bool vkrenderer::init() {
 			createswapchain() && createdepthbuffer() &&
 			createcommandpool() && createcommandbuffer() &&
 			createrenderpass() && createframebuffer() &&
-			createsyncobjects();
+			createsyncobjects() && createpools();
 		},
 	}))
 	return false;
@@ -91,12 +95,14 @@ bool vkrenderer::initscene() {
 	playercount.clear();
 	playercount.shrink_to_fit();
 
+	if(!particle::createeverything(mvkobjs))return false;
+
 	return true;
 }
 ui *vkrenderer::getuihandle() {
 	return &mui;
 }
-vkobjs &vkrenderer::getvkobjs() {
+rvk &vkrenderer::getvkobjs() {
 	return mvkobjs;
 }
 bool vkrenderer::quicksetup() {
@@ -107,9 +113,9 @@ bool vkrenderer::quicksetup() {
 bool vkrenderer::deviceinit() {
 	vkb::InstanceBuilder instbuild{};
 
-	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 4).build();
+	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 3).build();
 
-	if(!instret){
+	if(!instret) {
 		std::cout << instret.full_error().type << std::endl;
 		std::cout << instret.full_error().vk_result << std::endl;
 		return false;
@@ -119,9 +125,13 @@ bool vkrenderer::deviceinit() {
 
 	bool res{false};
 	res = SDL_Vulkan_CreateSurface(mvkobjs.wind, mvkobjs.inst, nullptr, &msurface);
+	if(!res) {
+		std::cout << "SDL failed to create surface" << std::endl;
+		return false;
+	}
 
 	vkb::PhysicalDeviceSelector physicaldevsel{mvkobjs.inst};
-	auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1, 4).select();
+	auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1, 3).select();
 
 	VkPhysicalDeviceVulkan14Features physfeatures14;
 	VkPhysicalDeviceVulkan13Features physfeatures13;
@@ -142,7 +152,7 @@ bool vkrenderer::deviceinit() {
 	physfeatures14.pNext = VK_NULL_HANDLE;
 
 	vkGetPhysicalDeviceFeatures2(firstphysicaldevselret.value(), &physfeatures);
-	auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 4)
+	auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3)
 	                               .set_surface(msurface)
 	                               .set_required_features(physfeatures.features)
 	                               .set_required_features_11(physfeatures11)
@@ -188,6 +198,10 @@ bool vkrenderer::getqueue() {
 	mvkobjs.computeQ = computequeueret.value();
 
 	return true;
+}
+bool vkrenderer::createpools(){
+	std::array<VkDescriptorPoolSize,3> poolz{{{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,24},{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,2},{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1}}};
+	return rpool::create(poolz,mvkobjs.vkdevice.device, &mvkobjs.dpools[rvk::idxinitpool]);
 }
 bool vkrenderer::createdepthbuffer() {
 	VkExtent3D depthimageextent = {mvkobjs.schain.extent.width, mvkobjs.schain.extent.height, 1};
@@ -253,7 +267,7 @@ bool vkrenderer::recreateswapchain() {
 	SDL_GetWindowSize(mvkobjs.wind, &mvkobjs.width, &mvkobjs.height);
 
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
-	framebuffer::cleanup(mvkobjs);
+	framebuffer::destroy(mvkobjs.vkdevice.device,mvkobjs.fbuffers);
 	vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.rddepthimageview, nullptr);
 	vmaDestroyImage(mvkobjs.alloc, mvkobjs.rddepthimage, mvkobjs.rddepthimagealloc);
 
@@ -277,23 +291,21 @@ bool vkrenderer::createrenderpass() {
 	return true;
 }
 bool vkrenderer::createframebuffer() {
-	if (!framebuffer::init(mvkobjs))
+	if (!framebuffer::create(mvkobjs))
 		return false;
 	return true;
 }
 bool vkrenderer::createcommandpool() {
-	if (!commandpool::init(mvkobjs, mvkobjs.cpools[0]))
+	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_graphics,vkb::QueueType::graphics))
 		return false;
-	if (!commandpool::init(mvkobjs, mvkobjs.cpools[1]))
-		return false;
-	if (!commandpool::init(mvkobjs, mvkobjs.cpools[2]))
+	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_compute,vkb::QueueType::compute))
 		return false;
 	return true;
 }
 bool vkrenderer::createcommandbuffer() {
-	if (!commandbuffer::init(mvkobjs, mvkobjs.cpools[0], mvkobjs.cbuffers[0]))
+	if (!commandbuffer::create(mvkobjs, mvkobjs.cpools_graphics.at(0), mvkobjs.cbuffers_graphics))
 		return false;
-	if (!commandbuffer::init(mvkobjs, mvkobjs.cpools[1], mvkobjs.cbuffers[1]))
+	if (!commandbuffer::create(mvkobjs, mvkobjs.cpools_compute.at(0), mvkobjs.cbuffers_compute))
 		return false;
 	return true;
 }
@@ -310,18 +322,23 @@ bool vkrenderer::initui() {
 void vkrenderer::cleanup() {
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
 
-	commandbuffer::cleanup(mvkobjs, mvkobjs.cpools[1], mvkobjs.cbuffers[1]);
-	commandpool::cleanup(mvkobjs, mvkobjs.cpools[1]);
+	particle::destroyeveryting(mvkobjs);
 
-	for (const auto &i : mplayer)
-		i->cleanupmodels(mvkobjs);
+
 	mui.cleanup(mvkobjs);
 
 	vksyncobjects::cleanup(mvkobjs);
-	commandbuffer::cleanup(mvkobjs, mvkobjs.cpools[0], mvkobjs.cbuffers[0]);
-	commandpool::cleanup(mvkobjs, mvkobjs.cpools[0]);
-	commandpool::cleanup(mvkobjs, mvkobjs.cpools[2]);
-	framebuffer::cleanup(mvkobjs);
+	commandbuffer::destroy(mvkobjs, mvkobjs.cpools_graphics.at(0), mvkobjs.cbuffers_graphics);
+	commandbuffer::destroy(mvkobjs, mvkobjs.cpools_compute.at(0), mvkobjs.cbuffers_compute);
+	commandpool::destroy(mvkobjs, mvkobjs.cpools_graphics);
+	commandpool::destroy(mvkobjs, mvkobjs.cpools_compute);
+	for(auto& x:mvkobjs.dpools)
+	rpool::destroy(mvkobjs.vkdevice.device,x);
+	framebuffer::destroy(mvkobjs.vkdevice.device,mvkobjs.fbuffers);
+
+	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device,rvk::ubolayout,nullptr);
+	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device,*rvk::texlayout,nullptr);
+	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device,rvk::ssbolayout,nullptr);
 
 	for (const auto &i : mplayer)
 		i->cleanuplines(mvkobjs);
@@ -329,6 +346,9 @@ void vkrenderer::cleanup() {
 	renderpass::cleanup(mvkobjs);
 	for (const auto &i : mplayer)
 		i->cleanupbuffers(mvkobjs);
+		
+	for (const auto &i : mplayer)
+		i->cleanupmodels(mvkobjs);
 
 	vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.rddepthimageview, nullptr);
 	vmaDestroyImage(mvkobjs.alloc, mvkobjs.rddepthimage, mvkobjs.rddepthimagealloc);
@@ -368,23 +388,23 @@ bool vkrenderer::uploadfordraw() {
 	VkResult res = vkAcquireNextImageKHR(mvkobjs.vkdevice.device, mvkobjs.schain.swapchain, UINT64_MAX,
 	                                     mvkobjs.presentsemaphore, VK_NULL_HANDLE, &imgidx);
 
-	if (vkResetCommandBuffer(mvkobjs.cbuffers[0], 0) != VK_SUCCESS)
+	if (vkResetCommandBuffer(mvkobjs.cbuffers_graphics.at(0), 0) != VK_SUCCESS)
 		return false;
 
 	VkCommandBufferBeginInfo cmdbgninfo{};
 	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	if (vkBeginCommandBuffer(mvkobjs.cbuffers[0], &cmdbgninfo) != VK_SUCCESS)
+	if (vkBeginCommandBuffer(mvkobjs.cbuffers_graphics.at(0), &cmdbgninfo) != VK_SUCCESS)
 		return false;
 
 	manimupdatetimer.start();
 
 	for (const auto &i : mplayer)
-		i->uploadvboebo(mvkobjs, mvkobjs.cbuffers[0]);
+		i->uploadvboebo(mvkobjs, mvkobjs.cbuffers_graphics.at(0));
 
 	mvkobjs.uploadubossbotime = manimupdatetimer.stop();
-	if (vkEndCommandBuffer(mvkobjs.cbuffers[0]) != VK_SUCCESS)
+	if (vkEndCommandBuffer(mvkobjs.cbuffers_graphics.at(0)) != VK_SUCCESS)
 		return false;
 
 	VkSubmitInfo submitinfo{};
@@ -400,7 +420,7 @@ bool vkrenderer::uploadfordraw() {
 	submitinfo.pSignalSemaphores = &mvkobjs.rendersemaphore;
 
 	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &mvkobjs.cbuffers.at(0);
+	submitinfo.pCommandBuffers = &mvkobjs.cbuffers_graphics.at(0);
 
 	VkSemaphoreWaitInfo swinfo{};
 	swinfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
@@ -453,22 +473,22 @@ bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric> &x) {
 	VkResult res = vkAcquireNextImageKHR(mvkobjs.vkdevice.device, mvkobjs.schain.swapchain, UINT64_MAX,
 	                                     mvkobjs.presentsemaphore, VK_NULL_HANDLE, &imgidx);
 
-	if (vkResetCommandBuffer(mvkobjs.cbuffers[0], 0) != VK_SUCCESS)
+	if (vkResetCommandBuffer(mvkobjs.cbuffers_graphics.at(0), 0) != VK_SUCCESS)
 		return false;
 
 	VkCommandBufferBeginInfo cmdbgninfo{};
 	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	if (vkBeginCommandBuffer(mvkobjs.cbuffers[0], &cmdbgninfo) != VK_SUCCESS)
+	if (vkBeginCommandBuffer(mvkobjs.cbuffers_graphics.at(0), &cmdbgninfo) != VK_SUCCESS)
 		return false;
 
 	manimupdatetimer.start();
 
-	x->uploadvboebo(mvkobjs, mvkobjs.cbuffers[0]);
+	x->uploadvboebo(mvkobjs, mvkobjs.cbuffers_graphics.at(0));
 
 	mvkobjs.uploadubossbotime = manimupdatetimer.stop();
-	if (vkEndCommandBuffer(mvkobjs.cbuffers[0]) != VK_SUCCESS)
+	if (vkEndCommandBuffer(mvkobjs.cbuffers_graphics.at(0)) != VK_SUCCESS)
 		return false;
 
 	VkSubmitInfo submitinfo{};
@@ -484,12 +504,7 @@ bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric> &x) {
 	submitinfo.pSignalSemaphores = &mvkobjs.rendersemaphore;
 
 	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &mvkobjs.cbuffers.at(0);
-
-	// VkSemaphoreWaitInfo swinfo{};
-	// swinfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
-	// swinfo.pSemaphores = &mvkobjs.rdpresentsemaphore;
-	// swinfo.semaphoreCount = 1;
+	submitinfo.pCommandBuffers = &mvkobjs.cbuffers_graphics.at(0);
 
 	mvkobjs.mtx2->lock();
 	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.renderfence) != VK_SUCCESS) {
@@ -508,7 +523,7 @@ bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric> &x) {
 	presentinfo.pImageIndices = &imgidx;
 
 	mvkobjs.mtx2->lock();
-	size_t res2 = vkQueuePresentKHR(mvkobjs.presentQ, &presentinfo);
+	VkResult res2 = vkQueuePresentKHR(mvkobjs.presentQ, &presentinfo);
 
 	mvkobjs.mtx2->unlock();
 
@@ -763,6 +778,13 @@ void vkrenderer::updateanims() {
 }
 
 bool vkrenderer::draw() {
+
+
+
+	particle::drawcomp(mvkobjs);
+
+
+
 	double tick = static_cast<double>(SDL_GetTicks()) / 1000.0;
 	mvkobjs.tickdiff = tick - mlasttick;
 	mvkobjs.frametime = mframetimer.stop();
@@ -823,13 +845,15 @@ bool vkrenderer::draw() {
 		}
 	}
 
-	VkClearValue colorclearvalue;
-	colorclearvalue.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
-
-	VkClearValue depthvalue;
-	depthvalue.depthStencil.depth = 1.0f;
-
-	VkClearValue clearvals[] = {colorclearvalue, depthvalue};
+	std::array<VkClearValue, 2> colorclearvalue{
+		VkClearValue{.color={0.0f, 0.0f, 0.0f, 1.0f}},//no idea why i have to put VkClearValue here but not in the secon one, doesnt work without it
+		{.depthStencil={1.0f,0}}
+	};
+	
+	// VkRenderingInfo rinfo{};
+	// rinfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+	// rinfo.renderArea.extent = mvkobjs.schain.extent;
+	// rinfo.renderArea.offset = {0, 0};
 
 	VkRenderPassBeginInfo rpinfo{};
 	rpinfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -841,7 +865,7 @@ bool vkrenderer::draw() {
 	rpinfo.framebuffer = mvkobjs.fbuffers[imgidx];
 
 	rpinfo.clearValueCount = 2;
-	rpinfo.pClearValues = clearvals;
+	rpinfo.pClearValues = colorclearvalue.data();
 
 	VkViewport viewport{};
 	viewport.x = 0.0f;
@@ -855,7 +879,7 @@ bool vkrenderer::draw() {
 	scissor.offset = {0, 0};
 	scissor.extent = mvkobjs.schain.extent;
 
-	if (vkResetCommandBuffer(mvkobjs.cbuffers[0], 0) != VK_SUCCESS)
+	if (vkResetCommandBuffer(mvkobjs.cbuffers_graphics.at(0), 0) != VK_SUCCESS)
 		return false;
 
 	sdlevent(mvkobjs.e);
@@ -864,13 +888,22 @@ bool vkrenderer::draw() {
 	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	if (vkBeginCommandBuffer(mvkobjs.cbuffers[0], &cmdbgninfo) != VK_SUCCESS)
+	if (vkBeginCommandBuffer(mvkobjs.cbuffers_graphics.at(0), &cmdbgninfo) != VK_SUCCESS)
 		return false;
 
-	vkCmdBeginRenderPass(mvkobjs.cbuffers[0], &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(mvkobjs.cbuffers_graphics.at(0), &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
+	// try switching to rendering instead of renderpass
+	// vkCmdBeginRendering()
 
-	vkCmdSetViewport(mvkobjs.cbuffers[0], 0, 1, &viewport);
-	vkCmdSetScissor(mvkobjs.cbuffers[0], 0, 1, &scissor);
+	vkCmdSetViewport(mvkobjs.cbuffers_graphics.at(0), 0, 1, &viewport);
+	vkCmdSetScissor(mvkobjs.cbuffers_graphics.at(0), 0, 1, &scissor);
+
+	VkDeviceSize coffsets{0};
+	vkCmdBindPipeline(mvkobjs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, particle::gpline);
+	vkCmdBindVertexBuffers(mvkobjs.cbuffers_graphics.at(0),0,1,&particle::ssbobuffsnallocs.at(0).first,&coffsets);
+	vkCmdDraw(mvkobjs.cbuffers_graphics.at(0),8192,1,0,0);
+
+
 	for (const auto &i : mplayer)
 		i->draw(mvkobjs);
 
@@ -879,9 +912,14 @@ bool vkrenderer::draw() {
 
 	mui.createdbgframe(mvkobjs, selectiondata);
 
-	mui.render(mvkobjs, mvkobjs.cbuffers[0]);
 
-	vkCmdEndRenderPass(mvkobjs.cbuffers[0]);
+
+
+
+
+	mui.render(mvkobjs, mvkobjs.cbuffers_graphics.at(0));
+
+	vkCmdEndRenderPass(mvkobjs.cbuffers_graphics.at(0));
 
 	// animmtx.lock();
 	// updatemtx.lock();
@@ -893,7 +931,7 @@ bool vkrenderer::draw() {
 
 	mvkobjs.uploadubossbotime = muploadubossbotimer.stop();
 
-	if (vkEndCommandBuffer(mvkobjs.cbuffers[0]) != VK_SUCCESS)
+	if (vkEndCommandBuffer(mvkobjs.cbuffers_graphics.at(0)) != VK_SUCCESS)
 		return false;
 
 	movecam();
@@ -903,15 +941,15 @@ bool vkrenderer::draw() {
 
 	VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	submitinfo.pWaitDstStageMask = &waitstage;
-
-	submitinfo.waitSemaphoreCount = 1;
-	submitinfo.pWaitSemaphores = &mvkobjs.presentsemaphore;
+	std::array<VkSemaphore,2> waitsemas{mvkobjs.presentsemaphore,particle::computeFinishedSemaphores.at(0)};
+	submitinfo.waitSemaphoreCount = 2;
+	submitinfo.pWaitSemaphores = waitsemas.data();
 
 	submitinfo.signalSemaphoreCount = 1;
 	submitinfo.pSignalSemaphores = &mvkobjs.rendersemaphore;
 
 	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &mvkobjs.cbuffers.at(0);
+	submitinfo.pCommandBuffers = &mvkobjs.cbuffers_graphics.at(0);
 
 	mvkobjs.mtx2->lock();
 	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.renderfence) != VK_SUCCESS) {
@@ -996,27 +1034,27 @@ bool vkrenderer::drawloading() {
 	scissor.offset = {0, 0};
 	scissor.extent = mvkobjs.schain.extent;
 
-	if (vkResetCommandBuffer(mvkobjs.cbuffers[1], 0) != VK_SUCCESS)
+	if (vkResetCommandBuffer(mvkobjs.cbuffers_compute.at(0), 0) != VK_SUCCESS)
 		return false;
 
 	VkCommandBufferBeginInfo cmdbgninfo{};
 	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	if (vkBeginCommandBuffer(mvkobjs.cbuffers[1], &cmdbgninfo) != VK_SUCCESS)
+	if (vkBeginCommandBuffer(mvkobjs.cbuffers_compute.at(0), &cmdbgninfo) != VK_SUCCESS)
 		return false;
 
-	vkCmdBeginRenderPass(mvkobjs.cbuffers[1], &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(mvkobjs.cbuffers_compute.at(0), &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	vkCmdSetViewport(mvkobjs.cbuffers[1], 0, 1, &viewport);
-	vkCmdSetScissor(mvkobjs.cbuffers[1], 0, 1, &scissor);
+	vkCmdSetViewport(mvkobjs.cbuffers_compute.at(0), 0, 1, &viewport);
+	vkCmdSetScissor(mvkobjs.cbuffers_compute.at(0), 0, 1, &scissor);
 
 	rdscene = mui.createloadingscreen(mvkobjs);
-	mui.render(mvkobjs, mvkobjs.cbuffers[1]);
+	mui.render(mvkobjs, mvkobjs.cbuffers_compute.at(0));
 
-	vkCmdEndRenderPass(mvkobjs.cbuffers[1]);
+	vkCmdEndRenderPass(mvkobjs.cbuffers_compute.at(0));
 
-	if (vkEndCommandBuffer(mvkobjs.cbuffers[1]) != VK_SUCCESS)
+	if (vkEndCommandBuffer(mvkobjs.cbuffers_compute.at(0)) != VK_SUCCESS)
 		return false;
 
 	VkSubmitInfo submitinfo{};
@@ -1032,7 +1070,7 @@ bool vkrenderer::drawloading() {
 	submitinfo.pSignalSemaphores = &mvkobjs.rendersemaphore;
 
 	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &mvkobjs.cbuffers[1];
+	submitinfo.pCommandBuffers = &mvkobjs.cbuffers_compute.at(0);
 
 	mvkobjs.mtx2->lock();
 	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.renderfence) != VK_SUCCESS) {
@@ -1113,24 +1151,24 @@ bool vkrenderer::drawblank() {
 	scissor.offset = {0, 0};
 	scissor.extent = mvkobjs.schain.extent;
 
-	if (vkResetCommandBuffer(mvkobjs.cbuffers[0], 0) != VK_SUCCESS)
+	if (vkResetCommandBuffer(mvkobjs.cbuffers_graphics.at(0), 0) != VK_SUCCESS)
 		return false;
 
 	VkCommandBufferBeginInfo cmdbgninfo{};
 	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	if (vkBeginCommandBuffer(mvkobjs.cbuffers[0], &cmdbgninfo) != VK_SUCCESS)
+	if (vkBeginCommandBuffer(mvkobjs.cbuffers_graphics.at(0), &cmdbgninfo) != VK_SUCCESS)
 		return false;
 
-	vkCmdBeginRenderPass(mvkobjs.cbuffers[0], &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(mvkobjs.cbuffers_graphics.at(0), &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	vkCmdSetViewport(mvkobjs.cbuffers[0], 0, 1, &viewport);
-	vkCmdSetScissor(mvkobjs.cbuffers[0], 0, 1, &scissor);
+	vkCmdSetViewport(mvkobjs.cbuffers_graphics.at(0), 0, 1, &viewport);
+	vkCmdSetScissor(mvkobjs.cbuffers_graphics.at(0), 0, 1, &scissor);
 
-	vkCmdEndRenderPass(mvkobjs.cbuffers[0]);
+	vkCmdEndRenderPass(mvkobjs.cbuffers_graphics.at(0));
 
-	if (vkEndCommandBuffer(mvkobjs.cbuffers[0]) != VK_SUCCESS)
+	if (vkEndCommandBuffer(mvkobjs.cbuffers_graphics.at(0)) != VK_SUCCESS)
 		return false;
 
 	VkSubmitInfo submitinfo{};
@@ -1146,7 +1184,7 @@ bool vkrenderer::drawblank() {
 	submitinfo.pSignalSemaphores = &mvkobjs.rendersemaphore;
 
 	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &mvkobjs.cbuffers[0];
+	submitinfo.pCommandBuffers = &mvkobjs.cbuffers_graphics.at(0);
 
 	mvkobjs.mtx2->lock();
 	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.renderfence) != VK_SUCCESS) {

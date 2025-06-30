@@ -10,7 +10,7 @@
 #include "modelsettings.hpp"
 #include "vkclip.hpp"
 #include "vknode.hpp"
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 
 class genericinstance {
 public:
