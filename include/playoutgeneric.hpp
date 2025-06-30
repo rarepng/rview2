@@ -1,41 +1,43 @@
 #pragma once
 #include "genericinstance.hpp"
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 #include <memory>
 #include <string>
 #include <vector>
 #include <vulkan/vulkan.h>
-
 class playoutgeneric {
 public:
-	bool loadmodel(vkobjs &objs, std::string fname);
-	bool createinstances(vkobjs &objs, size_t count, bool rand);
-	bool createubo(vkobjs &objs);
-	bool createssbomat(vkobjs &objs);
-	bool createplayout(vkobjs &objs);
-	bool createpline(vkobjs &objs, std::string vfile, std::string ffile);
-	bool setup(vkobjs &objs, std::string fname, size_t count, std::string vfile, std::string ffile);
-	void draw(vkobjs &objs);
+	bool loadmodel(rvk &objs, std::string fname);
+	bool createinstances(rvk &objs, size_t count, bool rand);
+	bool createubo(rvk &objs);
+	bool createssbomat(rvk &objs);
+	static bool createskinnedplayout(rvk &objs);
+	static bool createstaticplayout(rvk &objs);
+	static bool createpline(rvk &objs, std::string vfile, std::string ffile);
+	static bool createplinestatic(rvk &objs, std::string vfile, std::string ffile);
+	bool setup(rvk &objs, std::string fname, size_t count, std::string vfile, std::string ffile);
+	void draw(rvk &objs);
 	void updateanims();
 	void updatemats();
-	void cleanuplines(vkobjs &objs);
-	void cleanupbuffers(vkobjs &objs);
-	void cleanupmodels(vkobjs &objs);
-	void uploadvboebo(vkobjs &objs, VkCommandBuffer &cbuffer);
-	void uploadubossbo(vkobjs &objs,std::vector<glm::mat4> &cammats);
+	void cleanuplines(rvk &objs);
+	void cleanupbuffers(rvk &objs);
+	void cleanupmodels(rvk &objs);
+	void uploadvboebo(rvk &objs, VkCommandBuffer &cbuffer);
+	void uploadubossbo(rvk &objs,std::vector<glm::mat4> &cammats);
 
 	std::shared_ptr<genericinstance> getinst(int i);
 
 	bool ready{false};
+	
+	inline static VkPipelineLayout rdgltfpipelinelayout = VK_NULL_HANDLE;
+	inline static VkPipeline rdgltfgpupipeline = VK_NULL_HANDLE;
+	inline static VkPipeline rdgltfgpupipelineuint = VK_NULL_HANDLE;
+	inline static VkPipeline staticpline = VK_NULL_HANDLE;
 
 private:
-	std::vector<VkDescriptorSetLayout> desclayouts{};
 
-	VkPipelineLayout rdgltfpipelinelayout = VK_NULL_HANDLE;
-	VkPipeline rdgltfgpupipeline = VK_NULL_HANDLE;
-	VkPipeline rdgltfgpupipelineuint = VK_NULL_HANDLE;
 
-	std::vector<ubodata> rdperspviewmatrixubo{};
+	inline static std::vector<ubodata> rdperspviewmatrixubo{};
 	ssbodata rdjointmatrixssbo{};
 
 	bool uploadreq{true};

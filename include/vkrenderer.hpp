@@ -21,7 +21,7 @@
 
 #include "playoutgeneric.hpp"
 
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 
 class vkrenderer {
 public:
@@ -40,6 +40,7 @@ public:
 	ui *getuihandle();
 	void moveplayer();
 
+
 	void sdlevent(SDL_Event *e);
 
 
@@ -49,7 +50,7 @@ public:
 
 	bool quicksetup();
 
-	vkobjs &getvkobjs();
+	rvk &getvkobjs();
 
 	bool newconnection{false};
 
@@ -65,7 +66,7 @@ private:
 
 	std::mutex getinstsettingsmtx{};
 
-	vkobjs mvkobjs{};
+	rvk mvkobjs{};
 
 	double dummy{0.0};
 
@@ -131,6 +132,7 @@ private:
 
 	std::vector<glm::mat4> mpersviewmats{glm::mat4{1.0f},glm::mat4{1.0f}};
 
+	bool createpools();
 	bool deviceinit();
 	bool getqueue();
 	bool createdepthbuffer();

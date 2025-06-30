@@ -1,5 +1,5 @@
 #pragma once
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 #include "vkshader.hpp"
 #include <array>
 #include <random>
@@ -30,7 +30,7 @@ static std::vector<std::pair<VkBuffer, VmaAllocation>> ssbobuffsnallocs(1);
 
 static VkDescriptorPool dpool{VK_NULL_HANDLE};
 
-static inline void createSyncObjects(vkobjs &objs) {
+static inline void createSyncObjects(rvk &objs) {
 
 	// need inflight fences when using more than 1 for both queues
 
@@ -48,7 +48,7 @@ static inline void createSyncObjects(vkobjs &objs) {
 	}
 }
 
-static inline bool createeverything(vkobjs &objs) {
+static inline bool createeverything(rvk &objs) {
 
 	// random
 	std::default_random_engine randomengine((unsigned)time(nullptr));
@@ -373,7 +373,7 @@ static inline bool createeverything(vkobjs &objs) {
 	return true;
 }
 
-static inline bool drawcomp(vkobjs &objs) {
+static inline bool drawcomp(rvk &objs) {
 
 	vkWaitForFences(objs.vkdevice.device,1,&computeInFlightFences.at(0),VK_TRUE,UINT64_MAX);
 
@@ -424,7 +424,7 @@ static inline bool drawcomp(vkobjs &objs) {
 	return true;
 }
 
-static inline void destroyeveryting(vkobjs &objs) {
+static inline void destroyeveryting(rvk &objs) {
 	vkDestroyPipeline(objs.vkdevice.device,gpline,VK_NULL_HANDLE);
 	vkDestroyPipelineLayout(objs.vkdevice.device,gplayout,VK_NULL_HANDLE);
 	vkDestroyPipeline(objs.vkdevice.device,cpline,VK_NULL_HANDLE);
@@ -439,4 +439,4 @@ static inline void destroyeveryting(vkobjs &objs) {
 
 }
 
-} // namespace particle
+}

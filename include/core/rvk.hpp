@@ -24,12 +24,6 @@ struct texdata {
 	VkSampler imgsampler = VK_NULL_HANDLE;
 	VmaAllocation alloc = nullptr;
 };
-struct texdatapls {
-	VkDescriptorPool dpool = VK_NULL_HANDLE;
-	VkDescriptorSetLayout dlayout = VK_NULL_HANDLE;
-	VkDescriptorSet dset = VK_NULL_HANDLE;
-};
-
 struct vbodata {
 
 	size_t size{0};
@@ -49,13 +43,11 @@ struct ebodata {
 	VmaAllocation salloc = nullptr;
 };
 
-struct ubodata {
+struct ubodata {                                                                                                                                                              
 	size_t size{0};
 	VkBuffer buffer = VK_NULL_HANDLE;
 	VmaAllocation alloc = nullptr;
 
-	VkDescriptorPool dpool = VK_NULL_HANDLE;
-	VkDescriptorSetLayout dlayout = VK_NULL_HANDLE;
 	VkDescriptorSet dset = VK_NULL_HANDLE;
 };
 
@@ -64,18 +56,6 @@ struct ssbodata {
 	VkBuffer buffer = VK_NULL_HANDLE;
 	VmaAllocation alloc = nullptr;
 
-	VkDescriptorPool dpool = VK_NULL_HANDLE;
-	VkDescriptorSetLayout dlayout = VK_NULL_HANDLE;
-	VkDescriptorSet dset = VK_NULL_HANDLE;
-};
-
-struct buffdata {
-	size_t size{0};
-	VkBuffer buffer = VK_NULL_HANDLE;
-	VmaAllocation alloc = nullptr;
-
-	VkDescriptorPool dpool = VK_NULL_HANDLE;
-	VkDescriptorSetLayout dlayout = VK_NULL_HANDLE;
 	VkDescriptorSet dset = VK_NULL_HANDLE;
 };
 struct vkpushconstants {
@@ -84,7 +64,7 @@ struct vkpushconstants {
 	float t{0.0f};
 };
 
-struct vkobjs {
+struct rvk {
 
 	inline static const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
 
@@ -131,6 +111,12 @@ struct vkobjs {
 	vkb::Device vkdevice{};
 	vkb::Swapchain schain{};
 
+	
+	
+	inline static std::shared_ptr<VkDescriptorSetLayout> texlayout = std::make_shared<VkDescriptorSetLayout>();
+	inline static VkDescriptorSetLayout ubolayout = VK_NULL_HANDLE;
+	inline static VkDescriptorSetLayout ssbolayout = VK_NULL_HANDLE;
+
 	std::vector<VkImage> schainimgs;
 	std::vector<VkImageView> schainimgviews;
 	std::vector<VkFramebuffer> fbuffers = {VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
@@ -160,15 +146,21 @@ struct vkobjs {
 	VkSemaphore rendersemaphore = VK_NULL_HANDLE;
 	VkFence renderfence = VK_NULL_HANDLE;
 	VkFence uploadfence = VK_NULL_HANDLE;
-
-	VkDescriptorPool imguidpool = VK_NULL_HANDLE;
+	
+	inline static constexpr size_t idxinitpool{0};
+	inline static constexpr size_t idximguipool{1};
+	inline static constexpr size_t idxruntimepool0{2};
+	inline static constexpr size_t idxruntimepool1{3};
+	inline static constexpr size_t idxruntimepool2{4};
+	inline static constexpr size_t idxruntimepool3{5};
+	std::array<VkDescriptorPool,6> dpools = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
 };
 
 struct vkgltfobjs {
 	std::vector<std::vector<std::vector<vbodata>>> vbos{};
 	std::vector<std::vector<ebodata>> ebos{};
 	std::vector<texdata> texs{};
-	texdatapls texpls{};
+	VkDescriptorSet dset = VK_NULL_HANDLE;
 };
 namespace rpool {
 static inline bool create(const std::span<VkDescriptorPoolSize>& pools,const VkDevice& dev,VkDescriptorPool* dpool) {

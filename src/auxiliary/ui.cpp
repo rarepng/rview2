@@ -13,7 +13,7 @@
 #include "vk/commandbuffer.hpp"
 #include "ui.hpp"
 
-bool ui::init(vkobjs &renderData) {
+bool ui::init(rvk &renderData) {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	// std::shared_ptr<ImGuiContext> x=std::make_shared<ImGuiContext>(ImGui::CreateContext());
@@ -23,7 +23,7 @@ bool ui::init(vkobjs &renderData) {
 	io.Fonts->AddFontFromFileTTF("resources/comicbd.ttf", 29.0f);
 	io.Fonts->AddFontFromFileTTF("resources/bruce.ttf", 52.0f);
 
-	std::vector<VkDescriptorPoolSize> imguiPoolSizes = {{VK_DESCRIPTOR_TYPE_SAMPLER, 24},
+	std::array<VkDescriptorPoolSize,11> imguiPoolSizes{{{VK_DESCRIPTOR_TYPE_SAMPLER, 24},
 		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 24},
 		{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 24},
 		{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 24},
@@ -34,7 +34,7 @@ bool ui::init(vkobjs &renderData) {
 		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 24},
 		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 24},
 		{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 24}
-	};
+	}};
 
 	VkDescriptorPoolCreateInfo imguiPoolInfo{};
 	imguiPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -42,9 +42,9 @@ bool ui::init(vkobjs &renderData) {
 	imguiPoolInfo.maxSets = 24;
 	imguiPoolInfo.poolSizeCount = imguiPoolSizes.size();
 	imguiPoolInfo.pPoolSizes = imguiPoolSizes.data();
-
+	
 	if (vkCreateDescriptorPool(renderData.vkdevice.device, &imguiPoolInfo, nullptr,
-	                           &renderData.imguidpool)) {
+	                           &renderData.dpools[rvk::idximguipool])) {
 		return false;
 	}
 	ImGui_ImplSDL3_InitForVulkan(renderData.wind);
@@ -54,7 +54,7 @@ bool ui::init(vkobjs &renderData) {
 	imguiIinitInfo.PhysicalDevice = renderData.physdev.physical_device;
 	imguiIinitInfo.Device = renderData.vkdevice.device;
 	imguiIinitInfo.Queue = renderData.graphicsQ;
-	imguiIinitInfo.DescriptorPool = renderData.imguidpool;
+	imguiIinitInfo.DescriptorPool = renderData.dpools[rvk::idximguipool];
 	imguiIinitInfo.MinImageCount = 2;
 	imguiIinitInfo.ImageCount = renderData.schainimgs.size();
 	imguiIinitInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
@@ -64,56 +64,6 @@ bool ui::init(vkobjs &renderData) {
 
 	ImGui_ImplVulkan_Init(&imguiIinitInfo);
 
-	std::array<VkCommandBuffer,1> imguiCommandBuffer;
-
-	if (!commandbuffer::create(renderData, renderData.cpools_graphics.at(2), imguiCommandBuffer)) {
-		return false;
-	}
-
-	if (vkResetCommandBuffer(imguiCommandBuffer.at(0), 0) != VK_SUCCESS) {
-		return false;
-	}
-
-	VkCommandBufferBeginInfo cmdBeginInfo{};
-	cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	VkSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.pWaitDstStageMask = nullptr;
-	submitInfo.waitSemaphoreCount = 0;
-	submitInfo.pWaitSemaphores = nullptr;
-	submitInfo.signalSemaphoreCount = 0;
-	submitInfo.pSignalSemaphores = nullptr;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = imguiCommandBuffer.data();
-
-	VkFence imguiBufferFence;
-
-	VkFenceCreateInfo fenceInfo{};
-	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-	if (vkCreateFence(renderData.vkdevice.device, &fenceInfo, nullptr, &imguiBufferFence) != VK_SUCCESS) {
-		return false;
-	}
-
-	if (vkResetFences(renderData.vkdevice.device, 1, &imguiBufferFence) != VK_SUCCESS) {
-		return false;
-	}
-
-	renderData.mtx2->lock();
-	if (vkQueueSubmit(renderData.graphicsQ, 1, &submitInfo, imguiBufferFence) != VK_SUCCESS) {
-		return false;
-	}
-	renderData.mtx2->unlock();
-
-	if (vkWaitForFences(renderData.vkdevice.device, 1, &imguiBufferFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-		return false;
-	}
-
-	vkDestroyFence(renderData.vkdevice.device, imguiBufferFence, nullptr);
-	commandbuffer::destroy(renderData, renderData.cpools_graphics.at(2), imguiCommandBuffer);
 
 	ImGui::StyleColorsDark();
 
@@ -140,7 +90,7 @@ bool ui::init(vkobjs &renderData) {
 	return true;
 }
 
-void ui::createdbgframe(vkobjs &renderData, selection &settings) {
+void ui::createdbgframe(rvk &renderData, selection &settings) {
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
 	ImGui::NewFrame();
@@ -750,7 +700,7 @@ void ui::createdbgframe(vkobjs &renderData, selection &settings) {
 	}
 }
 
-bool ui::createloadingscreen(vkobjs &mvkobjs) {
+bool ui::createloadingscreen(rvk &mvkobjs) {
 
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
@@ -780,7 +730,7 @@ bool ui::createloadingscreen(vkobjs &mvkobjs) {
 	return true;
 }
 
-bool ui::createpausebuttons(vkobjs &mvkobjs) {
+bool ui::createpausebuttons(rvk &mvkobjs) {
 
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
@@ -857,7 +807,7 @@ void ui::addchat(std::string s) {
 	chattxts.push_back(s);
 }
 
-void ui::render(vkobjs &renderData, VkCommandBuffer &cbuffer) {
+void ui::render(rvk &renderData, VkCommandBuffer &cbuffer) {
 	ImGui::Render();
 
 	// renderData.mtx2.lock();
@@ -865,9 +815,8 @@ void ui::render(vkobjs &renderData, VkCommandBuffer &cbuffer) {
 	// renderData.mtx2.unlock();
 }
 
-void ui::cleanup(vkobjs &mvkobjs) {
+void ui::cleanup(rvk &mvkobjs) {
 	ImGui_ImplVulkan_Shutdown();
-	vkDestroyDescriptorPool(mvkobjs.vkdevice.device, mvkobjs.imguidpool, nullptr);
 	ImGui_ImplSDL3_Shutdown();
 	ImGui::DestroyContext();
 }

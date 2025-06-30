@@ -1,7 +1,7 @@
 #include "renderpass.hpp"
 #include <VkBootstrap.h>
 
-bool renderpass::init(vkobjs &rdata) {
+bool renderpass::init(rvk &rdata) {
 	VkAttachmentDescription colora{};
 	colora.format = rdata.schain.image_format;
 	colora.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -63,6 +63,6 @@ bool renderpass::init(vkobjs &rdata) {
 
 	return true;
 }
-void renderpass::cleanup(vkobjs &rdata) {
+void renderpass::cleanup(rvk &rdata) {
 	vkDestroyRenderPass(rdata.vkdevice.device, rdata.rdrenderpass, nullptr);
 }

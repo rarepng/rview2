@@ -1,11 +1,11 @@
 #pragma once
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 #include <vulkan/vulkan.h>
 #include <VkBootstrap.h>
 
 namespace commandpool {
 
-static inline bool createsametype(vkobjs &rdata,const std::span<VkCommandPool> &vkpools,const vkb::QueueType& qtype) {
+static inline bool createsametype(rvk &rdata,const std::span<VkCommandPool> &vkpools,const vkb::QueueType& qtype) {
 	for(auto& x:vkpools) {
 		VkCommandPoolCreateInfo poolcreateinfo{
 			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -20,7 +20,7 @@ static inline bool createsametype(vkobjs &rdata,const std::span<VkCommandPool> &
 
 	return true;
 }
-static inline void destroy(vkobjs &rdata,const std::span<VkCommandPool> &vkpools) {
+static inline void destroy(rvk &rdata,const std::span<VkCommandPool> &vkpools) {
 	for(auto& x:vkpools) {
 		vkDestroyCommandPool(rdata.vkdevice.device, x, nullptr);
 	}

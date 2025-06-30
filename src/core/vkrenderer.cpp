@@ -55,7 +55,7 @@ bool vkrenderer::init() {
 			createswapchain() && createdepthbuffer() &&
 			createcommandpool() && createcommandbuffer() &&
 			createrenderpass() && createframebuffer() &&
-			createsyncobjects();
+			createsyncobjects() && createpools();
 		},
 	}))
 	return false;
@@ -102,7 +102,7 @@ bool vkrenderer::initscene() {
 ui *vkrenderer::getuihandle() {
 	return &mui;
 }
-vkobjs &vkrenderer::getvkobjs() {
+rvk &vkrenderer::getvkobjs() {
 	return mvkobjs;
 }
 bool vkrenderer::quicksetup() {
@@ -198,6 +198,10 @@ bool vkrenderer::getqueue() {
 	mvkobjs.computeQ = computequeueret.value();
 
 	return true;
+}
+bool vkrenderer::createpools(){
+	std::array<VkDescriptorPoolSize,3> poolz{{{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,24},{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,2},{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1}}};
+	return rpool::create(poolz,mvkobjs.vkdevice.device, &mvkobjs.dpools[rvk::idxinitpool]);
 }
 bool vkrenderer::createdepthbuffer() {
 	VkExtent3D depthimageextent = {mvkobjs.schain.extent.width, mvkobjs.schain.extent.height, 1};
@@ -321,8 +325,6 @@ void vkrenderer::cleanup() {
 	particle::destroyeveryting(mvkobjs);
 
 
-	for (const auto &i : mplayer)
-		i->cleanupmodels(mvkobjs);
 	mui.cleanup(mvkobjs);
 
 	vksyncobjects::cleanup(mvkobjs);
@@ -330,13 +332,13 @@ void vkrenderer::cleanup() {
 	commandbuffer::destroy(mvkobjs, mvkobjs.cpools_compute.at(0), mvkobjs.cbuffers_compute);
 	commandpool::destroy(mvkobjs, mvkobjs.cpools_graphics);
 	commandpool::destroy(mvkobjs, mvkobjs.cpools_compute);
-	// for(auto& x:mvkobjs.fbuffers){
-	// vkDestroyFramebuffer(mvkobjs.vkdevice.device,x,nullptr);
-	// }
-	// vkDestroyFramebuffer(mvkobjs.vkdevice.device,mvkobjs.fbuffers.at(0),nullptr);
-	// vkDestroyFramebuffer(mvkobjs.vkdevice.device,mvkobjs.fbuffers.at(1),nullptr);
-	// vkDestroyFramebuffer(mvkobjs.vkdevice.device,mvkobjs.fbuffers.at(2),nullptr);
+	for(auto& x:mvkobjs.dpools)
+	rpool::destroy(mvkobjs.vkdevice.device,x);
 	framebuffer::destroy(mvkobjs.vkdevice.device,mvkobjs.fbuffers);
+
+	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device,rvk::ubolayout,nullptr);
+	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device,*rvk::texlayout,nullptr);
+	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device,rvk::ssbolayout,nullptr);
 
 	for (const auto &i : mplayer)
 		i->cleanuplines(mvkobjs);
@@ -344,6 +346,9 @@ void vkrenderer::cleanup() {
 	renderpass::cleanup(mvkobjs);
 	for (const auto &i : mplayer)
 		i->cleanupbuffers(mvkobjs);
+		
+	for (const auto &i : mplayer)
+		i->cleanupmodels(mvkobjs);
 
 	vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.rddepthimageview, nullptr);
 	vmaDestroyImage(mvkobjs.alloc, mvkobjs.rddepthimage, mvkobjs.rddepthimagealloc);

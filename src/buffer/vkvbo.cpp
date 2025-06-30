@@ -1,6 +1,6 @@
 #include "vkvbo.hpp"
 
-bool vkvbo::init(vkobjs &mvkobjs, vbodata &vbdata, size_t bsize) {
+bool vkvbo::init(rvk &mvkobjs, vbodata &vbdata, size_t bsize) {
 	VkBufferCreateInfo binfo{};
 	binfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	binfo.size = bsize;
@@ -30,7 +30,7 @@ bool vkvbo::init(vkobjs &mvkobjs, vbodata &vbdata, size_t bsize) {
 	return true;
 }
 
-bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
+bool vkvbo::upload(rvk &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
                    std::vector<glm::vec3> vertexData) {
 
 	/* copy data to staging buffer*/
@@ -61,7 +61,7 @@ bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
 	return true;
 }
 
-bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
+bool vkvbo::upload(rvk &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
                    std::vector<glm::vec2> vertexData) {
 
 	void *data;
@@ -91,7 +91,7 @@ bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
 	return true;
 }
 
-bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
+bool vkvbo::upload(rvk &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
                    const fastgltf::Buffer &buffer, const fastgltf::BufferView &bufferview,
                    const fastgltf::Accessor &acc) {
 
@@ -127,7 +127,7 @@ bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
 	return true;
 }
 
-bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
+bool vkvbo::upload(rvk &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
                    const std::vector<unsigned int> &jointz, const unsigned int count, const unsigned int ofx) {
 
 	void *d;
@@ -158,7 +158,7 @@ bool vkvbo::upload(vkobjs &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
 	return true;
 }
 
-void vkvbo::cleanup(vkobjs &mvkobjs, vbodata &vbdata) {
+void vkvbo::cleanup(rvk &mvkobjs, vbodata &vbdata) {
 	vmaDestroyBuffer(mvkobjs.alloc, vbdata.sbuffer, vbdata.salloc);
 	vmaDestroyBuffer(mvkobjs.alloc, vbdata.buffer, vbdata.alloc);
 }

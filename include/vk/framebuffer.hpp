@@ -1,10 +1,10 @@
 #pragma once
 
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 #include <vulkan/vulkan.h>
 
 namespace framebuffer {
-static inline bool create(vkobjs &rdata) {
+static inline bool create(rvk &rdata) {
 	rdata.schainimgs = rdata.schain.get_images().value();
 	rdata.schainimgviews = rdata.schain.get_image_views().value();
 
