@@ -24,9 +24,12 @@ bool genericmodel::loadmodel(rvk &objs, std::string fname) {
 
 	mgltfobjs.texs.reserve(mmodel2.images.size());
 	mgltfobjs.texs.resize(mmodel2.images.size());
+	static const bool _ = [&]{
 	if (!vktexture::createlayout(objs))
 		return false;
-
+		return true;
+	}();
+	
 	if (!vktexture::loadtexture(objs, mgltfobjs.texs, mmodel2))
 		return false;
 	if (!vktexture::loadtexset(objs, mgltfobjs.texs, *rvk::texlayout, mgltfobjs.dset, mmodel2))

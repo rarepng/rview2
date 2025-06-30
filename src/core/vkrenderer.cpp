@@ -325,8 +325,6 @@ void vkrenderer::cleanup() {
 	particle::destroyeveryting(mvkobjs);
 
 
-	for (const auto &i : mplayer)
-		i->cleanupmodels(mvkobjs);
 	mui.cleanup(mvkobjs);
 
 	vksyncobjects::cleanup(mvkobjs);
@@ -348,6 +346,9 @@ void vkrenderer::cleanup() {
 	renderpass::cleanup(mvkobjs);
 	for (const auto &i : mplayer)
 		i->cleanupbuffers(mvkobjs);
+		
+	for (const auto &i : mplayer)
+		i->cleanupmodels(mvkobjs);
 
 	vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.rddepthimageview, nullptr);
 	vmaDestroyImage(mvkobjs.alloc, mvkobjs.rddepthimage, mvkobjs.rddepthimagealloc);

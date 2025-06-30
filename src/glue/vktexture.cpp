@@ -307,7 +307,3 @@ bool vktexture::createlayout(rvk &core){
 	return true;
 
 }
-
-// void vktexture::cleanuppls(rvk &rdata, texdataset &texdatapls) {
-// 	vkDestroyDescriptorSetLayout(rdata.vkdevice.device, texdatapls.dlayout, nullptr);
-// }

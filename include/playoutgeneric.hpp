@@ -35,10 +35,9 @@ public:
 	inline static VkPipeline staticpline = VK_NULL_HANDLE;
 
 private:
-	std::vector<VkDescriptorSetLayout> desclayouts{};
 
 
-	std::vector<ubodata> rdperspviewmatrixubo{};
+	inline static std::vector<ubodata> rdperspviewmatrixubo{};
 	ssbodata rdjointmatrixssbo{};
 
 	bool uploadreq{true};

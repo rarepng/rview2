@@ -94,7 +94,6 @@ void ubo::upload(rvk &mvkobjs, std::vector<ubodata> &ubodata, std::vector<glm::m
 
 void ubo::cleanup(rvk &mvkobjs, std::vector<ubodata> &ubodata) {
 	for (size_t i{0}; i < ubodata.size(); i++) {
-		vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, rvk::ubolayout, nullptr);
 		vmaDestroyBuffer(mvkobjs.alloc, ubodata[i].buffer, ubodata[i].alloc);
 	}
 }

@@ -4,6 +4,7 @@
 #include "playout.hpp"
 #include "pline.hpp"
 #include "ubo.hpp"
+#include <iostream>
 
 bool playoutgeneric::setup(rvk &objs, std::string fname, size_t count, std::string vfile, std::string ffile) {
 	if (!loadmodel(objs, fname))
@@ -11,6 +12,7 @@ bool playoutgeneric::setup(rvk &objs, std::string fname, size_t count, std::stri
 	if (!createinstances(objs, count, false))
 		return false;
 	static const bool _ = [&]{
+		std::cout << "static consted" << std::endl;
 	if(!ssbo::createlayout(objs,rvk::ssbolayout))
 		return false;
 	if (!createubo(objs))
@@ -149,13 +151,20 @@ void playoutgeneric::updatemats() {
 }
 
 void playoutgeneric::cleanuplines(rvk &objs) {
+	static const bool _ = [&]{
 	pline::cleanup(objs, rdgltfgpupipeline);
 	pline::cleanup(objs, rdgltfgpupipelineuint);
 	playout::cleanup(objs, rdgltfpipelinelayout);
+	return true;
+	}();
 }
 
 void playoutgeneric::cleanupbuffers(rvk &objs) {
+	static const bool _ = [&]{
 	ubo::cleanup(objs, rdperspviewmatrixubo);
+	return true;
+	}();
+	if(mgltf->skinned)
 	ssbo::cleanup(objs, rdjointmatrixssbo);
 }
 
