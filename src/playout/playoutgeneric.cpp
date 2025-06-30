@@ -100,6 +100,7 @@ bool playoutgeneric::createplinestatic(rvk &objs) {
 }
 
 void playoutgeneric::updateanims() {
+	if(mgltf->skinned)
 	for (auto &i : minstances) {
 		i->updateanimation();
 		i->solveik();
