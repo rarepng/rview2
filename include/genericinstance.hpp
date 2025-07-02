@@ -38,6 +38,14 @@ public:
 
 	glm::vec3 *getinstpos();
 
+	glm::mat4 calcstaticmat() {
+		glm::mat4 x = glm::scale(glm::mat4{1.0f}, mmodelsettings.msworldscale);
+		x = glm::toMat4(glm::quat(glm::radians(mmodelsettings.msworldrot))) * x;
+		x = glm::translate(glm::mat4{ 1.0f }, mmodelsettings.msworldpos) * x;
+		return x;
+	}
+
+
 private:
 	void playanimation(int animnum, float speeddivider, float blendfactor, replaydirection direction);
 	void playanimation(int srcanimnum, int dstanimnum, float speeddivider, float blendfactor, replaydirection direction);

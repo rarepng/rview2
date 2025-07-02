@@ -11,6 +11,7 @@ public:
 	bool createinstances(rvk &objs, size_t count, bool rand);
 	bool createubo(rvk &objs);
 	bool createssbomat(rvk &objs);
+	bool createssbostatic(rvk &objs);
 	static bool createskinnedplayout(rvk &objs);
 	static bool createstaticplayout(rvk &objs);
 	static bool createpline(rvk &objs, std::string vfile, std::string ffile);

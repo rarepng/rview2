@@ -73,17 +73,20 @@ ConstantBuffer<consts> Constants;
 [[vk_binding(0, 1)]]
 ConstantBuffer<cams> cammats;
 
+[[vk_binding(0, 2)]]
+RWStructuredBuffer<jmats> transmat;
 
 [[vk_binding(1, 1)]]
 ConstantBuffer<texidx> texid2;
 
 //stumped
 [shader("vertex")]
-VXout vxmain(VXin vxin) {
+VXout vxmain(VXin vxin,uint id:SV_VulkanInstanceID) {
 	VXout out;
 	float4x4 x = mul(cammats.projection, cammats.view);
 	float4 xx = float4(vxin.pos, 1.0f);
-	float4 xxx = mul(x, xx);
+	float4 xxx = mul(transmat[id].jointmats, xx);
+	float4 xxxx = mul(x, xxx);
 	out.sv_position = xxx;
 	out.pxin0.normal = vxin.aNormal;
 	out.pxin0.texCoord = vxin.tex0;

@@ -85,11 +85,11 @@ ConstantBuffer<texidx> texid2;
 
 //stumped
 [shader("vertex")]
-VXout vxmain(VXin vxin) {
-	float4x4 skinmat = jmatbuffer[vxin.joi0.x].jointmats * vxin.wei0.x +
-					   jmatbuffer[vxin.joi0.y].jointmats * vxin.wei0.y +
-					   jmatbuffer[vxin.joi0.z].jointmats * vxin.wei0.z +
-					   jmatbuffer[vxin.joi0.w].jointmats * vxin.wei0.w ;
+VXout vxmain(VXin vxin, uint id: SV_VulkanInstanceID) {
+	float4x4 skinmat = jmatbuffer[vxin.joi0.x + Constants.aModelStride * id].jointmats * vxin.wei0.x +
+					   jmatbuffer[vxin.joi0.y + Constants.aModelStride * id].jointmats * vxin.wei0.y +
+					   jmatbuffer[vxin.joi0.z + Constants.aModelStride * id].jointmats * vxin.wei0.z +
+					   jmatbuffer[vxin.joi0.w + Constants.aModelStride * id].jointmats * vxin.wei0.w ;
 	VXout out;
 	float4x4 x = mul(cammats.projection, cammats.view);
 	float4x4 y = mul(x, skinmat);
