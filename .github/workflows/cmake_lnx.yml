@@ -69,7 +69,7 @@ jobs:
     - name: verifying vulkan
       run: |
         mkdir -p $VULKAN_SDK/bin
-        sudo cp -v -f ~/slang/bin/slangc $VULKAN_SDK/bin/slangc
+        sudo cp -v -f ~/slang/bin/* $VULKAN_SDK/bin/slangc
         $VULKAN_SDK/bin/slangc -v
         slangc -v
         which slangc
