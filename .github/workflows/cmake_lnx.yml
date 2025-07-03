@@ -38,6 +38,7 @@ jobs:
         url=$(curl -s https://api.github.com/repos/shader-slang/slang/releases/latest | jq -r '.assets[] | select(.name | endswith("linux-x86_64.tar.gz")) | .browser_download_url')
         mkdir -p ~/slang && curl -L "$url" | tar -xz -C ~/slang
         ls ~/slang
+        ~/slang/bin/slangc -v
     - name: update submodules
       run: |
         git submodule update --init --recursive
