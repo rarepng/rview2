@@ -11,10 +11,11 @@ public:
 	bool createinstances(rvk &objs, size_t count, bool rand);
 	bool createubo(rvk &objs);
 	bool createssbomat(rvk &objs);
+	bool createssbostatic(rvk &objs);
 	static bool createskinnedplayout(rvk &objs);
 	static bool createstaticplayout(rvk &objs);
 	static bool createpline(rvk &objs, std::string vfile, std::string ffile);
-	static bool createplinestatic(rvk &objs, std::string vfile, std::string ffile);
+	static bool createplinestatic(rvk &objs);
 	bool setup(rvk &objs, std::string fname, size_t count, std::string vfile, std::string ffile);
 	void draw(rvk &objs);
 	void updateanims();
@@ -29,9 +30,10 @@ public:
 
 	bool ready{false};
 	
-	inline static VkPipelineLayout rdgltfpipelinelayout = VK_NULL_HANDLE;
-	inline static VkPipeline rdgltfgpupipeline = VK_NULL_HANDLE;
-	inline static VkPipeline rdgltfgpupipelineuint = VK_NULL_HANDLE;
+	inline static VkPipelineLayout skinnedplayout = VK_NULL_HANDLE;
+	inline static VkPipelineLayout staticplayout = VK_NULL_HANDLE;
+	inline static VkPipeline skinnedpline = VK_NULL_HANDLE;
+	inline static VkPipeline skinnedplineuint = VK_NULL_HANDLE;
 	inline static VkPipeline staticpline = VK_NULL_HANDLE;
 
 private:

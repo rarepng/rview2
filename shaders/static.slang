@@ -9,11 +9,7 @@ struct VXin {
 	float3 pos : POSITION;
 	float3 aNormal : NORMAL;
 	float2 tex0 : TEXCOORD_0;
-	uint4 joi0 : JOINTS_0;
-	float4 wei0 : WEIGHTS_0;
 	// float2 tex1 : TEXCOORD_1;
-	// uint4 joi1 : JOINTS_1;
-	// float4 wei1 : WEIGHTS_1;
 	// float2 tex2 : TEXCOORD_2;
 	// float2 tex3 : TEXCOORD_3;
 	// float2 tex4 : TEXCOORD_4;
@@ -78,27 +74,27 @@ ConstantBuffer<consts> Constants;
 ConstantBuffer<cams> cammats;
 
 [[vk_binding(0, 2)]]
-RWStructuredBuffer<jmats> jmatbuffer;
+RWStructuredBuffer<jmats> transmat;
 
 [[vk_binding(1, 1)]]
 ConstantBuffer<texidx> texid2;
 
 //stumped
 [shader("vertex")]
-VXout vxmain(VXin vxin) {
-	float4x4 skinmat = jmatbuffer[vxin.joi0.x].jointmats * vxin.wei0.x +
-					   jmatbuffer[vxin.joi0.y].jointmats * vxin.wei0.y +
-					   jmatbuffer[vxin.joi0.z].jointmats * vxin.wei0.z +
-					   jmatbuffer[vxin.joi0.w].jointmats * vxin.wei0.w ;
+VXout vxmain(VXin vxin, uint id: SV_VulkanInstanceID) {
 	VXout out;
+	// float4x4 x = mul(cammats.projection, cammats.view);
+	// float4 xx = float4(vxin.pos, 1.0f);
+	// float4x4 xxx = mul(x, transmat[id].jointmats);
+	// float4 xxxx = mul(xx, xxx);
+	// out.sv_position = xxxx;
 	float4x4 x = mul(cammats.projection, cammats.view);
-	float4x4 y = mul(x, skinmat);
 	float4 xx = float4(vxin.pos, 1.0f);
-	float4 z = mul(y, xx);
-	out.sv_position = z;
+	float4 xxx = mul(transmat[id].jointmats, xx);
+	float4 xxxx = mul(x, xxx);
+	out.sv_position = xxxx;
 	out.pxin0.normal = vxin.aNormal;
 	out.pxin0.texCoord = vxin.tex0;
-	out.pxin0.newcolor = vxin.joi0;
 	out.pxin0.txidx = Constants.txid;
 	out.pxin0.t2 = Constants.t;
 	out.pxin0.dec = 0.0;
@@ -109,7 +105,7 @@ VXout vxmain(VXin vxin) {
 [shader("pixel")]
 PXout pxmain(PXin pxin) {
 	PXout out;
-	out.color = tex[pxin.txidx].Sample(float2(pxin.texCoord.x, pxin.texCoord.y - fract(pxin.t2 * pxin.txidx / 4.0)));
+	out.color = tex[pxin.txidx].Sample(float2(pxin.texCoord.x, pxin.texCoord.y));
 
 	return out;
 }

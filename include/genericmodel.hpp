@@ -22,6 +22,8 @@ public:
 	void draw(rvk &objs);
 	void drawinstanced(rvk &objs, VkPipelineLayout &vkplayout, VkPipeline &vkpline, VkPipeline &vkplineuint,
 	                   int instancecount, int stride);
+	void drawinstancedstatic(rvk &objs, VkPipelineLayout &vkplayout, VkPipeline &vkpline,
+	                   int instancecount, int stride);
 	void cleanup(rvk &objs);
 	void uploadvboebo(rvk &objs, VkCommandBuffer &cbuffer);
 	std::vector<texdata> gettexdata();
