@@ -66,8 +66,18 @@ jobs:
         echo VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d >> $GITHUB_ENV
         echo LD_LIBRARY_PATH=/home/runner/work/rview2/rview2/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
         sudo ldconfig
-    - name: verifying vulkan
+    # - name: downloading latest slang AGAIN
+    #   run: |
+    #     url=$(curl -s https://api.github.com/repos/shader-slang/slang/releases/latest | jq -r '.assets[] | select(.name | endswith("linux-x86_64.tar.gz")) | .browser_download_url')
+    #     mkdir -p ~/slang && curl -L "$url" | tar -xz -C ~/slang
+    #     ls ~/slang
+    #     ~/slang/bin/slangc -v
+    - name: verifying vulkan & slang AGAIN!!
       run: |
+        url=$(curl -s https://api.github.com/repos/shader-slang/slang/releases/latest | jq -r '.assets[] | select(.name | endswith("linux-x86_64.tar.gz")) | .browser_download_url')
+        mkdir -p ~/slang && curl -L "$url" | tar -xz -C ~/slang
+        ls ~/slang
+        ~/slang/bin/slangc -v
         mkdir -p $VULKAN_SDK/bin
         sudo rm -rf $VULKAN_SDK/bin/slangc
         sudo cp -v -f ~/slang/bin/* $VULKAN_SDK/bin
