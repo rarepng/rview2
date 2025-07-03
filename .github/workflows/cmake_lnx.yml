@@ -69,10 +69,18 @@ jobs:
     - name: verifying vulkan
       run: |
         mkdir -p $VULKAN_SDK/bin
+        sudo rm -rf $VULKAN_SDK/bin/slangc
         sudo cp -v -f ~/slang/bin/* $VULKAN_SDK/bin
+        sudo cp -v -f ~/slang/bin/slangc $VULKAN_SDK/bin/slangc
+        echo "\n"
         $VULKAN_SDK/bin/slangc -v
+        echo "\n"
         slangc -v
+        echo "\n"
+        ~/slang/bin/slangc -v
+        echo "\n"
         which slangc
+        echo "\n"
         ls -lah ~/slang/bin/slangc
         md5sum ~/slang/bin/slangc
         md5sum $VULKAN_SDK/bin/slangc
