@@ -27,6 +27,13 @@ jobs:
         submodules: true
         fetch-depth: 0
 
+    - name: installing cmake 4
+      run: |
+        sudo apt-get remove --purge -y cmake
+        wget https://github.com/Kitware/CMake/releases/download/v4.0.3/cmake-4.0.3-linux-x86_64.sh
+        chmod +x cmake-4.0.3-linux-x86_64.sh
+        sudo ./cmake-4.0.3-linux-x86_64.sh --skip-license --prefix=/usr/local
+        
     - name: update submodules
       run: |
         git submodule update --init --recursive
