@@ -75,7 +75,7 @@ jobs:
     - name: verifying vulkan & slang AGAIN!!
       run: |
         url=$(curl -s https://api.github.com/repos/shader-slang/slang/releases/latest | jq -r '.assets[] | select(.name | endswith("linux-x86_64.tar.gz")) | .browser_download_url')
-        mkdir -p ~/slang && curl -L "$url" | tar -xz -C ~/slang2
+        mkdir -p ~/slang2 && curl -L "$url" | tar -xz -C ~/slang2
         ls ~/slang2
         ~/slang2/bin/slangc -v
         ~/slang/bin/slangc -v
