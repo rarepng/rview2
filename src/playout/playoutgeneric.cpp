@@ -175,8 +175,8 @@ void playoutgeneric::updatemats() {
 			modelsettings &settings = i->getinstancesettings();
 			if (!settings.msdrawmodel)
 				continue;
-				jointmats.push_back(i->calcstaticmat());
-				nummats++;
+			jointmats.push_back(i->calcstaticmat());
+			nummats++;
 			totaltricount += mgltf->gettricount(0, 0);
 		}
 	}

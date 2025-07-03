@@ -39,6 +39,7 @@ jobs:
         mkdir -p ~/slang && curl -L "$url" | tar -xz -C ~/slang
         ls ~/slang
         ~/slang/bin/slangc -v
+        sudo cp -v -f ~/slang/bin/* /usr/bin
     - name: update submodules
       run: |
         git submodule update --init --recursive
