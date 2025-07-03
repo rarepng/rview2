@@ -33,7 +33,10 @@ jobs:
         wget https://github.com/Kitware/CMake/releases/download/v4.0.3/cmake-4.0.3-linux-x86_64.sh
         chmod +x cmake-4.0.3-linux-x86_64.sh
         sudo ./cmake-4.0.3-linux-x86_64.sh --skip-license --prefix=/usr/local
-        
+    - name: downloading latest slang
+      run: |
+        url=$(curl -s https://api.github.com/repos/shader-slang/slang/releases/latest | jq -r '.assets[] | select(.name | endswith("linux-x86_64.tar.gz")) | .browser_download_url')
+        mkdir -p ~/slang && curl -L "$url" | tar -xz -C ~/slang
     - name: update submodules
       run: |
         git submodule update --init --recursive
@@ -64,8 +67,10 @@ jobs:
     - name: verifying vulkan
       run: |
         mkdir -p $VULKAN_SDK/bin
-        cp -n /home/runner/vulk/bin/slangc $VULKAN_SDK/bin/slangc
+        cp -f ~/slang/bin/slangc $VULKAN_SDK/bin/slangc
         $VULKAN_SDK/bin/slangc -v
+        slangc -v
+        which slangc
     - name: downloading resources
       run: |
         mkdir /home/runner/work/rview2/rview2/resources
