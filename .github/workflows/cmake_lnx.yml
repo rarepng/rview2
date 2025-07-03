@@ -75,23 +75,30 @@ jobs:
     - name: verifying vulkan & slang AGAIN!!
       run: |
         url=$(curl -s https://api.github.com/repos/shader-slang/slang/releases/latest | jq -r '.assets[] | select(.name | endswith("linux-x86_64.tar.gz")) | .browser_download_url')
-        mkdir -p ~/slang && curl -L "$url" | tar -xz -C ~/slang
-        ls ~/slang
+        mkdir -p ~/slang && curl -L "$url" | tar -xz -C ~/slang2
+        ls ~/slang2
+        ~/slang2/bin/slangc -v
         ~/slang/bin/slangc -v
         mkdir -p $VULKAN_SDK/bin
         sudo rm -rf $VULKAN_SDK/bin/slangc
         sudo cp -v -f ~/slang/bin/* $VULKAN_SDK/bin
         sudo cp -v -f ~/slang/bin/slangc $VULKAN_SDK/bin/slangc
+        sudo cp -v -f ~/slang2/bin/* $VULKAN_SDK/bin
+        sudo cp -v -f ~/slang2/bin/slangc $VULKAN_SDK/bin/slangc
         echo "\n"
         $VULKAN_SDK/bin/slangc -v
         echo "\n"
         slangc -v
         echo "\n"
         ~/slang/bin/slangc -v
+        ~/slang2/bin/slangc -v
         echo "\n"
         which slangc
         echo "\n"
         ls -lah ~/slang/bin/slangc
+        ls -lah ~/slang2/bin/slangc
+        ls -lah $VULKAN_SDK/bin/slangc
+        md5sum ~/slang2/bin/slangc
         md5sum ~/slang/bin/slangc
         md5sum $VULKAN_SDK/bin/slangc
     - name: downloading resources
