@@ -39,7 +39,9 @@ jobs:
         mkdir -p ~/slang && curl -L "$url" | tar -xz -C ~/slang
         ls ~/slang
         ~/slang/bin/slangc -v
-        sudo cp -v -f ~/slang/bin/* /usr/bin
+        sudo cp -v -f ~/slang/bin/* /usr/local/bin
+        ldconfig
+        sudo ldconfig
     - name: update submodules
       run: |
         git submodule update --init --recursive
@@ -56,12 +58,12 @@ jobs:
         mv $(ls | head -n 1)/x86_64/* .
         rm -r $(ls | head -n 1)
         export VULKAN_SDK=/home/runner/vulk
-        export PATH=$VULKAN_SDK/bin:$PATH
+        export PATH=~/slang/bin:$VULKAN_SDK/bin:$PATH
         export LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH
         export VK_ICD_FILENAMES=$VULKAN_SDK/etc/vulkan/icd.d
         export VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d
         echo VULKAN_SDK=/home/runner/vulk >> $GITHUB_ENV
-        echo PATH=$VULKAN_SDK/bin:$PATH >> $GITHUB_ENV
+        echo PATH=~/slang/bin:$VULKAN_SDK/bin:$PATH >> $GITHUB_ENV
         echo LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
         echo VK_ICD_FILENAMES=$VULKAN_SDK/etc/vulkan/icd.d >> $GITHUB_ENV
         echo VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d >> $GITHUB_ENV
