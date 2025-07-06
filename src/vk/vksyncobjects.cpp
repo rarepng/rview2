@@ -1,6 +1,6 @@
 #include "vksyncobjects.hpp"
 
-bool vksyncobjects::init(vkobjs &rdata) {
+bool vksyncobjects::init(rvk &rdata) {
 
 	VkFenceCreateInfo fenceinfo{};
 	fenceinfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -17,7 +17,7 @@ bool vksyncobjects::init(vkobjs &rdata) {
 	}
 	return true;
 }
-void vksyncobjects::cleanup(vkobjs &rdata) {
+void vksyncobjects::cleanup(rvk &rdata) {
 	vkDestroySemaphore(rdata.vkdevice.device, rdata.presentsemaphore, nullptr);
 	vkDestroySemaphore(rdata.vkdevice.device, rdata.rendersemaphore, nullptr);
 	vkDestroyFence(rdata.vkdevice.device, rdata.renderfence, nullptr);

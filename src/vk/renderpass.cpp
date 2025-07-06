@@ -1,7 +1,7 @@
 #include "renderpass.hpp"
 #include <VkBootstrap.h>
 
-bool renderpass::init(vkobjs &rdata) {
+bool renderpass::init(rvk &rdata) {
 	VkAttachmentDescription colora{};
 	colora.format = rdata.schain.image_format;
 	colora.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -37,23 +37,15 @@ bool renderpass::init(vkobjs &rdata) {
 	subpassdesc.pColorAttachments = &coloraref;
 	subpassdesc.pDepthStencilAttachment = &deptharef;
 
-	VkSubpassDependency subpassdep{};
-	subpassdep.srcSubpass = VK_SUBPASS_EXTERNAL;
-	subpassdep.dstSubpass = 0;
-	subpassdep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subpassdep.srcAccessMask = 0;
-	subpassdep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subpassdep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	VkSubpassDependency dependency{};
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-	VkSubpassDependency depthdep{};
-	depthdep.srcSubpass = VK_SUBPASS_EXTERNAL;
-	depthdep.dstSubpass = 0;
-	depthdep.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-	depthdep.srcAccessMask = 0;
-	depthdep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-	depthdep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-	VkSubpassDependency deps[] = {subpassdep, depthdep};
+	VkSubpassDependency deps[] = {dependency};
 	VkAttachmentDescription descs[] = {colora, deptha};
 
 	VkRenderPassCreateInfo renderpassinfo{};
@@ -62,7 +54,7 @@ bool renderpass::init(vkobjs &rdata) {
 	renderpassinfo.pAttachments = descs;
 	renderpassinfo.subpassCount = 1;
 	renderpassinfo.pSubpasses = &subpassdesc;
-	renderpassinfo.dependencyCount = 2;
+	renderpassinfo.dependencyCount = 1;
 	renderpassinfo.pDependencies = deps;
 
 	if (vkCreateRenderPass(rdata.vkdevice.device, &renderpassinfo, nullptr, &rdata.rdrenderpass) != VK_SUCCESS) {
@@ -71,6 +63,6 @@ bool renderpass::init(vkobjs &rdata) {
 
 	return true;
 }
-void renderpass::cleanup(vkobjs &rdata) {
+void renderpass::cleanup(rvk &rdata) {
 	vkDestroyRenderPass(rdata.vkdevice.device, rdata.rdrenderpass, nullptr);
 }

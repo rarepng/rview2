@@ -10,7 +10,7 @@
 #include "modelsettings.hpp"
 #include "vkclip.hpp"
 #include "vknode.hpp"
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 
 class genericinstance {
 public:
@@ -37,6 +37,18 @@ public:
 	void setnumikiterations(int iterations);
 
 	glm::vec3 *getinstpos();
+
+	glm::mat4 calcstaticmat() {
+	glm::mat4 x = glm::scale(glm::mat4{1.0f}, mmodelsettings.msworldscale);
+	x = glm::toMat4(glm::quat(glm::radians(mmodelsettings.msworldrot))) * x;
+	x = glm::translate(glm::mat4{ 1.0f }, mmodelsettings.msworldpos) * x;
+	return x;
+	// glm::mat4 x{ 1.0 };
+	// ////glm::mat4 t = glm::translate(x, mmodelsettings.msworldpos) * glm::scale(x, mmodelsettings.msworldscale) * glm::rotate(x, glm::radians(mmodelsettings.msworldrot.y), glm::vec3{ 0.0f,1.0f,0.0f });
+	// glm::mat4 t = glm::translate(x, mmodelsettings.msworldpos) * glm::mat4_cast(glm::quat(glm::radians(mmodelsettings.msworldrot))) * glm::scale(x, mmodelsettings.msworldscale);
+	// return t;
+	}
+
 
 private:
 	void playanimation(int animnum, float speeddivider, float blendfactor, replaydirection direction);

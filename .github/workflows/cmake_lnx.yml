@@ -27,6 +27,21 @@ jobs:
         submodules: true
         fetch-depth: 0
 
+    - name: installing cmake 4
+      run: |
+        sudo apt-get remove --purge -y cmake
+        wget https://github.com/Kitware/CMake/releases/download/v4.0.3/cmake-4.0.3-linux-x86_64.sh
+        chmod +x cmake-4.0.3-linux-x86_64.sh
+        sudo ./cmake-4.0.3-linux-x86_64.sh --skip-license --prefix=/usr/local
+    - name: downloading latest slang
+      run: |
+        url=$(curl -s https://api.github.com/repos/shader-slang/slang/releases/latest | jq -r '.assets[] | select(.name | endswith("linux-x86_64.tar.gz")) | .browser_download_url')
+        mkdir -p ~/slang && curl -L "$url" | tar -xz -C ~/slang
+        ls ~/slang
+        ~/slang/bin/slangc -v
+        sudo cp -v -f ~/slang/bin/* /usr/local/bin
+        sudo cp -v -f ~/slang/lib/* /usr/local/lib
+        sudo ldconfig
     - name: update submodules
       run: |
         git submodule update --init --recursive
@@ -43,22 +58,52 @@ jobs:
         mv $(ls | head -n 1)/x86_64/* .
         rm -r $(ls | head -n 1)
         export VULKAN_SDK=/home/runner/vulk
-        export PATH=$VULKAN_SDK/bin:$PATH
-        export LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH
+        export PATH=~/slang/bin:$VULKAN_SDK/bin:$PATH
+        export LD_LIBRARY_PATH=~/slang/lib:$VULKAN_SDK/lib:$LD_LIBRARY_PATH
         export VK_ICD_FILENAMES=$VULKAN_SDK/etc/vulkan/icd.d
         export VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d
         echo VULKAN_SDK=/home/runner/vulk >> $GITHUB_ENV
-        echo PATH=$VULKAN_SDK/bin:$PATH >> $GITHUB_ENV
-        echo LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
+        echo PATH=~/slang/bin:$VULKAN_SDK/bin:$PATH >> $GITHUB_ENV
         echo VK_ICD_FILENAMES=$VULKAN_SDK/etc/vulkan/icd.d >> $GITHUB_ENV
         echo VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d >> $GITHUB_ENV
-        echo LD_LIBRARY_PATH=/home/runner/work/rview2/rview2/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
+        echo LD_LIBRARY_PATH=~/slang/lib:/home/runner/work/rview2/rview2/lib:$VULKAN_SDK/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
         sudo ldconfig
-    - name: verifying vulkan
+    # - name: downloading latest slang AGAIN
+    #   run: |
+    #     url=$(curl -s https://api.github.com/repos/shader-slang/slang/releases/latest | jq -r '.assets[] | select(.name | endswith("linux-x86_64.tar.gz")) | .browser_download_url')
+    #     mkdir -p ~/slang && curl -L "$url" | tar -xz -C ~/slang
+    #     ls ~/slang
+    #     ~/slang/bin/slangc -v
+    # i give up,..
+    - name: verifying vulkan & slang AGAIN!!
       run: |
+        url=$(curl -s https://api.github.com/repos/shader-slang/slang/releases/latest | jq -r '.assets[] | select(.name | endswith("linux-x86_64.tar.gz")) | .browser_download_url')
+        mkdir -p ~/slang2 && curl -L "$url" | tar -xz -C ~/slang2
+        ls ~/slang2
+        ~/slang2/bin/slangc -v
+        ~/slang/bin/slangc -v
         mkdir -p $VULKAN_SDK/bin
-        cp -n /home/runner/vulk/bin/slangc $VULKAN_SDK/bin/slangc
+        sudo rm -rf $VULKAN_SDK/bin/slangc
+        sudo cp -v -f ~/slang/bin/* $VULKAN_SDK/bin
+        sudo cp -v -f ~/slang/bin/slangc $VULKAN_SDK/bin/slangc
+        sudo cp -v -f ~/slang2/bin/* $VULKAN_SDK/bin
+        sudo cp -v -f ~/slang2/bin/slangc $VULKAN_SDK/bin/slangc
+        echo "\n"
         $VULKAN_SDK/bin/slangc -v
+        echo "\n"
+        slangc -v
+        echo "\n"
+        ~/slang/bin/slangc -v
+        ~/slang2/bin/slangc -v
+        echo "\n"
+        which slangc
+        echo "\n"
+        ls -lah ~/slang/bin/slangc
+        ls -lah ~/slang2/bin/slangc
+        ls -lah $VULKAN_SDK/bin/slangc
+        md5sum ~/slang2/bin/slangc
+        md5sum ~/slang/bin/slangc
+        md5sum $VULKAN_SDK/bin/slangc
     - name: downloading resources
       run: |
         mkdir /home/runner/work/rview2/rview2/resources

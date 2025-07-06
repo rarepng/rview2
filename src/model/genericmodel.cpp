@@ -15,7 +15,7 @@
 #include "vkebo.hpp"
 #include "vkvbo.hpp"
 
-bool genericmodel::loadmodel(vkobjs &objs, std::string fname) {
+bool genericmodel::loadmodel(rvk &objs, std::string fname) {
 
 	fastgltf::Parser fastparser{};
 	auto buff = fastgltf::MappedGltfFile::FromPath(fname);
@@ -24,9 +24,15 @@ bool genericmodel::loadmodel(vkobjs &objs, std::string fname) {
 
 	mgltfobjs.texs.reserve(mmodel2.images.size());
 	mgltfobjs.texs.resize(mmodel2.images.size());
+	static const bool _ = [&]{
+	if (!vktexture::createlayout(objs))
+		return false;
+		return true;
+	}();
+	
 	if (!vktexture::loadtexture(objs, mgltfobjs.texs, mmodel2))
 		return false;
-	if (!vktexture::loadtexlayoutpool(objs, mgltfobjs.texs, mgltfobjs.texpls, mmodel2))
+	if (!vktexture::loadtexset(objs, mgltfobjs.texs, *rvk::texlayout, mgltfobjs.dset, mmodel2))
 		return false;
 
 	createvboebo(objs);
@@ -38,6 +44,8 @@ bool genericmodel::loadmodel(vkobjs &objs, std::string fname) {
 		mjnodecount = mmodel2.nodes.size();
 
 		getanims();
+	}else{
+		skinned=false;
 	}
 	return true;
 }
@@ -164,7 +172,7 @@ std::vector<unsigned int> genericmodel::getnodetojoint() {
 	return mnodetojoint;
 }
 
-void genericmodel::createvboebo(vkobjs &objs) { //& joint vector
+void genericmodel::createvboebo(rvk &objs) { //& joint vector
 
 	jointuintofx.reserve(mmodel2.meshes.size());
 	jointuintofx.resize(mmodel2.meshes.size());
@@ -265,7 +273,7 @@ void genericmodel::createvboebo(vkobjs &objs) { //& joint vector
 	}
 }
 
-void genericmodel::uploadvboebo(vkobjs &objs, VkCommandBuffer &cbuffer) {
+void genericmodel::uploadvboebo(rvk &objs, VkCommandBuffer &cbuffer) {
 	for (size_t i{0}; i < mmodel2.meshes.size(); i++) {
 		for (auto it = mmodel2.meshes[i].primitives.begin(); it < mmodel2.meshes[i].primitives.end(); it++) {
 
@@ -318,20 +326,20 @@ size_t genericmodel::gettricount(size_t i, size_t j) {
 	return c;
 }
 
-void genericmodel::drawinstanced(vkobjs &objs, VkPipelineLayout &vkplayout, VkPipeline &vkpline,
+void genericmodel::drawinstanced(rvk &objs, VkPipelineLayout &vkplayout, VkPipeline &vkpline,
                                  VkPipeline &vkplineuint, int instancecount, int stride) {
 	VkDeviceSize offset = 0;
 	std::vector<std::vector<vkpushconstants>> pushes(mgltfobjs.vbos.size());
 
-	vkCmdBindDescriptorSets(objs.cbuffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1,
-	                        &mgltfobjs.texpls.dset, 0, nullptr);
+	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1,
+	                        &mgltfobjs.dset, 0, nullptr);
 
 	for (size_t i{0}; i < mgltfobjs.vbos.size(); i++) {
 		pushes[i].reserve(mgltfobjs.vbos.at(i).size());
 		pushes[i].resize(mgltfobjs.vbos.at(i).size());
 
-		meshjointtype[i] ? vkCmdBindPipeline(objs.cbuffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkplineuint)
-		: vkCmdBindPipeline(objs.cbuffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, vkpline);
+		meshjointtype[i] ? vkCmdBindPipeline(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, vkplineuint)
+		: vkCmdBindPipeline(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, vkpline);
 
 		for (size_t j{0}; j < mgltfobjs.vbos.at(i).size(); j++) {
 			pushes[i][j].stride = stride;
@@ -348,21 +356,21 @@ void genericmodel::drawinstanced(vkobjs &objs, VkPipelineLayout &vkplayout, VkPi
 			}
 			pushes[i][j].t = static_cast<float>(SDL_GetTicks()) / 1000.0f;
 
-			vkCmdPushConstants(objs.cbuffers[0], vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants),
+			vkCmdPushConstants(objs.cbuffers_graphics.at(0), vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants),
 			                   &pushes.at(i).at(j));
 			// rework bindings
 			for (size_t k{0}; k < mgltfobjs.vbos.at(i).at(j).size(); k++) {
 				if (mgltfobjs.vbos.at(i).at(j).at(k).buffer != VK_NULL_HANDLE)
-					vkCmdBindVertexBuffers(objs.cbuffers[0], k, 1, &mgltfobjs.vbos.at(i).at(j).at(k).buffer,
+					vkCmdBindVertexBuffers(objs.cbuffers_graphics.at(0), k, 1, &mgltfobjs.vbos.at(i).at(j).at(k).buffer,
 					                       &offset);
 			}
-			vkCmdBindIndexBuffer(objs.cbuffers[0], mgltfobjs.ebos.at(i).at(j).buffer, 0, VK_INDEX_TYPE_UINT16);
-			vkCmdDrawIndexed(objs.cbuffers[0], static_cast<uint32_t>(gettricount(i, j) * 3), instancecount, 0, 0, 0);
+			vkCmdBindIndexBuffer(objs.cbuffers_graphics.at(0), mgltfobjs.ebos.at(i).at(j).buffer, 0, VK_INDEX_TYPE_UINT16);
+			vkCmdDrawIndexed(objs.cbuffers_graphics.at(0), static_cast<uint32_t>(gettricount(i, j) * 3), instancecount, 0, 0, 0);
 		}
 	}
 }
 
-void genericmodel::cleanup(vkobjs &objs) {
+void genericmodel::cleanup(rvk &objs) {
 
 	for (size_t i{0}; i < mgltfobjs.vbos.size(); i++) {
 		for (size_t j{0}; j < mgltfobjs.vbos.at(i).size(); j++) {
@@ -379,15 +387,52 @@ void genericmodel::cleanup(vkobjs &objs) {
 	for (size_t i{0}; i < mgltfobjs.texs.size(); i++) {
 		vktexture::cleanup(objs, mgltfobjs.texs[i]);
 	}
-	vktexture::cleanuppls(objs, mgltfobjs.texpls);
+}
 
-	// mmodel.reset();
+
+void genericmodel::drawinstancedstatic(rvk &objs, VkPipelineLayout &vkplayout, VkPipeline &vkpline,
+                                  int instancecount, int stride) {
+	VkDeviceSize offset = 0;
+	std::vector<std::vector<vkpushconstants>> pushes(mgltfobjs.vbos.size());
+
+	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1,
+	                        &mgltfobjs.dset, 0, nullptr);
+
+	for (size_t i{0}; i < mgltfobjs.vbos.size(); i++) {
+		pushes[i].reserve(mgltfobjs.vbos.at(i).size());
+		pushes[i].resize(mgltfobjs.vbos.at(i).size());
+		
+		vkCmdBindPipeline(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, vkpline);
+
+		for (size_t j{0}; j < mgltfobjs.vbos.at(i).size(); j++) {
+			pushes[i][j].stride = stride;
+			if (mmodel2.meshes.at(i).primitives.at(j).materialIndex.has_value() &&
+			        mmodel2.materials.at(mmodel2.meshes.at(i).primitives.at(j).materialIndex.value())
+			        .pbrData.baseColorTexture.has_value()) {
+				pushes[i][j].texidx = static_cast<unsigned int>(
+				                          mmodel2
+				                          .textures[mmodel2.materials[mmodel2.meshes.at(i).primitives.at(j).materialIndex.value_or(0)]
+				                                    .pbrData.baseColorTexture->textureIndex]
+				                          .imageIndex.value_or(0));
+			} else {
+				pushes[i][j].texidx = 0;
+			}
+			pushes[i][j].t = static_cast<float>(SDL_GetTicks()) / 1000.0f;
+
+			vkCmdPushConstants(objs.cbuffers_graphics.at(0), vkplayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vkpushconstants),
+			                   &pushes.at(i).at(j));
+			// rework bindings
+			for (size_t k{0}; k < mgltfobjs.vbos.at(i).at(j).size(); k++) {
+				if (mgltfobjs.vbos.at(i).at(j).at(k).buffer != VK_NULL_HANDLE)
+					vkCmdBindVertexBuffers(objs.cbuffers_graphics.at(0), k, 1, &mgltfobjs.vbos.at(i).at(j).at(k).buffer,
+					                       &offset);
+			}
+			vkCmdBindIndexBuffer(objs.cbuffers_graphics.at(0), mgltfobjs.ebos.at(i).at(j).buffer, 0, VK_INDEX_TYPE_UINT16);
+			vkCmdDrawIndexed(objs.cbuffers_graphics.at(0), static_cast<uint32_t>(gettricount(i, j) * 3), instancecount, 0, 0, 0);
+		}
+	}
 }
 
 std::vector<texdata> genericmodel::gettexdata() {
 	return mgltfobjs.texs;
-}
-
-texdatapls genericmodel::gettexdatapls() {
-	return mgltfobjs.texpls;
 }

@@ -6,7 +6,7 @@
 #include <VkBootstrap.h>
 #include <glm/glm.hpp>
 
-bool pline::init(vkobjs &objs, VkPipelineLayout &playout, VkPipeline &pipeline, VkPrimitiveTopology topology,
+bool pline::init(rvk &objs, VkPipelineLayout &playout, VkPipeline &pipeline, VkPrimitiveTopology topology,
                  unsigned int v_in, unsigned int atts, std::vector<std::string> sfiles, bool char_or_short) {
 	if (sfiles.size() < 2)
 		return false;
@@ -119,7 +119,7 @@ bool pline::init(vkobjs &objs, VkPipelineLayout &playout, VkPipeline &pipeline, 
 	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
 	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
@@ -183,6 +183,6 @@ bool pline::init(vkobjs &objs, VkPipelineLayout &playout, VkPipeline &pipeline, 
 	return true;
 }
 
-void pline::cleanup(vkobjs &objs, VkPipeline &pipeline) {
+void pline::cleanup(rvk &objs, VkPipeline &pipeline) {
 	vkDestroyPipeline(objs.vkdevice.device, pipeline, nullptr);
 }
