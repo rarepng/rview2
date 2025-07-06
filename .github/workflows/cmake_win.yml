@@ -46,10 +46,11 @@ jobs:
         mkdir D:/a/slang
         cd D:/a/slang
         curl -L $url -o slang.tar.gz
+        ls
         7z x slang.tar.gz -aoa
         7z x slang.tar -aoa
-        rm slang.tar.gz
-        rm slang.tar
+        # rm slang.tar.gz
+        # rm slang.tar
     - shell: msys2 {0}
       run: |
         cd /d/a/rview2/rview2/openssl-3.5.0
