@@ -42,6 +42,14 @@ jobs:
         # curl -L "https://github.com/openssl/openssl/releases/download/openssl-3.5.0/openssl-3.5.0.tar.gz" | tar -xz     #doesnt work on runner
         pwsh -c 'curl -L "https://github.com/openssl/openssl/releases/download/openssl-3.5.0/openssl-3.5.0.tar.gz" -o ossl.tar.gz'
         tar -xvzf ossl.tar.gz
+        $url = curl -L "https://api.github.com/repos/shader-slang/slang/releases/latest" | ForEach-Object { $_.assets } | Where-Object { $_.name -like "*windows-x86_64.tar.gz" } | Select-Object -ExpandProperty browser_download_url
+        mkdir D:/a/slang
+        cd D:/a/slang
+        curl -L $url -o slang.tar.gz
+        7z x slang.tar.gz -aoa
+        7z x slang.tar -aoa
+        rm slang.tar.gz
+        rm slang.tar
     - shell: msys2 {0}
       run: |
         cd /d/a/rview2/rview2/openssl-3.5.0
@@ -64,20 +72,19 @@ jobs:
         ./sdk.exe --root D:/a/vulk --accept-licenses --default-answer --confirm-command install
         rm sdk.exe
         $env:VULKAN_SDK="D:/a/vulk"
-        $env:PATH="$env:VULKAN_SDK/bin;$env:PATH"
-        $env:LD_LIBRARY_PATH="$env:VULKAN_SDK/lib;$env:LD_LIBRARY_PATH"
+        $env:SLANG_SDK="D:/a/slang"
+        $env:PATH="$env:SLANG_SDK/bin;$env:VULKAN_SDK/bin;$env:PATH"
+        $env:LD_LIBRARY_PATH="D:/a/work/rview2/rview2/lib;$env:SLANG_SDK/lib;$env:VULKAN_SDK/lib;$env:LD_LIBRARY_PATH"
         $env:VK_ICD_FILENAMES="$env:VULKAN_SDK/etc/vulkan/icd.d"
         $env:VK_LAYER_PATH="$env:VULKAN_SDK/etc/vulkan/explicit_layer.d"
-        $env:LD_LIBRARY_PATH="D:/a/work/rview2/rview2/lib;$env:LD_LIBRARY_PATH"
         echo VULKAN_SDK=$env:VULKAN_SDK  | tee -a $env:GITHUB_ENV
         echo PATH=$env:PATH  | tee -a $env:GITHUB_ENV
         echo LD_LIBRARY_PATH=$env:LD_LIBRARY_PATH  | tee -a $env:GITHUB_ENV
         echo VK_ICD_FILENAMES=$env:VULKAN_SDK/etc/vulkan/icd.d  | tee -a $env:GITHUB_ENV
         echo VK_LAYER_PATH=$env:VULKAN_SDK/etc/vulkan/explicit_layer.d  | tee -a $env:GITHUB_ENV
-        echo LD_LIBRARY_PATH=$env:LD_LIBRARY_PATH  | tee -a $env:GITHUB_ENV
     - name: verifying vulkan
       run: |
-        powershell -c "$env:VULKAN_SDK/bin/glslc --version"
+        pwsh -c "$env:VULKAN_SDK/bin/glslc --version"
         echo $VULKAN_SDK
         ls -r $VULKAN_SDK
     - name: downloading resources
