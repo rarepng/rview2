@@ -40,6 +40,7 @@ jobs:
         ls ~/slang
         ~/slang/bin/slangc -v
         sudo cp -v -f ~/slang/bin/* /usr/local/bin
+        sudo cp -v -f ~/slang/lib/* /usr/local/lib
         sudo ldconfig
     - name: update submodules
       run: |
@@ -58,15 +59,14 @@ jobs:
         rm -r $(ls | head -n 1)
         export VULKAN_SDK=/home/runner/vulk
         export PATH=~/slang/bin:$VULKAN_SDK/bin:$PATH
-        export LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH
+        export LD_LIBRARY_PATH=~/slang/lib:$VULKAN_SDK/lib:$LD_LIBRARY_PATH
         export VK_ICD_FILENAMES=$VULKAN_SDK/etc/vulkan/icd.d
         export VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d
         echo VULKAN_SDK=/home/runner/vulk >> $GITHUB_ENV
         echo PATH=~/slang/bin:$VULKAN_SDK/bin:$PATH >> $GITHUB_ENV
-        echo LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
         echo VK_ICD_FILENAMES=$VULKAN_SDK/etc/vulkan/icd.d >> $GITHUB_ENV
         echo VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d >> $GITHUB_ENV
-        echo LD_LIBRARY_PATH=/home/runner/work/rview2/rview2/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
+        echo LD_LIBRARY_PATH=~/slang/lib:/home/runner/work/rview2/rview2/lib:$VULKAN_SDK/lib:$LD_LIBRARY_PATH >> $GITHUB_ENV
         sudo ldconfig
     # - name: downloading latest slang AGAIN
     #   run: |
