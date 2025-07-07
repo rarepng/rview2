@@ -47,8 +47,11 @@ jobs:
         cd D:/a/slang
         curl -L $url -o slang.tar.gz
         ls
+        pwd
         7z x slang.tar.gz -aoa
+        ls
         7z x slang.tar -aoa
+        ls
         # rm slang.tar.gz
         # rm slang.tar
     - shell: msys2 {0}
