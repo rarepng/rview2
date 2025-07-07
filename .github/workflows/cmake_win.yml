@@ -42,7 +42,7 @@ jobs:
         # curl -L "https://github.com/openssl/openssl/releases/download/openssl-3.5.0/openssl-3.5.0.tar.gz" | tar -xz     #doesnt work on runner
         pwsh -c 'curl -L "https://github.com/openssl/openssl/releases/download/openssl-3.5.0/openssl-3.5.0.tar.gz" -o ossl.tar.gz'
         tar -xvzf ossl.tar.gz
-        $url = curl -L "https://api.github.com/repos/shader-slang/slang/releases/latest" | ForEach-Object { $_.assets } | Where-Object { $_.name -like "*windows-x86_64.tar.gz" } | Select-Object -ExpandProperty browser_download_url
+        $url = curl -L "https://api.github.com/repos/shader-slang/slang/releases/latest" | ConvertFrom-Json | ForEach-Object { $_.assets } | Where-Object { $_.name -like "*windows-x86_64.tar.gz" } | Select-Object -ExpandProperty browser_download_url
         mkdir D:/a/slang
         cd D:/a/slang
         curl -L $url -o slang.tar.gz
