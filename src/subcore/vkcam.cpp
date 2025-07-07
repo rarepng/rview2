@@ -5,7 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/string_cast.hpp>
 
-glm::mat4 vkcam::getview(vkobjs &mvkobjs) {
+glm::mat4 vkcam::getview(rvk &mvkobjs) {
 	mforward = glm::normalize(
 	               glm::vec3{glm::sin(glm::radians(mvkobjs.azimuth)) * glm::cos(glm::radians(mvkobjs.elevation)),
 	                         glm::sin(glm::radians(mvkobjs.elevation)),
@@ -16,8 +16,8 @@ glm::mat4 vkcam::getview(vkobjs &mvkobjs) {
 	mup = glm::normalize(glm::cross(mright, mforward));
 
 	mvkobjs.camwpos += mvkobjs.camfor * static_cast<float>(mvkobjs.tickdiff) * mforward +
-	                     mvkobjs.camright * static_cast<float>(mvkobjs.tickdiff) * mright +
-	                     mvkobjs.camup * static_cast<float>(mvkobjs.tickdiff) * mup;
+	                   mvkobjs.camright * static_cast<float>(mvkobjs.tickdiff) * mright +
+	                   mvkobjs.camup * static_cast<float>(mvkobjs.tickdiff) * mup;
 
 	return glm::lookAt(mvkobjs.camwpos, mvkobjs.camwpos + mforward, mup);
 }

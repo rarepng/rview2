@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 4.0)
 project(rview2 LANGUAGES CXX)
 
 
 include(ExternalProject)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -173,36 +173,55 @@ endif()
 file(GLOB shaders ${PROJECT_BINARY_DIR}/shaders/*)
 list(LENGTH shaders shader_len)
 
-#wip
-file(GLOB_RECURSE GLSL_SOURCE_FILES
-    # "${PROJECT_SOURCE_DIR}/shaders/*.frag"
-    # "${PROJECT_SOURCE_DIR}/shaders/*.vert"
-    "${PROJECT_SOURCE_DIR}/shaders/*.slang"
-    )
-  foreach(GLSL ${GLSL_SOURCE_FILES})
-    # get_filename_component(GLSL_EXT "${GLSL}" EXT)
-    # if(GLSL_EXT STREQUAL ".frag")
-    #     set(SLANG_STAGE "fragment")
-    # elseif(GLSL_EXT STREQUAL ".vert")
-    #     set(SLANG_STAGE "vertex")
-    # elseif(GLSL_EXT STREQUAL ".comp")
-    #     set(SLANG_STAGE "compute")
-    # endif()
-    file(TO_CMAKE_PATH "${GLSL}" GLSL_NATIVE)
-    cmake_path(GET GLSL_NATIVE FILENAME SPIRV_NAME)
-      set(VXSPIRV "${PROJECT_BINARY_DIR}/shaders/${SPIRV_NAME}.vx.spv")
-      set(PXSPIRV "${PROJECT_BINARY_DIR}/shaders/${SPIRV_NAME}.px.spv")
+# #wip
+# file(GLOB_RECURSE GLSL_SOURCE_FILES
+#     # "${PROJECT_SOURCE_DIR}/shaders/*.frag"
+#     # "${PROJECT_SOURCE_DIR}/shaders/*.vert"
+#     "${PROJECT_SOURCE_DIR}/shaders/*.slang"
+#     )
+#   foreach(GLSL ${GLSL_SOURCE_FILES})
+#     # get_filename_component(GLSL_EXT "${GLSL}" EXT)
+#     # if(GLSL_EXT STREQUAL ".frag")
+#     #     set(SLANG_STAGE "fragment")
+#     # elseif(GLSL_EXT STREQUAL ".vert")
+#     #     set(SLANG_STAGE "vertex")
+#     # elseif(GLSL_EXT STREQUAL ".comp")
+#     #     set(SLANG_STAGE "compute")
+#     # endif()
+#     file(TO_CMAKE_PATH "${GLSL}" GLSL_NATIVE)
+#     cmake_path(GET GLSL_NATIVE FILENAME SPIRV_NAME)
+#       set(VXSPIRV "${PROJECT_BINARY_DIR}/shaders/${SPIRV_NAME}.vx.spv")
+#       set(PXSPIRV "${PROJECT_BINARY_DIR}/shaders/${SPIRV_NAME}.px.spv")
+#       add_custom_command(
+#         OUTPUT ${VXSPIRV}
+#         OUTPUT ${PXSPIRV}
+#         COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders"
+#         # COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -default-downstream-compiler glsl glslang -lang glsl -entry main $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage ${SLANG_STAGE} -matrix-layout-row-major -target spirv -capability SPIRV_1_6 ${GLSL_NATIVE} -o ${SPIRV}"        DEPENDS ${GLSL_NATIVE}
+#         COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -entry vxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage vertex -target spirv -capability SPIRV_1_6 ${GLSL_NATIVE} -o ${VXSPIRV}"        DEPENDS ${GLSL_NATIVE}
+#         COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -entry pxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage pixel -target spirv -capability SPIRV_1_6 ${GLSL_NATIVE} -o ${PXSPIRV}"        DEPENDS ${GLSL_NATIVE}
+#         )
+#       list(APPEND SPIRV_BINARY_FILES ${VXSPIRV})
+#       list(APPEND SPIRV_BINARY_FILES ${PXSPIRV})
+#   endforeach()
+#     set_source_files_properties(${SPIRV_BINARY_FILES} PROPERTIES GENERATED TRUE)
+#   add_custom_target(shaders ALL DEPENDS ${SPIRV_BINARY_FILES})
+#   add_dependencies(rview2 shaders)
+
+#manually adding shaders for now
       add_custom_command(
-        OUTPUT ${VXSPIRV}
-        OUTPUT ${PXSPIRV}
+        OUTPUT ${PROJECT_BINARY_DIR}/shaders/vx.spv ${PROJECT_BINARY_DIR}/shaders/px.spv ${PROJECT_BINARY_DIR}/shaders/cx.spv ${PROJECT_BINARY_DIR}/shaders/pvx.spv ${PROJECT_BINARY_DIR}/shaders/ppx.spv ${PROJECT_BINARY_DIR}/shaders/pcx.spv
         COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders"
-        # COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -default-downstream-compiler glsl glslang -lang glsl -entry main $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage ${SLANG_STAGE} -matrix-layout-row-major -target spirv -capability SPIRV_1_6 ${GLSL_NATIVE} -o ${SPIRV}"        DEPENDS ${GLSL_NATIVE}
-        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -entry vxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage vertex -target spirv -capability SPIRV_1_6 ${GLSL_NATIVE} -o ${VXSPIRV}"        DEPENDS ${GLSL_NATIVE}
-        COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SDK}/bin/slangc -entry pxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage pixel -target spirv -capability SPIRV_1_6 ${GLSL_NATIVE} -o ${PXSPIRV}"        DEPENDS ${GLSL_NATIVE}
+        COMMAND ${SHELL_CMD} -c "slangc -entry vxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage vertex -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/gen.slang -o ${PROJECT_BINARY_DIR}/shaders/vx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/gen.slang
+        COMMAND ${SHELL_CMD} -c "slangc -entry pxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage pixel -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/gen.slang -o ${PROJECT_BINARY_DIR}/shaders/px.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/gen.slang
+        # COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SD/bin/slangc -entry cxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage compute -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/gen.slang -o ${PROJECT_BINARY_DIR}/shaders/cx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/gen.slang
+        COMMAND ${SHELL_CMD} -c "slangc -entry vxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage vertex -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/static.slang -o ${PROJECT_BINARY_DIR}/shaders/svx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/static.slang
+        COMMAND ${SHELL_CMD} -c "slangc -entry pxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage pixel -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/static.slang -o ${PROJECT_BINARY_DIR}/shaders/spx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/static.slang
+        # COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SD/bin/slangc -entry cxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage compute -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/static.slang -o ${PROJECT_BINARY_DIR}/shaders/scx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/static.slang
+        COMMAND ${SHELL_CMD} -c "slangc -entry vxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage vertex -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/particle.slang -o ${PROJECT_BINARY_DIR}/shaders/pvx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/particle.slang
+        COMMAND ${SHELL_CMD} -c "slangc -entry pxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage pixel -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/particle.slang -o ${PROJECT_BINARY_DIR}/shaders/ppx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/particle.slang
+        COMMAND ${SHELL_CMD} -c "slangc -entry cxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage compute -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/particle.slang -o ${PROJECT_BINARY_DIR}/shaders/pcx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/particle.slang
         )
-      list(APPEND SPIRV_BINARY_FILES ${VXSPIRV})
-      list(APPEND SPIRV_BINARY_FILES ${PXSPIRV})
-  endforeach()
+      list(APPEND SPIRV_BINARY_FILES ${PROJECT_BINARY_DIR}/shaders/vx.spv ${PROJECT_BINARY_DIR}/shaders/px.spv ${PROJECT_BINARY_DIR}/shaders/cx.spv ${PROJECT_BINARY_DIR}/shaders/pvx.spv ${PROJECT_BINARY_DIR}/shaders/ppx.spv ${PROJECT_BINARY_DIR}/shaders/pcx.spv)
     set_source_files_properties(${SPIRV_BINARY_FILES} PROPERTIES GENERATED TRUE)
   add_custom_target(shaders ALL DEPENDS ${SPIRV_BINARY_FILES})
   add_dependencies(rview2 shaders)
@@ -311,7 +330,6 @@ target_link_libraries(rview2
         absl_log_internal_structured_proto
         absl_log_severity
         absl_log_sink
-        absl_low_level_hash
         absl_malloc_internal
         absl_periodic_sampler
         absl_poison

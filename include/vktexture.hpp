@@ -1,14 +1,14 @@
 #pragma once
-#include "vkobjs.hpp"
+#include "core/rvk.hpp"
 #include <vulkan/vulkan.h>
 // #include "tinygltf/tiny_gltf.h"
 #include <fastgltf/core.hpp>
 class vktexture {
 public:
-	static bool loadtexturefile(vkobjs &rdata, texdata &texdata, texdatapls &texdatapls, std::string texfile);
-	static bool loadtexture(vkobjs &rdata, std::vector<texdata> &texdata, fastgltf::Asset &mmodel);
-	static bool loadtexlayoutpool(vkobjs &rdata, std::vector<texdata> &texdata, texdatapls &texdatapls,
+	static bool loadtexture(rvk &rdata, std::vector<texdata> &texdata, fastgltf::Asset &mmodel);
+	static bool loadtexset(rvk &rdata, std::vector<texdata> &texdata, VkDescriptorSetLayout &dlayout,VkDescriptorSet &dset,
 	                              fastgltf::Asset &mmodel);
-	static void cleanup(vkobjs &rdata, texdata &texdata);
-	static void cleanuppls(vkobjs &rdata, texdatapls &texdatapls);
+	static bool createlayout(rvk &core);
+	static void cleanup(rvk &rdata, texdata &texdata);
+	// static void cleanuppls(rvk &rdata, texdataset &texdatapls);
 };

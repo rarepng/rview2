@@ -1,5 +1,6 @@
 build
 build_static
+build_corrupted
 cmake_more_cache
 resources
 vsbuild
@@ -17,4 +18,3 @@ dist
 .vscode
 *.swp
 out
-# .gitmodules
