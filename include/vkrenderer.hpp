@@ -70,8 +70,6 @@ private:
 
 	double dummy{0.0};
 
-	glm::vec<2, double> lastmousexy{};
-
 	glm::vec2 movediff{};
 
 	bool inmenu{true};
@@ -130,7 +128,7 @@ private:
 
 	VkDeviceSize mminuniformbufferoffsetalignment = 0;
 
-	std::vector<glm::mat4> mpersviewmats{glm::mat4{1.0f},glm::mat4{1.0f}};
+	std::vector<glm::mat4> persviewproj{glm::mat4{1.0f},glm::mat4{1.0f}};
 
 	bool createpools();
 	bool deviceinit();
@@ -143,6 +141,9 @@ private:
 	bool createcommandbuffer();
 	bool createsyncobjects();
 	bool initui();
+
+	float navmesh(float x, float z);
+	glm::vec3 navmeshnormal(float x, float z);
 
 	bool initvma();
 
