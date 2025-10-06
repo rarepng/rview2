@@ -723,17 +723,15 @@ void vkrenderer::movecam() {
 
 			glm::vec4 viewport(0.0f, 0.0f, (float)mvkobjs.width, (float)mvkobjs.height);
 
-			glm::vec3 near = glm::unProject(glm::vec3(x, -y, 0.0f), persviewproj.at(0), persviewproj.at(1), viewport);
-			glm::vec3 far = glm::unProject(glm::vec3(x, -y, 1.0f), persviewproj.at(0), persviewproj.at(1), viewport);
+			glm::vec3 near = glm::unProject(glm::vec3(x, viewport.w - y, 0.0f), persviewproj.at(0), persviewproj.at(1), viewport);
+			glm::vec3 far = glm::unProject(glm::vec3(x, viewport.w - y, 1.0f), persviewproj.at(0), persviewproj.at(1), viewport);
 
 			glm::vec3 d = glm::normalize(far - near);
-
-			// intersection
 			if (glm::abs(d.y) > 0.01f) {
-				float t = (navmesh(0.0f, 0.0f) - mvkobjs.camwpos.y) / d.y;
+				float t = ((0.0f) - near.y) / d.y;
 				if (t >= 0.0f) {
-					glm::vec3 h = mvkobjs.camwpos + t * d;
-
+					glm::vec3 h = near + t * d;
+					h.y = navmesh(h.x, h.z);
 					playermoveto = h;
 
 					modelsettings &s = mplayer[selectiondata.midx]->getinst(selectiondata.iidx)->getinstancesettings();
@@ -746,6 +744,7 @@ void vkrenderer::movecam() {
 			}
 		}
 	}
+
 }
 
 float vkrenderer::navmesh(float x, float z) {
@@ -908,9 +907,6 @@ bool vkrenderer::draw() {
 	mui.render(mvkobjs, mvkobjs.cbuffers_graphics.at(0));
 
 	vkCmdEndRenderPass(mvkobjs.cbuffers_graphics.at(0));
-
-	// animmtx.lock();
-	// updatemtx.lock();
 
 	muploadubossbotimer.start();
 
