@@ -461,7 +461,7 @@ bool vkrenderer::uploadfordraw() {
 
 bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric> &x) {
 	// mvkobjs.uploadmtx->lock();
-
+	
 	if (vkWaitForFences(mvkobjs.vkdevice.device, 1, &mvkobjs.renderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
 		return false;
 	}

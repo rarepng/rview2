@@ -381,6 +381,7 @@ target_link_libraries(rview2
 endif()
 
 target_include_directories(rview2
+    BEFORE
     PUBLIC
         "${PROJECT_SOURCE_DIR}/cmake_more_cache/gns/include/GameNetworkingSockets"
         "${submodules_path}/stb"
