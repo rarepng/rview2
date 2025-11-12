@@ -112,15 +112,29 @@ bool vkrenderer::quicksetup() {
 bool vkrenderer::deviceinit() {
 	vkb::InstanceBuilder instbuild{};
 
-	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 3).build();
+	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 4).build();
 
 	if (!instret) {
 		std::cout << instret.full_error().type << std::endl;
 		std::cout << instret.full_error().vk_result << std::endl;
 		return false;
 	}
-
 	mvkobjs.inst = instret.value();
+
+	
+
+	uint32_t gpuCount = 0;
+	vkEnumeratePhysicalDevices(instret.value(), &gpuCount, nullptr);
+	std::vector<VkPhysicalDevice> gpus(gpuCount);
+	vkEnumeratePhysicalDevices(instret.value(), &gpuCount, gpus.data());
+
+	for (auto gpu : gpus) {
+		VkPhysicalDeviceProperties props;
+		vkGetPhysicalDeviceProperties(gpu, &props);
+		std::cout << "available GPU: " << props.deviceName << std::endl;
+	}
+
+
 
 	bool res{false};
 	res = SDL_Vulkan_CreateSurface(mvkobjs.wind, mvkobjs.inst, nullptr, &msurface);
@@ -130,7 +144,7 @@ bool vkrenderer::deviceinit() {
 	}
 
 	vkb::PhysicalDeviceSelector physicaldevsel{mvkobjs.inst};
-	auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1, 3).select();
+	auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1, 4).select();
 
 	VkPhysicalDeviceVulkan14Features physfeatures14;
 	VkPhysicalDeviceVulkan13Features physfeatures13;
@@ -151,7 +165,7 @@ bool vkrenderer::deviceinit() {
 	physfeatures14.pNext = VK_NULL_HANDLE;
 
 	vkGetPhysicalDeviceFeatures2(firstphysicaldevselret.value(), &physfeatures);
-	auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 3)
+	auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 4)
 	                               .set_surface(msurface)
 	                               .set_required_features(physfeatures.features)
 	                               .set_required_features_11(physfeatures11)
@@ -159,14 +173,30 @@ bool vkrenderer::deviceinit() {
 	                               .set_required_features_13(physfeatures13)
 	                               .set_required_features_14(physfeatures14)
 	                               .select();
+	// //get last discrete device [[[for optimus laptops]]] [[[bad fix]]]
+	// if(gpus.size() > 1){
+	// 	for(const auto& gpu:gpus){
+	// 		VkPhysicalDeviceProperties props;
+	// 		vkGetPhysicalDeviceProperties(gpu, &props);
+	// 		if(props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+	// 			mvkobjs.physdev = vkb::PhysicalDevice{instret,gpu};
+	// 	}
+	// }else{
 
 	mvkobjs.physdev = secondphysicaldevselret.value();
-
-	mminuniformbufferoffsetalignment = mvkobjs.physdev.properties.limits.minUniformBufferOffsetAlignment;
 
 	vkb::DeviceBuilder devbuilder{mvkobjs.physdev};
 	auto devbuilderret = devbuilder.build();
 	mvkobjs.vkdevice = devbuilderret.value();
+	// }
+
+	VkPhysicalDeviceProperties props;
+	vkGetPhysicalDeviceProperties(mvkobjs.physdev, &props);
+	std::cout << "Using GPU: " << props.deviceName << std::endl;
+
+
+	mminuniformbufferoffsetalignment = mvkobjs.physdev.properties.limits.minUniformBufferOffsetAlignment;
+
 
 	// VkSurfaceCapabilitiesKHR surcap;
 	// vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mvkobjs.rdvkbdevice.physical_device, mvkobjs.rdvkbphysdev.surface,
