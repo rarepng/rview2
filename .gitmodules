@@ -48,7 +48,7 @@
 	branch = main
 [submodule "sub/bullet"]
 	path = sub/bullet
-	url = git@png.github.com:bulletphysics/bullet3
+	url = ../../bulletphysics/bullet3
 [submodule "sub/volk"]
 	path = sub/volk
-	url = git@png.github.com:zeux/volk
+	url = ../../zeux/volk
