@@ -1,3 +1,4 @@
+#include <cstdint>
 #define GLM_ENABLE_EXPERIMENTAL
 #define VMA_IMPLEMENTATION
 
@@ -31,6 +32,52 @@
 
 #include "exp/particle.hpp"
 
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* pUserData) {
+
+    std::cerr << "\n[VALIDATION ERROR]: " << pCallbackData->pMessage << "\n" << std::endl;
+
+    return VK_FALSE; 
+}
+void vkrenderer::immediate_submit(std::function<void(VkCommandBuffer cbuffer)>&& fn) {
+    VkCommandBufferAllocateInfo allocInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = mvkobjs.cpools_graphics.at(0);
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer cbuffer;
+    vkAllocateCommandBuffers(mvkobjs.vkdevice.device, &allocInfo, &cbuffer);
+
+    VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(cbuffer, &beginInfo);
+
+    fn(cbuffer);
+
+    vkEndCommandBuffer(cbuffer);
+
+    VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &cbuffer;
+
+    mvkobjs.mtx2->lock();
+    vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(mvkobjs.graphicsQ); 
+    mvkobjs.mtx2->unlock();
+
+    vkFreeCommandBuffers(mvkobjs.vkdevice.device, mvkobjs.cpools_graphics.at(0), 1, &cbuffer);
+}
+
+//temp
+void UpdateAllInstances(std::vector<genericinstance*>& instances) {
+    std::ranges::for_each(instances, [](genericinstance* inst) {
+        inst->checkforupdates(); 
+    });
+}
+
 float map2(glm::vec3 x) {
 	return std::max(x.y, 0.0f);
 }
@@ -42,8 +89,6 @@ vkrenderer::vkrenderer(SDL_Window *wind, const SDL_DisplayMode *mode, bool *mshu
 }
 bool vkrenderer::init() {
 	std::srand(static_cast<int>(time(NULL)));
-	mvkobjs.height = mvkobjs.schain.extent.height;
-	mvkobjs.width = mvkobjs.schain.extent.width;
 	if (!mvkobjs.wind)
 		return false;
 	if (!std::apply([](auto &&...f) {
@@ -53,11 +98,12 @@ bool vkrenderer::init() {
 			return deviceinit() && initvma() && getqueue() &&
 			createswapchain() && createdepthbuffer() &&
 			createcommandpool() && createcommandbuffer() &&
-			createrenderpass() && createframebuffer() &&
 			createsyncobjects() && createpools();
 		},
 	}))
 	return false;
+	mvkobjs.height = mvkobjs.schain.extent.height;
+	mvkobjs.width = mvkobjs.schain.extent.width;
 
 	if (initui()) {
 		ImGuiIO &io = ImGui::GetIO();
@@ -112,7 +158,7 @@ bool vkrenderer::quicksetup() {
 bool vkrenderer::deviceinit() {
 	vkb::InstanceBuilder instbuild{};
 
-	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().require_api_version(1, 4).build();
+	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().set_debug_callback(debugCallback).require_api_version(1, 4).build();
 
 	if (!instret) {
 		std::cout << instret.full_error().type << std::endl;
@@ -292,13 +338,14 @@ bool vkrenderer::createswapchain() {
 	}
 	vkb::destroy_swapchain(mvkobjs.schain);
 	mvkobjs.schain = swapchainbuilret.value();
+	mvkobjs.schainimgs = mvkobjs.schain.get_images().value();
+    mvkobjs.schainimgviews = mvkobjs.schain.get_image_views().value();
 	return true;
 }
 bool vkrenderer::recreateswapchain() {
 	SDL_GetWindowSize(mvkobjs.wind, &mvkobjs.width, &mvkobjs.height);
 
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
-	framebuffer::destroy(mvkobjs.vkdevice.device, mvkobjs.fbuffers);
 	vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.rddepthimageview, nullptr);
 	vmaDestroyImage(mvkobjs.alloc, mvkobjs.rddepthimage, mvkobjs.rddepthimagealloc);
 
@@ -310,20 +357,6 @@ bool vkrenderer::recreateswapchain() {
 	if (!createdepthbuffer()) {
 		return false;
 	}
-	if (!createframebuffer()) {
-		return false;
-	}
-
-	return true;
-}
-bool vkrenderer::createrenderpass() {
-	if (!renderpass::init(mvkobjs))
-		return false;
-	return true;
-}
-bool vkrenderer::createframebuffer() {
-	if (!framebuffer::create(mvkobjs))
-		return false;
 	return true;
 }
 bool vkrenderer::createcommandpool() {
@@ -364,12 +397,11 @@ void vkrenderer::cleanup() {
 	commandpool::destroy(mvkobjs, mvkobjs.cpools_compute);
 	for (auto &x : mvkobjs.dpools)
 		rpool::destroy(mvkobjs.vkdevice.device, x);
-	framebuffer::destroy(mvkobjs.vkdevice.device, mvkobjs.fbuffers);
 
 	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, rvk::ubolayout, nullptr);
 	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, *rvk::texlayout, nullptr);
 	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, rvk::ssbolayout, nullptr);
-
+	
 	for (const auto &i : mplayer)
 		i->cleanuplines(mvkobjs);
 
@@ -404,159 +436,21 @@ void vkrenderer::setsize(unsigned int w, unsigned int h) {
 		                         mvkobjs.fov, static_cast<float>(mvkobjs.width) / static_cast<float>(mvkobjs.height), 1.0f, 6000.0f);
 }
 
-bool vkrenderer::uploadfordraw() {
-	// mvkobjs.uploadmtx->lock();
-
-	if (vkWaitForFences(mvkobjs.vkdevice.device, 1, &mvkobjs.renderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-		return false;
-	}
-	if (vkResetFences(mvkobjs.vkdevice.device, 1, &mvkobjs.renderfence) != VK_SUCCESS)
-		return false;
-
-	uint32_t imgidx = 0;
-	VkResult res = vkAcquireNextImageKHR(mvkobjs.vkdevice.device, mvkobjs.schain.swapchain, UINT64_MAX,
-	                                     mvkobjs.presentsemaphore, VK_NULL_HANDLE, &imgidx);
-
-	if (vkResetCommandBuffer(mvkobjs.cbuffers_graphics.at(0), 0) != VK_SUCCESS)
-		return false;
-
-	VkCommandBufferBeginInfo cmdbgninfo{};
-	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	if (vkBeginCommandBuffer(mvkobjs.cbuffers_graphics.at(0), &cmdbgninfo) != VK_SUCCESS)
-		return false;
-
+bool vkrenderer::uploadfordraw(VkCommandBuffer cbuffer) {
 	manimupdatetimer.start();
 
 	for (const auto &i : mplayer)
-		i->uploadvboebo(mvkobjs, mvkobjs.cbuffers_graphics.at(0));
-
-	mvkobjs.uploadubossbotime = manimupdatetimer.stop();
-	if (vkEndCommandBuffer(mvkobjs.cbuffers_graphics.at(0)) != VK_SUCCESS)
-		return false;
-
-	VkSubmitInfo submitinfo{};
-	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	submitinfo.pWaitDstStageMask = &waitstage;
-
-	submitinfo.waitSemaphoreCount = 1;
-	submitinfo.pWaitSemaphores = &mvkobjs.presentsemaphore;
-
-	submitinfo.signalSemaphoreCount = 1;
-	submitinfo.pSignalSemaphores = &mvkobjs.rendersemaphore;
-
-	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &mvkobjs.cbuffers_graphics.at(0);
-
-	VkSemaphoreWaitInfo swinfo{};
-	swinfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
-	swinfo.pSemaphores = &mvkobjs.presentsemaphore;
-	swinfo.semaphoreCount = 1;
-
-	mvkobjs.mtx2->lock();
-	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.renderfence) != VK_SUCCESS) {
-		return false;
-	}
-	mvkobjs.mtx2->unlock();
-
-	VkPresentInfoKHR presentinfo{};
-	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentinfo.waitSemaphoreCount = 1;
-	presentinfo.pWaitSemaphores = &mvkobjs.rendersemaphore;
-
-	presentinfo.swapchainCount = 1;
-	presentinfo.pSwapchains = &mvkobjs.schain.swapchain;
-
-	presentinfo.pImageIndices = &imgidx;
-
-	mvkobjs.mtx2->lock();
-	VkResult res2 = vkQueuePresentKHR(mvkobjs.presentQ, &presentinfo);
-
-	mvkobjs.mtx2->unlock();
-
-	if (res2 == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
-		return recreateswapchain();
-	} else {
-		if (res2 != VK_SUCCESS) {
-			return false;
-		}
-	}
-
-	// mvkobjs.uploadmtx->unlock();
+		i->uploadvboebo(mvkobjs, cbuffer);
 	return true;
 }
 
 bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric> &x) {
-	// mvkobjs.uploadmtx->lock();
-
-	if (vkWaitForFences(mvkobjs.vkdevice.device, 1, &mvkobjs.renderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-		return false;
-	}
-	if (vkResetFences(mvkobjs.vkdevice.device, 1, &mvkobjs.renderfence) != VK_SUCCESS)
-		return false;
-
-	uint32_t imgidx = 0;
-	VkResult res = vkAcquireNextImageKHR(mvkobjs.vkdevice.device, mvkobjs.schain.swapchain, UINT64_MAX,
-	                                     mvkobjs.presentsemaphore, VK_NULL_HANDLE, &imgidx);
-
-	if (vkResetCommandBuffer(mvkobjs.cbuffers_graphics.at(0), 0) != VK_SUCCESS)
-		return false;
-
-	VkCommandBufferBeginInfo cmdbgninfo{};
-	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	if (vkBeginCommandBuffer(mvkobjs.cbuffers_graphics.at(0), &cmdbgninfo) != VK_SUCCESS)
-		return false;
-
 	manimupdatetimer.start();
 
-	x->uploadvboebo(mvkobjs, mvkobjs.cbuffers_graphics.at(0));
+	x->uploadvboebo(mvkobjs, mvkobjs.cbuffers_graphics.at(rvk::currentFrame));
 
 	mvkobjs.uploadubossbotime = manimupdatetimer.stop();
-	if (vkEndCommandBuffer(mvkobjs.cbuffers_graphics.at(0)) != VK_SUCCESS)
-		return false;
-
-	VkSubmitInfo submitinfo{};
-	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	submitinfo.pWaitDstStageMask = &waitstage;
-
-	submitinfo.waitSemaphoreCount = 1;
-	submitinfo.pWaitSemaphores = &mvkobjs.presentsemaphore;
-
-	submitinfo.signalSemaphoreCount = 1;
-	submitinfo.pSignalSemaphores = &mvkobjs.rendersemaphore;
-
-	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &mvkobjs.cbuffers_graphics.at(0);
-
-	mvkobjs.mtx2->lock();
-	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.renderfence) != VK_SUCCESS) {
-		return false;
-	}
-	mvkobjs.mtx2->unlock();
-
-	VkPresentInfoKHR presentinfo{};
-	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentinfo.waitSemaphoreCount = 1;
-	presentinfo.pWaitSemaphores = &mvkobjs.rendersemaphore;
-
-	presentinfo.swapchainCount = 1;
-	presentinfo.pSwapchains = &mvkobjs.schain.swapchain;
-
-	presentinfo.pImageIndices = &imgidx;
-
-	mvkobjs.mtx2->lock();
-	VkResult res2 = vkQueuePresentKHR(mvkobjs.presentQ, &presentinfo);
-
-	mvkobjs.mtx2->unlock();
-
-	// mvkobjs.uploadmtx->unlock();
+	
 	return true;
 }
 
@@ -653,6 +547,7 @@ void vkrenderer::moveplayer() {
 }
 void vkrenderer::handleclick() {
 	ImGuiIO &io = ImGui::GetIO();
+	
 	if (SDL_GetMouseState(nullptr, nullptr) < ImGuiMouseButton_COUNT) {
 		io.AddMouseButtonEvent(SDL_GetMouseState(nullptr, nullptr), SDL_GetMouseState(nullptr, nullptr));
 	}
@@ -725,7 +620,6 @@ void vkrenderer::movecam() {
 	persviewproj.at(0) = mcam.getview(mvkobjs);
 
 	mvkobjs.camfor = 0;
-
 	if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_W]) {
 		mvkobjs.camfor += 200;
 	}
@@ -739,6 +633,7 @@ void vkrenderer::movecam() {
 	if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_D]) {
 		mvkobjs.camright -= 200;
 	}
+	
 	mvkobjs.camup = 0;
 	if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_E]) {
 		mvkobjs.camup += 200;
@@ -750,9 +645,8 @@ void vkrenderer::movecam() {
 		if (true) { // resumed
 			float x, y;
 			SDL_GetMouseState(&x, &y);
-
 			glm::vec4 viewport(0.0f, 0.0f, (float)mvkobjs.width, (float)mvkobjs.height);
-
+			
 			glm::vec3 near = glm::unProject(glm::vec3(x, -y, 0.0f), persviewproj.at(0), persviewproj.at(1), viewport);
 			glm::vec3 far = glm::unProject(glm::vec3(x, -y, 1.0f), persviewproj.at(0), persviewproj.at(1), viewport);
 
@@ -807,6 +701,13 @@ void vkrenderer::updateanims() {
 
 bool vkrenderer::draw() {
 
+
+	if (vkWaitForFences(mvkobjs.vkdevice.device, 1, &mvkobjs.fencez.at(rvk::currentFrame), VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
+		return false;
+	}
+	if (vkResetFences(mvkobjs.vkdevice.device, 1, &mvkobjs.fencez.at(rvk::currentFrame)) != VK_SUCCESS)
+		return false;
+
 	particle::drawcomp(mvkobjs);
 
 	double tick = static_cast<double>(SDL_GetTicks()) / 1000.0;
@@ -818,49 +719,9 @@ bool vkrenderer::draw() {
 
 	mvkobjs.rduigeneratetime = muigentimer.stop();
 
-	// idfk
-	for (auto it = mplayerbuffer.begin(); it != mplayerbuffer.end();) {
-		uploadfordraw(*it);
-		mplayer.push_back(std::move(*it));
-		mplayerbuffer.erase(it);
-		selectiondata.instancesettings.emplace_back();
-		selectiondata.instancesettings.back().emplace_back(&mplayer.back()->getinst(0)->getinstancesettings());
-	}
-
-	// joint anims
-	if (dummytick / 2) {
-		for (const auto &i : mplayer)
-			i->updateanims();
-		dummytick = 0;
-	}
-
-	mmatupdatetimer.start();
-
-	// joint mats
-	for (const auto &i : mplayer)
-		i->updatemats();
-
-	mvkobjs.updatemattime = mmatupdatetimer.stop();
-
-	// joint check
-	if (dummytick % 2) {
-		for (const auto &i : mplayer)
-			i->getinst(0)->checkforupdates();
-	}
-
-	dummytick++;
-
-	moveplayer();
-
-	if (vkWaitForFences(mvkobjs.vkdevice.device, 1, &mvkobjs.renderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-		return false;
-	}
-	if (vkResetFences(mvkobjs.vkdevice.device, 1, &mvkobjs.renderfence) != VK_SUCCESS)
-		return false;
-
 	uint32_t imgidx = 0;
 	VkResult res = vkAcquireNextImageKHR(mvkobjs.vkdevice.device, mvkobjs.schain.swapchain, UINT64_MAX,
-	                                     mvkobjs.presentsemaphore, VK_NULL_HANDLE, &imgidx);
+	                                     mvkobjs.semaphorez[0][rvk::currentFrame], VK_NULL_HANDLE, &imgidx);
 	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
 		return recreateswapchain();
 	} else {
@@ -874,22 +735,18 @@ bool vkrenderer::draw() {
 		// secon one, doesnt work without it
 		{.depthStencil = {1.0f, 0}}};
 
-	// VkRenderingInfo rinfo{};
-	// rinfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-	// rinfo.renderArea.extent = mvkobjs.schain.extent;
-	// rinfo.renderArea.offset = {0, 0};
 
-	VkRenderPassBeginInfo rpinfo{};
-	rpinfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	rpinfo.renderPass = mvkobjs.rdrenderpass;
+	// VkRenderPassBeginInfo rpinfo{};
+	// rpinfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	// rpinfo.renderPass = mvkobjs.rdrenderpass;
 
-	rpinfo.renderArea.offset.x = 0;
-	rpinfo.renderArea.offset.y = 0;
-	rpinfo.renderArea.extent = mvkobjs.schain.extent;
-	rpinfo.framebuffer = mvkobjs.fbuffers[imgidx];
+	// rpinfo.renderArea.offset.x = 0;
+	// rpinfo.renderArea.offset.y = 0;
+	// rpinfo.renderArea.extent = mvkobjs.schain.extent;
+	// rpinfo.framebuffer = mvkobjs.fbuffers[imgidx];
 
-	rpinfo.clearValueCount = 2;
-	rpinfo.pClearValues = colorclearvalue.data();
+	// rpinfo.clearValueCount = 2;
+	// rpinfo.pClearValues = colorclearvalue.data();
 
 	VkViewport viewport{};
 	viewport.x = 0.0f;
@@ -899,11 +756,13 @@ bool vkrenderer::draw() {
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
+if (mvkobjs.schain.extent.width == 0 || mvkobjs.schain.extent.height == 0) return false;
+
 	VkRect2D scissor{};
 	scissor.offset = {0, 0};
 	scissor.extent = mvkobjs.schain.extent;
 
-	if (vkResetCommandBuffer(mvkobjs.cbuffers_graphics.at(0), 0) != VK_SUCCESS)
+	if (vkResetCommandBuffer(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), 0) != VK_SUCCESS)
 		return false;
 
 	sdlevent(mvkobjs.e);
@@ -912,32 +771,138 @@ bool vkrenderer::draw() {
 	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	if (vkBeginCommandBuffer(mvkobjs.cbuffers_graphics.at(0), &cmdbgninfo) != VK_SUCCESS)
+	if (vkBeginCommandBuffer(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), &cmdbgninfo) != VK_SUCCESS)
 		return false;
 
-	vkCmdBeginRenderPass(mvkobjs.cbuffers_graphics.at(0), &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
-	// try switching to rendering instead of renderpass
-	// vkCmdBeginRendering()
 
-	vkCmdSetViewport(mvkobjs.cbuffers_graphics.at(0), 0, 1, &viewport);
-	vkCmdSetScissor(mvkobjs.cbuffers_graphics.at(0), 0, 1, &scissor);
+
+	// idfk
+	for (auto it = mplayerbuffer.begin(); it != mplayerbuffer.end();) {
+		uploadfordraw(*it);
+		mplayer.push_back(std::move(*it));
+		mplayerbuffer.erase(it);
+		selectiondata.instancesettings.emplace_back();
+		selectiondata.instancesettings.back().emplace_back(&mplayer.back()->getinst(0)->getinstancesettings());
+	}
+
+	// joint anims
+	// if (dummytick / 2) {
+		for (const auto &i : mplayer)
+			i->updateanims();
+	// 	dummytick = 0;
+	// }
+
+	mmatupdatetimer.start();
+
+	// joint mats
+	for (const auto &i : mplayer)
+		i->updatemats();
+
+	mvkobjs.updatemattime = mmatupdatetimer.stop();
+
+	// joint check
+	// if (dummytick % 2) {
+		for (const auto &i : mplayer)
+			i->getinst(0)->checkforupdates();
+	// }
+
+	// dummytick++;
+
+	moveplayer();
+
+
+		VkBufferMemoryBarrier2 particleBarrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
+particleBarrier.buffer = particle::ssbobuffsnallocs.at(0).first;
+particleBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+particleBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
+particleBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
+particleBarrier.dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+particleBarrier.size = VK_WHOLE_SIZE;
+particleBarrier.offset = 0;
+
+
+	VkMemoryBarrier2 uploadBarrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER_2};
+        uploadBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        uploadBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        uploadBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
+        uploadBarrier.dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+		VkImageMemoryBarrier2 imageBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
+    imageBarrier.image = mvkobjs.schainimgs.at(imgidx);
+    imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+    imageBarrier.srcAccessMask = 0;
+    imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+    imageBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+    imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; 
+    imageBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    imageBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+
+	VkImageMemoryBarrier2 depthBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
+depthBarrier.image = mvkobjs.rddepthimage;
+depthBarrier.subresourceRange = { VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1 };
+
+depthBarrier.srcStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+depthBarrier.srcAccessMask = 0;
+depthBarrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+depthBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+depthBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+depthBarrier.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+        VkImageMemoryBarrier2 barriers[] = { imageBarrier, depthBarrier };
+        VkDependencyInfo dep{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+        dep.memoryBarrierCount = 1;
+        dep.pMemoryBarriers = &uploadBarrier;
+		dep.bufferMemoryBarrierCount = 1;
+		dep.pBufferMemoryBarriers = &particleBarrier;
+		dep.imageMemoryBarrierCount = 2;
+    dep.pImageMemoryBarriers = barriers;
+        vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), &dep);
+	
+	VkRenderingAttachmentInfo color_attach{};
+	color_attach.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+	color_attach.imageView = mvkobjs.schainimgviews.at(imgidx);
+	color_attach.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+	color_attach.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	color_attach.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	color_attach.clearValue = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+	VkRenderingAttachmentInfo depth_attach{};
+	depth_attach.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+	depth_attach.imageView = mvkobjs.rddepthimageview;
+	depth_attach.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+	depth_attach.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depth_attach.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	depth_attach.clearValue = {.depthStencil = {1.0f, 0}};
+
+	VkRenderingInfo render_info{};
+	render_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+	render_info.renderArea = scissor;
+	render_info.layerCount = 1;
+	render_info.colorAttachmentCount = 1;
+	render_info.pColorAttachments = &color_attach;
+	render_info.pDepthAttachment = &depth_attach;
+
+	vkCmdBeginRendering(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), &render_info);
+
+	vkCmdSetViewport(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), 0, 1, &viewport);
+	vkCmdSetScissor(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), 0, 1, &scissor);
 
 	VkDeviceSize coffsets{0};
-	vkCmdBindPipeline(mvkobjs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, particle::gpline);
-	vkCmdBindVertexBuffers(mvkobjs.cbuffers_graphics.at(0), 0, 1, &particle::ssbobuffsnallocs.at(0).first, &coffsets);
-	vkCmdDraw(mvkobjs.cbuffers_graphics.at(0), 8192, 1, 0, 0);
+	vkCmdBindPipeline(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, particle::gpline);
+	vkCmdBindVertexBuffers(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), 0, 1, &particle::ssbobuffsnallocs.at(0).first, &coffsets);
+	vkCmdDraw(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), 8192, 1, 0, 0);
 
 	for (const auto &i : mplayer)
 		i->draw(mvkobjs);
+	// VkDrawIndexedIndirectCommand();
 
 	lifetime = static_cast<double>(SDL_GetTicks()) / 1000.0;
 	lifetime2 = static_cast<double>(SDL_GetTicks()) / 1000.0;
 
 	mui.createdbgframe(mvkobjs, selectiondata);
 
-	mui.render(mvkobjs, mvkobjs.cbuffers_graphics.at(0));
+	mui.render(mvkobjs, mvkobjs.cbuffers_graphics.at(rvk::currentFrame));
 
-	vkCmdEndRenderPass(mvkobjs.cbuffers_graphics.at(0));
+	vkCmdEndRendering(mvkobjs.cbuffers_graphics.at(rvk::currentFrame));
+	// vkCmdEndRenderPass(mvkobjs.cbuffers_graphics.at(rvk::currentFrame));
 
 	// animmtx.lock();
 	// updatemtx.lock();
@@ -949,7 +914,29 @@ bool vkrenderer::draw() {
 
 	mvkobjs.uploadubossbotime = muploadubossbotimer.stop();
 
-	if (vkEndCommandBuffer(mvkobjs.cbuffers_graphics.at(0)) != VK_SUCCESS)
+	VkImageMemoryBarrier2 barrier{};
+barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+barrier.image = mvkobjs.schainimgs.at(imgidx);
+barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+barrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+barrier.dstAccessMask = 0;
+barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+barrier.subresourceRange.baseMipLevel = 0;
+barrier.subresourceRange.levelCount = 1;
+barrier.subresourceRange.baseArrayLayer = 0;
+barrier.subresourceRange.layerCount = 1;
+
+VkDependencyInfo dependency_info{};
+dependency_info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+dependency_info.imageMemoryBarrierCount = 1;
+dependency_info.pImageMemoryBarriers = &barrier;
+
+vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), &dependency_info);
+
+	if (vkEndCommandBuffer(mvkobjs.cbuffers_graphics.at(rvk::currentFrame)) != VK_SUCCESS)
 		return false;
 
 	movecam();
@@ -957,20 +944,20 @@ bool vkrenderer::draw() {
 	VkSubmitInfo submitinfo{};
 	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	submitinfo.pWaitDstStageMask = &waitstage;
-	std::array<VkSemaphore, 2> waitsemas{mvkobjs.presentsemaphore, particle::computeFinishedSemaphores.at(0)};
+	std::array<VkPipelineStageFlags,2> waitstage = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,VK_PIPELINE_STAGE_VERTEX_INPUT_BIT};
+	submitinfo.pWaitDstStageMask = waitstage.data();
+	std::array<VkSemaphore, 2> waitsemas{mvkobjs.semaphorez.at(0).at(rvk::currentFrame),mvkobjs.semaphorez.at(2).at(rvk::currentFrame) };
 	submitinfo.waitSemaphoreCount = 2;
 	submitinfo.pWaitSemaphores = waitsemas.data();
 
 	submitinfo.signalSemaphoreCount = 1;
-	submitinfo.pSignalSemaphores = &mvkobjs.rendersemaphore;
+	submitinfo.pSignalSemaphores = &mvkobjs.semaphorez.at(1).at(imgidx);
 
 	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &mvkobjs.cbuffers_graphics.at(0);
+	submitinfo.pCommandBuffers = &mvkobjs.cbuffers_graphics.at(rvk::currentFrame);
 
 	mvkobjs.mtx2->lock();
-	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.renderfence) != VK_SUCCESS) {
+	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.fencez.at(rvk::currentFrame)) != VK_SUCCESS) {
 		return false;
 	}
 	mvkobjs.mtx2->unlock();
@@ -978,7 +965,7 @@ bool vkrenderer::draw() {
 	VkPresentInfoKHR presentinfo{};
 	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentinfo.waitSemaphoreCount = 1;
-	presentinfo.pWaitSemaphores = &mvkobjs.rendersemaphore;
+	presentinfo.pWaitSemaphores = &mvkobjs.semaphorez.at(1).at(imgidx);
 
 	presentinfo.swapchainCount = 1;
 	presentinfo.pSwapchains = &mvkobjs.schain.swapchain;
@@ -998,239 +985,7 @@ bool vkrenderer::draw() {
 		}
 	}
 	mlasttick = tick;
+rvk::currentFrame = (rvk::currentFrame + 1) % rvk::MAX_FRAMES_IN_FLIGHT;
 
-	return true;
-}
-
-bool vkrenderer::drawloading() {
-	if (vkWaitForFences(mvkobjs.vkdevice.device, 1, &mvkobjs.renderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-		return false;
-	}
-	if (vkResetFences(mvkobjs.vkdevice.device, 1, &mvkobjs.renderfence) != VK_SUCCESS)
-		return false;
-
-	uint32_t imgidx = 0;
-	VkResult res = vkAcquireNextImageKHR(mvkobjs.vkdevice.device, mvkobjs.schain.swapchain, UINT64_MAX,
-	                                     mvkobjs.presentsemaphore, VK_NULL_HANDLE, &imgidx);
-	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
-		return recreateswapchain();
-	} else {
-		if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) {
-			return false;
-		}
-	}
-
-	VkClearValue colorclearvalue;
-	colorclearvalue.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
-
-	VkClearValue depthvalue;
-	depthvalue.depthStencil.depth = 1.0f;
-
-	VkClearValue clearvals[] = {colorclearvalue, depthvalue};
-
-	VkRenderPassBeginInfo rpinfo{};
-	rpinfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	rpinfo.renderPass = mvkobjs.rdrenderpass;
-
-	rpinfo.renderArea.offset.x = 0;
-	rpinfo.renderArea.offset.y = 0;
-	rpinfo.renderArea.extent = mvkobjs.schain.extent;
-	rpinfo.framebuffer = mvkobjs.fbuffers[imgidx];
-
-	rpinfo.clearValueCount = 2;
-	rpinfo.pClearValues = clearvals;
-
-	VkViewport viewport{};
-	viewport.x = 0.0f;
-	viewport.y = static_cast<float>(mvkobjs.schain.extent.height);
-	viewport.width = static_cast<float>(mvkobjs.schain.extent.width);
-	viewport.height = -static_cast<float>(mvkobjs.schain.extent.height);
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor{};
-	scissor.offset = {0, 0};
-	scissor.extent = mvkobjs.schain.extent;
-
-	if (vkResetCommandBuffer(mvkobjs.cbuffers_compute.at(0), 0) != VK_SUCCESS)
-		return false;
-
-	VkCommandBufferBeginInfo cmdbgninfo{};
-	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	if (vkBeginCommandBuffer(mvkobjs.cbuffers_compute.at(0), &cmdbgninfo) != VK_SUCCESS)
-		return false;
-
-	vkCmdBeginRenderPass(mvkobjs.cbuffers_compute.at(0), &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
-
-	vkCmdSetViewport(mvkobjs.cbuffers_compute.at(0), 0, 1, &viewport);
-	vkCmdSetScissor(mvkobjs.cbuffers_compute.at(0), 0, 1, &scissor);
-
-	rdscene = mui.createloadingscreen(mvkobjs);
-	mui.render(mvkobjs, mvkobjs.cbuffers_compute.at(0));
-
-	vkCmdEndRenderPass(mvkobjs.cbuffers_compute.at(0));
-
-	if (vkEndCommandBuffer(mvkobjs.cbuffers_compute.at(0)) != VK_SUCCESS)
-		return false;
-
-	VkSubmitInfo submitinfo{};
-	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	submitinfo.pWaitDstStageMask = &waitstage;
-
-	submitinfo.waitSemaphoreCount = 1;
-	submitinfo.pWaitSemaphores = &mvkobjs.presentsemaphore;
-
-	submitinfo.signalSemaphoreCount = 1;
-	submitinfo.pSignalSemaphores = &mvkobjs.rendersemaphore;
-
-	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &mvkobjs.cbuffers_compute.at(0);
-
-	mvkobjs.mtx2->lock();
-	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.renderfence) != VK_SUCCESS) {
-		return false;
-	}
-	mvkobjs.mtx2->unlock();
-
-	VkPresentInfoKHR presentinfo{};
-	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentinfo.waitSemaphoreCount = 1;
-	presentinfo.pWaitSemaphores = &mvkobjs.rendersemaphore;
-
-	presentinfo.swapchainCount = 1;
-	presentinfo.pSwapchains = &mvkobjs.schain.swapchain;
-
-	presentinfo.pImageIndices = &imgidx;
-
-	mvkobjs.mtx2->lock();
-	res = vkQueuePresentKHR(mvkobjs.presentQ, &presentinfo);
-	mvkobjs.mtx2->unlock();
-	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
-		return recreateswapchain();
-	} else {
-		if (res != VK_SUCCESS) {
-			return false;
-		}
-	}
-	return rdscene;
-}
-
-bool vkrenderer::drawblank() {
-	if (vkWaitForFences(mvkobjs.vkdevice.device, 1, &mvkobjs.renderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-		return false;
-	}
-	if (vkResetFences(mvkobjs.vkdevice.device, 1, &mvkobjs.renderfence) != VK_SUCCESS)
-		return false;
-
-	uint32_t imgidx = 0;
-	VkResult res = vkAcquireNextImageKHR(mvkobjs.vkdevice.device, mvkobjs.schain.swapchain, UINT64_MAX,
-	                                     mvkobjs.presentsemaphore, VK_NULL_HANDLE, &imgidx);
-	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
-		return recreateswapchain();
-	} else {
-		if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) {
-			return false;
-		}
-	}
-
-	VkClearValue colorclearvalue;
-	colorclearvalue.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
-
-	VkClearValue depthvalue;
-	depthvalue.depthStencil.depth = 1.0f;
-
-	VkClearValue clearvals[] = {colorclearvalue, depthvalue};
-
-	VkRenderPassBeginInfo rpinfo{};
-	rpinfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	rpinfo.renderPass = mvkobjs.rdrenderpass;
-
-	rpinfo.renderArea.offset.x = 0;
-	rpinfo.renderArea.offset.y = 0;
-	rpinfo.renderArea.extent = mvkobjs.schain.extent;
-	rpinfo.framebuffer = mvkobjs.fbuffers[imgidx];
-
-	rpinfo.clearValueCount = 2;
-	rpinfo.pClearValues = clearvals;
-
-	VkViewport viewport{};
-	viewport.x = 0.0f;
-	viewport.y = static_cast<float>(mvkobjs.schain.extent.height);
-	viewport.width = static_cast<float>(mvkobjs.schain.extent.width);
-	viewport.height = -static_cast<float>(mvkobjs.schain.extent.height);
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor{};
-	scissor.offset = {0, 0};
-	scissor.extent = mvkobjs.schain.extent;
-
-	if (vkResetCommandBuffer(mvkobjs.cbuffers_graphics.at(0), 0) != VK_SUCCESS)
-		return false;
-
-	VkCommandBufferBeginInfo cmdbgninfo{};
-	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	if (vkBeginCommandBuffer(mvkobjs.cbuffers_graphics.at(0), &cmdbgninfo) != VK_SUCCESS)
-		return false;
-
-	vkCmdBeginRenderPass(mvkobjs.cbuffers_graphics.at(0), &rpinfo, VK_SUBPASS_CONTENTS_INLINE);
-
-	vkCmdSetViewport(mvkobjs.cbuffers_graphics.at(0), 0, 1, &viewport);
-	vkCmdSetScissor(mvkobjs.cbuffers_graphics.at(0), 0, 1, &scissor);
-
-	vkCmdEndRenderPass(mvkobjs.cbuffers_graphics.at(0));
-
-	if (vkEndCommandBuffer(mvkobjs.cbuffers_graphics.at(0)) != VK_SUCCESS)
-		return false;
-
-	VkSubmitInfo submitinfo{};
-	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	VkPipelineStageFlags waitstage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	submitinfo.pWaitDstStageMask = &waitstage;
-
-	submitinfo.waitSemaphoreCount = 1;
-	submitinfo.pWaitSemaphores = &mvkobjs.presentsemaphore;
-
-	submitinfo.signalSemaphoreCount = 1;
-	submitinfo.pSignalSemaphores = &mvkobjs.rendersemaphore;
-
-	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &mvkobjs.cbuffers_graphics.at(0);
-
-	mvkobjs.mtx2->lock();
-	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.renderfence) != VK_SUCCESS) {
-		return false;
-	}
-	mvkobjs.mtx2->unlock();
-
-	VkPresentInfoKHR presentinfo{};
-	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentinfo.waitSemaphoreCount = 1;
-	presentinfo.pWaitSemaphores = &mvkobjs.rendersemaphore;
-
-	presentinfo.swapchainCount = 1;
-	presentinfo.pSwapchains = &mvkobjs.schain.swapchain;
-
-	presentinfo.pImageIndices = &imgidx;
-
-	mvkobjs.mtx2->lock();
-	res = vkQueuePresentKHR(mvkobjs.presentQ, &presentinfo);
-
-	mvkobjs.mtx2->unlock();
-
-	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
-		return recreateswapchain();
-	} else {
-		if (res != VK_SUCCESS) {
-			return false;
-		}
-	}
 	return true;
 }

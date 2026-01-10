@@ -18,10 +18,8 @@ static VkPipelineLayout gplayout{};
 static VkDescriptorSetLayout cdlayout{};
 static VkDescriptorSet cdset{};
 
-static std::vector<P> Ps(7999);
+static std::vector<P> Ps(8128);
 
-static std::vector<VkSemaphore> computeFinishedSemaphores(1);
-static std::vector<VkFence> computeInFlightFences(1);
 
 
 
@@ -29,24 +27,6 @@ static std::vector<std::pair<VkBuffer, VmaAllocation>> ssbobuffsnallocs(1);
 
 
 static VkDescriptorPool dpool{VK_NULL_HANDLE};
-
-static inline void createSyncObjects(rvk &objs) {
-
-	// need inflight fences when using more than 1 for both queues
-
-	VkSemaphoreCreateInfo semaphoreInfo{};
-	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-	VkFenceCreateInfo fenceInfo{};
-	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-	if (vkCreateSemaphore(objs.vkdevice.device, &semaphoreInfo, nullptr, &computeFinishedSemaphores.at(0)) !=
-	        VK_SUCCESS ||
-	        vkCreateFence(objs.vkdevice.device, &fenceInfo, nullptr, &computeInFlightFences.at(0)) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create compute synchronization objects for a frame!");
-	}
-}
 
 static inline bool createeverything(rvk &objs) {
 
@@ -138,14 +118,10 @@ static inline bool createeverything(rvk &objs) {
 		submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitinfo.commandBufferCount = 1;
 		submitinfo.pCommandBuffers = &objs.cbuffers_graphics.at(2);
-		if (vkWaitForFences(objs.vkdevice.device, 1, &objs.renderfence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-			return false;
-		}
-		if (vkResetFences(objs.vkdevice.device, 1, &objs.renderfence) != VK_SUCCESS)
-			return false;
+		submitinfo.pSignalSemaphores = &objs.semaphorez.at(2).at(rvk::currentFrame);
 
 		objs.mtx2->lock();
-		if (vkQueueSubmit(objs.graphicsQ, 1, &submitinfo, objs.renderfence) != VK_SUCCESS) {
+		if (vkQueueSubmit(objs.graphicsQ, 1, &submitinfo, VK_NULL_HANDLE) != VK_SUCCESS) {
 			return false;
 		}
 		vkQueueWaitIdle(objs.graphicsQ);
@@ -285,6 +261,16 @@ static inline bool createeverything(rvk &objs) {
 	dyninfo.dynamicStateCount = dynstates.size();
 	dyninfo.pDynamicStates = dynstates.data();
 
+
+	
+	VkPipelineRenderingCreateInfo plinerenderinginfo{};
+	plinerenderinginfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+	plinerenderinginfo.colorAttachmentCount = 1;
+	plinerenderinginfo.pColorAttachmentFormats = &objs.schain.image_format;
+	plinerenderinginfo.depthAttachmentFormat = objs.rddepthformat;
+	plinerenderinginfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+
+
 	VkGraphicsPipelineCreateInfo plineinfo{};
 	plineinfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	plineinfo.stageCount = 2;
@@ -298,9 +284,11 @@ static inline bool createeverything(rvk &objs) {
 	plineinfo.pDepthStencilState = &depthStencilInfo;
 	plineinfo.pDynamicState = &dyninfo;
 	plineinfo.layout = gplayout;
-	plineinfo.renderPass = objs.rdrenderpass;
+	plineinfo.renderPass = VK_NULL_HANDLE;
 	plineinfo.subpass = 0;
 	plineinfo.basePipelineHandle = VK_NULL_HANDLE;
+	plineinfo.pNext = &plinerenderinginfo;
+
 	if (vkCreateGraphicsPipelines(objs.vkdevice.device, VK_NULL_HANDLE, 1, &plineinfo, nullptr, &gpline) != VK_SUCCESS) {
 		return false;
 	}
@@ -368,29 +356,24 @@ static inline bool createeverything(rvk &objs) {
 	}
 
 	vkDestroyShaderModule(objs.vkdevice.device, c, VK_NULL_HANDLE);
-
-	createSyncObjects(objs);
 	return true;
 }
 
 static inline bool drawcomp(rvk &objs) {
 
-	vkWaitForFences(objs.vkdevice.device,1,&computeInFlightFences.at(0),VK_TRUE,UINT64_MAX);
-
-	vkResetFences(objs.vkdevice.device,1,&computeInFlightFences.at(0));
-
-	if (vkResetCommandBuffer(objs.cbuffers_compute.at(0), 0) != VK_SUCCESS)
+	if (vkResetCommandBuffer(objs.cbuffers_compute.at(rvk::currentFrame), 0) != VK_SUCCESS)
 		return false;
 
 	VkCommandBufferBeginInfo cmdbgninfo{};
 	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-	if (vkBeginCommandBuffer(objs.cbuffers_compute.at(0), &cmdbgninfo) != VK_SUCCESS)
+	if (vkBeginCommandBuffer(objs.cbuffers_compute.at(rvk::currentFrame), &cmdbgninfo) != VK_SUCCESS)
 		return false;
 
-	vkCmdBindPipeline(objs.cbuffers_compute.at(0), VK_PIPELINE_BIND_POINT_COMPUTE, cpline);
 
-	vkCmdBindDescriptorSets(objs.cbuffers_compute.at(0),VK_PIPELINE_BIND_POINT_COMPUTE,cplayout,0,1,&cdset,0,VK_NULL_HANDLE);
+	vkCmdBindPipeline(objs.cbuffers_compute.at(rvk::currentFrame), VK_PIPELINE_BIND_POINT_COMPUTE, cpline);
+
+	vkCmdBindDescriptorSets(objs.cbuffers_compute.at(rvk::currentFrame),VK_PIPELINE_BIND_POINT_COMPUTE,cplayout,0,1,&cdset,0,VK_NULL_HANDLE);
 	// VkBindDescriptorSetsInfo dsetinfo{};
 	// dsetinfo.sType = VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO;
 	// dsetinfo.layout = cplayout;
@@ -403,20 +386,20 @@ static inline bool drawcomp(rvk &objs) {
 	// dsetinfo.pDescriptorSets = &cdset;
 	// vkCmdBindDescriptorSets2(objs.cbuffers_graphics.at(2), &dsetinfo);
 
-	vkCmdDispatch(objs.cbuffers_compute.at(0), Ps.size() / 256, 1, 1);
+	vkCmdDispatch(objs.cbuffers_compute.at(rvk::currentFrame), Ps.size() / 256, 1, 1);
 
-	if (vkEndCommandBuffer(objs.cbuffers_compute.at(0)) != VK_SUCCESS)
+	if (vkEndCommandBuffer(objs.cbuffers_compute.at(rvk::currentFrame)) != VK_SUCCESS)
 		return false;
 
 	VkSubmitInfo submitinfo{};
 	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &objs.cbuffers_compute.at(0);
+	submitinfo.pCommandBuffers = &objs.cbuffers_compute.at(rvk::currentFrame);
 	submitinfo.signalSemaphoreCount = 1;
-	submitinfo.pSignalSemaphores = computeFinishedSemaphores.data();
+	submitinfo.pSignalSemaphores = &objs.semaphorez.at(2).at(rvk::currentFrame);
 
 	objs.mtx2->lock();
-	if (vkQueueSubmit(objs.computeQ, 1, &submitinfo, computeInFlightFences.at(0)) != VK_SUCCESS) {
+	if (vkQueueSubmit(objs.computeQ, 1, &submitinfo, VK_NULL_HANDLE) != VK_SUCCESS) {
 		return false;
 	}
 	objs.mtx2->unlock();
@@ -433,9 +416,6 @@ static inline void destroyeveryting(rvk &objs) {
 	rpool::destroy(objs.vkdevice.device,dpool);
 	vkDestroyDescriptorSetLayout(objs.vkdevice.device,cdlayout,VK_NULL_HANDLE);
 	vmaDestroyBuffer(objs.alloc,ssbobuffsnallocs.at(0).first,ssbobuffsnallocs.at(0).second);
-
-	vkDestroySemaphore(objs.vkdevice.device,computeFinishedSemaphores.at(0),VK_NULL_HANDLE);
-	vkDestroyFence(objs.vkdevice.device,computeInFlightFences.at(0),VK_NULL_HANDLE);
 
 }
 

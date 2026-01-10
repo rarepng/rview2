@@ -1,6 +1,4 @@
 #include "vkwind.hpp"
-#include "backends/imgui_impl_sdl3.h"
-#include <chrono>
 #include <future>
 #include <iostream>
 #include <thread>
@@ -45,12 +43,9 @@ void vkwind::frameupdate() {
 	if (!shutdown) {
 		mvkrenderer->initscene();
 		mvkrenderer->quicksetup();
-		// has to recreate swapchain atleast 3 times before uploading image to gpu because of mailbox present mode but im
-		// not sure why exactly
-		mvkrenderer->drawblank();
-		mvkrenderer->drawblank();
-		mvkrenderer->drawblank();
-		mvkrenderer->uploadfordraw();
+		mvkrenderer->immediate_submit([&](VkCommandBuffer cbuffer) {
+			mvkrenderer->uploadfordraw(cbuffer);
+        });
 		while (!shutdown) {
 			if (!mvkrenderer->draw()) {
 				break;

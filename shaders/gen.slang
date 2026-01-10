@@ -109,7 +109,15 @@ VXout vxmain(VXin vxin, uint id: SV_VulkanInstanceID) {
 [shader("pixel")]
 PXout pxmain(PXin pxin) {
 	PXout out;
-	out.color = tex[pxin.txidx].Sample(float2(pxin.texCoord.x, pxin.texCoord.y - fract(pxin.t2 * pxin.txidx / 4.0)));
-
+    out.color = tex[pxin.txidx].Sample(float2(pxin.texCoord.x, pxin.texCoord.y - fract(pxin.t2 * pxin.txidx / 4.0)));
 	return out;
 }
+
+//first step to indirect rendering
+struct drawcmd {
+    uint indexCount;
+    uint instanceCount;
+    uint firstIndex;
+    int vertexOffset;
+    uint firstInstance;
+};

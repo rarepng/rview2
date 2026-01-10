@@ -49,6 +49,16 @@ bool ui::init(rvk &renderData) {
 	}
 	ImGui_ImplSDL3_InitForVulkan(renderData.wind);
 
+	
+	VkPipelineRenderingCreateInfo plinerenderinginfo{};
+	plinerenderinginfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+	plinerenderinginfo.colorAttachmentCount = 1;
+	plinerenderinginfo.pColorAttachmentFormats = &renderData.schain.image_format;
+	plinerenderinginfo.depthAttachmentFormat = renderData.rddepthformat;
+	plinerenderinginfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+
+
+
 	ImGui_ImplVulkan_InitInfo imguiIinitInfo{};
 	imguiIinitInfo.Instance = renderData.inst.instance;
 	imguiIinitInfo.PhysicalDevice = renderData.physdev.physical_device;
@@ -58,7 +68,9 @@ bool ui::init(rvk &renderData) {
 	imguiIinitInfo.MinImageCount = 2;
 	imguiIinitInfo.ImageCount = renderData.schainimgs.size();
 	imguiIinitInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-	imguiIinitInfo.RenderPass = renderData.rdrenderpass;
+	imguiIinitInfo.RenderPass = VK_NULL_HANDLE;
+	imguiIinitInfo.PipelineRenderingCreateInfo = plinerenderinginfo;
+	imguiIinitInfo.UseDynamicRendering = true;
 
 	// imguiIinitInfo.UseDynamicRendering = true;
 

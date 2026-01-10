@@ -68,6 +68,11 @@ struct rvk {
 
 	inline static const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
 
+	
+	inline static uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!!
+	inline static uint32_t currentFrame{0};
+
+
 	SDL_Window *wind = nullptr;
 
 	const SDL_DisplayMode *rdmode;
@@ -119,7 +124,6 @@ struct rvk {
 
 	std::vector<VkImage> schainimgs;
 	std::vector<VkImageView> schainimgviews;
-	std::vector<VkFramebuffer> fbuffers = {VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
 
 	VkQueue graphicsQ = VK_NULL_HANDLE;
 	VkQueue presentQ = VK_NULL_HANDLE;
@@ -135,17 +139,19 @@ struct rvk {
 	VkFormat rddepthformatref;
 	VmaAllocation rddepthimageallocref = VK_NULL_HANDLE;
 
-	VkRenderPass rdrenderpass = VK_NULL_HANDLE;
 
 	std::array<VkCommandPool,3> cpools_graphics = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
 	std::array<VkCommandPool,1> cpools_compute = {VK_NULL_HANDLE};
 	std::array<VkCommandBuffer,3> cbuffers_graphics = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-	std::array<VkCommandBuffer,1> cbuffers_compute = {VK_NULL_HANDLE};
-
-	VkSemaphore presentsemaphore = VK_NULL_HANDLE;
-	VkSemaphore rendersemaphore = VK_NULL_HANDLE;
-	VkFence renderfence = VK_NULL_HANDLE;
-	VkFence uploadfence = VK_NULL_HANDLE;
+	std::array<VkCommandBuffer,3> cbuffers_compute = {VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
+	
+	// {image available, renderfinished, compute finished}
+	std::array<std::array<VkSemaphore, 3>, 3> semaphorez {{ 
+		{{ VK_NULL_HANDLE,VK_NULL_HANDLE, VK_NULL_HANDLE }}, // Double braces for Inner Array 1
+		{{ VK_NULL_HANDLE,VK_NULL_HANDLE, VK_NULL_HANDLE }}, // Double braces for Inner Array 2
+		{{ VK_NULL_HANDLE,VK_NULL_HANDLE, VK_NULL_HANDLE }}  // Double braces for Inner Array 3
+	}};
+	std::array<VkFence,3> fencez{VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
 	
 	inline static constexpr size_t idxinitpool{0};
 	inline static constexpr size_t idximguipool{1};
