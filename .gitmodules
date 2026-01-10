@@ -52,3 +52,6 @@
 [submodule "sub/volk"]
 	path = sub/volk
 	url = ../../zeux/volk
+[submodule "sub/slang"]
+	path = sub/slang
+	url = ../../shader-slang/slang
