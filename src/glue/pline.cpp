@@ -7,7 +7,7 @@
 #include <glm/glm.hpp>
 
 bool pline::init(rvk &objs, VkPipelineLayout &playout, VkPipeline &pipeline, VkPrimitiveTopology topology,
-                 unsigned int v_in, unsigned int atts, std::vector<std::string> sfiles, bool char_or_short) {
+                 unsigned int v_in, unsigned int atts, std::vector<std::string> sfiles, bool char_or_short,VkFormat cformat, VkFormat dformat) {
 	if (sfiles.size() < 2)
 		return false;
 	std::vector<VkShaderModule> shaders;
@@ -103,8 +103,8 @@ bool pline::init(rvk &objs, VkPipelineLayout &playout, VkPipeline &pipeline, VkP
 	rasterizerInfo.rasterizerDiscardEnable = VK_FALSE;
 	rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizerInfo.lineWidth = 1.0f;
-	rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-	rasterizerInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	rasterizerInfo.cullMode = VK_CULL_MODE_NONE;
+	rasterizerInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
 	rasterizerInfo.depthBiasEnable = VK_FALSE;
 
 	VkPipelineMultisampleStateCreateInfo multisamplingInfo{};
@@ -153,6 +153,16 @@ bool pline::init(rvk &objs, VkPipelineLayout &playout, VkPipeline &pipeline, VkP
 	dynStatesInfo.dynamicStateCount = static_cast<uint32_t>(dynStates.size());
 	dynStatesInfo.pDynamicStates = dynStates.data();
 
+
+	VkPipelineRenderingCreateInfo plinerenderinginfo{};
+	plinerenderinginfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+	plinerenderinginfo.colorAttachmentCount = 1;
+	plinerenderinginfo.pColorAttachmentFormats = &cformat;
+	plinerenderinginfo.depthAttachmentFormat = dformat;
+	plinerenderinginfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+
+
+
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
 	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipelineCreateInfo.stageCount = sfiles.size();
@@ -166,9 +176,10 @@ bool pline::init(rvk &objs, VkPipelineLayout &playout, VkPipeline &pipeline, VkP
 	pipelineCreateInfo.pDepthStencilState = &depthStencilInfo;
 	pipelineCreateInfo.pDynamicState = &dynStatesInfo;
 	pipelineCreateInfo.layout = playout;
-	pipelineCreateInfo.renderPass = objs.rdrenderpass;
+	pipelineCreateInfo.renderPass = VK_NULL_HANDLE;
 	pipelineCreateInfo.subpass = 0;
 	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
+	pipelineCreateInfo.pNext = &plinerenderinginfo;
 
 	if (vkCreateGraphicsPipelines(objs.vkdevice.device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline) !=
 	        VK_SUCCESS) {

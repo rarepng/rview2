@@ -9,7 +9,6 @@
 genericinstance::~genericinstance() {}
 
 genericinstance::genericinstance(std::shared_ptr<genericmodel> model, glm::vec3 worldpos, bool randomize) {
-
 	if (!model)
 		return;
 	mgltfmodel = model;
@@ -135,74 +134,123 @@ std::vector<glm::mat2x4> genericinstance::getjointdualquats() {
 }
 
 void genericinstance::checkforupdates() {
-	static glm::vec3 worldPos = mmodelsettings.msworldpos;
-	static glm::vec3 worldRot = mmodelsettings.msworldrot;
-	static glm::vec3 worldScale = mmodelsettings.msworldscale;
 
-	if (mnodecount) {
-		static blendmode lastBlendMode = mmodelsettings.msblendingmode;
-		static int skelSplitNode = mmodelsettings.msskelsplitnode;
-		static glm::vec3 ikTargetPos = mmodelsettings.msiktargetpos;
-		static ikmode lastIkMode = mmodelsettings.msikmode;
-		static int numIKIterations = mmodelsettings.msikiterations;
-		static int ikEffectorNode = mmodelsettings.msikeffectornode;
-		static int ikRootNode = mmodelsettings.msikrootnode;
+std::memset(&mLastState, 0, sizeof(mLastState));
+	
+    if (!mnodecount) [[unlikely]] return;
 
-		if (skelSplitNode != mmodelsettings.msskelsplitnode) {
-			setskeletonsplitnode(mmodelsettings.msskelsplitnode);
-			skelSplitNode = mmodelsettings.msskelsplitnode;
-			resetnodedata();
-		}
+    auto& curr = mmodelsettings;
+    auto reactions = std::tuple {
+        
+        Reaction(&InstanceState::skelSplitNode, [](auto* self, int newVal) {
+            self->setskeletonsplitnode(newVal);
+            self->resetnodedata();
+        }),
 
-		if (lastBlendMode != mmodelsettings.msblendingmode) {
-			lastBlendMode = mmodelsettings.msblendingmode;
-			if (mmodelsettings.msblendingmode != blendmode::additive) {
-				mmodelsettings.msskelsplitnode = mnodecount - 1;
-			}
-			resetnodedata();
-		}
-		if (worldScale != mmodelsettings.msworldscale) {
-			mrootnode->setscale(mmodelsettings.msworldscale);
-			worldScale = mmodelsettings.msworldscale;
-			mmodelsettings.msiktargetworldpos = getwrot() * mmodelsettings.msiktargetpos + worldPos;
-		}
+        Reaction(&InstanceState::blendingMode, [](auto* self, blendmode newVal) {
+            if (newVal != blendmode::additive) {
+                self->mmodelsettings.msskelsplitnode = self->mnodecount - 1;
+            }
+            self->resetnodedata();
+        }),
 
-		if (worldPos != mmodelsettings.msworldpos) {
-			mrootnode->setwpos(mmodelsettings.msworldpos);
-			worldPos = mmodelsettings.msworldpos;
-			mmodelsettings.msiktargetworldpos = getwrot() * mmodelsettings.msiktargetpos + worldPos;
-		}
+        Reaction(&InstanceState::worldScale, [](auto* self, const glm::vec3& newScale) {
+            self->mrootnode->setscale(newScale);
+            self->mmodelsettings.msiktargetworldpos = 
+                self->getwrot() * self->mmodelsettings.msiktargetpos + self->mmodelsettings.msworldpos;
+        }),
 
-		if (worldRot != mmodelsettings.msworldrot) {
-			mrootnode->setwrot(mmodelsettings.msworldrot);
-			worldRot = mmodelsettings.msworldrot;
-			mmodelsettings.msiktargetworldpos = getwrot() * mmodelsettings.msiktargetpos + worldPos;
-		}
+        Reaction(&InstanceState::worldPos, [](auto* self, const glm::vec3& newPos) {
+            self->mrootnode->setwpos(newPos);
+            self->mmodelsettings.msiktargetworldpos = 
+                self->getwrot() * self->mmodelsettings.msiktargetpos + newPos;
+        }),
+        
+        Reaction(&InstanceState::ikIterations, [](auto* self, int newIter) {
+             self->setnumikiterations(newIter);
+             self->resetnodedata();
+        })
+        
+    };
 
-		if (ikTargetPos != mmodelsettings.msiktargetpos) {
-			ikTargetPos = mmodelsettings.msiktargetpos;
-			mmodelsettings.msiktargetworldpos = getwrot() * mmodelsettings.msiktargetpos + worldPos;
-		}
-
-		if (lastIkMode != mmodelsettings.msikmode) {
-			resetnodedata();
-			lastIkMode = mmodelsettings.msikmode;
-		}
-
-		if (numIKIterations != mmodelsettings.msikiterations) {
-			setnumikiterations(mmodelsettings.msikiterations);
-			resetnodedata();
-			numIKIterations = mmodelsettings.msikiterations;
-		}
-
-		if (ikEffectorNode != mmodelsettings.msikeffectornode || ikRootNode != mmodelsettings.msikrootnode) {
-			setinversekindematicsnode(mmodelsettings.msikeffectornode, mmodelsettings.msikrootnode);
-			resetnodedata();
-			ikEffectorNode = mmodelsettings.msikeffectornode;
-			ikRootNode = mmodelsettings.msikrootnode;
-		}
-	}
+    std::apply([&](auto&&... args) {
+        process_changes(this,
+            reinterpret_cast<InstanceState&>(curr),
+            mLastState,
+            args...
+        );
+    }, reactions);
 }
+
+// void genericinstance::checkforupdates() {
+// 	static glm::vec3 worldPos = mmodelsettings.msworldpos;
+// 	static glm::vec3 worldRot = mmodelsettings.msworldrot;
+// 	static glm::vec3 worldScale = mmodelsettings.msworldscale;
+
+// 	if (mnodecount) {
+// 		static blendmode lastBlendMode = mmodelsettings.msblendingmode;
+// 		static int skelSplitNode = mmodelsettings.msskelsplitnode;
+// 		static glm::vec3 ikTargetPos = mmodelsettings.msiktargetpos;
+// 		static ikmode lastIkMode = mmodelsettings.msikmode;
+// 		static int numIKIterations = mmodelsettings.msikiterations;
+// 		static int ikEffectorNode = mmodelsettings.msikeffectornode;
+// 		static int ikRootNode = mmodelsettings.msikrootnode;
+
+// 		if (skelSplitNode != mmodelsettings.msskelsplitnode) {
+// 			setskeletonsplitnode(mmodelsettings.msskelsplitnode);
+// 			skelSplitNode = mmodelsettings.msskelsplitnode;
+// 			resetnodedata();
+// 		}
+
+// 		if (lastBlendMode != mmodelsettings.msblendingmode) {
+// 			lastBlendMode = mmodelsettings.msblendingmode;
+// 			if (mmodelsettings.msblendingmode != blendmode::additive) {
+// 				mmodelsettings.msskelsplitnode = mnodecount - 1;
+// 			}
+// 			resetnodedata();
+// 		}
+// 		if (worldScale != mmodelsettings.msworldscale) {
+// 			mrootnode->setscale(mmodelsettings.msworldscale);
+// 			worldScale = mmodelsettings.msworldscale;
+// 			mmodelsettings.msiktargetworldpos = getwrot() * mmodelsettings.msiktargetpos + worldPos;
+// 		}
+
+// 		if (worldPos != mmodelsettings.msworldpos) {
+// 			mrootnode->setwpos(mmodelsettings.msworldpos);
+// 			worldPos = mmodelsettings.msworldpos;
+// 			mmodelsettings.msiktargetworldpos = getwrot() * mmodelsettings.msiktargetpos + worldPos;
+// 		}
+
+// 		if (worldRot != mmodelsettings.msworldrot) {
+// 			mrootnode->setwrot(mmodelsettings.msworldrot);
+// 			worldRot = mmodelsettings.msworldrot;
+// 			mmodelsettings.msiktargetworldpos = getwrot() * mmodelsettings.msiktargetpos + worldPos;
+// 		}
+
+// 		if (ikTargetPos != mmodelsettings.msiktargetpos) {
+// 			ikTargetPos = mmodelsettings.msiktargetpos;
+// 			mmodelsettings.msiktargetworldpos = getwrot() * mmodelsettings.msiktargetpos + worldPos;
+// 		}
+
+// 		if (lastIkMode != mmodelsettings.msikmode) {
+// 			resetnodedata();
+// 			lastIkMode = mmodelsettings.msikmode;
+// 		}
+
+// 		if (numIKIterations != mmodelsettings.msikiterations) {
+// 			setnumikiterations(mmodelsettings.msikiterations);
+// 			resetnodedata();
+// 			numIKIterations = mmodelsettings.msikiterations;
+// 		}
+
+// 		if (ikEffectorNode != mmodelsettings.msikeffectornode || ikRootNode != mmodelsettings.msikrootnode) {
+// 			setinversekindematicsnode(mmodelsettings.msikeffectornode, mmodelsettings.msikrootnode);
+// 			resetnodedata();
+// 			ikEffectorNode = mmodelsettings.msikeffectornode;
+// 			ikRootNode = mmodelsettings.msikrootnode;
+// 		}
+// 	}
+// }
 
 void genericinstance::updateanimation() {
 	if (mmodelsettings.msplayanimation) {

@@ -1,0 +1,6 @@
+CompileFlags:
+  # these cause stupid intellisense errors for clangd which i use only for intellisense & clang-format
+  Remove:
+    - -fmodules-ts
+    - -fmodule-mapper=*
+    - -fdeps-format=*

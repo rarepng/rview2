@@ -1,4 +1,6 @@
 #include "vksyncobjects.hpp"
+#include <algorithm>
+#include <tuple>
 
 bool vksyncobjects::init(rvk &rdata) {
 
@@ -9,17 +11,31 @@ bool vksyncobjects::init(rvk &rdata) {
 	VkSemaphoreCreateInfo semaphoreinfo{};
 	semaphoreinfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	if (vkCreateSemaphore(rdata.vkdevice.device, &semaphoreinfo, nullptr, &rdata.presentsemaphore) != VK_SUCCESS ||
-	        vkCreateSemaphore(rdata.vkdevice.device, &semaphoreinfo, nullptr, &rdata.rendersemaphore) != VK_SUCCESS ||
-	        vkCreateFence(rdata.vkdevice.device, &fenceinfo, nullptr, &rdata.renderfence) != VK_SUCCESS ||
-	        vkCreateFence(rdata.vkdevice.device, &fenceinfo, nullptr, &rdata.uploadfence) != VK_SUCCESS) {
-		return false;
-	}
-	return true;
+	
+	return std::apply([](auto &&... tasks) { return (... && tasks()); }, 
+        std::tuple{
+            [&] {
+                return std::ranges::all_of(rdata.semaphorez, [&](auto& sem_row) {
+                    return std::ranges::all_of(sem_row, [&](VkSemaphore& sem) {
+                        return vkCreateSemaphore(rdata.vkdevice.device, &semaphoreinfo, nullptr, &sem) == VK_SUCCESS;
+                    });
+                });
+            },
+            [&] {
+                return std::ranges::all_of(rdata.fencez, [&](VkFence& fence) {
+                    return vkCreateFence(rdata.vkdevice.device, &fenceinfo, nullptr, &fence) == VK_SUCCESS;
+                });
+            }
+        }
+    );
 }
 void vksyncobjects::cleanup(rvk &rdata) {
-	vkDestroySemaphore(rdata.vkdevice.device, rdata.presentsemaphore, nullptr);
-	vkDestroySemaphore(rdata.vkdevice.device, rdata.rendersemaphore, nullptr);
-	vkDestroyFence(rdata.vkdevice.device, rdata.renderfence, nullptr);
-	vkDestroyFence(rdata.vkdevice.device, rdata.uploadfence, nullptr);
+	for(const auto& x:rdata.semaphorez){
+	for(const auto& y:x){
+	vkDestroySemaphore(rdata.vkdevice.device, y, nullptr);
+	}
+	}
+	for(const auto& x:rdata.fencez){
+	vkDestroyFence(rdata.vkdevice.device, x, nullptr);
+	}
 }

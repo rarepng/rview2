@@ -46,3 +46,9 @@
 	path = sub/sdl
 	url = ../../libsdl-org/SDL.git
 	branch = main
+[submodule "sub/bullet"]
+	path = sub/bullet
+	url = ../../bulletphysics/bullet3
+[submodule "sub/volk"]
+	path = sub/volk
+	url = ../../zeux/volk

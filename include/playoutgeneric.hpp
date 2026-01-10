@@ -25,7 +25,7 @@ public:
 	void cleanupmodels(rvk &objs);
 	void uploadvboebo(rvk &objs, VkCommandBuffer &cbuffer);
 	void uploadubossbo(rvk &objs,std::vector<glm::mat4> &cammats);
-
+	
 	std::shared_ptr<genericinstance> getinst(int i);
 
 	bool ready{false};

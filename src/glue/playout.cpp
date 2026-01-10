@@ -15,7 +15,13 @@ bool playout::init(rvk &mvkobjs, VkPipelineLayout &vkplayout, std::span<VkDescri
 	plinfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	plinfo.setLayoutCount = layoutz.size();
 	plinfo.pSetLayouts = layoutz.data();
-	plinfo.pushConstantRangeCount = 1; ////////////////////////////////
+	if (pushc_size > 0) {
+		plinfo.pushConstantRangeCount = 1;
+		plinfo.pPushConstantRanges = &pCs;
+	} else {
+		plinfo.pushConstantRangeCount = 0;
+		plinfo.pPushConstantRanges = nullptr;
+	}
 	plinfo.pPushConstantRanges = &pCs;
 	if (vkCreatePipelineLayout(mvkobjs.vkdevice.device, &plinfo, nullptr, &vkplayout) != VK_SUCCESS)
 		return false;

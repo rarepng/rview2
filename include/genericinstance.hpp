@@ -11,6 +11,47 @@
 #include "vkclip.hpp"
 #include "vknode.hpp"
 #include "core/rvk.hpp"
+#include <functional>
+#include <tuple>
+
+template <typename T, typename MemberType, typename Func>
+struct Reaction {
+    MemberType T::* member;
+    Func action;
+};
+
+template <typename T, typename MemberType, typename Func>
+Reaction(MemberType T::*, Func) -> Reaction<T, MemberType, Func>;
+
+// The Executor
+template <typename Obj, typename State, typename... Reactions>
+void process_changes(Obj* instance, State& current, State& previous, Reactions&&... reactions) {
+    (..., [&] {
+        auto& currVal = std::invoke(reactions.member, current);
+        auto& prevVal = std::invoke(reactions.member, previous);
+
+        if (currVal != prevVal) {
+            std::invoke(reactions.action, instance, currVal);
+            
+            prevVal = currVal;
+        }
+    }());
+}
+
+struct alignas(64) InstanceState {
+    glm::vec3 worldPos;
+    glm::vec3 worldRot;
+    glm::vec3 worldScale;
+    blendmode blendingMode;
+    int skelSplitNode;
+    ikmode ikMode;
+    int ikIterations;
+    int ikEffectorNode;
+    int ikRootNode;
+    glm::vec3 ikTargetPos;
+
+    bool operator==(const InstanceState&) const = default;
+};
 
 class genericinstance {
 public:
@@ -22,7 +63,6 @@ public:
 	int getjointdualquatssize();
 	std::vector<glm::mat4> getjointmats();
 	std::vector<glm::mat2x4> getjointdualquats();
-
 	void updateanimation();
 
 	void setinstancesettings(modelsettings &settings);
@@ -51,13 +91,13 @@ public:
 
 
 private:
+InstanceState mLastState;
 	void playanimation(int animnum, float speeddivider, float blendfactor, replaydirection direction);
 	void playanimation(int srcanimnum, int dstanimnum, float speeddivider, float blendfactor, replaydirection direction);
 	void blendanimationframe(int animnum, float time, float blendfactor);
 	void crossblendanimationframe(int srcanimnum, int dstanimnum, float time, float blendfactor);
 
 	float getanimendtime(int animnum);
-
 	void updatenodematrices(std::shared_ptr<vknode> treenode);
 	void updatejointmatrices(std::shared_ptr<vknode> treenode);
 	void updatejointdualquats(std::shared_ptr<vknode> treenode);

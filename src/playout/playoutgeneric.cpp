@@ -94,16 +94,16 @@ bool playoutgeneric::createstaticplayout(rvk &objs) {
 
 bool playoutgeneric::createpline(rvk &objs, std::string vfile, std::string ffile) {
 	if (!pline::init(objs, skinnedplayout, skinnedpline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31,
-	                 std::vector<std::string> {vfile, ffile}))
+	                 std::vector<std::string> {vfile, ffile},false ,objs.schain.image_format,objs.rddepthformat))
 		return false;
 	if (!pline::init(objs, skinnedplayout, skinnedplineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 5, 31,
-	                 std::vector<std::string> {vfile, ffile}, true))
+	                 std::vector<std::string> {vfile, ffile}, true,objs.schain.image_format,objs.rddepthformat))
 		return false;
 	return true;
 }
 bool playoutgeneric::createplinestatic(rvk &objs) {
 	if (!pline::init(objs, staticplayout, staticpline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 3, 7,
-	                 std::vector<std::string> {"shaders/svx.spv", "shaders/spx.spv"}))
+	                 std::vector<std::string> {"shaders/svx.spv", "shaders/spx.spv"},false,objs.schain.image_format,objs.rddepthformat))
 		return false;
 	return true;
 }
@@ -124,15 +124,15 @@ void playoutgeneric::uploadvboebo(rvk &objs, VkCommandBuffer &cbuffer) {
 }
 
 void playoutgeneric::uploadubossbo(rvk &objs, std::vector<glm::mat4> &cammats) {
-	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, mgltf->skinned ? skinnedplayout : staticplayout, 1, 1,
+	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvk::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, mgltf->skinned ? skinnedplayout : staticplayout, 1, 1,
 	                        &rdperspviewmatrixubo[0].dset, 0, nullptr);
 	ubo::upload(objs, rdperspviewmatrixubo, cammats);
 	if(mgltf->skinned) {
-		vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 2, 1,
+		vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvk::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 2, 1,
 		                        &rdjointmatrixssbo.dset, 0, nullptr);
 		ssbo::upload(objs, rdjointmatrixssbo, jointmats);
 	} else {
-		vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, staticplayout, 2, 1,
+		vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvk::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, staticplayout, 2, 1,
 		                        &rdjointmatrixssbo.dset, 0, nullptr);
 		ssbo::upload(objs, rdjointmatrixssbo, jointmats);
 	}
@@ -212,16 +212,16 @@ void playoutgeneric::draw(rvk &objs) {
 		if(mgltf->skinned) {
 			stride = minstances.at(0)->getjointmatrixsize();
 
-			vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 1, 1,
+			vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvk::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 1, 1,
 			                        &rdperspviewmatrixubo[0].dset, 0, nullptr);
-			vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 2, 1,
+			vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvk::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 2, 1,
 			                        &rdjointmatrixssbo.dset, 0, nullptr);
 
 			mgltf->drawinstanced(objs, skinnedplayout, skinnedpline, skinnedplineuint, numinstancess, stride);
 		} else {
-			vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, staticplayout, 1, 1,
+			vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvk::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, staticplayout, 1, 1,
 			                        &rdperspviewmatrixubo[0].dset, 0, nullptr);
-			vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0), VK_PIPELINE_BIND_POINT_GRAPHICS, staticplayout, 2, 1,
+			vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvk::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, staticplayout, 2, 1,
 			                        &rdjointmatrixssbo.dset, 0, nullptr);
 
 			mgltf->drawinstancedstatic(objs, skinnedplayout, staticpline, numinstancess, stride);

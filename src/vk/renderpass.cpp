@@ -57,12 +57,12 @@ bool renderpass::init(rvk &rdata) {
 	renderpassinfo.dependencyCount = 1;
 	renderpassinfo.pDependencies = deps;
 
-	if (vkCreateRenderPass(rdata.vkdevice.device, &renderpassinfo, nullptr, &rdata.rdrenderpass) != VK_SUCCESS) {
-		return false;
-	}
+	// if (vkCreateRenderPass(rdata.vkdevice.device, &renderpassinfo, nullptr, &rdata.rdrenderpass) != VK_SUCCESS) {
+	// 	return false;
+	// }
 
 	return true;
 }
 void renderpass::cleanup(rvk &rdata) {
-	vkDestroyRenderPass(rdata.vkdevice.device, rdata.rdrenderpass, nullptr);
+	// vkDestroyRenderPass(rdata.vkdevice.device, rdata.rdrenderpass, nullptr);
 }

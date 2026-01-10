@@ -34,8 +34,8 @@ RWStructuredBuffer<Particle> pout;
 
 [shader("vertex")]
 VXout vxmain(VXin vxin) {
-	VXout out;
-	out.sv_position = float4(vxin.pos, 1.0f, 1.0f);
+    VXout out;
+    out.sv_position = float4(vxin.pos, 1.0f, 1.0f);
 	out.pxin.color = vxin.color;
 	out.psize = 14.0f;
 	return out;
