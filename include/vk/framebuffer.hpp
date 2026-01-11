@@ -3,6 +3,7 @@
 #include "core/rvk.hpp"
 #include <vulkan/vulkan.h>
 
+//useless now idk
 namespace framebuffer {
 static inline bool create(rvk &rdata) {
 	rdata.schainimgs = rdata.schain.get_images().value();
@@ -15,13 +16,13 @@ static inline bool create(rvk &rdata) {
 		VkImageView a[] = {rdata.schainimgviews[i], rdata.rddepthimageview};
 
 		VkFramebufferCreateInfo fbinfo{
-		.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-		// .renderPass = rdata.rdrenderpass,
-		.attachmentCount = 2,
-		.pAttachments = a,
-		.width = rdata.schain.extent.width,
-		.height = rdata.schain.extent.height,
-		.layers = 1
+			.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+			// .renderPass = rdata.rdrenderpass,
+			.attachmentCount = 2,
+			.pAttachments = a,
+			.width = rdata.schain.extent.width,
+			.height = rdata.schain.extent.height,
+			.layers = 1
 		};
 
 		// if (vkCreateFramebuffer(rdata.vkdevice.device, &fbinfo, nullptr, &rdata.fbuffers[i]) != VK_SUCCESS) {

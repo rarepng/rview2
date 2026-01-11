@@ -4,21 +4,23 @@ layout(set = 0, binding = 0) uniform Sampler2D tex[];
 struct texidx {
 	uint texid;
 }
-
 struct VXin {
-	float3 pos : POSITION;
-	float3 aNormal : NORMAL;
-	float2 tex0 : TEXCOORD_0;
-	uint4 joi0 : JOINTS_0;
-	float4 wei0 : WEIGHTS_0;
-	// float2 tex1 : TEXCOORD_1;
-	// uint4 joi1 : JOINTS_1;
-	// float4 wei1 : WEIGHTS_1;
-	// float2 tex2 : TEXCOORD_2;
-	// float2 tex3 : TEXCOORD_3;
-	// float2 tex4 : TEXCOORD_4;
-	// float2 tex5 : TEXCOORD_5;
-}
+    [[vk::location(0)]] float3 pos : POSITION;
+    [[vk::location(1)]] float3 normal : NORMAL;
+    [[vk::location(2)]] float4 tangent : TANGENT;
+    [[vk::location(3)]] float2 uv : TEXCOORD_0;
+    [[vk::location(4)]] uint4 joints : JOINTS_0;
+    [[vk::location(5)]] float4 weights : WEIGHTS_0;
+};
+
+struct PXin {
+    float4 sv_pos : SV_Position;
+    float3 worldPos;
+    float3 normal;
+    float3 tangent;
+    float3 bitangent;
+    float2 uv;
+};
 struct Particle {
 	float2 position;
 	float2 velocity;
@@ -28,14 +30,6 @@ struct Particle {
 StructuredBuffer<Particle> pin;
 RWStructuredBuffer<Particle> pout;
 
-struct PXin {
-	float3 normal;
-	float2 texCoord;
-	float4 newcolor;
-	uint32_t txidx;
-	float32_t t2;
-	float32_t dec;
-}
 struct CXin {
 	uint3 tid : SV_DispatchThreadID;
 	Particle p;
@@ -51,10 +45,23 @@ struct VXout {
 }
 
 struct consts {
-	int aModelStride;
-	uint txid;
-	float t;
-}
+    int stride; float t;
+    uint albedoIdx; uint normalIdx; uint ormIdx; uint emissiveIdx;
+    uint transmissionIdx; uint sheenIdx; uint clearcoatIdx; uint thicknessIdx;
+
+	//the matching fu padding
+    float _pad0[2];
+
+    float4 baseColorFactor;
+    float3 emissiveFactor; float normalScale;
+    float roughnessFactor; float metallicFactor; float transmissionFactor; float ior;
+    float3 sheenColorFactor; float sheenRoughnessFactor;
+    float clearcoatFactor; float clearcoatRoughnessFactor; float thicknessFactor;
+
+	//the more padding
+    float _pad1;
+};
+
 struct cams {
 	float4x4 view;
 	float4x4 projection;
@@ -72,7 +79,7 @@ struct anim {
 RWStructuredBuffer<anim> Ps;
 
 [vk_push_constant]
-ConstantBuffer<consts> Constants;
+ConstantBuffer<consts> pc;
 
 [[vk_binding(0, 1)]]
 ConstantBuffer<cams> cammats;
@@ -80,40 +87,100 @@ ConstantBuffer<cams> cammats;
 [[vk_binding(0, 2)]]
 RWStructuredBuffer<jmats> jmatbuffer;
 
-[[vk_binding(1, 1)]]
-ConstantBuffer<texidx> texid2;
-
-//stumped
+// stumped
 [shader("vertex")]
-VXout vxmain(VXin vxin, uint id: SV_VulkanInstanceID) {
-	float4x4 skinmat = jmatbuffer[vxin.joi0.x + Constants.aModelStride * id].jointmats * vxin.wei0.x +
-					   jmatbuffer[vxin.joi0.y + Constants.aModelStride * id].jointmats * vxin.wei0.y +
-					   jmatbuffer[vxin.joi0.z + Constants.aModelStride * id].jointmats * vxin.wei0.z +
-					   jmatbuffer[vxin.joi0.w + Constants.aModelStride * id].jointmats * vxin.wei0.w ;
-	VXout out;
-	float4x4 x = mul(cammats.projection, cammats.view);
-	float4x4 y = mul(x, skinmat);
-	float4 xx = float4(vxin.pos, 1.0f);
-	float4 z = mul(y, xx);
-	out.sv_position = z;
-	out.pxin0.normal = vxin.aNormal;
-	out.pxin0.texCoord = vxin.tex0;
-	out.pxin0.newcolor = vxin.joi0;
-	out.pxin0.txidx = Constants.txid;
-	out.pxin0.t2 = Constants.t;
-	out.pxin0.dec = 0.0;
-	return out;
+PXin vxmain(VXin in, uint id: SV_VulkanInstanceID) {
+    PXin out;
+
+    float4x4 skinMat = {
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+    };
+
+    // not sure about this chief
+    if (pc.stride > 1) {
+        skinMat =
+            jmatbuffer[in.joints.x + pc.stride * id].jointmats * in.weights.x +
+            jmatbuffer[in.joints.y + pc.stride * id].jointmats * in.weights.y +
+            jmatbuffer[in.joints.z + pc.stride * id].jointmats * in.weights.z +
+            jmatbuffer[in.joints.w + pc.stride * id].jointmats * in.weights.w;
+    }
+
+    // need to add instance matrix/ces
+    float4 locPos = mul(skinMat, float4(in.pos, 1.0));
+    out.worldPos = locPos.xyz;
+    out.sv_pos = mul(mul(cammats.projection, cammats.view), locPos);
+    out.uv = in.uv;
+
+    float3x3 normalMat = (float3x3)skinMat;
+
+    float3 inNorm = in.normal;
+    float3 inTan = in.tangent.xyz;
+    float hand = in.tangent.w;
+
+    float normLenSq = dot(inNorm, inNorm);
+    if (normLenSq < 0.01) {
+        out.normal = float3(0, 0, 0);
+    } else {
+        out.normal = normalize(mul(normalMat, inNorm));
+    }
+
+    bool badTan = (pc.stride == 0) || (dot(inTan, inTan) < 0.01);
+
+    if (badTan) {
+        out.tangent = float3(0, 0, 0);
+        out.bitangent = float3(0, 0, 0);
+    }
+    else {
+        out.tangent = normalize(mul(normalMat, inTan));
+
+        float validHand = (abs(hand) < 0.1) ? 1.0 : sign(hand);
+
+        out.bitangent = cross(out.normal, out.tangent) * validHand;
+    }
+
+    return out;
 }
-
-
 [shader("pixel")]
-PXout pxmain(PXin pxin) {
-	PXout out;
-    out.color = tex[pxin.txidx].Sample(float2(pxin.texCoord.x, pxin.texCoord.y - fract(pxin.t2 * pxin.txidx / 4.0)));
-	return out;
-}
+float4 pxmain(PXin in) : SV_Target {
 
-//first step to indirect rendering
+    float3 N = in.normal;
+    float3 T = in.tangent;
+    float3 B = in.bitangent;
+    if (dot(N, N) < 0.001) {
+        float3 dX = ddx(in.worldPos);
+        float3 dY = ddy(in.worldPos);
+        N = normalize(cross(dX, dY));
+    }
+
+    bool useNormalMap = (dot(T, T) > 0.1);
+
+    float4 albedo = tex[pc.albedoIdx].Sample(in.uv) * pc.baseColorFactor;
+    if (albedo.a < 0.01) discard;
+
+    float4 orm = tex[pc.ormIdx].Sample(in.uv);
+    float roughness = orm.g * pc.roughnessFactor;
+    float metallic = orm.b * pc.metallicFactor;
+
+    if (useNormalMap) {
+        float3 tNorm = tex[pc.normalIdx].Sample(in.uv).rgb * 2.0 - 1.0;
+        tNorm *= float3(pc.normalScale, pc.normalScale, 1.0);
+
+        float3x3 TBN = float3x3(normalize(T), normalize(B), normalize(N));
+        N = normalize(mul(tNorm, TBN));
+    }
+	
+    float3 emissive = tex[pc.emissiveIdx].Sample(in.uv).rgb * pc.emissiveFactor;
+
+    float3 L = normalize(float3(0.5, 1.0, 0.5));
+    float NdotL = max(dot(N, L), 0.1);
+    float3 diffuse = albedo.rgb * NdotL;
+
+    return float4((albedo.rgb + emissive) * NdotL, albedo.a);
+}
+//first step to indirect rendering soon(tm)
 struct drawcmd {
     uint indexCount;
     uint instanceCount;

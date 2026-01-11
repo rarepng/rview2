@@ -135,53 +135,53 @@ std::vector<glm::mat2x4> genericinstance::getjointdualquats() {
 
 void genericinstance::checkforupdates() {
 
-std::memset(&mLastState, 0, sizeof(mLastState));
-	
-    if (!mnodecount) [[unlikely]] return;
+	std::memset(&mLastState, 0, sizeof(mLastState));
 
-    auto& curr = mmodelsettings;
-    auto reactions = std::tuple {
-        
-        Reaction(&InstanceState::skelSplitNode, [](auto* self, int newVal) {
-            self->setskeletonsplitnode(newVal);
-            self->resetnodedata();
-        }),
+	if (!mnodecount) [[unlikely]] return;
 
-        Reaction(&InstanceState::blendingMode, [](auto* self, blendmode newVal) {
-            if (newVal != blendmode::additive) {
-                self->mmodelsettings.msskelsplitnode = self->mnodecount - 1;
-            }
-            self->resetnodedata();
-        }),
+	auto& curr = mmodelsettings;
+	auto reactions = std::tuple {
 
-        Reaction(&InstanceState::worldScale, [](auto* self, const glm::vec3& newScale) {
-            self->mrootnode->setscale(newScale);
-            self->mmodelsettings.msiktargetworldpos = 
-                self->getwrot() * self->mmodelsettings.msiktargetpos + self->mmodelsettings.msworldpos;
-        }),
+		Reaction(&InstanceState::skelSplitNode, [](auto* self, int newVal) {
+			self->setskeletonsplitnode(newVal);
+			self->resetnodedata();
+		}),
 
-        Reaction(&InstanceState::worldPos, [](auto* self, const glm::vec3& newPos) {
-            self->mrootnode->setwpos(newPos);
-            self->mmodelsettings.msiktargetworldpos = 
-                self->getwrot() * self->mmodelsettings.msiktargetpos + newPos;
-        }),
-        
-        Reaction(&InstanceState::ikIterations, [](auto* self, int newIter) {
-             self->setnumikiterations(newIter);
-             self->resetnodedata();
-        })
-        
-    };
+		Reaction(&InstanceState::blendingMode, [](auto* self, blendmode newVal) {
+			if (newVal != blendmode::additive) {
+				self->mmodelsettings.msskelsplitnode = self->mnodecount - 1;
+			}
+			self->resetnodedata();
+		}),
 
-    std::apply([&](auto&&... args) {
-        process_changes(this,
-            reinterpret_cast<InstanceState&>(curr),
-            mLastState,
-            args...
-        );
-    }, reactions);
+		Reaction(&InstanceState::worldScale, [](auto* self, const glm::vec3& newScale) {
+			self->mrootnode->setscale(newScale);
+			self->mmodelsettings.msiktargetworldpos =
+			    self->getwrot() * self->mmodelsettings.msiktargetpos + self->mmodelsettings.msworldpos;
+		}),
+
+		Reaction(&InstanceState::worldPos, [](auto* self, const glm::vec3& newPos) {
+			self->mrootnode->setwpos(newPos);
+			self->mmodelsettings.msiktargetworldpos =
+			    self->getwrot() * self->mmodelsettings.msiktargetpos + newPos;
+		}),
+
+		Reaction(&InstanceState::ikIterations, [](auto* self, int newIter) {
+			self->setnumikiterations(newIter);
+			self->resetnodedata();
+		})
+
+	};
+
+	std::apply([&](auto&&... args) {
+		process_changes(this,
+		                reinterpret_cast<InstanceState&>(curr),
+		                mLastState,
+		                args...
+		               );
+	}, reactions);
 }
-
+// in case of revert 😨
 // void genericinstance::checkforupdates() {
 // 	static glm::vec3 worldPos = mmodelsettings.msworldpos;
 // 	static glm::vec3 worldRot = mmodelsettings.msworldrot;

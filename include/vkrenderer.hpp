@@ -26,7 +26,7 @@
 class vkrenderer {
 public:
 	vkrenderer(SDL_Window *wind, const SDL_DisplayMode *mode, bool *mshutdown, SDL_Event *e);
-	
+
 	void immediate_submit(std::function<void(VkCommandBuffer cbuffer)>&& fn);
 	bool init();
 	void setsize(unsigned int w, unsigned int h);
@@ -58,6 +58,13 @@ public:
 	bool ges();
 private:
 	// size_t dummytick{0};
+
+	std::function<void(rvk::DummyTexture&)> destroyDummy =
+	[this](rvk::DummyTexture& tex) {
+		vkDestroyImageView(mvkobjs.vkdevice.device, tex.view, nullptr);
+		vkDestroyImage(mvkobjs.vkdevice.device, tex.image, nullptr);
+		vkFreeMemory(mvkobjs.vkdevice.device, tex.memory, nullptr);
+	};
 
 	std::mutex animmtx{};
 	std::mutex updatemtx{};

@@ -7,7 +7,7 @@ class vkebo {
 public:
 	static bool init(rvk &objs, ebodata &indexbufferdata, size_t buffersize);
 	static bool upload(rvk &objs, VkCommandBuffer &cbuffer, ebodata &indexbufferdata, const fastgltf::Buffer &buffer,
-	                   const fastgltf::BufferView &bufferview, const size_t &count);
+	                   const fastgltf::BufferView &bufferview, const size_t &count,const fastgltf::ComponentType &compType);
 	static bool upload(rvk &objs, VkCommandBuffer &cbuffer, ebodata &indexbufferdata,
 	                   std::vector<unsigned short> indicez);
 	static void cleanup(rvk &objs, ebodata &indexbufferdata);

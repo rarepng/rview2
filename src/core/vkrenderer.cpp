@@ -38,46 +38,251 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
     void* pUserData) {
 
-    std::cerr << "\n[VALIDATION ERROR]: " << pCallbackData->pMessage << "\n" << std::endl;
+	std::cerr << "\n[VALIDATION ERROR]: " << pCallbackData->pMessage << "\n" << std::endl;
 
-    return VK_FALSE; 
+	return VK_FALSE;
 }
+
 void vkrenderer::immediate_submit(std::function<void(VkCommandBuffer cbuffer)>&& fn) {
-    VkCommandBufferAllocateInfo allocInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandPool = mvkobjs.cpools_graphics.at(0);
-    allocInfo.commandBufferCount = 1;
+	VkCommandBufferAllocateInfo allocInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandPool = mvkobjs.cpools_graphics.at(0);
+	allocInfo.commandBufferCount = 1;
 
-    VkCommandBuffer cbuffer;
-    vkAllocateCommandBuffers(mvkobjs.vkdevice.device, &allocInfo, &cbuffer);
+	VkCommandBuffer cbuffer;
+	vkAllocateCommandBuffers(mvkobjs.vkdevice.device, &allocInfo, &cbuffer);
 
-    VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(cbuffer, &beginInfo);
+	VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	vkBeginCommandBuffer(cbuffer, &beginInfo);
 
-    fn(cbuffer);
+	fn(cbuffer);
 
-    vkEndCommandBuffer(cbuffer);
+	vkEndCommandBuffer(cbuffer);
 
-    VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &cbuffer;
+	VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &cbuffer;
 
-    mvkobjs.mtx2->lock();
-    vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(mvkobjs.graphicsQ); 
-    mvkobjs.mtx2->unlock();
+	mvkobjs.mtx2->lock();
+	vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(mvkobjs.graphicsQ);
+	mvkobjs.mtx2->unlock();
 
-    vkFreeCommandBuffers(mvkobjs.vkdevice.device, mvkobjs.cpools_graphics.at(0), 1, &cbuffer);
+	vkFreeCommandBuffers(mvkobjs.vkdevice.device, mvkobjs.cpools_graphics.at(0), 1, &cbuffer);
 }
 
 //temp
 void UpdateAllInstances(std::vector<genericinstance*>& instances) {
-    std::ranges::for_each(instances, [](genericinstance* inst) {
-        inst->checkforupdates(); 
-    });
+	std::ranges::for_each(instances, [](genericinstance* inst) {
+		inst->checkforupdates();
+	});
 }
 
+//gotta move these somewhere more reasonable someday
+bool init_global_samplers(rvk& objs) {
+	VkSamplerCreateInfo info{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+	info.magFilter = VK_FILTER_LINEAR;
+	info.minFilter = VK_FILTER_LINEAR;
+	info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	info.minLod = 0.0f;
+	info.maxLod = VK_LOD_CLAMP_NONE;
+	info.maxAnisotropy = 16.0f;
+	info.anisotropyEnable = VK_TRUE;
+
+	if (vkCreateSampler(objs.vkdevice.device, &info, nullptr, &objs.samplerz[0]) != VK_SUCCESS) {
+		return false;
+	}
+
+	info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	vkCreateSampler(objs.vkdevice.device, &info, nullptr, &objs.samplerz[1]);
+
+	return true;
+}
+
+
+
+bool init_dummy_textures(rvk& objs, VkCommandPool& cmdPool) {
+
+	auto find_memory_type = [&](uint32_t typeFilter, VkMemoryPropertyFlags properties) -> uint32_t {
+		VkPhysicalDeviceMemoryProperties memProperties;
+		vkGetPhysicalDeviceMemoryProperties(objs.vkdevice.physical_device, &memProperties);
+
+		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+			if ((typeFilter & (1 << i)) &&
+			        (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+				return i;
+			}
+		}
+		return 0;
+	};
+	auto create_buffer = [&](VkDeviceSize size, VkBufferUsageFlags usage,
+	                         VkMemoryPropertyFlags properties, VkBuffer& buffer,
+	VkDeviceMemory& bufferMemory) {
+		VkBufferCreateInfo bufferInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+		bufferInfo.size = size;
+		bufferInfo.usage = usage;
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		vkCreateBuffer(objs.vkdevice.device, &bufferInfo, nullptr, &buffer);
+
+		VkMemoryRequirements memReqs;
+		vkGetBufferMemoryRequirements(objs.vkdevice.device, buffer, &memReqs);
+
+		VkMemoryAllocateInfo allocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+		allocInfo.allocationSize = memReqs.size;
+		allocInfo.memoryTypeIndex = find_memory_type(memReqs.memoryTypeBits, properties);
+
+		vkAllocateMemory(objs.vkdevice.device, &allocInfo, nullptr, &bufferMemory);
+		vkBindBufferMemory(objs.vkdevice.device, buffer, bufferMemory, 0);
+	};
+
+	auto record_barrier = [](VkCommandBuffer cmd, VkImage image,
+	                         VkImageLayout oldLayout, VkImageLayout newLayout,
+	                         VkAccessFlags srcAccess, VkAccessFlags dstAccess,
+	VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage) {
+		VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+		barrier.oldLayout = oldLayout;
+		barrier.newLayout = newLayout;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image = image;
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.baseMipLevel = 0;
+		barrier.subresourceRange.levelCount = 1;
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+		barrier.srcAccessMask = srcAccess;
+		barrier.dstAccessMask = dstAccess;
+
+		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+	};
+
+	auto immediate_submit = [&](std::function<void(VkCommandBuffer)>&& fn) {
+		VkCommandBufferAllocateInfo allocInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandPool = cmdPool;
+		allocInfo.commandBufferCount = 1;
+
+		VkCommandBuffer cbuffer;
+		vkAllocateCommandBuffers(objs.vkdevice.device, &allocInfo, &cbuffer);
+
+		VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		vkBeginCommandBuffer(cbuffer, &beginInfo);
+
+		fn(cbuffer);
+
+		vkEndCommandBuffer(cbuffer);
+
+		VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &cbuffer;
+
+		//wait idle needed
+		// objs.mtx2->lock();
+		vkQueueSubmit(objs.graphicsQ, 1, &submitInfo, VK_NULL_HANDLE);
+		vkQueueWaitIdle(objs.graphicsQ);
+		// objs.mtx2->unlock();
+
+		vkFreeCommandBuffers(objs.vkdevice.device, cmdPool, 1, &cbuffer);
+	};
+
+	auto create_1x1_texture = [&](uint32_t pixelData) -> rvk::DummyTexture {
+		rvk::DummyTexture tex{};
+
+		VkImageCreateInfo imageInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+		imageInfo.imageType = VK_IMAGE_TYPE_2D;
+		imageInfo.extent = {1, 1, 1};
+		imageInfo.mipLevels = 1;
+		imageInfo.arrayLayers = 1;
+		imageInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+		imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+		imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+
+		vkCreateImage(objs.vkdevice.device, &imageInfo, nullptr, &tex.image);
+
+		VkMemoryRequirements memReqs;
+		vkGetImageMemoryRequirements(objs.vkdevice.device, tex.image, &memReqs);
+
+		VkMemoryAllocateInfo allocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+		allocInfo.allocationSize = memReqs.size;
+		allocInfo.memoryTypeIndex = find_memory_type(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+		vkAllocateMemory(objs.vkdevice.device, &allocInfo, nullptr, &tex.memory);
+		vkBindImageMemory(objs.vkdevice.device, tex.image, tex.memory, 0);
+
+		VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+		viewInfo.image = tex.image;
+		viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		viewInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		viewInfo.subresourceRange.baseMipLevel = 0;
+		viewInfo.subresourceRange.levelCount = 1;
+		viewInfo.subresourceRange.baseArrayLayer = 0;
+		viewInfo.subresourceRange.layerCount = 1;
+
+		vkCreateImageView(objs.vkdevice.device, &viewInfo, nullptr, &tex.view);
+
+		VkBuffer stagingBuf;
+		VkDeviceMemory stagingMem;
+		VkDeviceSize imageSize = 4;
+
+		create_buffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		              stagingBuf, stagingMem);
+
+		// Map & Copy Data
+		void* data;
+		vkMapMemory(objs.vkdevice.device, stagingMem, 0, imageSize, 0, &data);
+		memcpy(data, &pixelData, (size_t)imageSize);
+		vkUnmapMemory(objs.vkdevice.device, stagingMem);
+
+		immediate_submit([&](VkCommandBuffer cmd) {
+			record_barrier(cmd, tex.image,
+			               VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			               0, VK_ACCESS_TRANSFER_WRITE_BIT,
+			               VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+			VkBufferImageCopy region{};
+			region.bufferOffset = 0;
+			region.bufferRowLength = 0;
+			region.bufferImageHeight = 0;
+			region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+			region.imageOffset = {0, 0, 0};
+			region.imageExtent = {1, 1, 1};
+
+			vkCmdCopyBufferToImage(cmd, stagingBuf, tex.image,
+			                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+			record_barrier(cmd, tex.image,
+			               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			               VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+			               VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+		});
+
+		vkDestroyBuffer(objs.vkdevice.device, stagingBuf, nullptr);
+		vkFreeMemory(objs.vkdevice.device, stagingMem, nullptr);
+
+		return tex;
+	};
+
+
+	objs.defaults.purple = create_1x1_texture(0xDD00DDDD); // error texture
+	objs.defaults.white  = create_1x1_texture(0xFFFFFFFF);
+	objs.defaults.normal = create_1x1_texture(0xFFFF8080);
+	objs.defaults.black  = create_1x1_texture(0xFF000000);
+
+	return true;
+}
 float map2(glm::vec3 x) {
 	return std::max(x.y, 0.0f);
 }
@@ -98,8 +303,10 @@ bool vkrenderer::init() {
 			return deviceinit() && initvma() && getqueue() &&
 			createswapchain() && createdepthbuffer() &&
 			createcommandpool() && createcommandbuffer() &&
-			createsyncobjects() && createpools();
-		},
+			createsyncobjects() && createpools()
+			&& init_global_samplers(mvkobjs) && init_dummy_textures(mvkobjs, mvkobjs.cpools_graphics.at(0));
+			//might switch to passing mvk idk, maybe replace the whole mvkobjs bucket with something more functional
+		}
 	}))
 	return false;
 	mvkobjs.height = mvkobjs.schain.extent.height;
@@ -167,7 +374,7 @@ bool vkrenderer::deviceinit() {
 	}
 	mvkobjs.inst = instret.value();
 
-	
+
 
 	uint32_t gpuCount = 0;
 	vkEnumeratePhysicalDevices(instret.value(), &gpuCount, nullptr);
@@ -339,7 +546,7 @@ bool vkrenderer::createswapchain() {
 	vkb::destroy_swapchain(mvkobjs.schain);
 	mvkobjs.schain = swapchainbuilret.value();
 	mvkobjs.schainimgs = mvkobjs.schain.get_images().value();
-    mvkobjs.schainimgviews = mvkobjs.schain.get_image_views().value();
+	mvkobjs.schainimgviews = mvkobjs.schain.get_image_views().value();
 	return true;
 }
 bool vkrenderer::recreateswapchain() {
@@ -384,6 +591,7 @@ bool vkrenderer::initui() {
 	return true;
 }
 void vkrenderer::cleanup() {
+
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
 
 	particle::destroyeveryting(mvkobjs);
@@ -401,7 +609,7 @@ void vkrenderer::cleanup() {
 	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, rvk::ubolayout, nullptr);
 	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, *rvk::texlayout, nullptr);
 	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, rvk::ssbolayout, nullptr);
-	
+
 	for (const auto &i : mplayer)
 		i->cleanuplines(mvkobjs);
 
@@ -415,6 +623,14 @@ void vkrenderer::cleanup() {
 	vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.rddepthimageview, nullptr);
 	vmaDestroyImage(mvkobjs.alloc, mvkobjs.rddepthimage, mvkobjs.rddepthimagealloc);
 	vmaDestroyAllocator(mvkobjs.alloc);
+
+	destroyDummy(mvkobjs.defaults.purple);
+	destroyDummy(mvkobjs.defaults.white);
+	destroyDummy(mvkobjs.defaults.normal);
+	destroyDummy(mvkobjs.defaults.black);
+
+	for(const auto& i:mvkobjs.samplerz)
+		vkDestroySampler(mvkobjs.vkdevice, i, nullptr);
 
 	mvkobjs.schain.destroy_image_views(mvkobjs.schainimgviews);
 	vkb::destroy_swapchain(mvkobjs.schain);
@@ -450,7 +666,7 @@ bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric> &x) {
 	x->uploadvboebo(mvkobjs, mvkobjs.cbuffers_graphics.at(rvk::currentFrame));
 
 	mvkobjs.uploadubossbotime = manimupdatetimer.stop();
-	
+
 	return true;
 }
 
@@ -547,7 +763,7 @@ void vkrenderer::moveplayer() {
 }
 void vkrenderer::handleclick() {
 	ImGuiIO &io = ImGui::GetIO();
-	
+
 	if (SDL_GetMouseState(nullptr, nullptr) < ImGuiMouseButton_COUNT) {
 		io.AddMouseButtonEvent(SDL_GetMouseState(nullptr, nullptr), SDL_GetMouseState(nullptr, nullptr));
 	}
@@ -633,7 +849,7 @@ void vkrenderer::movecam() {
 	if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_D]) {
 		mvkobjs.camright -= 200;
 	}
-	
+
 	mvkobjs.camup = 0;
 	if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_E]) {
 		mvkobjs.camup += 200;
@@ -646,7 +862,7 @@ void vkrenderer::movecam() {
 			float x, y;
 			SDL_GetMouseState(&x, &y);
 			glm::vec4 viewport(0.0f, 0.0f, (float)mvkobjs.width, (float)mvkobjs.height);
-			
+
 			glm::vec3 near = glm::unProject(glm::vec3(x, -y, 0.0f), persviewproj.at(0), persviewproj.at(1), viewport);
 			glm::vec3 far = glm::unProject(glm::vec3(x, -y, 1.0f), persviewproj.at(0), persviewproj.at(1), viewport);
 
@@ -745,7 +961,7 @@ bool vkrenderer::draw() {
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
-if (mvkobjs.schain.extent.width == 0 || mvkobjs.schain.extent.height == 0) return false;
+	if (mvkobjs.schain.extent.width == 0 || mvkobjs.schain.extent.height == 0) return false;
 
 	VkRect2D scissor{};
 	scissor.offset = {0, 0};
@@ -776,8 +992,8 @@ if (mvkobjs.schain.extent.width == 0 || mvkobjs.schain.extent.height == 0) retur
 
 	// joint anims
 	// if (dummytick / 2) {
-		for (const auto &i : mplayer)
-			i->updateanims();
+	for (const auto &i : mplayer)
+		i->updateanims();
 	// 	dummytick = 0;
 	// }
 
@@ -791,8 +1007,8 @@ if (mvkobjs.schain.extent.width == 0 || mvkobjs.schain.extent.height == 0) retur
 
 	// joint check
 	// if (dummytick % 2) {
-		for (const auto &i : mplayer)
-			i->getinst(0)->checkforupdates();
+	for (const auto &i : mplayer)
+		i->getinst(0)->checkforupdates();
 	// }
 
 	// dummytick++;
@@ -800,52 +1016,52 @@ if (mvkobjs.schain.extent.width == 0 || mvkobjs.schain.extent.height == 0) retur
 	moveplayer();
 
 
-		VkBufferMemoryBarrier2 particleBarrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
-particleBarrier.buffer = particle::ssbobuffsnallocs.at(0).first;
-particleBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-particleBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
-particleBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
-particleBarrier.dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
-particleBarrier.size = VK_WHOLE_SIZE;
-particleBarrier.offset = 0;
+	VkBufferMemoryBarrier2 particleBarrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
+	particleBarrier.buffer = particle::ssbobuffsnallocs.at(0).first;
+	particleBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+	particleBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
+	particleBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
+	particleBarrier.dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+	particleBarrier.size = VK_WHOLE_SIZE;
+	particleBarrier.offset = 0;
 
 
 	VkMemoryBarrier2 uploadBarrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER_2};
-        uploadBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        uploadBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        uploadBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
-        uploadBarrier.dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
-		VkImageMemoryBarrier2 imageBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
-    imageBarrier.image = mvkobjs.schainimgs.at(imgidx);
-    imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-    imageBarrier.srcAccessMask = 0;
-    imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-    imageBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-    imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; 
-    imageBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    imageBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+	uploadBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+	uploadBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+	uploadBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
+	uploadBarrier.dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+	VkImageMemoryBarrier2 imageBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
+	imageBarrier.image = mvkobjs.schainimgs.at(imgidx);
+	imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+	imageBarrier.srcAccessMask = 0;
+	imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+	imageBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+	imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	imageBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 
 	VkImageMemoryBarrier2 depthBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
-depthBarrier.image = mvkobjs.rddepthimage;
-depthBarrier.subresourceRange = { VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1 };
+	depthBarrier.image = mvkobjs.rddepthimage;
+	depthBarrier.subresourceRange = { VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1 };
 
-depthBarrier.srcStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-depthBarrier.srcAccessMask = 0;
-depthBarrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-depthBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	depthBarrier.srcStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+	depthBarrier.srcAccessMask = 0;
+	depthBarrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+	depthBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-depthBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-depthBarrier.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-        VkImageMemoryBarrier2 barriers[] = { imageBarrier, depthBarrier };
-        VkDependencyInfo dep{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
-        dep.memoryBarrierCount = 1;
-        dep.pMemoryBarriers = &uploadBarrier;
-		dep.bufferMemoryBarrierCount = 1;
-		dep.pBufferMemoryBarriers = &particleBarrier;
-		dep.imageMemoryBarrierCount = 2;
-    dep.pImageMemoryBarriers = barriers;
-        vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), &dep);
-	
+	depthBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depthBarrier.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+	VkImageMemoryBarrier2 barriers[] = { imageBarrier, depthBarrier };
+	VkDependencyInfo dep{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+	dep.memoryBarrierCount = 1;
+	dep.pMemoryBarriers = &uploadBarrier;
+	dep.bufferMemoryBarrierCount = 1;
+	dep.pBufferMemoryBarriers = &particleBarrier;
+	dep.imageMemoryBarrierCount = 2;
+	dep.pImageMemoryBarriers = barriers;
+	vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), &dep);
+
 	VkRenderingAttachmentInfo color_attach{};
 	color_attach.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 	color_attach.imageView = mvkobjs.schainimgviews.at(imgidx);
@@ -904,26 +1120,26 @@ depthBarrier.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
 	mvkobjs.uploadubossbotime = muploadubossbotimer.stop();
 
 	VkImageMemoryBarrier2 barrier{};
-barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-barrier.image = mvkobjs.schainimgs.at(imgidx);
-barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-barrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
-barrier.dstAccessMask = 0;
-barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-barrier.subresourceRange.baseMipLevel = 0;
-barrier.subresourceRange.levelCount = 1;
-barrier.subresourceRange.baseArrayLayer = 0;
-barrier.subresourceRange.layerCount = 1;
+	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+	barrier.image = mvkobjs.schainimgs.at(imgidx);
+	barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+	barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+	barrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+	barrier.dstAccessMask = 0;
+	barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
 
-VkDependencyInfo dependency_info{};
-dependency_info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-dependency_info.imageMemoryBarrierCount = 1;
-dependency_info.pImageMemoryBarriers = &barrier;
+	VkDependencyInfo dependency_info{};
+	dependency_info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+	dependency_info.imageMemoryBarrierCount = 1;
+	dependency_info.pImageMemoryBarriers = &barrier;
 
-vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), &dependency_info);
+	vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), &dependency_info);
 
 	if (vkEndCommandBuffer(mvkobjs.cbuffers_graphics.at(rvk::currentFrame)) != VK_SUCCESS)
 		return false;
@@ -974,7 +1190,7 @@ vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), &dependen
 		}
 	}
 	mlasttick = tick;
-rvk::currentFrame = (rvk::currentFrame + 1) % rvk::MAX_FRAMES_IN_FLIGHT;
+	rvk::currentFrame = (rvk::currentFrame + 1) % rvk::MAX_FRAMES_IN_FLIGHT;
 
 	return true;
 }

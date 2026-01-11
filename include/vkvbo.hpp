@@ -13,6 +13,6 @@ public:
 	                   const fastgltf::Buffer &buffer, const fastgltf::BufferView &bufferview,
 	                   const fastgltf::Accessor &acc);
 	static bool upload(rvk &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
-	                   const std::vector<unsigned int> &jointz, const unsigned int count, const unsigned int ofx);
+	                   const std::vector<unsigned int> &jointz);
 	static void cleanup(rvk &mvkobjs, vbodata &vbdata);
 };

@@ -128,12 +128,12 @@ bool vkvbo::upload(rvk &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
 }
 
 bool vkvbo::upload(rvk &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
-                   const std::vector<unsigned int> &jointz, const unsigned int count, const unsigned int ofx) {
-
+                   const std::vector<unsigned int> &jointz) {
+	size_t dataSize = jointz.size() * sizeof(unsigned int);
 	void *d;
 
 	vmaMapMemory(mvkobjs.alloc, vbdata.salloc, &d);
-	std::memcpy(d, jointz.data() + ofx, count * sizeof(unsigned int) * 4);
+	std::memcpy(d, jointz.data(), dataSize);
 	vmaUnmapMemory(mvkobjs.alloc, vbdata.salloc);
 
 	VkBufferMemoryBarrier vbbarrier{};

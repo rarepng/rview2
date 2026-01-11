@@ -240,57 +240,88 @@ bool vktexture::loadtexture(rvk &rdata, std::vector<texdata> &texdata, fastgltf:
 
 	return true;
 }
-bool vktexture::loadtexset(rvk &rdata, std::vector<texdata> &texdata, VkDescriptorSetLayout &dlayout,VkDescriptorSet &dset,
-                                  fastgltf::Asset &mmodel) {
 
-	std::vector<VkDescriptorImageInfo> descriptorimginfo;
-	descriptorimginfo.reserve(mmodel.images.size());
-	descriptorimginfo.resize(mmodel.images.size());
+bool vktexture::loadtexset(rvk &rdata, std::vector<texdata> &texdata,
+                           VkDescriptorSetLayout &dlayout, VkDescriptorSet &dset,
+                           fastgltf::Asset &mmodel) {
 
-	for (size_t i{0}; i < mmodel.images.size(); i++) {
-
-		descriptorimginfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		descriptorimginfo[i].imageView = texdata[i].imgview;
-		descriptorimginfo[i].sampler = texdata[i].imgsampler;
-	}
-
-
-	VkDescriptorSetAllocateInfo descallocinfo{};
-	descallocinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descallocinfo.descriptorPool = rdata.dpools[rvk::idxinitpool];
-	descallocinfo.descriptorSetCount = 1;
-	descallocinfo.pSetLayouts = &dlayout;
+	VkDescriptorSetAllocateInfo descallocinfo {
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+		.descriptorPool = rdata.dpools[rvk::idxinitpool],
+		.descriptorSetCount = 1,
+		.pSetLayouts = &dlayout
+	};
 
 	if (vkAllocateDescriptorSets(rdata.vkdevice.device, &descallocinfo, &dset) != VK_SUCCESS) {
-		logger::log(0, "crashed in texture at vkAllocateDescriptorSets");
 		return false;
 	}
 
-	VkWriteDescriptorSet writedescset{};
-	writedescset.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writedescset.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	writedescset.dstSet = dset;
-	writedescset.dstArrayElement = 0;
-	writedescset.dstBinding = 0;
-	// writedescset.pBufferInfo = 0;
-	writedescset.descriptorCount = mmodel.images.size();
-	writedescset.pImageInfo = descriptorimginfo.data();
-	vkUpdateDescriptorSets(rdata.vkdevice.device, 1, &writedescset, 0, nullptr);
+	std::vector<VkWriteDescriptorSet> writes;
+
+	VkDescriptorImageInfo dummy0{ .sampler = rdata.samplerz[0], .imageView = rdata.defaults.purple.view, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	VkDescriptorImageInfo dummy1{ .sampler = rdata.samplerz[0], .imageView = rdata.defaults.white.view,  .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	VkDescriptorImageInfo dummy2{ .sampler = rdata.samplerz[0], .imageView = rdata.defaults.normal.view, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	VkDescriptorImageInfo dummy3{ .sampler = rdata.samplerz[0], .imageView = rdata.defaults.black.view,  .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+
+	auto push_dummy_write = [&](uint32_t idx, VkDescriptorImageInfo* info) {
+		writes.push_back(VkWriteDescriptorSet{
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.dstSet = dset,
+			.dstBinding = 0,
+			.dstArrayElement = idx,
+			.descriptorCount = 1,
+			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			.pImageInfo = info
+		});
+	};
+
+	push_dummy_write(0, &dummy0);
+	push_dummy_write(1, &dummy1);
+	push_dummy_write(2, &dummy2);
+	push_dummy_write(3, &dummy3);
+
+	std::vector<VkDescriptorImageInfo> modelImageInfos;
+	modelImageInfos.reserve(mmodel.images.size());
+
+	for (size_t i = 0; i < mmodel.images.size(); i++) {
+		modelImageInfos.push_back(VkDescriptorImageInfo{
+			.sampler = rdata.samplerz[0],
+			.imageView = texdata[i].imgview,
+			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+		});
+	}
+
+	if (!modelImageInfos.empty()) {
+		writes.push_back(VkWriteDescriptorSet{
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.dstSet = dset,
+			.dstBinding = 0,
+
+			.dstArrayElement = 4,
+
+			.descriptorCount = static_cast<uint32_t>(modelImageInfos.size()),
+			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			.pImageInfo = modelImageInfos.data()
+		});
+	}
+
+	vkUpdateDescriptorSets(rdata.vkdevice.device,
+	                       static_cast<uint32_t>(writes.size()),
+	                       writes.data(), 0, nullptr);
 
 	return true;
 }
-
 void vktexture::cleanup(rvk &rdata, texdata &texdata) {
 	vkDestroySampler(rdata.vkdevice.device, texdata.imgsampler, nullptr);
 	vkDestroyImageView(rdata.vkdevice.device, texdata.imgview, nullptr);
 	vmaDestroyImage(rdata.alloc, texdata.img, texdata.alloc);
 }
-bool vktexture::createlayout(rvk &core){
-	
+bool vktexture::createlayout(rvk &core) {
+
 	VkDescriptorSetLayoutBinding texturebind;
 	texturebind.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	texturebind.binding = 0;
-	texturebind.descriptorCount = 24;//max ~24 images per gltf file
+	texturebind.descriptorCount = 24;
 	texturebind.pImmutableSamplers = nullptr;
 	texturebind.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 

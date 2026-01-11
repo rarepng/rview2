@@ -18,7 +18,7 @@ static VkPipelineLayout gplayout{};
 static VkDescriptorSetLayout cdlayout{};
 static VkDescriptorSet cdset{};
 
-static std::vector<P> Ps(8128);
+static std::vector<P> Ps(4096);
 
 
 
@@ -262,7 +262,6 @@ static inline bool createeverything(rvk &objs) {
 	dyninfo.pDynamicStates = dynstates.data();
 
 
-	
 	VkPipelineRenderingCreateInfo plinerenderinginfo{};
 	plinerenderinginfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
 	plinerenderinginfo.colorAttachmentCount = 1;

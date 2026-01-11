@@ -43,7 +43,7 @@ struct ebodata {
 	VmaAllocation salloc = nullptr;
 };
 
-struct ubodata {                                                                                                                                                              
+struct ubodata {
 	size_t size{0};
 	VkBuffer buffer = VK_NULL_HANDLE;
 	VmaAllocation alloc = nullptr;
@@ -60,19 +60,63 @@ struct ssbodata {
 };
 struct vkpushconstants {
 	int stride;
-	unsigned int texidx;
-	float t{0.0f};
-};
+	float t;
 
+	uint32_t albedoIdx;
+	uint32_t normalIdx;
+	uint32_t ormIdx;
+	uint32_t emissiveIdx;
+	uint32_t transmissionIdx;
+	uint32_t sheenIdx;
+	uint32_t clearcoatIdx;
+	uint32_t thicknessIdx;
+
+	//fu padding [-2 days]
+	float _pad0[2];
+
+	glm::vec4 baseColorFactor;
+	glm::vec3 emissiveFactor;
+	float normalScale;
+
+	float roughnessFactor;
+	float metallicFactor;
+	float transmissionFactor;
+	float ior;
+
+	glm::vec3 sheenColorFactor;
+	float sheenRoughnessFactor;
+
+	float clearcoatFactor;
+	float clearcoatRoughnessFactor;
+	float thicknessFactor;
+
+	//more padding
+	float _pad1;
+};
+// idk
+// static_assert(sizeof(vkpushconstants) == 128, "Struct size mismatch!");
 struct rvk {
 
 	inline static const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
 
-	
-	inline static uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!!
+
+	inline static uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!! different devices might not serve 3 swapchain images
 	inline static uint32_t currentFrame{0};
 
+	struct DummyTexture {
+		VkImage image = VK_NULL_HANDLE;
+		VkDeviceMemory memory = VK_NULL_HANDLE;
+		VkImageView view = VK_NULL_HANDLE;
+	};
 
+	struct {
+		DummyTexture purple;
+		DummyTexture white;
+		DummyTexture normal;
+		DummyTexture black;
+	} defaults;
+
+	std::array<VkSampler,4> samplerz{};
 	SDL_Window *wind = nullptr;
 
 	const SDL_DisplayMode *rdmode;
@@ -116,8 +160,6 @@ struct rvk {
 	vkb::Device vkdevice{};
 	vkb::Swapchain schain{};
 
-	
-	
 	inline static std::shared_ptr<VkDescriptorSetLayout> texlayout = std::make_shared<VkDescriptorSetLayout>();
 	inline static VkDescriptorSetLayout ubolayout = VK_NULL_HANDLE;
 	inline static VkDescriptorSetLayout ssbolayout = VK_NULL_HANDLE;
@@ -144,15 +186,15 @@ struct rvk {
 	std::array<VkCommandPool,1> cpools_compute = {VK_NULL_HANDLE};
 	std::array<VkCommandBuffer,3> cbuffers_graphics = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
 	std::array<VkCommandBuffer,3> cbuffers_compute = {VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
-	
+
 	// {image available, renderfinished, compute finished}
-	std::array<std::array<VkSemaphore, 3>, 3> semaphorez {{ 
-		{{ VK_NULL_HANDLE,VK_NULL_HANDLE, VK_NULL_HANDLE }}, // Double braces for Inner Array 1
-		{{ VK_NULL_HANDLE,VK_NULL_HANDLE, VK_NULL_HANDLE }}, // Double braces for Inner Array 2
-		{{ VK_NULL_HANDLE,VK_NULL_HANDLE, VK_NULL_HANDLE }}  // Double braces for Inner Array 3
-	}};
+	std::array<std::array<VkSemaphore, 3>, 3> semaphorez {{
+			{{ VK_NULL_HANDLE,VK_NULL_HANDLE, VK_NULL_HANDLE }},
+			{{ VK_NULL_HANDLE,VK_NULL_HANDLE, VK_NULL_HANDLE }},
+			{{ VK_NULL_HANDLE,VK_NULL_HANDLE, VK_NULL_HANDLE }}
+		}};
 	std::array<VkFence,3> fencez{VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
-	
+
 	inline static constexpr size_t idxinitpool{0};
 	inline static constexpr size_t idximguipool{1};
 	inline static constexpr size_t idxruntimepool0{2};
@@ -182,6 +224,7 @@ static inline void destroy(const VkDevice& dev,VkDescriptorPool dpool) {
 	vkDestroyDescriptorPool(dev, dpool, nullptr);
 }
 };
+//i forgot
 namespace rbuffer {
 static inline bool create(const VkDevice& dev,VmaAllocator alloc,std::vector<VkBufferCreateInfo> binfos,std::vector<VkBuffer> buffs) {
 	// for()

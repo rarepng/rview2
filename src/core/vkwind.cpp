@@ -45,7 +45,7 @@ void vkwind::frameupdate() {
 		mvkrenderer->quicksetup();
 		mvkrenderer->immediate_submit([&](VkCommandBuffer cbuffer) {
 			mvkrenderer->uploadfordraw(cbuffer);
-        });
+		});
 		while (!shutdown) {
 			if (!mvkrenderer->draw()) {
 				break;

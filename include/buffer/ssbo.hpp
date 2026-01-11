@@ -55,7 +55,7 @@ static inline bool init(rvk &objs, ssbodata &ssboData, size_t buffersize) {
 	return true;
 }
 
-static inline bool createlayout(rvk &core,VkDescriptorSetLayout& dlayout){
+static inline bool createlayout(rvk &core,VkDescriptorSetLayout& dlayout) {
 	VkDescriptorSetLayoutBinding ssboBind{};
 	ssboBind.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	ssboBind.binding = 0;

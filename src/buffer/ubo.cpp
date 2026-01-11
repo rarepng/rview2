@@ -59,7 +59,7 @@ bool ubo::init(rvk &mvkobjs, std::vector<ubodata> &ubodata) {
 
 	return true;
 }
-bool ubo::createlayout(rvk &mvkobjs,VkDescriptorSetLayout& dlayout){
+bool ubo::createlayout(rvk &mvkobjs,VkDescriptorSetLayout& dlayout) {
 	std::vector<VkDescriptorSetLayoutBinding> ubobind(2);
 	ubobind[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	ubobind[0].binding = 0;
@@ -83,7 +83,6 @@ bool ubo::createlayout(rvk &mvkobjs,VkDescriptorSetLayout& dlayout){
 	        VK_SUCCESS)
 		return false;
 	return true;
-		
 }
 void ubo::upload(rvk &mvkobjs, std::vector<ubodata> &ubodata, std::vector<glm::mat4> mats) {
 	void *data;

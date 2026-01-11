@@ -9,7 +9,7 @@ bool playout::init(rvk &mvkobjs, VkPipelineLayout &vkplayout, std::span<VkDescri
 	VkPushConstantRange pCs{};
 	pCs.offset = 0;
 	pCs.size = pushc_size;
-	pCs.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	pCs.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	VkPipelineLayoutCreateInfo plinfo{};
 	plinfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

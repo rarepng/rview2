@@ -11,31 +11,33 @@ bool vksyncobjects::init(rvk &rdata) {
 	VkSemaphoreCreateInfo semaphoreinfo{};
 	semaphoreinfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	
-	return std::apply([](auto &&... tasks) { return (... && tasks()); }, 
-        std::tuple{
-            [&] {
-                return std::ranges::all_of(rdata.semaphorez, [&](auto& sem_row) {
-                    return std::ranges::all_of(sem_row, [&](VkSemaphore& sem) {
-                        return vkCreateSemaphore(rdata.vkdevice.device, &semaphoreinfo, nullptr, &sem) == VK_SUCCESS;
-                    });
-                });
-            },
-            [&] {
-                return std::ranges::all_of(rdata.fencez, [&](VkFence& fence) {
-                    return vkCreateFence(rdata.vkdevice.device, &fenceinfo, nullptr, &fence) == VK_SUCCESS;
-                });
-            }
-        }
-    );
+
+	return std::apply([](auto &&... tasks) {
+		return (... && tasks());
+	},
+	std::tuple{
+		[&] {
+			return std::ranges::all_of(rdata.semaphorez, [&](auto& sem_row) {
+				return std::ranges::all_of(sem_row, [&](VkSemaphore& sem) {
+					return vkCreateSemaphore(rdata.vkdevice.device, &semaphoreinfo, nullptr, &sem) == VK_SUCCESS;
+				});
+			});
+		},
+		[&] {
+			return std::ranges::all_of(rdata.fencez, [&](VkFence& fence) {
+				return vkCreateFence(rdata.vkdevice.device, &fenceinfo, nullptr, &fence) == VK_SUCCESS;
+			});
+		}
+	}
+	                 );
 }
 void vksyncobjects::cleanup(rvk &rdata) {
-	for(const auto& x:rdata.semaphorez){
-	for(const auto& y:x){
-	vkDestroySemaphore(rdata.vkdevice.device, y, nullptr);
+	for(const auto& x:rdata.semaphorez) {
+		for(const auto& y:x) {
+			vkDestroySemaphore(rdata.vkdevice.device, y, nullptr);
+		}
 	}
-	}
-	for(const auto& x:rdata.fencez){
-	vkDestroyFence(rdata.vkdevice.device, x, nullptr);
+	for(const auto& x:rdata.fencez) {
+		vkDestroyFence(rdata.vkdevice.device, x, nullptr);
 	}
 }

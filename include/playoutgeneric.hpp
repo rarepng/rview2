@@ -13,9 +13,7 @@ public:
 	bool createssbomat(rvk &objs);
 	bool createssbostatic(rvk &objs);
 	static bool createskinnedplayout(rvk &objs);
-	static bool createstaticplayout(rvk &objs);
 	static bool createpline(rvk &objs, std::string vfile, std::string ffile);
-	static bool createplinestatic(rvk &objs);
 	bool setup(rvk &objs, std::string fname, size_t count, std::string vfile, std::string ffile);
 	void draw(rvk &objs);
 	void updateanims();
@@ -25,16 +23,14 @@ public:
 	void cleanupmodels(rvk &objs);
 	void uploadvboebo(rvk &objs, VkCommandBuffer &cbuffer);
 	void uploadubossbo(rvk &objs,std::vector<glm::mat4> &cammats);
-	
+
 	std::shared_ptr<genericinstance> getinst(int i);
 
 	bool ready{false};
-	
+
 	inline static VkPipelineLayout skinnedplayout = VK_NULL_HANDLE;
-	inline static VkPipelineLayout staticplayout = VK_NULL_HANDLE;
 	inline static VkPipeline skinnedpline = VK_NULL_HANDLE;
 	inline static VkPipeline skinnedplineuint = VK_NULL_HANDLE;
-	inline static VkPipeline staticpline = VK_NULL_HANDLE;
 
 private:
 

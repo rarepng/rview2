@@ -63,18 +63,22 @@ bool vkebo::upload(rvk &objs, VkCommandBuffer &cbuffer, ebodata &indexbufferdata
 }
 
 bool vkebo::upload(rvk &objs, VkCommandBuffer &cbuffer, ebodata &indexbufferdata, const fastgltf::Buffer &buffer,
-                   const fastgltf::BufferView &bufferview, const size_t &count) {
+                   const fastgltf::BufferView &bufferview, const size_t &count, const fastgltf::ComponentType &compType) {
 
-	std::visit(fastgltf::visitor{[](auto &arg) {},
-	[&](const fastgltf::sources::Array &vector) {
-		void *d;
-		vmaMapMemory(objs.alloc, indexbufferdata.salloc, &d);
-		std::memcpy(d, vector.bytes.data() + bufferview.byteOffset,
-		            count * 2); // bufferview.byteLength
-		vmaUnmapMemory(objs.alloc, indexbufferdata.salloc);
-	}},
-	buffer.data);
+	size_t compSize = fastgltf::getComponentByteSize(compType);
+	size_t totalSize = count * compSize;
 
+	std::visit(fastgltf::visitor{
+		[](auto &arg) {},
+		[&](const fastgltf::sources::Array &vector) {
+			void *d;
+			if (indexbufferdata.salloc == nullptr) return;
+
+			vmaMapMemory(objs.alloc, indexbufferdata.salloc, &d);
+			std::memcpy(d, vector.bytes.data() + bufferview.byteOffset, totalSize);
+			vmaUnmapMemory(objs.alloc, indexbufferdata.salloc);
+		}
+	}, buffer.data);
 	VkBufferMemoryBarrier vbbarrier{};
 	vbbarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 	vbbarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;

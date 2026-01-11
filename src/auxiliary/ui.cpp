@@ -24,17 +24,17 @@ bool ui::init(rvk &renderData) {
 	io.Fonts->AddFontFromFileTTF("resources/bruce.ttf", 52.0f);
 
 	std::array<VkDescriptorPoolSize,11> imguiPoolSizes{{{VK_DESCRIPTOR_TYPE_SAMPLER, 24},
-		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 24},
-		{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 24},
-		{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 24},
-		{VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 24},
-		{VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 24},
-		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 24},
-		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 24},
-		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 24},
-		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 24},
-		{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 24}
-	}};
+			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 24},
+			{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 24},
+			{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 24},
+			{VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 24},
+			{VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 24},
+			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 24},
+			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 24},
+			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 24},
+			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 24},
+			{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 24}
+		}};
 
 	VkDescriptorPoolCreateInfo imguiPoolInfo{};
 	imguiPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -42,14 +42,14 @@ bool ui::init(rvk &renderData) {
 	imguiPoolInfo.maxSets = 24;
 	imguiPoolInfo.poolSizeCount = imguiPoolSizes.size();
 	imguiPoolInfo.pPoolSizes = imguiPoolSizes.data();
-	
+
 	if (vkCreateDescriptorPool(renderData.vkdevice.device, &imguiPoolInfo, nullptr,
 	                           &renderData.dpools[rvk::idximguipool])) {
 		return false;
 	}
 	ImGui_ImplSDL3_InitForVulkan(renderData.wind);
 
-	
+
 	VkPipelineRenderingCreateInfo plinerenderinginfo{};
 	plinerenderinginfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
 	plinerenderinginfo.colorAttachmentCount = 1;
