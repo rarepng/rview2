@@ -83,7 +83,7 @@ jobs:
         $env:LD_LIBRARY_PATH="D:/a/work/rview2/rview2/lib;$env:SLANG_SDK/lib;$env:VULKAN_SDK/lib;$env:LD_LIBRARY_PATH"
         $env:VK_ICD_FILENAMES="$env:VULKAN_SDK/etc/vulkan/icd.d"
         $env:VK_LAYER_PATH="$env:VULKAN_SDK/etc/vulkan/explicit_layer.d"
-        $env:LDFLAGS="-lws2_32 -lcrypt32" | tee -a $env:GITHUB_ENV
+        $env:LDFLAGS="-lws2_32 -lcrypt32"
         echo VULKAN_SDK=$env:VULKAN_SDK  | tee -a $env:GITHUB_ENV
         echo "LDFLAGS=-lws2_32 -lcrypt32" | tee -a $env:GITHUB_ENV
         echo PATH=$env:PATH  | tee -a $env:GITHUB_ENV
