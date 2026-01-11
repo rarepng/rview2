@@ -59,6 +59,8 @@ jobs:
         cd /d/a/rview2/rview2/openssl-3.5.0
         # echo y | pacman -S make
         export OPENSSL_USE_STATIC_LIBS=ON
+        export LDFLAGS="-lws2_32 -lcrypt32"
+        echo PATH=$env:PATH  | tee -a $env:GITHUB_ENV
         ./Configure --prefix=$PWD/dist no-idea no-mdc2 no-rc5 no-shared mingw64
         make depend && make && make install
     - name: set openssl
@@ -81,7 +83,9 @@ jobs:
         $env:LD_LIBRARY_PATH="D:/a/work/rview2/rview2/lib;$env:SLANG_SDK/lib;$env:VULKAN_SDK/lib;$env:LD_LIBRARY_PATH"
         $env:VK_ICD_FILENAMES="$env:VULKAN_SDK/etc/vulkan/icd.d"
         $env:VK_LAYER_PATH="$env:VULKAN_SDK/etc/vulkan/explicit_layer.d"
+        $env:LDFLAGS="-lws2_32 -lcrypt32" | tee -a $env:GITHUB_ENV
         echo VULKAN_SDK=$env:VULKAN_SDK  | tee -a $env:GITHUB_ENV
+        echo "LDFLAGS=-lws2_32 -lcrypt32" | tee -a $env:GITHUB_ENV
         echo PATH=$env:PATH  | tee -a $env:GITHUB_ENV
         echo LD_LIBRARY_PATH=$env:LD_LIBRARY_PATH  | tee -a $env:GITHUB_ENV
         echo VK_ICD_FILENAMES=$env:VULKAN_SDK/etc/vulkan/icd.d  | tee -a $env:GITHUB_ENV

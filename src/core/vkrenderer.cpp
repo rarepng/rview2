@@ -736,17 +736,6 @@ bool vkrenderer::draw() {
 		{.depthStencil = {1.0f, 0}}};
 
 
-	// VkRenderPassBeginInfo rpinfo{};
-	// rpinfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	// rpinfo.renderPass = mvkobjs.rdrenderpass;
-
-	// rpinfo.renderArea.offset.x = 0;
-	// rpinfo.renderArea.offset.y = 0;
-	// rpinfo.renderArea.extent = mvkobjs.schain.extent;
-	// rpinfo.framebuffer = mvkobjs.fbuffers[imgidx];
-
-	// rpinfo.clearValueCount = 2;
-	// rpinfo.pClearValues = colorclearvalue.data();
 
 	VkViewport viewport{};
 	viewport.x = 0.0f;
