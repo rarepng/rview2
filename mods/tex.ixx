@@ -61,4 +61,5 @@ export namespace rview::rvk::tex {
     );
 
     void cleanup(rvkbucket& rdata, texdata& tex);
+    void cleanuptpl(rvkbucket& rdata,    VkDescriptorSetLayout& layout,VkDescriptorPool& pool);
 }

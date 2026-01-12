@@ -531,4 +531,8 @@ void cleanup(rvkbucket& rdata, texdata& tex) {
 	if (tex.imgview)    vkDestroyImageView(rdata.vkdevice.device, tex.imgview, nullptr);
 	if (tex.img)        vmaDestroyImage(rdata.alloc, tex.img, tex.alloc);
 }
+
+    void cleanuptpl(rvkbucket& rdata,    VkDescriptorSetLayout& layout,VkDescriptorPool& pool){
+        vkDestroyDescriptorPool(rdata.vkdevice.device, pool, nullptr);
+    }
 }

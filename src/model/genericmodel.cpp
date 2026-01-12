@@ -451,6 +451,8 @@ void genericmodel::cleanup(rvkbucket &objs) {
 	for (size_t i{0}; i < mgltfobjs.texs.size(); i++) {
 		rview::rvk::tex::cleanup(objs, mgltfobjs.texs[i]);
 	}
+	//temp
+	rview::rvk::tex::cleanuptpl(objs,*rvkbucket::texlayout,mgltfobjs.texpool);
 }
 std::vector<texdata> genericmodel::gettexdata() {
 	return mgltfobjs.texs;

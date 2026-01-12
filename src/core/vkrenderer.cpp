@@ -629,6 +629,22 @@ void vkrenderer::cleanup() {
 
 	vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.rddepthimageview, nullptr);
 	vmaDestroyImage(mvkobjs.alloc, mvkobjs.rddepthimage, mvkobjs.rddepthimagealloc);
+	
+	// char* statsString = nullptr;
+	// vmaBuildStatsString(mvkobjs.alloc, &statsString, true);
+
+	// if (statsString) {
+	// 	std::cout << "\n=== VMA REPORT !! ===\n";
+	// 	std::cout << statsString << "\n";
+	// 	std::cout << "=======================\n";
+	// 	vmaFreeStatsString(mvkobjs.alloc, statsString);
+	// }
+	// if (mvkobjs.exrtex.at(0).img) {
+	// 	vkDestroyImageView(mvkobjs.vkdevice.device,mvkobjs.exrtex.at(0).imgview, nullptr);
+	// 	vkDestroySampler(mvkobjs.vkdevice.device,mvkobjs.exrtex.at(0).imgsampler, nullptr);
+	// 	vmaDestroyImage(mvkobjs.alloc,mvkobjs.exrtex.at(0).img, mvkobjs.exrtex.at(0).alloc);
+	// }
+
 	vmaDestroyAllocator(mvkobjs.alloc);
 
 	destroyDummy(mvkobjs.defaults.purple);

@@ -3,6 +3,8 @@ static const float MIN_ROUGHNESS = 0.04;
 
 layout(set = 0, binding = 0) uniform Sampler2D tex[];
 
+//complete mess idfk
+
 //hdri
 [[vk::binding(0, 3)]] Sampler2D envMap; 
 
