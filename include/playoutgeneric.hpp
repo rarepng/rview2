@@ -7,22 +7,22 @@
 #include <vulkan/vulkan.h>
 class playoutgeneric {
 public:
-	bool loadmodel(rvk &objs, std::string fname);
-	bool createinstances(rvk &objs, size_t count, bool rand);
-	bool createubo(rvk &objs);
-	bool createssbomat(rvk &objs);
-	bool createssbostatic(rvk &objs);
-	static bool createskinnedplayout(rvk &objs);
-	static bool createpline(rvk &objs, std::string vfile, std::string ffile);
-	bool setup(rvk &objs, std::string fname, size_t count, std::string vfile, std::string ffile);
-	void draw(rvk &objs);
+	bool loadmodel(rvkbucket &objs, std::string fname);
+	bool createinstances(rvkbucket &objs, size_t count, bool rand);
+	bool createubo(rvkbucket &objs);
+	bool createssbomat(rvkbucket &objs);
+	bool createssbostatic(rvkbucket &objs);
+	static bool createskinnedplayout(rvkbucket &objs);
+	static bool createpline(rvkbucket &objs, std::string vfile, std::string ffile);
+	bool setup(rvkbucket &objs, std::string fname, size_t count, std::string vfile, std::string ffile);
+	void draw(rvkbucket &objs);
 	void updateanims();
 	void updatemats();
-	void cleanuplines(rvk &objs);
-	void cleanupbuffers(rvk &objs);
-	void cleanupmodels(rvk &objs);
-	void uploadvboebo(rvk &objs, VkCommandBuffer &cbuffer);
-	void uploadubossbo(rvk &objs,std::vector<glm::mat4> &cammats);
+	void cleanuplines(rvkbucket &objs);
+	void cleanupbuffers(rvkbucket &objs);
+	void cleanupmodels(rvkbucket &objs);
+	void uploadvboebo(rvkbucket &objs, VkCommandBuffer &cbuffer);
+	void uploadubossbo(rvkbucket &objs,std::vector<glm::mat4> &cammats);
 
 	std::shared_ptr<genericinstance> getinst(int i);
 

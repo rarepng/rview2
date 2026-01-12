@@ -2,7 +2,7 @@
 
 #include "VkBootstrap.h"
 
-bool playout::init(rvk &mvkobjs, VkPipelineLayout &vkplayout, std::span<VkDescriptorSetLayout> layoutz,
+bool playout::init(rvkbucket &mvkobjs, VkPipelineLayout &vkplayout, std::span<VkDescriptorSetLayout> layoutz,
                    size_t pushc_size) {
 
 
@@ -28,6 +28,6 @@ bool playout::init(rvk &mvkobjs, VkPipelineLayout &vkplayout, std::span<VkDescri
 	return true;
 }
 
-void playout::cleanup(rvk &mvkobjs, VkPipelineLayout &vkplayout) {
+void playout::cleanup(rvkbucket &mvkobjs, VkPipelineLayout &vkplayout) {
 	vkDestroyPipelineLayout(mvkobjs.vkdevice.device, vkplayout, nullptr);
 }

@@ -52,15 +52,15 @@ public:
 
 	bool quicksetup();
 
-	rvk &getvkobjs();
+	rvkbucket &getvkobjs();
 
 	bool newconnection{false};
 	bool ges();
 private:
 	// size_t dummytick{0};
 
-	std::function<void(rvk::DummyTexture&)> destroyDummy =
-	[this](rvk::DummyTexture& tex) {
+	std::function<void(rvkbucket::DummyTexture&)> destroyDummy =
+	[this](rvkbucket::DummyTexture& tex) {
 		vkDestroyImageView(mvkobjs.vkdevice.device, tex.view, nullptr);
 		vkDestroyImage(mvkobjs.vkdevice.device, tex.image, nullptr);
 		vkFreeMemory(mvkobjs.vkdevice.device, tex.memory, nullptr);
@@ -75,7 +75,7 @@ private:
 
 	std::mutex getinstsettingsmtx{};
 
-	rvk mvkobjs{};
+	rvkbucket mvkobjs{};
 
 	double dummy{0.0};
 

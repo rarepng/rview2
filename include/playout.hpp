@@ -4,7 +4,7 @@
 
 class playout {
 public:
-	static bool init(rvk &mvkobjs, VkPipelineLayout &vkplayout, std::span<VkDescriptorSetLayout> layoutz,
+	static bool init(rvkbucket &mvkobjs, VkPipelineLayout &vkplayout, std::span<VkDescriptorSetLayout> layoutz,
 	                 size_t pushc_size);
-	static void cleanup(rvk &mvkobjs, VkPipelineLayout &vkplayout);
+	static void cleanup(rvkbucket &mvkobjs, VkPipelineLayout &vkplayout);
 };

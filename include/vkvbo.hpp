@@ -4,15 +4,15 @@
 #include <fastgltf/core.hpp>
 class vkvbo {
 public:
-	static bool init(rvk &mvkobjs, vbodata &vbdata, size_t bsize);
-	static bool upload(rvk &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
+	static bool init(rvkbucket &mvkobjs, vbodata &vbdata, size_t bsize);
+	static bool upload(rvkbucket &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
 	                   std::vector<glm::vec3> vertexdata);
-	static bool upload(rvk &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
+	static bool upload(rvkbucket &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
 	                   std::vector<glm::vec2> vertexdata);
-	static bool upload(rvk &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
+	static bool upload(rvkbucket &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
 	                   const fastgltf::Buffer &buffer, const fastgltf::BufferView &bufferview,
 	                   const fastgltf::Accessor &acc);
-	static bool upload(rvk &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
+	static bool upload(rvkbucket &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
 	                   const std::vector<unsigned int> &jointz);
-	static void cleanup(rvk &mvkobjs, vbodata &vbdata);
+	static void cleanup(rvkbucket &mvkobjs, vbodata &vbdata);
 };

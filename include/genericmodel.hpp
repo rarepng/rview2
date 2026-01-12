@@ -18,12 +18,12 @@ struct gltfnodedata {
 
 class genericmodel {
 public:
-	bool loadmodel(rvk &objs, std::string fname);
-	void draw(rvk &objs);
-	void drawinstanced(rvk &objs, VkPipelineLayout &vkplayout, VkPipeline &vkpline, VkPipeline &vkplineuint,
+	bool loadmodel(rvkbucket &objs, std::string fname);
+	void draw(rvkbucket &objs);
+	void drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout, VkPipeline &vkpline, VkPipeline &vkplineuint,
 	                   int instancecount, int stride);
-	void cleanup(rvk &objs);
-	void uploadvboebo(rvk &objs, VkCommandBuffer &cbuffer);
+	void cleanup(rvkbucket &objs);
+	void uploadvboebo(rvkbucket &objs, VkCommandBuffer &cbuffer);
 	std::vector<texdata> gettexdata();
 	std::string getmodelfname();
 	int getnodecount();
@@ -43,7 +43,7 @@ private:
 
 	std::vector<unsigned int> jointuintofx{0};
 
-	void createvboebo(rvk &objs);
+	void createvboebo(rvkbucket &objs);
 
 	void getjointdata();
 	void getweightdata();

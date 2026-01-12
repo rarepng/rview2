@@ -1,7 +1,7 @@
 #include "vkebo.hpp"
 #include <cstring>
 
-bool vkebo::init(rvk &objs, ebodata &indexbufferdata, size_t buffersize) {
+bool vkebo::init(rvkbucket &objs, ebodata &indexbufferdata, size_t buffersize) {
 	VkBufferCreateInfo binfo{};
 	binfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	binfo.size = buffersize;
@@ -32,7 +32,7 @@ bool vkebo::init(rvk &objs, ebodata &indexbufferdata, size_t buffersize) {
 	return true;
 }
 
-bool vkebo::upload(rvk &objs, VkCommandBuffer &cbuffer, ebodata &indexbufferdata,
+bool vkebo::upload(rvkbucket &objs, VkCommandBuffer &cbuffer, ebodata &indexbufferdata,
                    std::vector<unsigned short> indicez) {
 
 	void *d;
@@ -62,7 +62,7 @@ bool vkebo::upload(rvk &objs, VkCommandBuffer &cbuffer, ebodata &indexbufferdata
 	return true;
 }
 
-bool vkebo::upload(rvk &objs, VkCommandBuffer &cbuffer, ebodata &indexbufferdata, const fastgltf::Buffer &buffer,
+bool vkebo::upload(rvkbucket &objs, VkCommandBuffer &cbuffer, ebodata &indexbufferdata, const fastgltf::Buffer &buffer,
                    const fastgltf::BufferView &bufferview, const size_t &count, const fastgltf::ComponentType &compType) {
 
 	size_t compSize = fastgltf::getComponentByteSize(compType);
@@ -101,7 +101,7 @@ bool vkebo::upload(rvk &objs, VkCommandBuffer &cbuffer, ebodata &indexbufferdata
 	return true;
 }
 
-void vkebo::cleanup(rvk &objs, ebodata &indexbufferdata) {
+void vkebo::cleanup(rvkbucket &objs, ebodata &indexbufferdata) {
 	vmaDestroyBuffer(objs.alloc, indexbufferdata.sbuffer, indexbufferdata.salloc);
 	vmaDestroyBuffer(objs.alloc, indexbufferdata.buffer, indexbufferdata.alloc);
 }

@@ -13,7 +13,7 @@
 #include "vk/commandbuffer.hpp"
 #include "ui.hpp"
 
-bool ui::init(rvk &renderData) {
+bool ui::init(rvkbucket &renderData) {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	// std::shared_ptr<ImGuiContext> x=std::make_shared<ImGuiContext>(ImGui::CreateContext());
@@ -44,7 +44,7 @@ bool ui::init(rvk &renderData) {
 	imguiPoolInfo.pPoolSizes = imguiPoolSizes.data();
 
 	if (vkCreateDescriptorPool(renderData.vkdevice.device, &imguiPoolInfo, nullptr,
-	                           &renderData.dpools[rvk::idximguipool])) {
+	                           &renderData.dpools[rvkbucket::idximguipool])) {
 		return false;
 	}
 	ImGui_ImplSDL3_InitForVulkan(renderData.wind);
@@ -64,7 +64,7 @@ bool ui::init(rvk &renderData) {
 	imguiIinitInfo.PhysicalDevice = renderData.physdev.physical_device;
 	imguiIinitInfo.Device = renderData.vkdevice.device;
 	imguiIinitInfo.Queue = renderData.graphicsQ;
-	imguiIinitInfo.DescriptorPool = renderData.dpools[rvk::idximguipool];
+	imguiIinitInfo.DescriptorPool = renderData.dpools[rvkbucket::idximguipool];
 	imguiIinitInfo.MinImageCount = 2;
 	imguiIinitInfo.ImageCount = renderData.schainimgs.size();
 	imguiIinitInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
@@ -102,7 +102,7 @@ bool ui::init(rvk &renderData) {
 	return true;
 }
 
-void ui::createdbgframe(rvk &renderData, selection &settings) {
+void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
 	ImGui::NewFrame();
@@ -712,7 +712,7 @@ void ui::createdbgframe(rvk &renderData, selection &settings) {
 	}
 }
 
-bool ui::createloadingscreen(rvk &mvkobjs) {
+bool ui::createloadingscreen(rvkbucket &mvkobjs) {
 
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
@@ -742,7 +742,7 @@ bool ui::createloadingscreen(rvk &mvkobjs) {
 	return true;
 }
 
-bool ui::createpausebuttons(rvk &mvkobjs) {
+bool ui::createpausebuttons(rvkbucket &mvkobjs) {
 
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
@@ -819,7 +819,7 @@ void ui::addchat(std::string s) {
 	chattxts.push_back(s);
 }
 
-void ui::render(rvk &renderData, VkCommandBuffer &cbuffer) {
+void ui::render(rvkbucket &renderData, VkCommandBuffer &cbuffer) {
 	ImGui::Render();
 
 	// renderData.mtx2.lock();
@@ -827,7 +827,7 @@ void ui::render(rvk &renderData, VkCommandBuffer &cbuffer) {
 	// renderData.mtx2.unlock();
 }
 
-void ui::cleanup(rvk &mvkobjs) {
+void ui::cleanup(rvkbucket &mvkobjs) {
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplSDL3_Shutdown();
 	ImGui::DestroyContext();

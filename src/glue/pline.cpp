@@ -6,7 +6,7 @@
 #include <VkBootstrap.h>
 #include <glm/glm.hpp>
 
-bool pline::init(rvk &objs, VkPipelineLayout &playout, VkPipeline &pipeline, VkPrimitiveTopology topology,
+bool pline::init(rvkbucket &objs, VkPipelineLayout &playout, VkPipeline &pipeline, VkPrimitiveTopology topology,
                  unsigned int v_in, unsigned int atts, std::vector<std::string> sfiles, bool char_or_short, VkFormat cformat, VkFormat dformat) {
 	if (sfiles.size() < 2)
 		return false;
@@ -137,6 +137,6 @@ bool pline::init(rvk &objs, VkPipelineLayout &playout, VkPipeline &pipeline, VkP
 	return true;
 }
 
-void pline::cleanup(rvk &objs, VkPipeline &pipeline) {
+void pline::cleanup(rvkbucket &objs, VkPipeline &pipeline) {
 	vkDestroyPipeline(objs.vkdevice.device, pipeline, nullptr);
 }

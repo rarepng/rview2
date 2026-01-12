@@ -1,3 +1,4 @@
+#include "core/rvk.hpp"
 #include <cstdint>
 #define GLM_ENABLE_EXPERIMENTAL
 #define VMA_IMPLEMENTATION
@@ -31,6 +32,10 @@
 // #include <unistd.h>
 
 #include "exp/particle.hpp"
+
+//might revert the whole module thing
+//maybe was not the best idea at this time
+import rview.rvk.tex;
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -80,7 +85,7 @@ void UpdateAllInstances(std::vector<genericinstance*>& instances) {
 }
 
 //gotta move these somewhere more reasonable someday
-bool init_global_samplers(rvk& objs) {
+bool init_global_samplers(rvkbucket& objs) {
 	VkSamplerCreateInfo info{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
 	info.magFilter = VK_FILTER_LINEAR;
 	info.minFilter = VK_FILTER_LINEAR;
@@ -107,7 +112,7 @@ bool init_global_samplers(rvk& objs) {
 
 
 
-bool init_dummy_textures(rvk& objs, VkCommandPool& cmdPool) {
+bool init_dummy_textures(rvkbucket& objs, VkCommandPool& cmdPool) {
 
 	auto find_memory_type = [&](uint32_t typeFilter, VkMemoryPropertyFlags properties) -> uint32_t {
 		VkPhysicalDeviceMemoryProperties memProperties;
@@ -193,8 +198,8 @@ bool init_dummy_textures(rvk& objs, VkCommandPool& cmdPool) {
 		vkFreeCommandBuffers(objs.vkdevice.device, cmdPool, 1, &cbuffer);
 	};
 
-	auto create_1x1_texture = [&](uint32_t pixelData) -> rvk::DummyTexture {
-		rvk::DummyTexture tex{};
+	auto create_1x1_texture = [&](uint32_t pixelData) -> rvkbucket::DummyTexture {
+		rvkbucket::DummyTexture tex{};
 
 		VkImageCreateInfo imageInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
 		imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -304,7 +309,8 @@ bool vkrenderer::init() {
 			createswapchain() && createdepthbuffer() &&
 			createcommandpool() && createcommandbuffer() &&
 			createsyncobjects() && createpools()
-			&& init_global_samplers(mvkobjs) && init_dummy_textures(mvkobjs, mvkobjs.cpools_graphics.at(0));
+			&& init_global_samplers(mvkobjs) && init_dummy_textures(mvkobjs, mvkobjs.cpools_graphics.at(0))
+			&& rview::rvk::tex::load_env_map(mvkobjs,mvkobjs.exrtex.at(0),mvkobjs.exrdset,mvkobjs.hdrlayout);
 			//might switch to passing mvk idk, maybe replace the whole mvkobjs bucket with something more functional
 		}
 	}))
@@ -354,7 +360,7 @@ bool vkrenderer::initscene() {
 ui *vkrenderer::getuihandle() {
 	return &mui;
 }
-rvk &vkrenderer::getvkobjs() {
+rvkbucket &vkrenderer::getvkobjs() {
 	return mvkobjs;
 }
 bool vkrenderer::quicksetup() {
@@ -486,7 +492,7 @@ bool vkrenderer::createpools() {
 			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2},
 			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1}
 		}};
-	return rpool::create(poolz, mvkobjs.vkdevice.device, &mvkobjs.dpools[rvk::idxinitpool]);
+	return rpool::create(poolz, mvkobjs.vkdevice.device, &mvkobjs.dpools[rvkbucket::idxinitpool]);
 }
 bool vkrenderer::createdepthbuffer() {
 	VkExtent3D depthimageextent = {mvkobjs.schain.extent.width, mvkobjs.schain.extent.height, 1};
@@ -606,9 +612,10 @@ void vkrenderer::cleanup() {
 	for (auto &x : mvkobjs.dpools)
 		rpool::destroy(mvkobjs.vkdevice.device, x);
 
-	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, rvk::ubolayout, nullptr);
-	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, *rvk::texlayout, nullptr);
-	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, rvk::ssbolayout, nullptr);
+	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, rvkbucket::ubolayout, nullptr);
+	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, *rvkbucket::texlayout, nullptr);
+	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, rvkbucket::ssbolayout, nullptr);
+	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, rvkbucket::hdrlayout, nullptr);
 
 	for (const auto &i : mplayer)
 		i->cleanuplines(mvkobjs);
@@ -663,7 +670,7 @@ bool vkrenderer::uploadfordraw(VkCommandBuffer cbuffer) {
 bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric> &x) {
 	manimupdatetimer.start();
 
-	x->uploadvboebo(mvkobjs, mvkobjs.cbuffers_graphics.at(rvk::currentFrame));
+	x->uploadvboebo(mvkobjs, mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame));
 
 	mvkobjs.uploadubossbotime = manimupdatetimer.stop();
 
@@ -918,10 +925,10 @@ void vkrenderer::updateanims() {
 bool vkrenderer::draw() {
 
 
-	if (vkWaitForFences(mvkobjs.vkdevice.device, 1, &mvkobjs.fencez.at(rvk::currentFrame), VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
+	if (vkWaitForFences(mvkobjs.vkdevice.device, 1, &mvkobjs.fencez.at(rvkbucket::currentFrame), VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
 		return false;
 	}
-	if (vkResetFences(mvkobjs.vkdevice.device, 1, &mvkobjs.fencez.at(rvk::currentFrame)) != VK_SUCCESS)
+	if (vkResetFences(mvkobjs.vkdevice.device, 1, &mvkobjs.fencez.at(rvkbucket::currentFrame)) != VK_SUCCESS)
 		return false;
 
 	particle::drawcomp(mvkobjs);
@@ -937,7 +944,7 @@ bool vkrenderer::draw() {
 
 	uint32_t imgidx = 0;
 	VkResult res = vkAcquireNextImageKHR(mvkobjs.vkdevice.device, mvkobjs.schain.swapchain, UINT64_MAX,
-	                                     mvkobjs.semaphorez[0][rvk::currentFrame], VK_NULL_HANDLE, &imgidx);
+	                                     mvkobjs.semaphorez[0][rvkbucket::currentFrame], VK_NULL_HANDLE, &imgidx);
 	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
 		return recreateswapchain();
 	} else {
@@ -967,7 +974,7 @@ bool vkrenderer::draw() {
 	scissor.offset = {0, 0};
 	scissor.extent = mvkobjs.schain.extent;
 
-	if (vkResetCommandBuffer(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), 0) != VK_SUCCESS)
+	if (vkResetCommandBuffer(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame), 0) != VK_SUCCESS)
 		return false;
 
 	sdlevent(mvkobjs.e);
@@ -976,7 +983,7 @@ bool vkrenderer::draw() {
 	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	if (vkBeginCommandBuffer(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), &cmdbgninfo) != VK_SUCCESS)
+	if (vkBeginCommandBuffer(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame), &cmdbgninfo) != VK_SUCCESS)
 		return false;
 
 
@@ -1060,7 +1067,7 @@ bool vkrenderer::draw() {
 	dep.pBufferMemoryBarriers = &particleBarrier;
 	dep.imageMemoryBarrierCount = 2;
 	dep.pImageMemoryBarriers = barriers;
-	vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), &dep);
+	vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame), &dep);
 
 	VkRenderingAttachmentInfo color_attach{};
 	color_attach.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -1085,15 +1092,15 @@ bool vkrenderer::draw() {
 	render_info.pColorAttachments = &color_attach;
 	render_info.pDepthAttachment = &depth_attach;
 
-	vkCmdBeginRendering(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), &render_info);
+	vkCmdBeginRendering(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame), &render_info);
 
-	vkCmdSetViewport(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), 0, 1, &viewport);
-	vkCmdSetScissor(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), 0, 1, &scissor);
+	vkCmdSetViewport(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame), 0, 1, &viewport);
+	vkCmdSetScissor(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame), 0, 1, &scissor);
 
 	VkDeviceSize coffsets{0};
-	vkCmdBindPipeline(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, particle::gpline);
-	vkCmdBindVertexBuffers(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), 0, 1, &particle::ssbobuffsnallocs.at(0).first, &coffsets);
-	vkCmdDraw(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), 8192, 1, 0, 0);
+	vkCmdBindPipeline(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, particle::gpline);
+	vkCmdBindVertexBuffers(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame), 0, 1, &particle::ssbobuffsnallocs.at(0).first, &coffsets);
+	vkCmdDraw(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame), 8192, 1, 0, 0);
 
 	for (const auto &i : mplayer)
 		i->draw(mvkobjs);
@@ -1104,10 +1111,10 @@ bool vkrenderer::draw() {
 
 	mui.createdbgframe(mvkobjs, selectiondata);
 
-	mui.render(mvkobjs, mvkobjs.cbuffers_graphics.at(rvk::currentFrame));
+	mui.render(mvkobjs, mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame));
 
-	vkCmdEndRendering(mvkobjs.cbuffers_graphics.at(rvk::currentFrame));
-	// vkCmdEndRenderPass(mvkobjs.cbuffers_graphics.at(rvk::currentFrame));
+	vkCmdEndRendering(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame));
+	// vkCmdEndRenderPass(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame));
 
 	// animmtx.lock();
 	// updatemtx.lock();
@@ -1139,9 +1146,9 @@ bool vkrenderer::draw() {
 	dependency_info.imageMemoryBarrierCount = 1;
 	dependency_info.pImageMemoryBarriers = &barrier;
 
-	vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(rvk::currentFrame), &dependency_info);
+	vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame), &dependency_info);
 
-	if (vkEndCommandBuffer(mvkobjs.cbuffers_graphics.at(rvk::currentFrame)) != VK_SUCCESS)
+	if (vkEndCommandBuffer(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame)) != VK_SUCCESS)
 		return false;
 
 	movecam();
@@ -1151,7 +1158,7 @@ bool vkrenderer::draw() {
 
 	std::array<VkPipelineStageFlags,2> waitstage = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,VK_PIPELINE_STAGE_VERTEX_INPUT_BIT};
 	submitinfo.pWaitDstStageMask = waitstage.data();
-	std::array<VkSemaphore, 2> waitsemas{mvkobjs.semaphorez.at(0).at(rvk::currentFrame),mvkobjs.semaphorez.at(2).at(rvk::currentFrame) };
+	std::array<VkSemaphore, 2> waitsemas{mvkobjs.semaphorez.at(0).at(rvkbucket::currentFrame),mvkobjs.semaphorez.at(2).at(rvkbucket::currentFrame) };
 	submitinfo.waitSemaphoreCount = 2;
 	submitinfo.pWaitSemaphores = waitsemas.data();
 
@@ -1159,10 +1166,10 @@ bool vkrenderer::draw() {
 	submitinfo.pSignalSemaphores = &mvkobjs.semaphorez.at(1).at(imgidx);
 
 	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &mvkobjs.cbuffers_graphics.at(rvk::currentFrame);
+	submitinfo.pCommandBuffers = &mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame);
 
 	mvkobjs.mtx2->lock();
-	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.fencez.at(rvk::currentFrame)) != VK_SUCCESS) {
+	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.fencez.at(rvkbucket::currentFrame)) != VK_SUCCESS) {
 		return false;
 	}
 	mvkobjs.mtx2->unlock();
@@ -1190,7 +1197,7 @@ bool vkrenderer::draw() {
 		}
 	}
 	mlasttick = tick;
-	rvk::currentFrame = (rvk::currentFrame + 1) % rvk::MAX_FRAMES_IN_FLIGHT;
+	rvkbucket::currentFrame = (rvkbucket::currentFrame + 1) % rvkbucket::MAX_FRAMES_IN_FLIGHT;
 
 	return true;
 }

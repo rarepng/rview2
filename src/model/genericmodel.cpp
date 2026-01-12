@@ -1,4 +1,5 @@
 
+#include "core/rvk.hpp"
 #include "fastgltf/types.hpp"
 #define GLM_ENABLE_EXPERIMENTAL
 #include <cmath>
@@ -8,16 +9,16 @@
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <algorithm>
-
 #include <iostream>
 
-#include "vktexture.hpp"
 
 #include "genericmodel.hpp"
 #include "vkebo.hpp"
 #include "vkvbo.hpp"
 
-bool genericmodel::loadmodel(rvk &objs, std::string fname) {
+import rview.rvk.tex;
+
+bool genericmodel::loadmodel(rvkbucket &objs, std::string fname) {
 
 	fastgltf::Parser fastparser{};
 	auto buff = fastgltf::MappedGltfFile::FromPath(fname);
@@ -25,19 +26,34 @@ bool genericmodel::loadmodel(rvk &objs, std::string fname) {
 	    fastparser.loadGltfBinary(buff.get(), std::filesystem::absolute(fname));
 	mmodel2 = std::move(a.get());
 
+	std::function<void(std::string_view)> error_handler =
+	[](std::string_view msg) {
+		std::cerr << std::format("tex err: {}\n", msg);
+	};
 	mgltfobjs.texs.reserve(mmodel2.images.size());
 	mgltfobjs.texs.resize(mmodel2.images.size());
-	static const bool _ = [&] {
-		if (!vktexture::createlayout(objs))
-			return false;
-		return true;
-	}();
+	auto result = rview::rvk::tex::load_batch(
+	                  objs,
+	                  mgltfobjs.texs,
+	                  mmodel2,
+	                  error_handler
+	              );
+	rview::rvk::tex::update_descriptor_set(objs,
+	                                       mgltfobjs.texs,
+	                                       *rvkbucket::texlayout,
+	                                       mgltfobjs.texpool,
+	                                       mgltfobjs.dset);
+	// static const bool _ = [&] {
+	// 	if (!vktexture::createlayout(objs))
+	// 		return false;
+	// 	return true;
+	// }();
 
-	if (!vktexture::loadtexture(objs, mgltfobjs.texs, mmodel2))
-		return false;
-	if (!vktexture::loadtexset(objs, mgltfobjs.texs, *rvk::texlayout,
-	                           mgltfobjs.dset, mmodel2))
-		return false;
+	// if (!vktexture::loadtexture(objs, mgltfobjs.texs, mmodel2))
+	// 	return false;
+	// if (!vktexture::loadtexset(objs, mgltfobjs.texs, *rvkbucket::texlayout,
+	//                            mgltfobjs.dset, mmodel2))
+	// 	return false;
 
 	createvboebo(objs);
 
@@ -183,7 +199,7 @@ std::vector<unsigned int> genericmodel::getnodetojoint() {
 	return mnodetojoint;
 }
 
-void genericmodel::createvboebo(rvk &objs) {
+void genericmodel::createvboebo(rvkbucket &objs) {
 	mgltfobjs.vbos.resize(mmodel2.meshes.size());
 	mgltfobjs.ebos.resize(mmodel2.meshes.size());
 
@@ -239,7 +255,7 @@ void genericmodel::createvboebo(rvk &objs) {
 		}
 	}
 }
-void genericmodel::uploadvboebo(rvk &objs, VkCommandBuffer &cbuffer) {
+void genericmodel::uploadvboebo(rvkbucket &objs, VkCommandBuffer &cbuffer) {
 	static const std::unordered_map<std::string_view, int> SLOT_MAP = {
 		{"POSITION", 0}, {"NORMAL", 1}, {"TANGENT", 2},
 		{"TEXCOORD_0", 3}, {"JOINTS_0", 4}, {"WEIGHTS_0", 5}
@@ -311,18 +327,18 @@ size_t genericmodel::gettricount(size_t i, size_t j) {
 	return c;
 }
 
-void genericmodel::drawinstanced(rvk &objs, VkPipelineLayout &vkplayout,
+void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
                                  VkPipeline &vkpline, VkPipeline &vkplineuint,
                                  int instancecount, int stride) {
 	VkDeviceSize offset = 0;
 
-	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvk::currentFrame),
+	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvkbucket::currentFrame),
 	                        VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1,
 	                        &mgltfobjs.dset, 0, nullptr);
 	for (size_t i = 0; i < mgltfobjs.vbos.size(); i++) {
 		for (size_t j = 0; j < mgltfobjs.vbos.at(i).size(); j++) {
 			VkPipeline pipeline = meshjointtype[i][j] ? vkplineuint : vkpline;
-			vkCmdBindPipeline(objs.cbuffers_graphics.at(rvk::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+			vkCmdBindPipeline(objs.cbuffers_graphics.at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
 			vkpushconstants push{};
 			auto& buffers2 = mgltfobjs.vbos[i][j];
@@ -388,7 +404,7 @@ void genericmodel::drawinstanced(rvk &objs, VkPipelineLayout &vkplayout,
 				push.ormIdx = 1;
 				push.emissiveIdx = 3;
 			}
-			vkCmdPushConstants(objs.cbuffers_graphics.at(rvk::currentFrame),
+			vkCmdPushConstants(objs.cbuffers_graphics.at(rvkbucket::currentFrame),
 			                   vkplayout,
 			                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 			                   0,
@@ -403,22 +419,22 @@ void genericmodel::drawinstanced(rvk &objs, VkPipelineLayout &vkplayout,
 					bufToBind = buffers[binding].buffer;
 				}
 
-				vkCmdBindVertexBuffers(objs.cbuffers_graphics.at(rvk::currentFrame),
+				vkCmdBindVertexBuffers(objs.cbuffers_graphics.at(rvkbucket::currentFrame),
 				                       binding, 1, &bufToBind, &offset);
 			}
 
-			vkCmdBindIndexBuffer(objs.cbuffers_graphics.at(rvk::currentFrame),
+			vkCmdBindIndexBuffer(objs.cbuffers_graphics.at(rvkbucket::currentFrame),
 			                     mgltfobjs.ebos.at(i).at(j).buffer, 0,
 			                     VK_INDEX_TYPE_UINT16);
 
-			vkCmdDrawIndexed(objs.cbuffers_graphics.at(rvk::currentFrame),
+			vkCmdDrawIndexed(objs.cbuffers_graphics.at(rvkbucket::currentFrame),
 			                 static_cast<uint32_t>(gettricount(i, j) * 3),
 			                 instancecount, 0, 0, 0);
 		}
 	}
 }
 
-void genericmodel::cleanup(rvk &objs) {
+void genericmodel::cleanup(rvkbucket &objs) {
 
 	for (size_t i{0}; i < mgltfobjs.vbos.size(); i++) {
 		for (size_t j{0}; j < mgltfobjs.vbos.at(i).size(); j++) {
@@ -433,7 +449,7 @@ void genericmodel::cleanup(rvk &objs) {
 		}
 	}
 	for (size_t i{0}; i < mgltfobjs.texs.size(); i++) {
-		vktexture::cleanup(objs, mgltfobjs.texs[i]);
+		rview::rvk::tex::cleanup(objs, mgltfobjs.texs[i]);
 	}
 }
 std::vector<texdata> genericmodel::gettexdata() {

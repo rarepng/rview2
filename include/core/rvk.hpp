@@ -95,7 +95,10 @@ struct vkpushconstants {
 };
 // idk
 // static_assert(sizeof(vkpushconstants) == 128, "Struct size mismatch!");
-struct rvk {
+struct rvkbucket {
+
+	std::array<texdata,1> exrtex{};
+	VkDescriptorSet exrdset = VK_NULL_HANDLE;
 
 	inline static const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
 
@@ -163,6 +166,7 @@ struct rvk {
 	inline static std::shared_ptr<VkDescriptorSetLayout> texlayout = std::make_shared<VkDescriptorSetLayout>();
 	inline static VkDescriptorSetLayout ubolayout = VK_NULL_HANDLE;
 	inline static VkDescriptorSetLayout ssbolayout = VK_NULL_HANDLE;
+	inline static VkDescriptorSetLayout hdrlayout = VK_NULL_HANDLE;
 
 	std::vector<VkImage> schainimgs;
 	std::vector<VkImageView> schainimgviews;
@@ -209,6 +213,7 @@ struct vkgltfobjs {
 	std::vector<std::vector<ebodata>> ebos{};
 	std::vector<texdata> texs{};
 	VkDescriptorSet dset = VK_NULL_HANDLE;
+	VkDescriptorPool texpool = VK_NULL_HANDLE;
 };
 namespace rpool {
 static inline bool create(const std::span<VkDescriptorPoolSize>& pools,const VkDevice& dev,VkDescriptorPool* dpool) {

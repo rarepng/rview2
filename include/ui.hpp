@@ -15,13 +15,13 @@ struct selection {
 
 class ui {
 public:
-	bool init(rvk &mvkobjs);
-	void createdbgframe(rvk &mvkobjs, selection &settingsz);
-	bool createloadingscreen(rvk &mvkobjs);
-	bool createpausebuttons(rvk &mvkobjs);
+	bool init(rvkbucket &mvkobjs);
+	void createdbgframe(rvkbucket &mvkobjs, selection &settingsz);
+	bool createloadingscreen(rvkbucket &mvkobjs);
+	bool createpausebuttons(rvkbucket &mvkobjs);
 	void addchat(std::string s);
-	void render(rvk &mvkobjs, VkCommandBuffer &cbuffer);
-	void cleanup(rvk &mvkobjs);
+	void render(rvkbucket &mvkobjs, VkCommandBuffer &cbuffer);
+	void cleanup(rvkbucket &mvkobjs);
 	bool setnetwork{false};
 	void backspace();
 	bool chatfocus{false};

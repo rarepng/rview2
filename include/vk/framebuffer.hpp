@@ -5,7 +5,7 @@
 
 //useless now idk
 namespace framebuffer {
-static inline bool create(rvk &rdata) {
+static inline bool create(rvkbucket &rdata) {
 	rdata.schainimgs = rdata.schain.get_images().value();
 	rdata.schainimgviews = rdata.schain.get_image_views().value();
 

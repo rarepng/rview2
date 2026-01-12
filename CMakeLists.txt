@@ -4,7 +4,7 @@ project(rview2 LANGUAGES CXX)
 
 include(ExternalProject)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -16,8 +16,6 @@ add_compile_options(
 )
 
 find_package(Vulkan REQUIRED)
-
-
 
 set(OPENSSL_USE_STATIC_LIBS ON)
 find_package(OpenSSL REQUIRED)
@@ -163,6 +161,13 @@ set(OTHER_SOURCES
 
 add_executable(rview2 ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_HEADERS})
 
+#worst decision so far
+target_sources(rview2
+    PUBLIC
+        FILE_SET CXX_MODULES 
+        FILES
+            mods/tex.ixx
+)
 
 
 if(UNIX)

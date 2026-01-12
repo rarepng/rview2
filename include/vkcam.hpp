@@ -6,7 +6,7 @@
 
 class vkcam {
 public:
-	glm::mat4 getview(rvk &mvkobjs);
+	glm::mat4 getview(rvkbucket &mvkobjs);
 	glm::vec3 mforward{0.0f};
 	glm::vec3 mright{0.0f};
 	glm::vec3 mup{0.0f};

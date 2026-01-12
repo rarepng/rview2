@@ -108,6 +108,13 @@ jobs:
       shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+    #idfk man
+    - name: Cache Compiled External Projects
+      id: cache-deps
+      uses: actions/cache@v4
+      with:
+        path: cmake_more_cache
+        key: ${{ runner.os }}-deps-v1-${{ hashFiles('CMakeLists.txt') }}
 
     - name: Configure CMake
       run: >

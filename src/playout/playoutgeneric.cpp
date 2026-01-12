@@ -1,18 +1,19 @@
 #include "playoutgeneric.hpp"
 #include "buffer/ssbo.hpp"
+#include "core/rvk.hpp"
 #include "modelsettings.hpp"
 #include "playout.hpp"
 #include "pline.hpp"
 #include "ubo.hpp"
 #include <iostream>
 
-bool playoutgeneric::setup(rvk &objs, std::string fname, size_t count, std::string vfile, std::string ffile) {
+bool playoutgeneric::setup(rvkbucket &objs, std::string fname, size_t count, std::string vfile, std::string ffile) {
 	if (!loadmodel(objs, fname))
 		return false;
 	if (!createinstances(objs, count, false))
 		return false;
 	static const bool _ = [&] {
-		if(!ssbo::createlayout(objs,rvk::ssbolayout))
+		if(!ssbo::createlayout(objs,rvkbucket::ssbolayout))
 			return false;
 		if (!createubo(objs))
 			return false;
@@ -35,14 +36,14 @@ bool playoutgeneric::setup(rvk &objs, std::string fname, size_t count, std::stri
 	return _;
 }
 
-bool playoutgeneric::loadmodel(rvk &objs, std::string fname) {
+bool playoutgeneric::loadmodel(rvkbucket &objs, std::string fname) {
 	mgltf = std::make_shared<genericmodel>();
 	if (!mgltf->loadmodel(objs, fname))
 		return false;
 	return true;
 }
 
-bool playoutgeneric::createinstances(rvk &objs, size_t count, bool rand) {
+bool playoutgeneric::createinstances(rvkbucket &objs, size_t count, bool rand) {
 	size_t numTriangles{};
 	for (size_t i{0}; i < count; ++i) {
 		minstances.emplace_back(std::make_shared<genericinstance>(mgltf, glm::vec3{0.0f, 0.0f, 0.0f}, rand));
@@ -55,34 +56,34 @@ bool playoutgeneric::createinstances(rvk &objs, size_t count, bool rand) {
 		return false;
 	return true;
 }
-bool playoutgeneric::createubo(rvk &objs) {
-	ubo::createlayout(objs,rvk::ubolayout);
+bool playoutgeneric::createubo(rvkbucket &objs) {
+	ubo::createlayout(objs,rvkbucket::ubolayout);
 	if (!ubo::init(objs, rdperspviewmatrixubo))
 		return false;
 	return true;
 }
 
-bool playoutgeneric::createssbomat(rvk &objs) {
+bool playoutgeneric::createssbomat(rvkbucket &objs) {
 	size_t size = numinstancess * SDL_clamp(minstances[0]->getjointmatrixsize(), 1, minstances[0]->getjointmatrixsize()) *
 	              sizeof(glm::mat4);
 	if (!ssbo::init(objs, rdjointmatrixssbo, size))
 		return false;
 	return true;
 }
-bool playoutgeneric::createssbostatic(rvk &objs) {
+bool playoutgeneric::createssbostatic(rvkbucket &objs) {
 	size_t size = numinstancess * sizeof(glm::mat4);
 	if (!ssbo::init(objs, rdjointmatrixssbo, size))
 		return false;
 	return true;
 }
-bool playoutgeneric::createskinnedplayout(rvk &objs) {
-	std::array<VkDescriptorSetLayout,3> dlayouts{*rvk::texlayout,rvk::ubolayout,rvk::ssbolayout};
+bool playoutgeneric::createskinnedplayout(rvkbucket &objs) {
+	std::array<VkDescriptorSetLayout,4> dlayouts{*rvkbucket::texlayout,rvkbucket::ubolayout,rvkbucket::ssbolayout,rvkbucket::hdrlayout};
 	if (!playout::init(objs, skinnedplayout, dlayouts, sizeof(vkpushconstants)))
 		return false;
 	return true;
 }
 
-bool playoutgeneric::createpline(rvk &objs, std::string vfile, std::string ffile) {
+bool playoutgeneric::createpline(rvkbucket &objs, std::string vfile, std::string ffile) {
 	if (!pline::init(objs, skinnedplayout, skinnedpline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 6, 63,
 	                 std::vector<std::string> {vfile, ffile},false,objs.schain.image_format,objs.rddepthformat))
 		return false;
@@ -100,18 +101,18 @@ void playoutgeneric::updateanims() {
 		}
 }
 
-void playoutgeneric::uploadvboebo(rvk &objs, VkCommandBuffer &cbuffer) {
+void playoutgeneric::uploadvboebo(rvkbucket &objs, VkCommandBuffer &cbuffer) {
 	if (uploadreq) {
 		mgltf->uploadvboebo(objs, cbuffer);
 		uploadreq = false;
 	}
 }
 
-void playoutgeneric::uploadubossbo(rvk &objs, std::vector<glm::mat4> &cammats) {
-	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvk::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 1, 1,
+void playoutgeneric::uploadubossbo(rvkbucket &objs, std::vector<glm::mat4> &cammats) {
+	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 1, 1,
 	                        &rdperspviewmatrixubo[0].dset, 0, nullptr);
 	ubo::upload(objs, rdperspviewmatrixubo, cammats);
-	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvk::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 2, 1,
+	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 2, 1,
 	                        &rdjointmatrixssbo.dset, 0, nullptr);
 	ssbo::upload(objs, rdjointmatrixssbo, jointmats);
 
@@ -161,7 +162,7 @@ void playoutgeneric::updatemats() {
 	}
 }
 
-void playoutgeneric::cleanuplines(rvk &objs) {
+void playoutgeneric::cleanuplines(rvkbucket &objs) {
 	static const bool _ = [&] {
 		pline::cleanup(objs, skinnedpline);
 		pline::cleanup(objs, skinnedplineuint);
@@ -170,7 +171,7 @@ void playoutgeneric::cleanuplines(rvk &objs) {
 	}();
 }
 
-void playoutgeneric::cleanupbuffers(rvk &objs) {
+void playoutgeneric::cleanupbuffers(rvkbucket &objs) {
 	static const bool _ = [&] {
 		ubo::cleanup(objs, rdperspviewmatrixubo);
 		return true;
@@ -178,21 +179,22 @@ void playoutgeneric::cleanupbuffers(rvk &objs) {
 	ssbo::cleanup(objs, rdjointmatrixssbo);
 }
 
-void playoutgeneric::cleanupmodels(rvk &objs) {
+void playoutgeneric::cleanupmodels(rvkbucket &objs) {
 	mgltf->cleanup(objs);
 	mgltf.reset();
 }
 
-void playoutgeneric::draw(rvk &objs) {
+void playoutgeneric::draw(rvkbucket &objs) {
 	if (minstances[0]->getinstancesettings().msdrawmodel) {
 
 		stride = minstances.at(0)->getjointmatrixsize();
 
-		vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvk::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 1, 1,
+		vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 1, 1,
 		                        &rdperspviewmatrixubo[0].dset, 0, nullptr);
-		vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvk::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 2, 1,
+		vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 2, 1,
 		                        &rdjointmatrixssbo.dset, 0, nullptr);
-
+		vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 3, 1,
+		                        &objs.exrdset, 0, nullptr);
 		mgltf->drawinstanced(objs, skinnedplayout, skinnedpline, skinnedplineuint, numinstancess, stride);
 
 	}

@@ -1,7 +1,7 @@
 #include "ubo.hpp"
 #include <VkBootstrap.h>
 
-bool ubo::init(rvk &mvkobjs, std::vector<ubodata> &ubodata) {
+bool ubo::init(rvkbucket &mvkobjs, std::vector<ubodata> &ubodata) {
 	ubodata.reserve(2);
 	ubodata.resize(2);
 
@@ -25,9 +25,9 @@ bool ubo::init(rvk &mvkobjs, std::vector<ubodata> &ubodata) {
 
 	VkDescriptorSetAllocateInfo dallocinfo{};
 	dallocinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	dallocinfo.descriptorPool = mvkobjs.dpools[rvk::idxinitpool];
+	dallocinfo.descriptorPool = mvkobjs.dpools[rvkbucket::idxinitpool];
 	dallocinfo.descriptorSetCount = 1;
-	dallocinfo.pSetLayouts = &rvk::ubolayout;
+	dallocinfo.pSetLayouts = &rvkbucket::ubolayout;
 
 	if (vkAllocateDescriptorSets(mvkobjs.vkdevice.device, &dallocinfo, &ubodata[0].dset) != VK_SUCCESS)
 		return false;
@@ -59,13 +59,13 @@ bool ubo::init(rvk &mvkobjs, std::vector<ubodata> &ubodata) {
 
 	return true;
 }
-bool ubo::createlayout(rvk &mvkobjs,VkDescriptorSetLayout& dlayout) {
+bool ubo::createlayout(rvkbucket &mvkobjs,VkDescriptorSetLayout& dlayout) {
 	std::vector<VkDescriptorSetLayoutBinding> ubobind(2);
 	ubobind[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	ubobind[0].binding = 0;
 	ubobind[0].descriptorCount = 1;
 	ubobind[0].pImmutableSamplers = nullptr;
-	ubobind[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	ubobind[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	ubobind[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	ubobind[1].binding = 1;
@@ -84,14 +84,14 @@ bool ubo::createlayout(rvk &mvkobjs,VkDescriptorSetLayout& dlayout) {
 		return false;
 	return true;
 }
-void ubo::upload(rvk &mvkobjs, std::vector<ubodata> &ubodata, std::vector<glm::mat4> mats) {
+void ubo::upload(rvkbucket &mvkobjs, std::vector<ubodata> &ubodata, std::vector<glm::mat4> mats) {
 	void *data;
 	vmaMapMemory(mvkobjs.alloc, ubodata[0].alloc, &data);
 	std::memcpy(data, mats.data(), ubodata[0].size);
 	vmaUnmapMemory(mvkobjs.alloc, ubodata[0].alloc);
 }
 
-void ubo::cleanup(rvk &mvkobjs, std::vector<ubodata> &ubodata) {
+void ubo::cleanup(rvkbucket &mvkobjs, std::vector<ubodata> &ubodata) {
 	for (size_t i{0}; i < ubodata.size(); i++) {
 		vmaDestroyBuffer(mvkobjs.alloc, ubodata[i].buffer, ubodata[i].alloc);
 	}

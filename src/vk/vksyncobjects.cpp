@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <tuple>
 
-bool vksyncobjects::init(rvk &rdata) {
+bool vksyncobjects::init(rvkbucket &rdata) {
 
 	VkFenceCreateInfo fenceinfo{};
 	fenceinfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -31,7 +31,7 @@ bool vksyncobjects::init(rvk &rdata) {
 	}
 	                 );
 }
-void vksyncobjects::cleanup(rvk &rdata) {
+void vksyncobjects::cleanup(rvkbucket &rdata) {
 	for(const auto& x:rdata.semaphorez) {
 		for(const auto& y:x) {
 			vkDestroySemaphore(rdata.vkdevice.device, y, nullptr);

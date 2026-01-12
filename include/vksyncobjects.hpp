@@ -4,6 +4,6 @@
 #include <vulkan/vulkan.h>
 class vksyncobjects {
 public:
-	static bool init(rvk &rdata);
-	static void cleanup(rvk &rdata);
+	static bool init(rvkbucket &rdata);
+	static void cleanup(rvkbucket &rdata);
 };
