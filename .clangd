@@ -3,7 +3,7 @@ CompileFlags:
   Compiler: "g++"
   Add: 
     - "-Iinclude"
-    - "-std=gnu++2b"
+    - "-std=gnu++2c"
   Remove:
     - -fmodules-ts
     - -fmodule-mapper=*

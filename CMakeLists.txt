@@ -167,9 +167,6 @@ target_sources(rview2
         FILE_SET CXX_MODULES 
         FILES
             mods/tex.cxxm
-        FILE_SET HEADERS
-        FILES
-            include/exp/particle.hpp
 )
 
 

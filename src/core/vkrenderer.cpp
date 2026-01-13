@@ -639,11 +639,12 @@ void vkrenderer::cleanup() {
 	// 	std::cout << "=======================\n";
 	// 	vmaFreeStatsString(mvkobjs.alloc, statsString);
 	// }
-	// if (mvkobjs.exrtex.at(0).img) {
-	// 	vkDestroyImageView(mvkobjs.vkdevice.device,mvkobjs.exrtex.at(0).imgview, nullptr);
-	// 	vkDestroySampler(mvkobjs.vkdevice.device,mvkobjs.exrtex.at(0).imgsampler, nullptr);
-	// 	vmaDestroyImage(mvkobjs.alloc,mvkobjs.exrtex.at(0).img, mvkobjs.exrtex.at(0).alloc);
-	// }
+	
+	if (mvkobjs.exrtex.at(0).img) {
+		vkDestroyImageView(mvkobjs.vkdevice.device,mvkobjs.exrtex.at(0).imgview, nullptr);
+		vkDestroySampler(mvkobjs.vkdevice.device,mvkobjs.exrtex.at(0).imgsampler, nullptr);
+		vmaDestroyImage(mvkobjs.alloc,mvkobjs.exrtex.at(0).img, mvkobjs.exrtex.at(0).alloc);
+	}
 
 	vmaDestroyAllocator(mvkobjs.alloc);
 
