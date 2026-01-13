@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 4.0)
 project(rview2 LANGUAGES CXX)
 
-
 include(ExternalProject)
 
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
 
 add_compile_options(
     "$<$<CONFIG:Debug>:-Wall>"
@@ -166,7 +166,10 @@ target_sources(rview2
     PUBLIC
         FILE_SET CXX_MODULES 
         FILES
-            mods/tex.ixx
+            mods/tex.cxxm
+        FILE_SET HEADERS
+        FILES
+            include/exp/particle.hpp
 )
 
 

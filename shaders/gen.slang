@@ -97,6 +97,22 @@ float3 ACESToneMapping(float3 color) {
     return saturate((color * (A * color + B)) / (color * (C * color + D) + E));
 }
 
+//stolen functions from doom hehe
+float D_GGX_Anisotropic(float NdotH, float3 H, float3 T, float3 B, float at, float ab) {
+    float TdotH = dot(T, H);
+    float BdotH = dot(B, H);
+    float a2 = at * ab;
+    float3 d = float3(ab * TdotH, at * BdotH, a2 * NdotH);
+    float d2 = dot(d, d);
+    float b2 = a2 / d2;
+    return a2 * b2 * b2 / PI;
+}
+float V_SmithGGXCorrelated_Anisotropic(float at, float ab, float TdotV, float BdotV, float TdotL, float BdotL, float NdotV, float NdotL) {
+    float lambdaV = NdotL * length(float3(at * TdotV, ab * BdotV, NdotV));
+    float lambdaL = NdotV * length(float3(at * TdotL, ab * BdotL, NdotL));
+    return 0.5 / (lambdaV + lambdaL);
+}
+
 [shader("vertex")]
 PXin vxmain(VXin in, uint id: SV_VulkanInstanceID) {
     PXin out;
