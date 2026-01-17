@@ -5,17 +5,6 @@
 #include <string>
 #include <vulkan/vulkan.h>
 
-// idk how to do this properly
-// VKAPI_ATTR VkBool32 VKAPI_CALL dbgcallback(
-//     VkDebugUtilsMessageSeverityFlagBitsEXT       messageSeverity,
-//     VkDebugUtilsMessageTypeFlagsEXT              messageType,
-//     const VkDebugUtilsMessengerCallbackDataEXT*  pCallbackData,
-//     void*                                        pUserData
-// ){
-//     std::cout << "vlayer: " << pCallbackData->pMessage << std::endl;
-//     return VK_TRUE;
-// }
-
 int main() {
 
 	std::unique_ptr<vkwind> w = std::make_unique<vkwind>();

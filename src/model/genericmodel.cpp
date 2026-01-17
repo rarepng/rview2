@@ -344,7 +344,7 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
 			auto& buffers2 = mgltfobjs.vbos[i][j];
 			bool hasSkin = (buffers2[4].buffer != VK_NULL_HANDLE && buffers2[5].buffer != VK_NULL_HANDLE);
 			push.stride = hasSkin ? stride : 0;
-
+			push.envMapMaxLod = rvkbucket::hdrmiplod - 1;
 			push.stride = stride;
 			push.t = static_cast<float>(SDL_GetTicks()) / 1000.0f;
 

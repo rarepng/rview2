@@ -91,7 +91,7 @@ struct vkpushconstants {
 	float thicknessFactor;
 
 	//more padding
-	float _pad1;
+	float envMapMaxLod;
 };
 // idk
 // static_assert(sizeof(vkpushconstants) == 128, "Struct size mismatch!");
@@ -105,6 +105,7 @@ struct rvkbucket {
 
 	inline static uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!! different devices might not serve 3 swapchain images
 	inline static uint32_t currentFrame{0};
+	inline static uint32_t hdrmiplod{0};
 
 	struct DummyTexture {
 		VkImage image = VK_NULL_HANDLE;

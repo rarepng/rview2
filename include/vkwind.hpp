@@ -9,13 +9,10 @@
 
 class vkwind {
 public:
-	bool upreq{true};
-
 	bool init(std::string title);
 	void frameupdate();
 	void cleanup();
-	int mh;
-	int mw;
+
 	SDL_Event *e{new SDL_Event{}};
 	bool shutdown{false};
 

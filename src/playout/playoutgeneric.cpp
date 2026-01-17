@@ -108,10 +108,10 @@ void playoutgeneric::uploadvboebo(rvkbucket &objs, VkCommandBuffer &cbuffer) {
 	}
 }
 
-void playoutgeneric::uploadubossbo(rvkbucket &objs, std::vector<glm::mat4> &cammats) {
+void playoutgeneric::uploadubossbo(rvkbucket &objs, std::vector<glm::mat4> &cammats,const glm::vec3& campos) {
 	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 1, 1,
 	                        &rdperspviewmatrixubo[0].dset, 0, nullptr);
-	ubo::upload(objs, rdperspviewmatrixubo, cammats);
+	ubo::upload(objs, rdperspviewmatrixubo, cammats,campos);
 	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, skinnedplayout, 2, 1,
 	                        &rdjointmatrixssbo.dset, 0, nullptr);
 	ssbo::upload(objs, rdjointmatrixssbo, jointmats);

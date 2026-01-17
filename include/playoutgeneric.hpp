@@ -22,7 +22,7 @@ public:
 	void cleanupbuffers(rvkbucket &objs);
 	void cleanupmodels(rvkbucket &objs);
 	void uploadvboebo(rvkbucket &objs, VkCommandBuffer &cbuffer);
-	void uploadubossbo(rvkbucket &objs,std::vector<glm::mat4> &cammats);
+	void uploadubossbo(rvkbucket &objs,std::vector<glm::mat4> &cammats,const glm::vec3& campos);
 
 	std::shared_ptr<genericinstance> getinst(int i);
 
@@ -35,7 +35,7 @@ public:
 private:
 
 
-	inline static std::vector<ubodata> rdperspviewmatrixubo{};
+	inline static std::vector<ubodata> rdperspviewmatrixubo{{}};
 	ssbodata rdjointmatrixssbo{};
 
 	bool uploadreq{true};

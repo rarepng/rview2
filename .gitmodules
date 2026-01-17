@@ -46,12 +46,12 @@
 	path = sub/sdl
 	url = ../../libsdl-org/SDL.git
 	branch = main
-[submodule "sub/bullet"]
-	path = sub/bullet
-	url = ../../bulletphysics/bullet3
 [submodule "sub/volk"]
 	path = sub/volk
 	url = ../../zeux/volk
 [submodule "sub/slang"]
 	path = sub/slang
 	url = ../../shader-slang/slang
+[submodule "sub/jolt"]
+	path = sub/jolt
+	url = ../../jrouwe/JoltPhysics

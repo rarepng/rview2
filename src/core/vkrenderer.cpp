@@ -372,6 +372,7 @@ bool vkrenderer::deviceinit() {
 	vkb::InstanceBuilder instbuild{};
 
 	auto instret = instbuild.use_default_debug_messenger().request_validation_layers().set_debug_callback(debugCallback).require_api_version(1, 4).build();
+	// auto instret = instbuild.require_api_version(1, 4).build();
 
 	if (!instret) {
 		std::cout << instret.full_error().type << std::endl;
@@ -404,12 +405,16 @@ bool vkrenderer::deviceinit() {
 
 	vkb::PhysicalDeviceSelector physicaldevsel{mvkobjs.inst};
 	auto firstphysicaldevselret = physicaldevsel.set_surface(msurface).set_minimum_version(1, 4).select();
-
-	VkPhysicalDeviceVulkan14Features physfeatures14;
-	VkPhysicalDeviceVulkan13Features physfeatures13;
-	VkPhysicalDeviceVulkan12Features physfeatures12;
-	VkPhysicalDeviceVulkan11Features physfeatures11;
-	VkPhysicalDeviceFeatures2 physfeatures;
+	if (!firstphysicaldevselret) {
+        std::cout << "CRITICAL ERROR: First GPU Selection Failed!" << std::endl;
+        std::cout << "Reason: " << firstphysicaldevselret.error().message() << std::endl;
+        return false; 
+    }
+	VkPhysicalDeviceVulkan14Features physfeatures14{};
+	VkPhysicalDeviceVulkan13Features physfeatures13{};
+	VkPhysicalDeviceVulkan12Features physfeatures12{};
+	VkPhysicalDeviceVulkan11Features physfeatures11{};
+	VkPhysicalDeviceFeatures2 physfeatures{};
 
 	physfeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 	physfeatures11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
@@ -422,9 +427,10 @@ bool vkrenderer::deviceinit() {
 	physfeatures12.pNext = &physfeatures13;
 	physfeatures13.pNext = &physfeatures14;
 	physfeatures14.pNext = VK_NULL_HANDLE;
+	vkb::PhysicalDeviceSelector second_selector{mvkobjs.inst};
 
 	vkGetPhysicalDeviceFeatures2(firstphysicaldevselret.value(), &physfeatures);
-	auto secondphysicaldevselret = physicaldevsel.set_minimum_version(1, 4)
+	auto secondphysicaldevselret = second_selector.set_minimum_version(1, 4)
 	                               .set_surface(msurface)
 	                               .set_required_features(physfeatures.features)
 	                               .set_required_features_11(physfeatures11)
@@ -441,15 +447,24 @@ bool vkrenderer::deviceinit() {
 	// 			mvkobjs.physdev = vkb::PhysicalDevice{instret,gpu};
 	// 	}
 	// }else{
+	if (!secondphysicaldevselret) {
+    std::cerr << "couldnt find appropriate gpu " << secondphysicaldevselret.error().message() << std::endl;
+    return false;
+	}
 
 	mvkobjs.physdev = secondphysicaldevselret.value();
 
 	vkb::DeviceBuilder devbuilder{mvkobjs.physdev};
 	auto devbuilderret = devbuilder.build();
+	if (!devbuilderret) {
+    std::cerr << "couldnt create device " << devbuilderret.error().message() << "\n";
+    return false;
+}
 	mvkobjs.vkdevice = devbuilderret.value();
+	
 	// }
 
-	VkPhysicalDeviceProperties props;
+	VkPhysicalDeviceProperties props{};
 	vkGetPhysicalDeviceProperties(mvkobjs.physdev, &props);
 	std::cout << "Using GPU: " << props.deviceName << std::endl;
 
@@ -629,7 +644,7 @@ void vkrenderer::cleanup() {
 
 	vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.rddepthimageview, nullptr);
 	vmaDestroyImage(mvkobjs.alloc, mvkobjs.rddepthimage, mvkobjs.rddepthimagealloc);
-	
+
 	// char* statsString = nullptr;
 	// vmaBuildStatsString(mvkobjs.alloc, &statsString, true);
 
@@ -639,7 +654,7 @@ void vkrenderer::cleanup() {
 	// 	std::cout << "=======================\n";
 	// 	vmaFreeStatsString(mvkobjs.alloc, statsString);
 	// }
-	
+
 	if (mvkobjs.exrtex.at(0).img) {
 		vkDestroyImageView(mvkobjs.vkdevice.device,mvkobjs.exrtex.at(0).imgview, nullptr);
 		vkDestroySampler(mvkobjs.vkdevice.device,mvkobjs.exrtex.at(0).imgsampler, nullptr);
@@ -887,16 +902,18 @@ void vkrenderer::movecam() {
 			SDL_GetMouseState(&x, &y);
 			glm::vec4 viewport(0.0f, 0.0f, (float)mvkobjs.width, (float)mvkobjs.height);
 
-			glm::vec3 near = glm::unProject(glm::vec3(x, -y, 0.0f), persviewproj.at(0), persviewproj.at(1), viewport);
-			glm::vec3 far = glm::unProject(glm::vec3(x, -y, 1.0f), persviewproj.at(0), persviewproj.at(1), viewport);
+			glm::vec3 near = glm::unProject(glm::vec3(x,  viewport.w - y, 0.0f), persviewproj.at(0), persviewproj.at(1), viewport);
+			glm::vec3 far = glm::unProject(glm::vec3(x,  viewport.w - y, 1.0f), persviewproj.at(0), persviewproj.at(1), viewport);
 
 			glm::vec3 d = glm::normalize(far - near);
 
 			// intersection
 			if (glm::abs(d.y) > 0.01f) {
-				float t = (navmesh(0.0f, 0.0f) - mvkobjs.camwpos.y) / d.y;
+				//might remove navmesh idk
+				float t = (0.0f - near.y) / d.y;
 				if (t >= 0.0f) {
-					glm::vec3 h = mvkobjs.camwpos + t * d;
+					glm::vec3 h = near + t * d;
+					h.y = navmesh(h.x, h.z);
 
 					playermoveto = h;
 
@@ -1139,7 +1156,7 @@ bool vkrenderer::draw() {
 	muploadubossbotimer.start();
 
 	for (const auto &i : mplayer)
-		i->uploadubossbo(mvkobjs, persviewproj);
+		i->uploadubossbo(mvkobjs, persviewproj, mvkobjs.camwpos);
 
 	mvkobjs.uploadubossbotime = muploadubossbotimer.stop();
 

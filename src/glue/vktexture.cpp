@@ -342,6 +342,7 @@ bool load_env_map(
 	std::cout << "[Success] Loaded EXR: " << w << "x" << h << std::endl;
 
 	uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(w, h)))) + 1;
+	rvkbucket::hdrmiplod = mipLevels;
 	VkDeviceSize imageSize = w * h * 4 * sizeof(float);
 
 	VkImageCreateInfo imageInfo {
@@ -532,7 +533,8 @@ void cleanup(rvkbucket& rdata, texdata& tex) {
 	if (tex.img)        vmaDestroyImage(rdata.alloc, tex.img, tex.alloc);
 }
 
-    void cleanuptpl(rvkbucket& rdata,    VkDescriptorSetLayout& layout,VkDescriptorPool& pool){
-        vkDestroyDescriptorPool(rdata.vkdevice.device, pool, nullptr);
-    }
+//useless
+void cleanuptpl(rvkbucket& rdata,    VkDescriptorSetLayout& layout,VkDescriptorPool& pool) {
+	vkDestroyDescriptorPool(rdata.vkdevice.device, pool, nullptr);
+}
 }
