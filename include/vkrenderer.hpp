@@ -50,15 +50,10 @@ public:
 
 	void updateanims();
 
-	bool quicksetup();
-
-	rvkbucket &getvkobjs();
 
 	bool newconnection{false};
 	bool ges();
 private:
-	// size_t dummytick{0};
-
 	std::function<void(rvkbucket::DummyTexture&)> destroyDummy =
 	[this](rvkbucket::DummyTexture& tex) {
 		vkDestroyImageView(mvkobjs.vkdevice.device, tex.view, nullptr);
@@ -66,26 +61,10 @@ private:
 		vkFreeMemory(mvkobjs.vkdevice.device, tex.memory, nullptr);
 	};
 
-	std::mutex animmtx{};
-	std::mutex updatemtx{};
-
-	std::vector<double> enemyhps{};
-
-	std::shared_mutex pausedmtx{};
-
-	std::mutex getinstsettingsmtx{};
-
 	rvkbucket mvkobjs{};
-
-	double dummy{0.0};
 
 	glm::vec2 movediff{};
 
-	bool inmenu{true};
-
-	bool paused{false};
-
-	std::chrono::high_resolution_clock::time_point starttime = std::chrono::high_resolution_clock::now();
 	std::chrono::high_resolution_clock::time_point starttick = std::chrono::high_resolution_clock::now();
 
 	vkcam mcam{};
@@ -121,7 +100,7 @@ private:
 	int mcamupdown{0};
 
 	std::vector<unsigned int> playercount{1};
-	std::vector<std::string> playerfname{{"resources/p0.glb"}};
+	std::vector<std::string> playerfname{{"resources/t0.glb"}};
 	const std::vector<std::vector<std::string>> playershaders{{"shaders/vx.spv", "shaders/px.spv"}};
 
 	ui mui{};

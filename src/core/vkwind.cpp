@@ -42,7 +42,6 @@ bool vkwind::init(std::string title) {
 void vkwind::frameupdate() {
 	if (!shutdown) {
 		mvkrenderer->initscene();
-		mvkrenderer->quicksetup();
 		mvkrenderer->immediate_submit([&](VkCommandBuffer cbuffer) {
 			mvkrenderer->uploadfordraw(cbuffer);
 		});

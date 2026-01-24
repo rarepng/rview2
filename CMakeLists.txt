@@ -398,6 +398,8 @@ target_include_directories(rview2
         "${submodules_path}/imgui"
         "${submodules_path}/vma/include"
         "${submodules_path}/sdl/include"
+        "${submodules_path}/jolt"
+        "${submodules_path}/meshoptimizer/src"
         "${PROJECT_SOURCE_DIR}/include"
 )
 

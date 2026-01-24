@@ -153,7 +153,7 @@ struct rvkbucket {
 
 	float azimuth{15.0f};
 	float elevation{-25.0f};
-	glm::vec3 camwpos{350.0f, 350.0f, 1000.0f};
+	glm::vec3 camwpos{0.0f, 10.0f, 20.0f};
 
 	glm::vec3 raymarchpos{0.0f};
 

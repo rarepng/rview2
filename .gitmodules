@@ -55,3 +55,6 @@
 [submodule "sub/jolt"]
 	path = sub/jolt
 	url = ../../jrouwe/JoltPhysics
+[submodule "sub/meshoptimizer"]
+	path = sub/meshoptimizer
+	url = ../../zeux/meshoptimizer
