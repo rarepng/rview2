@@ -11,7 +11,9 @@
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
+#include <bitset>
 #include <mutex>
+#include <future>
 
 #include <numeric>
 
@@ -22,6 +24,12 @@
 #include "playoutgeneric.hpp"
 
 #include "core/rvk.hpp"
+
+enum InputKey : uint8_t {
+	Key_W = 0, Key_S, Key_A, Key_D, Key_Q, Key_E,
+	Key_RightClick,
+	Input_Count
+};
 
 class vkrenderer {
 public:
@@ -43,7 +51,7 @@ public:
 	void moveplayer();
 
 
-	void sdlevent(SDL_Event *e);
+	void sdlevent(const SDL_Event& e);
 
 
 	void checkforanimupdates();
@@ -54,6 +62,9 @@ public:
 	bool newconnection{false};
 	bool ges();
 private:
+	std::bitset<Input_Count> input_state;
+	std::vector<std::future<void>> pending_loads;
+	std::mutex load_mutex;
 	std::function<void(rvkbucket::DummyTexture&)> destroyDummy =
 	[this](rvkbucket::DummyTexture& tex) {
 		vkDestroyImageView(mvkobjs.vkdevice.device, tex.view, nullptr);
@@ -90,7 +101,7 @@ private:
 	double lifetime2{0.0};
 
 
-	bool mlock{};
+	bool mlock{false};
 	int mousex{0};
 	int mousey{0};
 	double mlasttick{0.0};

@@ -1,3 +1,4 @@
+#include "backends/imgui_impl_sdl3.h"
 #include "core/rvk.hpp"
 #include <cstdint>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -794,91 +795,87 @@ bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric> &x) {
 	return true;
 }
 
-void vkrenderer::sdlevent(SDL_Event *e) {
-	if (e->type == SDL_EventType::SDL_EVENT_WINDOW_MINIMIZED) {
-		while (e->type != SDL_EventType::SDL_EVENT_WINDOW_RESTORED) {
-			// std::cout << e->type << std::endl;
-			SDL_PollEvent(e);
-		}
-	}
-	switch (e->type) {
+void vkrenderer::sdlevent(const SDL_Event& e) {
+	switch (e.type) {
+	case SDL_EVENT_KEY_DOWN:
+		[[likely]]
 	case SDL_EVENT_KEY_UP:
-		switch (e->key.key) {
-		case SDLK_F4:
-			mvkobjs.fullscreen = !mvkobjs.fullscreen;
-			SDL_SetWindowFullscreen(mvkobjs.wind, mvkobjs.fullscreen);
-			break;
-		case SDLK_ESCAPE:
-			*mvkobjs.mshutdown = true;
-			break;
+		[[likely]]
+		{
+			bool is_down = (e.type == SDL_EVENT_KEY_DOWN);
+			switch (e.key.key) {
+			case SDLK_W:
+				input_state[Key_W] = is_down;
+				break;
+			case SDLK_S:
+				input_state[Key_S] = is_down;
+				break;
+			case SDLK_A:
+				input_state[Key_A] = is_down;
+				break;
+			case SDLK_D:
+				input_state[Key_D] = is_down;
+				break;
+			case SDLK_Q:
+				input_state[Key_Q] = is_down;
+				break;
+			case SDLK_E:
+				input_state[Key_E] = is_down;
+				break;
 
-		default:
+			case SDLK_F4:
+				if (is_down) {
+					mvkobjs.fullscreen = !mvkobjs.fullscreen;
+					SDL_SetWindowFullscreen(mvkobjs.wind, mvkobjs.fullscreen);
+				}
+				break;
+			case SDLK_ESCAPE:
+				if (is_down) *mvkobjs.mshutdown = true;
+				break;
+			}
 			break;
 		}
+
+	case SDL_EVENT_MOUSE_BUTTON_DOWN:
+		if (e.button.button == SDL_BUTTON_RIGHT) input_state[Key_RightClick] = true;
 		break;
-	case SDL_EVENT_DROP_BEGIN:
-		std::cout << "BEG" << std::endl;
-		SDL_RaiseWindow(mvkobjs.wind);
-		if (e->drop.x)
-			std::cout << "x : " << e->drop.x << std::endl;
-		if (e->drop.y)
-			std::cout << "y : " << e->drop.y << std::endl;
-		if (e->drop.data) {
-			std::cout << e->drop.data << std::endl;
-			// SDL_free(&e->drop.data);
+	case SDL_EVENT_MOUSE_BUTTON_UP:
+		if (e.button.button == SDL_BUTTON_RIGHT) input_state[Key_RightClick] = false;
+		break;
+	case SDL_EVENT_WINDOW_MINIMIZED:
+		[[unlikely]]
+		{
+			SDL_Event min_event;
+			while (SDL_WaitEvent(&min_event)) {
+				if (min_event.type == SDL_EVENT_WINDOW_RESTORED) break;
+				if (min_event.type == SDL_EVENT_QUIT) {
+					*mvkobjs.mshutdown = true;
+					break;
+				}
+			}
+			break;
 		}
-		if (e->drop.source)
-			std::cout << e->drop.source << std::endl;
-		break;
-	case SDL_EVENT_DROP_POSITION:
-		std::cout << "POS" << std::endl;
-		if (e->drop.x)
-			std::cout << "x : " << e->drop.x << std::endl;
-		if (e->drop.y)
-			std::cout << "y : " << e->drop.y << std::endl;
-		if (e->drop.data) {
-			std::cout << e->drop.data << std::endl;
-			// SDL_free(&e->drop.data);
-		}
-		if (e->drop.source)
-			std::cout << e->drop.source << std::endl;
-		break;
-	case SDL_EVENT_DROP_COMPLETE:
-		std::cout << "COMPLETE" << std::endl;
-		if (e->drop.x)
-			std::cout << "x : " << e->drop.x << std::endl;
-		if (e->drop.y)
-			std::cout << "y : " << e->drop.y << std::endl;
-		if (e->drop.data) {
-			std::cout << e->drop.data << std::endl;
-		}
-		if (e->drop.source)
-			std::cout << e->drop.source << std::endl;
-		break;
+
 	case SDL_EVENT_DROP_FILE:
-		std::cout << "FILE" << std::endl;
-		if (e->drop.x)
-			std::cout << "x : " << e->drop.x << std::endl;
-		if (e->drop.y)
-			std::cout << "y : " << e->drop.y << std::endl;
-		if (e->drop.data) {
-			std::cout << e->drop.data << std::endl;
-			const std::string fnamebuffer = e->drop.data;
-			auto f = std::async(std::launch::async, [&] {
-				std::shared_ptr<playoutgeneric> newp =
-				std::make_shared<playoutgeneric>();
-				if (!newp->setup(mvkobjs, e->drop.data, 1, playershaders[0][0],
-				                 playershaders[0][1]))
-					std::cout << "failed to setup model" << std::endl;
-				// uploadfordraw(newp);
-				mplayerbuffer.push_back(newp);
-			});
-			// no free
+		[[unlikely]]
+		{
+			std::string fname = e.drop.data;
+			pending_loads.push_back(std::async(std::launch::async, [this, fname]() {
+				auto newp = std::make_shared<playoutgeneric>();
+
+				bool success = newp->setup(mvkobjs, fname.c_str(), 1,
+				                           playershaders[0][0], playershaders[0][1]);
+
+				if (success) {
+					std::lock_guard<std::mutex> lock(load_mutex);
+					mplayerbuffer.push_back(newp);
+				} else {
+					std::cout << "model not added, probably wrong format. \nonly binary gltf files (.glb) are accepted. Provided was: " << fname << std::endl;
+				}
+			}));
+			break;
 		}
-		if (e->drop.source)
-			std::cout << e->drop.source << std::endl;
-		break;
-	default:
+	case SDL_EVENT_DROP_COMPLETE:
 		break;
 	}
 }
@@ -889,144 +886,72 @@ void vkrenderer::moveplayer() {
 	                   ->getinstancesettings();
 	s.msworldpos = playermoveto;
 }
-void vkrenderer::handleclick() {
-	ImGuiIO &io = ImGui::GetIO();
 
-	if (SDL_GetMouseState(nullptr, nullptr) < ImGuiMouseButton_COUNT) {
-		io.AddMouseButtonEvent(SDL_GetMouseState(nullptr, nullptr),
-		                       SDL_GetMouseState(nullptr, nullptr));
-	}
-	if (io.WantCaptureMouse)
-		return;
-
-	if ((SDL_GetMouseState(nullptr, nullptr) &
-	        SDL_BUTTON_MASK(SDL_BUTTON_RIGHT))) {
-		mlock = !mlock;
-		if (mlock) {
-			SDL_SetWindowRelativeMouseMode(mvkobjs.wind, true);
-		} else {
-			SDL_SetWindowRelativeMouseMode(mvkobjs.wind, false);
-		}
-	}
-}
-void vkrenderer::handlemouse(double x, double y) {
-	ImGuiIO &io = ImGui::GetIO();
-	io.AddMousePosEvent((float)x, (float)y);
-	if (io.WantCaptureMouse) {
-		return;
-	}
-
-	int relativex = static_cast<int>(x) - mousex;
-	int relativey = static_cast<int>(y) - mousey;
-
-	// if (glfwGetMouseButton(mvkobjs.rdwind, GLFW_MOUSE_BUTTON_LEFT) ==
-	// GLFW_PRESS) {
-
-	//}
-
-	if (true) { // resumed
-		if (mlock) {
-			persviewproj.at(0) = mcam.getview(mvkobjs);
-			// persviewproj.at(1) =
-			// glm::perspective(glm::radians(static_cast<float>(mvkobjs.rdfov)),
-			// static_cast<float>(mvkobjs.rdwidth) /
-			// static_cast<float>(mvkobjs.rdheight), 0.01f, 6000.0f);
-
-			mvkobjs.azimuth += relativex / 10.0;
-
-			mvkobjs.elevation -= relativey / 10.0;
-
-			if (mvkobjs.elevation > 89.0) {
-				mvkobjs.elevation = 89.0;
-			}
-
-			if (mvkobjs.elevation < -89.0) {
-				mvkobjs.elevation = -89.0;
-			}
-
-			if (mvkobjs.azimuth > 90.0) {
-				mvkobjs.azimuth = 90.0;
-			}
-			if (mvkobjs.azimuth < -90.0) {
-				mvkobjs.azimuth = -90.0;
-			}
-
-			mousex = static_cast<int>(x);
-			mousey = static_cast<int>(y);
-		}
-	}
-
-	if ((SDL_GetMouseState(nullptr, nullptr) &
-	        SDL_BUTTON_MASK(SDL_BUTTON_LEFT))) { // paused
-		std::cout << x << " x " << std::endl;
-	}
-}
 void vkrenderer::movecam() {
-	ImGuiIO &io = ImGui::GetIO();
-	if (io.WantCaptureMouse) {
-		return;
+	static ImGuiIO* io = &ImGui::GetIO();
+	float mx, my;
+	const SDL_MouseButtonFlags mouseMask = SDL_GetMouseState(&mx, &my);
+	const bool isRightClick = (mouseMask & SDL_BUTTON_MASK(SDL_BUTTON_RIGHT));
+	const bool isLeftClick  = (mouseMask & SDL_BUTTON_MASK(SDL_BUTTON_LEFT));
+	float speed = 2.0f;
+	mvkobjs.camfor   = (float(input_state[Key_W]) * speed) - (float(input_state[Key_S]) * speed);
+	mvkobjs.camright = (float(input_state[Key_D]) * speed) - (float(input_state[Key_A]) * speed);
+	mvkobjs.camup    = (float(input_state[Key_E]) * speed) - (float(input_state[Key_Q]) * speed);
+
+	static bool wasLooking = false;
+	auto* win = reinterpret_cast<SDL_Window*>(mvkobjs.wind);
+
+	if (isRightClick != wasLooking) {
+		if (isRightClick) {
+			SDL_SetWindowRelativeMouseMode(win, true);
+
+			float ignoreX, ignoreY;
+			SDL_GetRelativeMouseState(&ignoreX, &ignoreY);
+		}
+		else {
+			SDL_SetWindowRelativeMouseMode(win, false);
+
+			SDL_WarpMouseInWindow(win, static_cast<float>(mousex), static_cast<float>(mousey));
+		}
+		wasLooking = isRightClick;
 	}
 
+	if (isRightClick) {
+		float rx, ry;
+		SDL_GetRelativeMouseState(&rx, &ry);
+		mvkobjs.azimuth   += rx * 0.1f;
+		mvkobjs.elevation -= ry * 0.1f;
+		mvkobjs.elevation = std::clamp(mvkobjs.elevation, -89.0f, 89.0f);
+	}
+	else {
+		mousex = static_cast<int>(mx);
+		mousey = static_cast<int>(my);
+	}
 	persviewproj.at(0) = mcam.getview(mvkobjs);
 
-	mvkobjs.camfor = 0;
-	if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_W]) {
-		mvkobjs.camfor += 2;
-	}
-	if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_S]) {
-		mvkobjs.camfor -= 2;
-	}
-	mvkobjs.camright = 0;
-	if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_A]) {
-		mvkobjs.camright += 2;
-	}
-	if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_D]) {
-		mvkobjs.camright -= 2;
-	}
+	if (!io->WantCaptureMouse && isLeftClick && !isRightClick) {
+		glm::vec4 viewport(0.0f, 0.0f, (float)mvkobjs.width, (float)mvkobjs.height);
 
-	mvkobjs.camup = 0;
-	if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_E]) {
-		mvkobjs.camup += 2;
-	}
-	if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_Q]) {
-		mvkobjs.camup -= 2;
-	}
-	if (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_MASK(SDL_BUTTON_LEFT)) {
-		if (true) { // resumed
-			float x, y;
-			SDL_GetMouseState(&x, &y);
-			glm::vec4 viewport(0.0f, 0.0f, (float)mvkobjs.width,
-			                   (float)mvkobjs.height);
+		glm::vec3 nearPt = glm::unProject(glm::vec3(mx, viewport.w - my, 0.0f),
+		                                  persviewproj.at(0), persviewproj.at(1), viewport);
+		glm::vec3 farPt  = glm::unProject(glm::vec3(mx, viewport.w - my, 1.0f),
+		                                  persviewproj.at(0), persviewproj.at(1), viewport);
 
-			glm::vec3 near =
-			    glm::unProject(glm::vec3(x, viewport.w - y, 0.0f), persviewproj.at(0),
-			                   persviewproj.at(1), viewport);
-			glm::vec3 far =
-			    glm::unProject(glm::vec3(x, viewport.w - y, 1.0f), persviewproj.at(0),
-			                   persviewproj.at(1), viewport);
+		glm::vec3 d = glm::normalize(farPt - nearPt);
 
-			glm::vec3 d = glm::normalize(far - near);
+		if (glm::abs(d.y) > 0.01f) {
+			float t = (0.0f - nearPt.y) / d.y;
+			if (t >= 0.0f) {
+				glm::vec3 h = nearPt + t * d;
+				h.y = navmesh(h.x, h.z);
+				playermoveto = h;
 
-			// intersection
-			if (glm::abs(d.y) > 0.01f) {
-				// might remove navmesh idk
-				float t = (0.0f - near.y) / d.y;
-				if (t >= 0.0f) {
-					glm::vec3 h = near + t * d;
-					h.y = navmesh(h.x, h.z);
-
-					playermoveto = h;
-
-					modelsettings &s = mplayer[selectiondata.midx]
-					                   ->getinst(selectiondata.iidx)
-					                   ->getinstancesettings();
-					playerlookto = glm::normalize(h - s.msworldpos);
-					movediff = glm::vec2(glm::abs(h.x - s.msworldpos.x),
-					                     glm::abs(h.z - s.msworldpos.z));
-					if (movediff.x > 2.1f || movediff.y > 2.1f) {
-						s.msworldrot.y =
-						    glm::degrees(glm::atan(playerlookto.x, playerlookto.z));
-					}
+				modelsettings &s = mplayer[selectiondata.midx]
+				                   ->getinst(selectiondata.iidx)
+				                   ->getinstancesettings();
+				playerlookto = glm::normalize(h - s.msworldpos);
+				if (glm::abs(h.x - s.msworldpos.x) > 2.1f || glm::abs(h.z - s.msworldpos.z) > 2.1f) {
+					s.msworldrot.y = glm::degrees(glm::atan(playerlookto.x, playerlookto.z));
 				}
 			}
 		}
@@ -1124,7 +1049,17 @@ bool vkrenderer::draw() {
 	        VK_SUCCESS)
 		return false;
 
-	sdlevent(mvkobjs.e);
+	SDL_Event e;
+	while (SDL_PollEvent(&e)) {
+		ImGui_ImplSDL3_ProcessEvent(&e);
+		sdlevent(e);
+	}
+	if (!pending_loads.empty()) {
+		std::erase_if(pending_loads, [](auto& f) {
+			return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+		});
+	}
+	movecam();
 
 	VkCommandBufferBeginInfo cmdbgninfo{};
 	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1310,7 +1245,6 @@ bool vkrenderer::draw() {
 	            mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame)) != VK_SUCCESS)
 		return false;
 
-	movecam();
 
 	VkSubmitInfo submitinfo{};
 	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
