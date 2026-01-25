@@ -71,6 +71,7 @@ private:
 		vkDestroyImage(mvkobjs.vkdevice.device, tex.image, nullptr);
 		vkFreeMemory(mvkobjs.vkdevice.device, tex.memory, nullptr);
 	};
+	bool initcpuQs();
 
 	rvkbucket mvkobjs{};
 

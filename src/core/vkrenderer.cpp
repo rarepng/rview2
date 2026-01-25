@@ -329,7 +329,7 @@ bool vkrenderer::init() {
 		return deviceinit() && initvma() && getqueue() &&
 		       createswapchain() && createdepthbuffer() &&
 		       createcommandpool() && createcommandbuffer() &&
-		       createsyncobjects() && createpools() &&
+		       createsyncobjects() && createpools() && initcpuQs() &&
 		       init_global_samplers(mvkobjs) &&
 		       init_dummy_textures(mvkobjs,
 		                           mvkobjs.cpools_graphics.at(0)) &&
@@ -352,6 +352,9 @@ bool vkrenderer::init() {
 	mframetimer.start();
 
 	return true;
+}
+bool vkrenderer::initcpuQs(){
+	return mvkobjs.sbelt.init(mvkobjs.alloc, 256 * 1024 * 1024);
 }
 bool vkrenderer::initscene() {
 	mplayer.reserve(playerfname.size());
@@ -536,9 +539,12 @@ bool vkrenderer::deviceinit() {
 }
 bool vkrenderer::initvma() {
 	VmaAllocatorCreateInfo allocinfo{};
+	allocinfo.vulkanApiVersion = VK_API_VERSION_1_4;
 	allocinfo.physicalDevice = mvkobjs.physdev.physical_device;
 	allocinfo.device = mvkobjs.vkdevice.device;
 	allocinfo.instance = mvkobjs.inst.instance;
+	//dbg only
+	allocinfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
 	if (vmaCreateAllocator(&allocinfo, &mvkobjs.alloc) != VK_SUCCESS) {
 		return false;
 	}
@@ -717,21 +723,13 @@ void vkrenderer::cleanup() {
 
 	for (const auto &i : mplayer)
 		i->cleanupmodels(mvkobjs);
+	//temp
+	mvkobjs.deletionQ.flush();
 
 	vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.rddepthimageview,
 	                   nullptr);
 	vmaDestroyImage(mvkobjs.alloc, mvkobjs.rddepthimage,
 	                mvkobjs.rddepthimagealloc);
-
-	// char* statsString = nullptr;
-	// vmaBuildStatsString(mvkobjs.alloc, &statsString, true);
-
-	// if (statsString) {
-	// 	std::cout << "\n=== VMA REPORT !! ===\n";
-	// 	std::cout << statsString << "\n";
-	// 	std::cout << "=======================\n";
-	// 	vmaFreeStatsString(mvkobjs.alloc, statsString);
-	// }
 
 	if (mvkobjs.exrtex.at(0).img) {
 		vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.exrtex.at(0).imgview,
@@ -741,6 +739,18 @@ void vkrenderer::cleanup() {
 		vmaDestroyImage(mvkobjs.alloc, mvkobjs.exrtex.at(0).img,
 		                mvkobjs.exrtex.at(0).alloc);
 	}
+
+	mvkobjs.sbelt.free(mvkobjs.alloc);
+	
+	//dbg only block
+	// char* statsString = nullptr;
+	// vmaBuildStatsString(mvkobjs.alloc, &statsString, true);
+	// if (statsString) {
+	// 	std::cout << "=== VMA REPORT !! ===" << std::endl;
+	// 	std::cout << statsString << std::endl;
+	// 	std::cout << "=======================" << std::endl;
+	// 	vmaFreeStatsString(mvkobjs.alloc, statsString);
+	// }
 
 	vmaDestroyAllocator(mvkobjs.alloc);
 
@@ -995,6 +1005,9 @@ bool vkrenderer::draw() {
 	if (vkResetFences(mvkobjs.vkdevice.device, 1,
 	                  &mvkobjs.fencez.at(rvkbucket::currentFrame)) != VK_SUCCESS)
 		return false;
+		
+	//temp
+	mvkobjs.deletionQ.flush();
 
 	particle::drawcomp(mvkobjs);
 

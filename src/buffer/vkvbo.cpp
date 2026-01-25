@@ -1,164 +1,75 @@
 #include "vkvbo.hpp"
 
-bool vkvbo::init(rvkbucket &mvkobjs, vbodata &vbdata, size_t bsize) {
-	VkBufferCreateInfo binfo{};
-	binfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	binfo.size = bsize;
-	binfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	binfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+bool vkvbo::init(rvkbucket &mvkobjs, GpuBuffer &vbdata, VkDeviceSize bsize, VkBufferUsageFlags usage) {
+    VkBufferCreateInfo binfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    binfo.size = bsize;
+    binfo.usage = usage;
+    binfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	VmaAllocationCreateInfo bainfo{};
-	bainfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    VmaAllocationCreateInfo bainfo{};
+    bainfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE; 
+    
+    if (vmaCreateBuffer(mvkobjs.alloc, &binfo, &bainfo, &vbdata.buffer, &vbdata.alloc, nullptr) != VK_SUCCESS) {
+        std::cerr << "gpu out of memory probably, memory attempted to allocate: " << bsize << "\n";
+        return false;
+    }
 
-	if (vmaCreateBuffer(mvkobjs.alloc, &binfo, &bainfo, &vbdata.buffer, &vbdata.alloc,
-	                    nullptr) != VK_SUCCESS)
-		return false;
+    vbdata.size = bsize;
 
-	VkBufferCreateInfo stagingbinfo{};
-	stagingbinfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	stagingbinfo.size = bsize;
-	stagingbinfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-	VmaAllocationCreateInfo stagingainfo{};
-	stagingainfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
-
-	if (vmaCreateBuffer(mvkobjs.alloc, &stagingbinfo, &stagingainfo, &vbdata.sbuffer, &vbdata.salloc,
-	                    nullptr) != VK_SUCCESS)
-		return false;
-
-	vbdata.size = bsize;
-	return true;
+    return true;
 }
 
-bool vkvbo::upload(rvkbucket &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
-                   std::vector<glm::vec3> vertexData) {
+VkBufferMemoryBarrier2 vkvbo::record_upload(rvkbucket &mvkobjs, 
+                                            VkCommandBuffer &cbuffer, 
+                                            GpuBuffer &targetBuffer,
+                                            const fastgltf::Buffer &buffer, 
+                                            const fastgltf::BufferView &bufferview,
+                                            const fastgltf::Accessor &acc, 
+                                            void* mappedStagingStart,
+                                            VkBuffer stagingBufferHandle,
+                                            VkDeviceSize stagingOffset)
+{
+    size_t elementSize = fastgltf::getElementByteSize(acc.type, acc.componentType);
+    size_t copySize = acc.count * elementSize;
 
-	/* copy data to staging buffer*/
-	void *data;
-	vmaMapMemory(mvkobjs.alloc, vbdata.salloc, &data);
-	std::memcpy(data, vertexData.data(), vbdata.size);
-	vmaUnmapMemory(mvkobjs.alloc, vbdata.salloc);
+    if (targetBuffer.size < copySize) {
+        return {}; 
+    }
 
-	VkBufferMemoryBarrier vertexBufferBarrier{};
-	vertexBufferBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-	vertexBufferBarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-	vertexBufferBarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-	vertexBufferBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	vertexBufferBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	vertexBufferBarrier.buffer = vbdata.sbuffer;
-	vertexBufferBarrier.offset = 0;
-	vertexBufferBarrier.size = vbdata.size;
+    // todo: add stupid byteview
+    std::visit(fastgltf::visitor{[](auto &arg) {},
+    [&](const fastgltf::sources::Array &vector) {
+        const std::byte* src = vector.bytes.data() + bufferview.byteOffset + acc.byteOffset;
+        
+        std::byte* dst = static_cast<std::byte*>(mappedStagingStart) + stagingOffset;
 
-	VkBufferCopy stagingBufferCopy{};
-	stagingBufferCopy.srcOffset = 0;
-	stagingBufferCopy.dstOffset = 0;
-	stagingBufferCopy.size = vbdata.size;
+        size_t stride = bufferview.byteStride.value_or(elementSize);
 
-	vkCmdCopyBuffer(cbuffer, vbdata.sbuffer, vbdata.buffer, 1, &stagingBufferCopy);
-	vkCmdPipelineBarrier(cbuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1,
-	                     &vertexBufferBarrier, 0, nullptr);
+        if (stride == elementSize) {
+            std::memcpy(dst, src, copySize);
+        } else {
+            for (size_t i = 0; i < acc.count; ++i) {
+                std::memcpy(dst + (i * elementSize), src + (i * stride), elementSize);
+            }
+        }
+    }}, buffer.data);
 
-	return true;
-}
+	
+    VkBufferCopy copyRegion{};
+    copyRegion.srcOffset = stagingOffset;
+    copyRegion.dstOffset = 0;
+    copyRegion.size = copySize;
 
-bool vkvbo::upload(rvkbucket &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
-                   std::vector<glm::vec2> vertexData) {
+    vkCmdCopyBuffer(cbuffer, stagingBufferHandle, targetBuffer.buffer, 1, &copyRegion);
 
-	void *data;
-	vmaMapMemory(mvkobjs.alloc, vbdata.salloc, &data);
-	std::memcpy(data, vertexData.data(), vbdata.size);
-	vmaUnmapMemory(mvkobjs.alloc, vbdata.salloc);
-
-	VkBufferMemoryBarrier vertexBufferBarrier{};
-	vertexBufferBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-	vertexBufferBarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-	vertexBufferBarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-	vertexBufferBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	vertexBufferBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	vertexBufferBarrier.buffer = vbdata.sbuffer;
-	vertexBufferBarrier.offset = 0;
-	vertexBufferBarrier.size = vbdata.size;
-
-	VkBufferCopy stagingBufferCopy{};
-	stagingBufferCopy.srcOffset = 0;
-	stagingBufferCopy.dstOffset = 0;
-	stagingBufferCopy.size = vbdata.size;
-
-	vkCmdCopyBuffer(cbuffer, vbdata.sbuffer, vbdata.buffer, 1, &stagingBufferCopy);
-	vkCmdPipelineBarrier(cbuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1,
-	                     &vertexBufferBarrier, 0, nullptr);
-
-	return true;
-}
-
-bool vkvbo::upload(rvkbucket &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
-                   const fastgltf::Buffer &buffer, const fastgltf::BufferView &bufferview,
-                   const fastgltf::Accessor &acc) {
-
-	std::visit(fastgltf::visitor{[](auto &arg) {},
-	[&](const fastgltf::sources::Array &vector) {
-		void *d;
-		vmaMapMemory(mvkobjs.alloc, vbdata.salloc, &d);
-		std::memcpy(d, vector.bytes.data() + bufferview.byteOffset + acc.byteOffset,
-		            bufferview.byteLength); // acc.count*type
-		vmaUnmapMemory(mvkobjs.alloc, vbdata.salloc);
-	}},
-	buffer.data);
-
-	VkBufferMemoryBarrier vbbarrier{};
-	vbbarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-	vbbarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-	vbbarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-	vbbarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	vbbarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	vbbarrier.buffer = vbdata.sbuffer;
-	vbbarrier.offset = 0;
-	vbbarrier.size = vbdata.size;
-
-	VkBufferCopy stagingbuffercopy{};
-	stagingbuffercopy.srcOffset = 0;
-	stagingbuffercopy.dstOffset = 0;
-	stagingbuffercopy.size = vbdata.size;
-
-	vkCmdCopyBuffer(cbuffer, vbdata.sbuffer, vbdata.buffer, 1, &stagingbuffercopy);
-	vkCmdPipelineBarrier(cbuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1,
-	                     &vbbarrier, 0, nullptr);
-
-	return true;
-}
-
-bool vkvbo::upload(rvkbucket &mvkobjs, VkCommandBuffer &cbuffer, vbodata &vbdata,
-                   const std::vector<unsigned int> &jointz) {
-	size_t dataSize = jointz.size() * sizeof(unsigned int);
-	void *d;
-
-	vmaMapMemory(mvkobjs.alloc, vbdata.salloc, &d);
-	std::memcpy(d, jointz.data(), dataSize);
-	vmaUnmapMemory(mvkobjs.alloc, vbdata.salloc);
-
-	VkBufferMemoryBarrier vbbarrier{};
-	vbbarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-	vbbarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-	vbbarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-	vbbarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	vbbarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	vbbarrier.buffer = vbdata.sbuffer;
-	vbbarrier.offset = 0;
-	vbbarrier.size = vbdata.size;
-
-	VkBufferCopy stagingbuffercopy{};
-	stagingbuffercopy.srcOffset = 0;
-	stagingbuffercopy.dstOffset = 0;
-	stagingbuffercopy.size = vbdata.size;
-
-	vkCmdCopyBuffer(cbuffer, vbdata.sbuffer, vbdata.buffer, 1, &stagingbuffercopy);
-	vkCmdPipelineBarrier(cbuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1,
-	                     &vbbarrier, 0, nullptr);
-
-	return true;
-}
-
-void vkvbo::cleanup(rvkbucket &mvkobjs, vbodata &vbdata) {
-	vmaDestroyBuffer(mvkobjs.alloc, vbdata.sbuffer, vbdata.salloc);
-	vmaDestroyBuffer(mvkobjs.alloc, vbdata.buffer, vbdata.alloc);
+    VkBufferMemoryBarrier2 barrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
+    barrier.srcStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+    barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+    barrier.dstStageMask  = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
+    barrier.dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_2_INDEX_READ_BIT;
+    barrier.buffer        = targetBuffer.buffer;
+    barrier.size          = VK_WHOLE_SIZE;
+    barrier.offset        = 0;
+    
+    return barrier;
 }
