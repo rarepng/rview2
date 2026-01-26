@@ -9,16 +9,12 @@ static inline bool create(rvkbucket &rdata, VkCommandPool &vkpool,const std::spa
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 		.commandPool = vkpool,
 		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY, //not sure
-		.commandBufferCount = cbuffs.size()
+		.commandBufferCount = static_cast<uint32_t>(cbuffs.size())
 	};
 	if (vkAllocateCommandBuffers(rdata.vkdevice.device, &bufferallocinfo, cbuffs.data()) != VK_SUCCESS) {
 		return false;
 	}
 	return true;
-}
-
-static inline void destroy(rvkbucket &rdata, VkCommandPool &vkpool,const std::span<VkCommandBuffer> &cbuffs) {
-	vkFreeCommandBuffers(rdata.vkdevice.device, vkpool, cbuffs.size(), cbuffs.data());
 }
 
 };

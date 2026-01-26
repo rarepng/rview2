@@ -109,15 +109,15 @@ static inline bool createeverything(rvkbucket &objs) {
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		vkResetCommandBuffer(objs.cbuffers_graphics.at(2), 0);
-		vkBeginCommandBuffer(objs.cbuffers_graphics.at(2), &beginInfo);
-		vkCmdCopyBuffer2(objs.cbuffers_graphics.at(2), &copyInfo);
-		vkEndCommandBuffer(objs.cbuffers_graphics.at(2));
+		vkResetCommandBuffer(objs.cbuffers_graphics.at(0).at(2), 0);
+		vkBeginCommandBuffer(objs.cbuffers_graphics.at(0).at(2), &beginInfo);
+		vkCmdCopyBuffer2(objs.cbuffers_graphics.at(0).at(2), &copyInfo);
+		vkEndCommandBuffer(objs.cbuffers_graphics.at(0).at(2));
 
 		VkSubmitInfo submitinfo{};
 		submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitinfo.commandBufferCount = 1;
-		submitinfo.pCommandBuffers = &objs.cbuffers_graphics.at(2);
+		submitinfo.pCommandBuffers = &objs.cbuffers_graphics.at(0).at(2);
 		submitinfo.pSignalSemaphores = &objs.semaphorez.at(2).at(rvkbucket::currentFrame);
 
 		objs.mtx2->lock();
@@ -360,19 +360,19 @@ static inline bool createeverything(rvkbucket &objs) {
 
 static inline bool drawcomp(rvkbucket &objs) {
 
-	if (vkResetCommandBuffer(objs.cbuffers_compute.at(rvkbucket::currentFrame), 0) != VK_SUCCESS)
+	if (vkResetCommandBuffer(objs.cbuffers_compute.at(0).at(rvkbucket::currentFrame), 0) != VK_SUCCESS)
 		return false;
 
 	VkCommandBufferBeginInfo cmdbgninfo{};
 	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-	if (vkBeginCommandBuffer(objs.cbuffers_compute.at(rvkbucket::currentFrame), &cmdbgninfo) != VK_SUCCESS)
+	if (vkBeginCommandBuffer(objs.cbuffers_compute.at(0).at(rvkbucket::currentFrame), &cmdbgninfo) != VK_SUCCESS)
 		return false;
 
 
-	vkCmdBindPipeline(objs.cbuffers_compute.at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_COMPUTE, cpline);
+	vkCmdBindPipeline(objs.cbuffers_compute.at(0).at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_COMPUTE, cpline);
 
-	vkCmdBindDescriptorSets(objs.cbuffers_compute.at(rvkbucket::currentFrame),VK_PIPELINE_BIND_POINT_COMPUTE,cplayout,0,1,&cdset,0,VK_NULL_HANDLE);
+	vkCmdBindDescriptorSets(objs.cbuffers_compute.at(0).at(rvkbucket::currentFrame),VK_PIPELINE_BIND_POINT_COMPUTE,cplayout,0,1,&cdset,0,VK_NULL_HANDLE);
 	// VkBindDescriptorSetsInfo dsetinfo{};
 	// dsetinfo.sType = VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO;
 	// dsetinfo.layout = cplayout;
@@ -385,15 +385,15 @@ static inline bool drawcomp(rvkbucket &objs) {
 	// dsetinfo.pDescriptorSets = &cdset;
 	// vkCmdBindDescriptorSets2(objs.cbuffers_graphics.at(2), &dsetinfo);
 
-	vkCmdDispatch(objs.cbuffers_compute.at(rvkbucket::currentFrame), Ps.size() / 256, 1, 1);
+	vkCmdDispatch(objs.cbuffers_compute.at(0).at(rvkbucket::currentFrame), Ps.size() / 256, 1, 1);
 
-	if (vkEndCommandBuffer(objs.cbuffers_compute.at(rvkbucket::currentFrame)) != VK_SUCCESS)
+	if (vkEndCommandBuffer(objs.cbuffers_compute.at(0).at(rvkbucket::currentFrame)) != VK_SUCCESS)
 		return false;
 
 	VkSubmitInfo submitinfo{};
 	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &objs.cbuffers_compute.at(rvkbucket::currentFrame);
+	submitinfo.pCommandBuffers = &objs.cbuffers_compute.at(0).at(rvkbucket::currentFrame);
 	submitinfo.signalSemaphoreCount = 1;
 	submitinfo.pSignalSemaphores = &objs.semaphorez.at(2).at(rvkbucket::currentFrame);
 

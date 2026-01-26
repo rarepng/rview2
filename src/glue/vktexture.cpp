@@ -45,7 +45,7 @@ BatchResult load_batch(
 
 	VkCommandBufferAllocateInfo allocInfo = {
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-		.commandPool = rdata.cpools_graphics.at(0),
+		.commandPool = rdata.cpools_graphics.at(1),
 		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 		.commandBufferCount = 1
 	};
@@ -165,6 +165,8 @@ BatchResult load_batch(
 			.magFilter = VK_FILTER_LINEAR, .minFilter = VK_FILTER_LINEAR, .maxAnisotropy = 1.0f
 		};
 		vkCreateSampler(rdata.vkdevice.device, &s_info, nullptr, &out_textures[i].imgsampler);
+
+
 	}
 
 	vkEndCommandBuffer(cmd);
@@ -183,7 +185,7 @@ BatchResult load_batch(
 	vkWaitForFences(rdata.vkdevice.device, 1, &fence, VK_TRUE, UINT64_MAX);
 	vkDestroyFence(rdata.vkdevice.device, fence, nullptr);
 
-	vkFreeCommandBuffers(rdata.vkdevice.device, rdata.cpools_graphics.at(0), 1, &cmd);
+	vkFreeCommandBuffers(rdata.vkdevice.device, rdata.cpools_graphics.at(1), 1, &cmd);
 
 	for (auto& t : trash_bin) vmaDestroyBuffer(rdata.alloc, t.b, t.a);
 	return BatchResult{ (uint32_t)model.images.size(), all_good };
@@ -404,7 +406,7 @@ bool load_env_map(
 
 
 
-	VkCommandBuffer cmd = rdata.cbuffers_graphics.at(0);
+	VkCommandBuffer cmd = rdata.cbuffers_graphics.at(1).at(rvkbucket::currentFrame);
 	VkCommandBufferBeginInfo begin_info = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT };
 	vkBeginCommandBuffer(cmd, &begin_info);
 

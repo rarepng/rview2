@@ -23,6 +23,7 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/spline.hpp>
 #include <iostream>
+#include <ranges>
 
 #include "renderpass.hpp"
 #include "vk/commandbuffer.hpp"
@@ -353,7 +354,7 @@ bool vkrenderer::init() {
 
 	return true;
 }
-bool vkrenderer::initcpuQs(){
+bool vkrenderer::initcpuQs() {
 	return mvkobjs.sbelt.init(mvkobjs.alloc, 256 * 1024 * 1024);
 }
 bool vkrenderer::initscene() {
@@ -557,6 +558,8 @@ bool vkrenderer::getqueue() {
 	mvkobjs.presentQ = presentqueueret.value();
 	auto computequeueret = mvkobjs.vkdevice.get_queue(vkb::QueueType::compute);
 	mvkobjs.computeQ = computequeueret.value();
+	auto transqueueret = mvkobjs.vkdevice.get_queue(vkb::QueueType::transfer);
+	mvkobjs.transferQ = transqueueret.value();
 
 	return true;
 }
@@ -660,21 +663,33 @@ bool vkrenderer::recreateswapchain() {
 	return true;
 }
 bool vkrenderer::createcommandpool() {
-	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_graphics,
-	                                 vkb::QueueType::graphics))
+	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_graphics,vkb::QueueType::graphics)) [[unlikely]] {
 		return false;
-	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_compute,
-	                                 vkb::QueueType::compute))
+	}
+	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_compute,vkb::QueueType::compute)) [[unlikely]] {
 		return false;
+	}
+	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_transfer,vkb::QueueType::transfer)) [[unlikely]] {
+		return false;
+	}
 	return true;
 }
 bool vkrenderer::createcommandbuffer() {
-	if (!commandbuffer::create(mvkobjs, mvkobjs.cpools_graphics.at(0),
-	                           mvkobjs.cbuffers_graphics))
-		return false;
-	if (!commandbuffer::create(mvkobjs, mvkobjs.cpools_compute.at(0),
-	                           mvkobjs.cbuffers_compute))
-		return false;
+	for (auto [cpool, cbuffers] : std::views::zip(mvkobjs.cpools_graphics, mvkobjs.cbuffers_graphics)) {
+		if (!commandbuffer::create(mvkobjs, cpool, cbuffers)) [[unlikely]] {
+			return false;
+		}
+	}
+	for (auto [cpool, cbuffers] : std::views::zip(mvkobjs.cpools_compute, mvkobjs.cbuffers_compute)) {
+		if (!commandbuffer::create(mvkobjs, cpool, cbuffers)) [[unlikely]] {
+			return false;
+		}
+	}
+	for (auto [cpool, cbuffers] : std::views::zip(mvkobjs.cpools_transfer, mvkobjs.cbuffers_transfer)) {
+		if (!commandbuffer::create(mvkobjs, cpool, cbuffers)) [[unlikely]] {
+			return false;
+		}
+	}
 	return true;
 }
 bool vkrenderer::createsyncobjects() {
@@ -696,12 +711,6 @@ void vkrenderer::cleanup() {
 	mui.cleanup(mvkobjs);
 
 	vksyncobjects::cleanup(mvkobjs);
-	commandbuffer::destroy(mvkobjs, mvkobjs.cpools_graphics.at(0),
-	                       mvkobjs.cbuffers_graphics);
-	commandbuffer::destroy(mvkobjs, mvkobjs.cpools_compute.at(0),
-	                       mvkobjs.cbuffers_compute);
-	commandpool::destroy(mvkobjs, mvkobjs.cpools_graphics);
-	commandpool::destroy(mvkobjs, mvkobjs.cpools_compute);
 	for (auto &x : mvkobjs.dpools)
 		rpool::destroy(mvkobjs.vkdevice.device, x);
 
@@ -723,7 +732,9 @@ void vkrenderer::cleanup() {
 
 	for (const auto &i : mplayer)
 		i->cleanupmodels(mvkobjs);
+
 	//temp
+	mvkobjs.cleanupQ.flush();
 	mvkobjs.deletionQ.flush();
 
 	vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.rddepthimageview,
@@ -741,7 +752,7 @@ void vkrenderer::cleanup() {
 	}
 
 	mvkobjs.sbelt.free(mvkobjs.alloc);
-	
+
 	//dbg only block
 	// char* statsString = nullptr;
 	// vmaBuildStatsString(mvkobjs.alloc, &statsString, true);
@@ -798,7 +809,7 @@ bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric> &x) {
 	manimupdatetimer.start();
 
 	x->uploadvboebo(mvkobjs,
-	                mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame));
+	                mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame));
 
 	mvkobjs.uploadubossbotime = manimupdatetimer.stop();
 
@@ -1005,7 +1016,7 @@ bool vkrenderer::draw() {
 	if (vkResetFences(mvkobjs.vkdevice.device, 1,
 	                  &mvkobjs.fencez.at(rvkbucket::currentFrame)) != VK_SUCCESS)
 		return false;
-		
+
 	//temp
 	mvkobjs.deletionQ.flush();
 
@@ -1058,7 +1069,7 @@ bool vkrenderer::draw() {
 	scissor.extent = mvkobjs.schain.extent;
 
 	if (vkResetCommandBuffer(
-	            mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame), 0) !=
+	            mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), 0) !=
 	        VK_SUCCESS)
 		return false;
 
@@ -1079,7 +1090,7 @@ bool vkrenderer::draw() {
 	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
 	if (vkBeginCommandBuffer(
-	            mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame), &cmdbgninfo) !=
+	            mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), &cmdbgninfo) !=
 	        VK_SUCCESS)
 		return false;
 
@@ -1164,7 +1175,7 @@ bool vkrenderer::draw() {
 	dep.pBufferMemoryBarriers = &particleBarrier;
 	dep.imageMemoryBarrierCount = 2;
 	dep.pImageMemoryBarriers = barriers;
-	vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame),
+	vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 	                      &dep);
 
 	VkRenderingAttachmentInfo color_attach{};
@@ -1190,21 +1201,21 @@ bool vkrenderer::draw() {
 	render_info.pColorAttachments = &color_attach;
 	render_info.pDepthAttachment = &depth_attach;
 
-	vkCmdBeginRendering(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame),
+	vkCmdBeginRendering(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 	                    &render_info);
 
-	vkCmdSetViewport(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame), 0, 1,
+	vkCmdSetViewport(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), 0, 1,
 	                 &viewport);
-	vkCmdSetScissor(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame), 0, 1,
+	vkCmdSetScissor(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), 0, 1,
 	                &scissor);
 
 	VkDeviceSize coffsets{0};
-	vkCmdBindPipeline(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame),
+	vkCmdBindPipeline(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 	                  VK_PIPELINE_BIND_POINT_GRAPHICS, particle::gpline);
-	vkCmdBindVertexBuffers(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame),
+	vkCmdBindVertexBuffers(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 	                       0, 1, &particle::ssbobuffsnallocs.at(0).first,
 	                       &coffsets);
-	vkCmdDraw(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame), 8192, 1, 0,
+	vkCmdDraw(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), 8192, 1, 0,
 	          0);
 
 	for (const auto &i : mplayer)
@@ -1216,9 +1227,9 @@ bool vkrenderer::draw() {
 
 	mui.createdbgframe(mvkobjs, selectiondata);
 
-	mui.render(mvkobjs, mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame));
+	mui.render(mvkobjs, mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame));
 
-	vkCmdEndRendering(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame));
+	vkCmdEndRendering(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame));
 	// vkCmdEndRenderPass(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame));
 
 	// animmtx.lock();
@@ -1251,11 +1262,11 @@ bool vkrenderer::draw() {
 	dependency_info.imageMemoryBarrierCount = 1;
 	dependency_info.pImageMemoryBarriers = &barrier;
 
-	vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame),
+	vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 	                      &dependency_info);
 
 	if (vkEndCommandBuffer(
-	            mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame)) != VK_SUCCESS)
+	            mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame)) != VK_SUCCESS)
 		return false;
 
 
@@ -1278,7 +1289,7 @@ bool vkrenderer::draw() {
 
 	submitinfo.commandBufferCount = 1;
 	submitinfo.pCommandBuffers =
-	    &mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame);
+	    &mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame);
 
 	mvkobjs.mtx2->lock();
 	if (vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo,

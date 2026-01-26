@@ -344,36 +344,38 @@ void genericmodel::uploadvboebo(rvkbucket &objs, VkCommandBuffer &cbuffer) {
 				if (slot == 4) hasJoints = true;
 				if (slot == 5) hasWeights = true;
 
-if (slot == 4 && acc.componentType == fastgltf::ComponentType::UnsignedShort) {
-                    
-                    uint32_t* dst = reinterpret_cast<uint32_t*>(beltPtr + offset);
+				if (slot == 4 && acc.componentType == fastgltf::ComponentType::UnsignedShort) {
 
-                    std::visit([&](auto& arg) {
-                        using T = std::decay_t<decltype(arg)>;
-                        if constexpr (requires { arg.bytes.data(); }) {
-                            const std::byte* srcBytes = arg.bytes.data() + view.byteOffset + acc.byteOffset;
-                            
-                            size_t stride = view.byteStride.value_or(sizeof(uint16_t) * 4);
+					uint32_t* dst = reinterpret_cast<uint32_t*>(beltPtr + offset);
 
-                            for (size_t k = 0; k < acc.count; ++k) {
-                                const uint16_t* s = reinterpret_cast<const uint16_t*>(srcBytes + k * stride);
-                                
-                                dst[k*4+0] = s[0]; dst[k*4+1] = s[1];
-                                dst[k*4+2] = s[2]; dst[k*4+3] = s[3];
-                            }
-                        }
-                    }, bin.data);
+					std::visit([&](auto& arg) {
+						using T = std::decay_t<decltype(arg)>;
+						if constexpr (requires { arg.bytes.data(); }) {
+							const std::byte* srcBytes = arg.bytes.data() + view.byteOffset + acc.byteOffset;
 
-                    VkDeviceSize copySize = acc.count * sizeof(uint32_t) * 4;
-                    
-                    vmaFlushAllocation(objs.alloc, objs.sbelt.allocation, offset, copySize);
+							size_t stride = view.byteStride.value_or(sizeof(uint16_t) * 4);
 
-                    VkBufferCopy region{offset, 0, copySize};
-                    vkCmdCopyBuffer(cbuffer, beltBuffer, mgltfobjs.vbos[i][j][slot].buffer, 1, &region);
-                    add_barrier(mgltfobjs.vbos[i][j][slot].buffer);
+							for (size_t k = 0; k < acc.count; ++k) {
+								const uint16_t* s = reinterpret_cast<const uint16_t*>(srcBytes + k * stride);
 
-                    offset = (offset + region.size + 15) & ~15;
-                }
+								dst[k*4+0] = s[0];
+								dst[k*4+1] = s[1];
+								dst[k*4+2] = s[2];
+								dst[k*4+3] = s[3];
+							}
+						}
+					}, bin.data);
+
+					VkDeviceSize copySize = acc.count * sizeof(uint32_t) * 4;
+
+					vmaFlushAllocation(objs.alloc, objs.sbelt.allocation, offset, copySize);
+
+					VkBufferCopy region{offset, 0, copySize};
+					vkCmdCopyBuffer(cbuffer, beltBuffer, mgltfobjs.vbos[i][j][slot].buffer, 1, &region);
+					add_barrier(mgltfobjs.vbos[i][j][slot].buffer);
+
+					offset = (offset + region.size + 15) & ~15;
+				}
 				else {
 					vkvbo::record_upload(objs, cbuffer, (GpuBuffer&)mgltfobjs.vbos[i][j][slot],
 					                     bin, view, acc, beltPtr, beltBuffer, offset);
@@ -435,13 +437,13 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
                                  int instancecount, int stride) {
 	VkDeviceSize offset = 0;
 
-	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvkbucket::currentFrame),
+	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 	                        VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1,
 	                        &mgltfobjs.dset, 0, nullptr);
 	for (size_t i = 0; i < mgltfobjs.vbos.size(); i++) {
 		for (size_t j = 0; j < mgltfobjs.vbos.at(i).size(); j++) {
 			VkPipeline pipeline = meshjointtype[i][j] ? vkplineuint : vkpline;
-			vkCmdBindPipeline(objs.cbuffers_graphics.at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+			vkCmdBindPipeline(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
 			vkpushconstants push{};
 			auto& buffers2 = mgltfobjs.vbos[i][j];
@@ -507,7 +509,7 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
 				push.ormIdx = 1;
 				push.emissiveIdx = 3;
 			}
-			vkCmdPushConstants(objs.cbuffers_graphics.at(rvkbucket::currentFrame),
+			vkCmdPushConstants(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 			                   vkplayout,
 			                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 			                   0,
@@ -522,15 +524,15 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
 					bufToBind = buffers[binding].buffer;
 				}
 
-				vkCmdBindVertexBuffers(objs.cbuffers_graphics.at(rvkbucket::currentFrame),
+				vkCmdBindVertexBuffers(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 				                       binding, 1, &bufToBind, &offset);
 			}
 
-			vkCmdBindIndexBuffer(objs.cbuffers_graphics.at(rvkbucket::currentFrame),
+			vkCmdBindIndexBuffer(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 			                     mgltfobjs.ebos.at(i).at(j).buffer, 0,
 			                     VK_INDEX_TYPE_UINT16);
 
-			vkCmdDrawIndexed(objs.cbuffers_graphics.at(rvkbucket::currentFrame),
+			vkCmdDrawIndexed(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 			                 static_cast<uint32_t>(gettricount(i, j) * 3),
 			                 instancecount, 0, 0, 0);
 		}
