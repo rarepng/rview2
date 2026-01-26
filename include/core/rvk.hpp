@@ -9,14 +9,74 @@
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 #include <span>
+#include <iostream>
+#include <deque>
+#include <functional>
+#include <execution>
 
+// future proof: gotta make everything use this now big TODO
+struct DeletionQueue {
+	std::deque<std::function<void()>> deletors;
 
+	void push_function(std::function<void()>&& function) {
+		deletors.push_back(function);
+	}
 
-
+	void flush() {
+		for (auto it = deletors.rbegin(); it != deletors.rend(); ++it) {
+			(*it)();
+		}
+		deletors.clear();
+	}
+};
 enum class skinningmode { linear = 0, dualquat };
 enum class replaydirection { forward = 0, backward };
 enum class blendmode { fadeinout = 0, crossfade, additive };
 enum class ikmode { off = 0, ccd, fabrik };
+
+struct StagingBelt {
+	VkBuffer buffer;
+	VmaAllocation allocation;
+	uint8_t* mappedData = nullptr;
+	VkDeviceSize capacity = 0;
+	VkDeviceSize currentOffset = 0;
+
+	bool init(VmaAllocator allocator, VkDeviceSize size = 256 * 1024 * 1024) {
+		capacity = size;
+		VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+		bci.size = size;
+		bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		VmaAllocationCreateInfo aci{};
+		aci.usage = VMA_MEMORY_USAGE_AUTO;
+		aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+		            VMA_ALLOCATION_CREATE_MAPPED_BIT;
+		VmaAllocationInfo info;
+		auto x = vmaCreateBuffer(allocator, &bci, &aci, &buffer, &allocation, &info);
+		mappedData = static_cast<uint8_t*>(info.pMappedData);
+		currentOffset = 0;
+		if(x == VK_SUCCESS)return true;
+		else return false;
+	}
+
+	//i have to think about syncing with this if i have 2+ staging buffers so each frame in flight has its own
+	void reset() {
+		currentOffset = 0;
+	}
+
+	// rethink this
+	VkDeviceSize reserve(VkDeviceSize size) {
+		VkDeviceSize alignedOffset = (currentOffset + 15) & ~15;
+		if (alignedOffset + size > capacity) {
+			std::cout << "OOM Staging Buffer!\n";
+			return 0;
+		}
+		currentOffset = alignedOffset + size;
+		return alignedOffset;
+	}
+	void free(VmaAllocator allocator) {
+		vmaDestroyBuffer(allocator, this->buffer, this->allocation);
+	}
+};
 
 struct texdata {
 	VkImage img = VK_NULL_HANDLE;
@@ -24,23 +84,11 @@ struct texdata {
 	VkSampler imgsampler = VK_NULL_HANDLE;
 	VmaAllocation alloc = nullptr;
 };
-struct vbodata {
 
-	size_t size{0};
+struct GpuBuffer {
 	VkBuffer buffer = VK_NULL_HANDLE;
 	VmaAllocation alloc = nullptr;
-	//staging
-	VkBuffer sbuffer = VK_NULL_HANDLE;
-	VmaAllocation salloc = nullptr;
-};
-
-struct ebodata {
-	size_t size{0};
-	VkBuffer buffer = VK_NULL_HANDLE;
-	VmaAllocation alloc = nullptr;
-	//staging
-	VkBuffer sbuffer = VK_NULL_HANDLE;
-	VmaAllocation salloc = nullptr;
+	VkDeviceSize size = 0;
 };
 
 struct ubodata {
@@ -97,6 +145,9 @@ struct vkpushconstants {
 // static_assert(sizeof(vkpushconstants) == 128, "Struct size mismatch!");
 struct rvkbucket {
 
+	DeletionQueue deletionQ{};
+	DeletionQueue cleanupQ{};
+	StagingBelt sbelt{};
 	std::array<texdata,1> exrtex{};
 	VkDescriptorSet exrdset = VK_NULL_HANDLE;
 
@@ -153,7 +204,7 @@ struct rvkbucket {
 
 	float azimuth{15.0f};
 	float elevation{-25.0f};
-	glm::vec3 camwpos{0.0f, 10.0f, 20.0f};
+	glm::vec3 camwpos{0.0f, 6.0f, 12.0f};
 
 	glm::vec3 raymarchpos{0.0f};
 
@@ -175,6 +226,7 @@ struct rvkbucket {
 	VkQueue graphicsQ = VK_NULL_HANDLE;
 	VkQueue presentQ = VK_NULL_HANDLE;
 	VkQueue computeQ = VK_NULL_HANDLE;
+	VkQueue transferQ = VK_NULL_HANDLE;
 
 	VkImage rddepthimage = VK_NULL_HANDLE;
 	VkImageView rddepthimageview = VK_NULL_HANDLE;
@@ -186,11 +238,15 @@ struct rvkbucket {
 	VkFormat rddepthformatref;
 	VmaAllocation rddepthimageallocref = VK_NULL_HANDLE;
 
-
+	// tex=1
 	std::array<VkCommandPool,3> cpools_graphics = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-	std::array<VkCommandPool,1> cpools_compute = {VK_NULL_HANDLE};
-	std::array<VkCommandBuffer,3> cbuffers_graphics = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-	std::array<VkCommandBuffer,3> cbuffers_compute = {VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
+	std::array<VkCommandPool,3> cpools_compute = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::array<VkCommandPool,3> cpools_transfer = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	// useless apparently
+	std::array<VkCommandPool,3> cpools_present = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::array<std::array<VkCommandBuffer,3>,3> cbuffers_graphics = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
+	std::array<std::array<VkCommandBuffer,3>,3> cbuffers_compute = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
+	std::array<std::array<VkCommandBuffer,3>,3> cbuffers_transfer = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
 
 	// {image available, renderfinished, compute finished}
 	std::array<std::array<VkSemaphore, 3>, 3> semaphorez {{
@@ -210,8 +266,8 @@ struct rvkbucket {
 };
 
 struct vkgltfobjs {
-	std::vector<std::vector<std::vector<vbodata>>> vbos{};
-	std::vector<std::vector<ebodata>> ebos{};
+	std::vector<std::vector<std::vector<GpuBuffer>>> vbos{};
+	std::vector<std::vector<GpuBuffer>> ebos{};
 	std::vector<texdata> texs{};
 	VkDescriptorSet dset = VK_NULL_HANDLE;
 	VkDescriptorPool texpool = VK_NULL_HANDLE;
@@ -237,3 +293,15 @@ static inline bool create(const VkDevice& dev,VmaAllocator alloc,std::vector<VkB
 	return true;
 }
 };
+
+inline void safe_cleanup(rvkbucket& objs, GpuBuffer& bufferData) {
+	VkBuffer buf = bufferData.buffer;
+	VmaAllocation alloc = bufferData.alloc;
+	if (buf != VK_NULL_HANDLE) {
+		objs.deletionQ.push_function([=, &objs]() {
+			vmaDestroyBuffer(objs.alloc, buf, alloc);
+		});
+	}
+	bufferData.buffer = VK_NULL_HANDLE;
+	bufferData.alloc = nullptr;
+}

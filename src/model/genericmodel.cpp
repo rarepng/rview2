@@ -10,10 +10,10 @@
 #include <glm/gtx/quaternion.hpp>
 #include <algorithm>
 #include <iostream>
+#include "fastgltf/tools.hpp"
 
 
 #include "genericmodel.hpp"
-#include "vkebo.hpp"
 #include "vkvbo.hpp"
 
 import rview.rvk.tex;
@@ -198,23 +198,22 @@ std::vector<glm::mat4> genericmodel::getinversebindmats() {
 std::vector<unsigned int> genericmodel::getnodetojoint() {
 	return mnodetojoint;
 }
-
 void genericmodel::createvboebo(rvkbucket &objs) {
-	mgltfobjs.vbos.resize(mmodel2.meshes.size());
-	mgltfobjs.ebos.resize(mmodel2.meshes.size());
-
-	meshjointtype.resize(mmodel2.meshes.size());
+	size_t meshCount = mmodel2.meshes.size();
+	mgltfobjs.vbos.resize(meshCount);
+	mgltfobjs.ebos.resize(meshCount);
+	meshjointtype.resize(meshCount);
 
 	static const std::unordered_map<std::string_view, int> SLOT_MAP = {
 		{"POSITION", 0}, {"NORMAL", 1}, {"TANGENT", 2},
 		{"TEXCOORD_0", 3}, {"JOINTS_0", 4}, {"WEIGHTS_0", 5}
 	};
 
-	for (size_t i = 0; i < mmodel2.meshes.size(); ++i) {
+	for (size_t i = 0; i < meshCount; ++i) {
 		size_t primCount = mmodel2.meshes[i].primitives.size();
+
 		mgltfobjs.vbos[i].resize(primCount);
 		mgltfobjs.ebos[i].resize(primCount);
-
 		meshjointtype[i].resize(primCount, false);
 
 		for (size_t j = 0; j < primCount; ++j) {
@@ -223,14 +222,20 @@ void genericmodel::createvboebo(rvkbucket &objs) {
 
 			if (prim.indicesAccessor.has_value()) {
 				const auto& idxAcc = mmodel2.accessors[prim.indicesAccessor.value()];
-				size_t indexSize = idxAcc.count * fastgltf::getComponentByteSize(idxAcc.componentType);
+				size_t indexSize = idxAcc.count * fastgltf::getElementByteSize(idxAcc.type, idxAcc.componentType);
 
-				vkebo::init(objs, mgltfobjs.ebos[i][j], indexSize);
+				vkvbo::init(objs, (GpuBuffer&)mgltfobjs.ebos[i][j], indexSize,
+				            VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 			}
 
 			mgltfobjs.vbos[i][j].resize(6);
-			mgltfobjs.vbos[i][j][4].buffer = VK_NULL_HANDLE;
-			mgltfobjs.vbos[i][j][5].buffer = VK_NULL_HANDLE;
+
+			bool hasJoints = false;
+			bool hasWeights = false;
+			size_t vertexCount = 0;
+
+			const auto* posAttr = prim.findAttribute("POSITION");
+			if (posAttr) vertexCount = mmodel2.accessors[posAttr->accessorIndex].count;
 
 			auto init_attr = [&](const auto& attr) {
 				auto it = SLOT_MAP.find(attr.name);
@@ -241,24 +246,67 @@ void genericmodel::createvboebo(rvkbucket &objs) {
 				size_t size = acc.count * fastgltf::getElementByteSize(acc.type, acc.componentType);
 
 				if (slot == 4) {
-					if (acc.componentType == fastgltf::ComponentType::UnsignedInt ||
-					        acc.componentType == fastgltf::ComponentType::UnsignedShort) {
-
-						size = acc.count * sizeof(uint32_t) * 4;
-
+					hasJoints = true;
+					if (acc.componentType == fastgltf::ComponentType::UnsignedShort || acc.componentType == fastgltf::ComponentType::UnsignedInt) {
 						meshjointtype[i][j] = true;
+						size = acc.count * sizeof(uint32_t) * 4;
 					}
 				}
-				vkvbo::init(objs, mgltfobjs.vbos[i][j][slot], size);
+
+				if (slot == 5) hasWeights = true;
+
+				vkvbo::init(objs, (GpuBuffer&)mgltfobjs.vbos[i][j][slot], size,
+				            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 			};
+
 			std::ranges::for_each(prim.attributes, init_attr);
+
+			if (vertexCount > 0) {
+				if (!hasJoints) {
+					size_t size = vertexCount * sizeof(uint8_t) * 4;
+					vkvbo::init(objs, (GpuBuffer&)mgltfobjs.vbos[i][j][4], size,
+					            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+				}
+
+				if (!hasWeights) {
+					size_t size = vertexCount * sizeof(float) * 4;
+					vkvbo::init(objs, (GpuBuffer&)mgltfobjs.vbos[i][j][5], size,
+					            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+				}
+			}
 		}
 	}
+}
+const std::byte* getRawData(const fastgltf::DataSource& source) {
+	return std::visit([](auto& arg) -> const std::byte* {
+		using T = std::decay_t<decltype(arg)>;
+		if constexpr (requires { arg.bytes.data(); }) {
+			return arg.bytes.data();
+		}
+		return nullptr;
+	}, source);
 }
 void genericmodel::uploadvboebo(rvkbucket &objs, VkCommandBuffer &cbuffer) {
 	static const std::unordered_map<std::string_view, int> SLOT_MAP = {
 		{"POSITION", 0}, {"NORMAL", 1}, {"TANGENT", 2},
 		{"TEXCOORD_0", 3}, {"JOINTS_0", 4}, {"WEIGHTS_0", 5}
+	};
+	uint8_t* beltPtr = objs.sbelt.mappedData;
+	VkBuffer beltBuffer = objs.sbelt.buffer;
+	VkDeviceSize& offset = objs.sbelt.currentOffset;
+
+	std::vector<VkBufferMemoryBarrier2> barriers;
+
+	// maybe will move this to rvk or a new namespace
+	auto add_barrier = [&](VkBuffer buffer) {
+		VkBufferMemoryBarrier2 b{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
+		b.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+		b.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		b.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
+		b.dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_2_INDEX_READ_BIT;
+		b.buffer = buffer;
+		b.size = VK_WHOLE_SIZE;
+		barriers.push_back(b);
 	};
 
 	for (size_t i = 0; i < mmodel2.meshes.size(); ++i) {
@@ -266,15 +314,24 @@ void genericmodel::uploadvboebo(rvkbucket &objs, VkCommandBuffer &cbuffer) {
 			const auto& prim = mmodel2.meshes[i].primitives[j];
 			if (prim.type != fastgltf::PrimitiveType::Triangles) continue;
 
-			const auto& idxAcc = mmodel2.accessors[prim.indicesAccessor.value()];
-			const auto& idxView = mmodel2.bufferViews[idxAcc.bufferViewIndex.value()];
+			if (prim.indicesAccessor.has_value()) {
+				const auto& acc = mmodel2.accessors[prim.indicesAccessor.value()];
+				const auto& view = mmodel2.bufferViews[acc.bufferViewIndex.value()];
+				const auto& bin = mmodel2.buffers[view.bufferIndex];
 
-			const auto& idxBuffer = mmodel2.buffers[idxView.bufferIndex];
-			vkebo::upload(objs, cbuffer, mgltfobjs.ebos[i][j],
-			              idxBuffer,
-			              idxView,
-			              idxAcc.count,
-			              idxAcc.componentType);
+				vkvbo::record_upload(objs, cbuffer, (GpuBuffer&)mgltfobjs.ebos[i][j],
+				                     bin, view, acc, beltPtr, beltBuffer, offset);
+				add_barrier(mgltfobjs.ebos[i][j].buffer);
+
+				size_t s = acc.count * fastgltf::getElementByteSize(acc.type, acc.componentType);
+				offset = (offset + s + 15) & ~15;
+			}
+
+			bool hasJoints = false;
+			bool hasWeights = false;
+			size_t vertexCount = 0;
+			if (auto* p = prim.findAttribute("POSITION")) vertexCount = mmodel2.accessors[p->accessorIndex].count;
+
 			auto upload_attr = [&](const auto& attr) {
 				auto it = SLOT_MAP.find(attr.name);
 				if (it == SLOT_MAP.end()) return;
@@ -284,41 +341,89 @@ void genericmodel::uploadvboebo(rvkbucket &objs, VkCommandBuffer &cbuffer) {
 				const auto& view = mmodel2.bufferViews[acc.bufferViewIndex.value()];
 				const auto& bin = mmodel2.buffers[view.bufferIndex];
 
-				// todo: retake a look here
+				if (slot == 4) hasJoints = true;
+				if (slot == 5) hasWeights = true;
+
 				if (slot == 4 && acc.componentType == fastgltf::ComponentType::UnsignedShort) {
-					std::vector<uint32_t> ints(acc.count * 4);
 
-					std::visit(fastgltf::visitor{
-						[&](auto& arg) {
-							using T = std::decay_t<decltype(arg)>;
-							if constexpr (requires { arg.bytes.data(); }) {
-								const uint8_t* pData = reinterpret_cast<const uint8_t*>(arg.bytes.data());
+					uint32_t* dst = reinterpret_cast<uint32_t*>(beltPtr + offset);
 
-								const uint8_t* pSource = pData + view.byteOffset + acc.byteOffset;
+					std::visit([&](auto& arg) {
+						using T = std::decay_t<decltype(arg)>;
+						if constexpr (requires { arg.bytes.data(); }) {
+							const std::byte* srcBytes = arg.bytes.data() + view.byteOffset + acc.byteOffset;
 
-								size_t stride = view.byteStride.has_value() ? view.byteStride.value() : (sizeof(uint16_t) * 4);
+							size_t stride = view.byteStride.value_or(sizeof(uint16_t) * 4);
 
-								for (size_t i = 0; i < acc.count; ++i) {
-									const uint16_t* pShorts = reinterpret_cast<const uint16_t*>(pSource + (i * stride));
+							for (size_t k = 0; k < acc.count; ++k) {
+								const uint16_t* s = reinterpret_cast<const uint16_t*>(srcBytes + k * stride);
 
-									ints[i * 4 + 0] = static_cast<uint32_t>(pShorts[0]);
-									ints[i * 4 + 1] = static_cast<uint32_t>(pShorts[1]);
-									ints[i * 4 + 2] = static_cast<uint32_t>(pShorts[2]);
-									ints[i * 4 + 3] = static_cast<uint32_t>(pShorts[3]);
-								}
+								dst[k*4+0] = s[0];
+								dst[k*4+1] = s[1];
+								dst[k*4+2] = s[2];
+								dst[k*4+3] = s[3];
 							}
 						}
 					}, bin.data);
-					vkvbo::upload(objs, cbuffer, mgltfobjs.vbos[i][j][slot], ints);
+
+					VkDeviceSize copySize = acc.count * sizeof(uint32_t) * 4;
+
+					vmaFlushAllocation(objs.alloc, objs.sbelt.allocation, offset, copySize);
+
+					VkBufferCopy region{offset, 0, copySize};
+					vkCmdCopyBuffer(cbuffer, beltBuffer, mgltfobjs.vbos[i][j][slot].buffer, 1, &region);
+					add_barrier(mgltfobjs.vbos[i][j][slot].buffer);
+
+					offset = (offset + region.size + 15) & ~15;
 				}
 				else {
-					vkvbo::upload(objs, cbuffer, mgltfobjs.vbos[i][j][slot], bin, view, acc);
+					vkvbo::record_upload(objs, cbuffer, (GpuBuffer&)mgltfobjs.vbos[i][j][slot],
+					                     bin, view, acc, beltPtr, beltBuffer, offset);
+					add_barrier(mgltfobjs.vbos[i][j][slot].buffer);
+
+					size_t s = acc.count * fastgltf::getElementByteSize(acc.type, acc.componentType);
+					offset = (offset + s + 15) & ~15;
 				}
 			};
 			std::ranges::for_each(prim.attributes, upload_attr);
+
+			if (vertexCount > 0) {
+				if (!hasJoints) {
+					size_t size = vertexCount * sizeof(uint8_t) * 4;
+					std::memset(beltPtr + offset, 0, size);
+
+					VkBufferCopy region{offset, 0, size};
+					vkCmdCopyBuffer(cbuffer, beltBuffer, mgltfobjs.vbos[i][j][4].buffer, 1, &region);
+					add_barrier(mgltfobjs.vbos[i][j][4].buffer);
+					offset = (offset + size + 15) & ~15;
+				}
+				if (!hasWeights) {
+					size_t size = vertexCount * sizeof(float) * 4;
+					float* dst = reinterpret_cast<float*>(beltPtr + offset);
+					for(size_t k=0; k<vertexCount; ++k) {
+						dst[k*4+0] = 1.0f;
+						dst[k*4+1] = 0.0f;
+						dst[k*4+2] = 0.0f;
+						dst[k*4+3] = 0.0f;
+					}
+					VkBufferCopy region{offset, 0, size};
+					vkCmdCopyBuffer(cbuffer, beltBuffer, mgltfobjs.vbos[i][j][5].buffer, 1, &region);
+					add_barrier(mgltfobjs.vbos[i][j][5].buffer);
+					offset = (offset + size + 15) & ~15;
+				}
+			}
 		}
 	}
+
+	// might make a namespaced one
+	if (!barriers.empty()) {
+		VkDependencyInfo dep{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+		dep.bufferMemoryBarrierCount = static_cast<uint32_t>(barriers.size());
+		dep.pBufferMemoryBarriers = barriers.data();
+		vkCmdPipelineBarrier2(cbuffer, &dep);
+	}
 }
+
 size_t genericmodel::gettricount(size_t i, size_t j) {
 	const fastgltf::Primitive &prims = mmodel2.meshes.at(i).primitives.at(j);
 	const fastgltf::Accessor &acc =
@@ -332,13 +437,13 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
                                  int instancecount, int stride) {
 	VkDeviceSize offset = 0;
 
-	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(rvkbucket::currentFrame),
+	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 	                        VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1,
 	                        &mgltfobjs.dset, 0, nullptr);
 	for (size_t i = 0; i < mgltfobjs.vbos.size(); i++) {
 		for (size_t j = 0; j < mgltfobjs.vbos.at(i).size(); j++) {
 			VkPipeline pipeline = meshjointtype[i][j] ? vkplineuint : vkpline;
-			vkCmdBindPipeline(objs.cbuffers_graphics.at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+			vkCmdBindPipeline(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
 			vkpushconstants push{};
 			auto& buffers2 = mgltfobjs.vbos[i][j];
@@ -404,7 +509,7 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
 				push.ormIdx = 1;
 				push.emissiveIdx = 3;
 			}
-			vkCmdPushConstants(objs.cbuffers_graphics.at(rvkbucket::currentFrame),
+			vkCmdPushConstants(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 			                   vkplayout,
 			                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 			                   0,
@@ -419,15 +524,15 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
 					bufToBind = buffers[binding].buffer;
 				}
 
-				vkCmdBindVertexBuffers(objs.cbuffers_graphics.at(rvkbucket::currentFrame),
+				vkCmdBindVertexBuffers(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 				                       binding, 1, &bufToBind, &offset);
 			}
 
-			vkCmdBindIndexBuffer(objs.cbuffers_graphics.at(rvkbucket::currentFrame),
+			vkCmdBindIndexBuffer(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 			                     mgltfobjs.ebos.at(i).at(j).buffer, 0,
 			                     VK_INDEX_TYPE_UINT16);
 
-			vkCmdDrawIndexed(objs.cbuffers_graphics.at(rvkbucket::currentFrame),
+			vkCmdDrawIndexed(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 			                 static_cast<uint32_t>(gettricount(i, j) * 3),
 			                 instancecount, 0, 0, 0);
 		}
@@ -439,13 +544,13 @@ void genericmodel::cleanup(rvkbucket &objs) {
 	for (size_t i{0}; i < mgltfobjs.vbos.size(); i++) {
 		for (size_t j{0}; j < mgltfobjs.vbos.at(i).size(); j++) {
 			for (size_t k{0}; k < mgltfobjs.vbos.at(i).at(j).size(); k++) {
-				vkvbo::cleanup(objs, mgltfobjs.vbos.at(i).at(j).at(k));
+				safe_cleanup(objs, mgltfobjs.vbos.at(i).at(j).at(k));
 			}
 		}
 	}
 	for (size_t i{0}; i < mgltfobjs.ebos.size(); i++) {
 		for (size_t j{0}; j < mgltfobjs.ebos.at(i).size(); j++) {
-			vkebo::cleanup(objs, mgltfobjs.ebos.at(i).at(j));
+			safe_cleanup(objs, mgltfobjs.ebos.at(i).at(j));
 		}
 	}
 	for (size_t i{0}; i < mgltfobjs.texs.size(); i++) {

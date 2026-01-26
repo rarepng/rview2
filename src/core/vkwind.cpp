@@ -49,7 +49,6 @@ void vkwind::frameupdate() {
 			if (!mvkrenderer->draw()) {
 				break;
 			}
-			SDL_PollEvent(e);
 		}
 	}
 }

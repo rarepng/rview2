@@ -62,6 +62,96 @@ struct jmats {
 [[vk::binding(0, 1)]] ConstantBuffer<cams> cammats;
 [[vk::binding(0, 2)]] RWStructuredBuffer<jmats> jmatbuffer;
 
+struct PBRInfo {
+    float NdotL;
+    float NdotV;
+    float NdotH;
+    float LdotH;
+    float VdotH;
+    float perceptualRoughness;
+    float metalness;
+    float3 reflectance0;
+    float3 reflectance90;
+    float alphaRoughness;
+    float3 diffuseColor;
+    float3 specularColor;
+};
+
+float3 getNormalFromMap(float3 worldPos, float3 normal, float2 uv, uint normalIdx, float normalScale)
+{
+    float3 tangentNormal = tex[normalIdx].Sample(uv).rgb * 2.0 - 1.0;
+    tangentNormal.xy *= normalScale;
+    
+    float3 Q1 = ddx(worldPos);
+    float3 Q2 = ddy(worldPos);
+    float2 st1 = ddx(uv);
+    float2 st2 = ddy(uv);
+
+    float3 N = normalize(normal);
+    float3 T = normalize(Q1 * st2.y - Q2 * st1.y);
+    if (length(T) == 0) T = cross(N, float3(0, 1, 0));
+
+    float3 B = -normalize(cross(N, T));
+
+    float3x3 TBN = float3x3(T, B, N);
+
+    return normalize(mul(tangentNormal, TBN));
+}
+float2 DirToUV(float3 dir) {
+    float2 uv = float2(atan2(dir.z, dir.x), asin(dir.y));
+    uv *= float2(0.1591, 0.3183);
+    uv += 0.5;
+    return uv;
+}
+
+float2 EnvBRDFApprox(float Roughness, float NoV) {
+    const float4 c0 = float4(-1, -0.0275, -0.572, 0.022);
+    const float4 c1 = float4(1, 0.0425, 1.04, -0.04);
+    float4 r = Roughness * c0 + c1;
+    float a004 = min(r.x * r.x, exp2(-9.28 * NoV)) * r.x + r.y;
+    float2 AB = float2(-1.04, 1.04) * a004 + r.zw;
+    return AB;
+}
+
+float3 diffuse(PBRInfo pbrInputs) {
+    return pbrInputs.diffuseColor / PI;
+}
+
+float3 specularReflection(PBRInfo pbrInputs) {
+    return pbrInputs.reflectance0 + (pbrInputs.reflectance90 - pbrInputs.reflectance0) * pow(clamp(1.0 - pbrInputs.VdotH, 0.0, 1.0), 5.0);
+}
+
+float geometricOcclusion(PBRInfo pbrInputs) {
+    float NdotL = pbrInputs.NdotL;
+    float NdotV = pbrInputs.NdotV;
+    float r = pbrInputs.alphaRoughness;
+
+    float attenuationL = 2.0 * NdotL / (NdotL + sqrt(r * r + (1.0 - r * r) * (NdotL * NdotL)));
+    float attenuationV = 2.0 * NdotV / (NdotV + sqrt(r * r + (1.0 - r * r) * (NdotV * NdotV)));
+    return attenuationL * attenuationV;
+}
+
+float microfacetDistribution(PBRInfo pbrInputs) {
+    float roughnessSq = pbrInputs.alphaRoughness * pbrInputs.alphaRoughness;
+    float f = (pbrInputs.NdotH * roughnessSq - pbrInputs.NdotH) * pbrInputs.NdotH + 1.0;
+    return roughnessSq / (PI * f * f);
+}
+
+float3 getIBLContribution(PBRInfo pbrInputs, float3 n, float3 reflection) {
+    float lod = (pbrInputs.perceptualRoughness * float(pc.envMapMaxLod));
+
+    float2 brdf = EnvBRDFApprox(pbrInputs.perceptualRoughness, pbrInputs.NdotV);
+
+    float3 diffuseLight = envMap.SampleLevel(DirToUV(n), 20.0).rgb;
+
+    float3 specularLight = envMap.SampleLevel(DirToUV(reflection), lod).rgb;
+
+    float3 diff = diffuseLight * pbrInputs.diffuseColor;
+    float3 spec = specularLight * (pbrInputs.specularColor * brdf.x + brdf.y);
+
+    return diff + spec;
+}
+
 
 float D_GGX(float NdotH, float roughness) {
     float a = roughness * roughness;
@@ -79,13 +169,6 @@ float V_SmithGGXCorrelated(float NdotL, float NdotV, float roughness) {
 
 float3 F_Schlick(float cosTheta, float3 F0) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-}
-
-float2 DirToUV(float3 dir) {
-    float2 uv = float2(atan2(dir.z, dir.x), asin(dir.y));
-    uv *= float2(0.1591, 0.3183);
-    uv += 0.5;
-    return uv;
 }
 
 float3 ACESToneMapping(float3 color) {
@@ -111,14 +194,6 @@ float V_SmithGGXCorrelated_Anisotropic(float at, float ab, float TdotV, float Bd
     float lambdaV = NdotL * length(float3(at * TdotV, ab * BdotV, NdotV));
     float lambdaL = NdotV * length(float3(at * TdotL, ab * BdotL, NdotL));
     return 0.5 / (lambdaV + lambdaL);
-}
-float2 EnvBRDFApprox(float Roughness, float NoV) {
-    const float4 c0 = float4(-1, -0.0275, -0.572, 0.022);
-    const float4 c1 = float4(1, 0.0425, 1.04, -0.04);
-    float4 r = Roughness * c0 + c1;
-    float a004 = min(r.x * r.x, exp2(-9.28 * NoV)) * r.x + r.y;
-    float2 AB = float2(-1.04, 1.04) * a004 + r.zw;
-    return AB;
 }
 float3 ACES_Fitted(float3 color) {
     const float3x3 ACESInputMat = float3x3(
@@ -190,14 +265,14 @@ float4 pxmainmine(PXin in) : SV_Target {
     float3 B = normalize(in.bitangent);
     float3x3 TBN = float3x3(T, B, N);
 
-    if (pc.normalIdx > 0xAAAAAAAA) {
+    if (pc.normalIdx < 0xAAAAAAAA) {
         float3 tNorm = tex[pc.normalIdx].Sample(in.uv).rgb * 2.0 - 1.0;
         tNorm *= float3(pc.normalScale, pc.normalScale, 1.0);
         N = normalize(mul(tNorm, TBN));
     }
 
     float4 baseColor = pc.baseColorFactor;
-    if (pc.albedoIdx != 0xAAAAAAAA) {
+    if (pc.albedoIdx < 0xAAAAAAAA) {
         float4 texColor = tex[pc.albedoIdx].Sample(in.uv);
         // texColor.rgb = pow(texColor.rgb, 2.2);
         baseColor *= texColor;
@@ -249,154 +324,108 @@ float4 pxmainmine(PXin in) : SV_Target {
     return float4(finalColor, baseColor.a);
 }
 
-// i forgot what this was for
-// finalColor = ACESToneMapping(finalColor);
-// finalColor = pow(finalColor, 1.0 / 2.2);
-
-// UNCOMMENT ONE LINE AT A TIME TO DEBUG
-// return baseColor;
-// return float4(N * 0.5 + 0.5, 1.0);
-// return float4(roughness, roughness, roughness, 1.0);
-// return float4(diffuseIBL, 1.0);
-// return float4(specularIBL, 1.0);
-// float3 debugMips = envMap.SampleLevel(in.uv, pc.envMapMaxLod).rgb;
-// debugMips = debugMips / (debugMips + 1.0);
-// return float4(debugMips, 1.0);
-
 [shader("pixel")]
-float4 pxmainllm(PXin in) : SV_Target {
-    float3 N = normalize(in.normal);
-    float3 V = normalize(cammats.camPos - in.worldPos);
+float4 pxpbr(PXin in) : SV_Target {
 
-    if (pc.normalIdx > 0xAAAAAAAA) {
-        float3 T = normalize(in.tangent);
-        float3 B = normalize(in.bitangent);
-        float3x3 TBN = float3x3(T, B, N);
+// float3 N = normalize(in.normal);
+// float3 T = normalize(in.tangent);
+// float3 B = normalize(in.bitangent);
+// float3x3 TBN = float3x3(T, B, N);
 
-        float3 tNorm = tex[pc.normalIdx].Sample(in.uv).rgb * 2.0 - 1.0;
-        tNorm.xy *= pc.normalScale;
-        N = normalize(mul(tNorm, TBN));
-    }
+// float3 V = normalize(cammats.camPos - in.worldPos);
 
-    float NdotV = max(dot(N, V), 1e-4);
+// if (pc.normalIdx < 0xAAAAAAAA) {
+//     float3 tNorm = tex[pc.normalIdx].Sample(in.uv).rgb * 2.0 - 1.0;
+//     tNorm *= float3(pc.normalScale, pc.normalScale, 1.0);
+//     N = normalize(mul(tNorm, TBN)); // Transform to world space
+//     // N.y *= -1.0; // GLSL sometimes flips Y, adjust if normal map looks inverted
+// }
 
-    float4 albedo = pc.baseColorFactor;
-    float roughness = pc.roughnessFactor;
-    float metallic = pc.metallicFactor;
-    float occlusion = 1.0;
-
-    // Sample Textures
-    if (pc.albedoIdx != 0xAAAAAAAA) {
-        float4 texColor = tex[pc.albedoIdx].Sample(in.uv);
-        albedo *= texColor;
-    }
-
-    if (pc.ormIdx != 0xFFFFFFFF) {
-        float4 orm = tex[pc.ormIdx].Sample(in.uv);
-        occlusion = orm.r;
-        roughness *= orm.g;
-        metallic *= orm.b;
-    }
-
-    roughness = clamp(roughness, 0.04, 1.0);
-    metallic = clamp(metallic, 0.0, 1.0);
-
-    float3 f0 = float3(0.04);
-    float3 diffuseColor = albedo.rgb * (1.0 - metallic);
-    float3 specularColor = lerp(f0, albedo.rgb, metallic);
-    float alpha = roughness * roughness;
-
-    float3 color = float3(0.0);
-
-    float3 R = reflect(-V, N);
-
-    float maxReflectionLod = 8.0;
-    float lod = roughness * maxReflectionLod;
-    float3 prefilteredColor = envMap.SampleLevel(DirToUV(R), lod).rgb;
-
-    float2 envBRDF = EnvBRDFApprox(roughness, NdotV);
-    float3 specularIBL = prefilteredColor * (specularColor * envBRDF.x + envBRDF.y);
-
-    float diffuseLod = 2.0;
-    float3 irradiance = envMap.SampleLevel(DirToUV(N), diffuseLod).rgb;
-    float3 diffuseIBL = irradiance * diffuseColor;
-
-    float aperture = 2.0 * alpha * alpha;
-    float microShadow = saturate(NdotV + aperture) - aperture;
-    // specularIBL *= microShadow;
-    diffuseIBL *= microShadow;
-
-    color += (diffuseIBL + specularIBL) * occlusion;
-
-    color = ACES_Fitted(color);
-
-    // Gamma Correction
-    // ONLY do this if your Swapchain is UNORM. If it is SRGB, delete this line.
-    // color = pow(color, 1.0 / 2.2);
-    // return float4(in.normal * 0.5 + 0.5, 1.0);
-    return float4(color, albedo.a);
+float3 N;
+if (pc.normalIdx < 0xAAAAAAAA) {
+    // temporarily bypassing tangent until i unify float4 n float3 ones
+    N = getNormalFromMap(in.worldPos, in.normal, in.uv, pc.normalIdx, pc.normalScale);
+} else {
+    // Fallback if no normal map
+    N = normalize(in.normal);
 }
-[shader("pixel")]
-float4 pxmaingem(PXin in) : SV_Target {
-    float3 N = normalize(in.normal);
-    float3 V = normalize(cammats.camPos - in.worldPos);
-    float3 R = reflect(-V, N);
 
-    if (pc.normalIdx > 0xAAAAAAAA) {
-        float3 T = normalize(in.tangent);
-        float3 B = normalize(in.bitangent);
-        float3x3 TBN = float3x3(T, B, N);
-        float3 tNorm = tex[pc.normalIdx].Sample(in.uv).rgb * 2.0 - 1.0;
-        tNorm.xy *= pc.normalScale;
-        N = normalize(mul(tNorm, TBN));
-    }
+float3 V = normalize(cammats.camPos - in.worldPos);
 
-    float NdotV = max(dot(N, V), 1e-4);
+float perceptualRoughness = pc.roughnessFactor;
+float metallic = pc.metallicFactor;
+float3 baseColor = pc.baseColorFactor.rgb * in.vColor.rgb;
+float alpha = pc.baseColorFactor.a * in.vColor.a;
 
-    float4 baseColor = pc.baseColorFactor;
-    if (pc.albedoIdx != 0xAAAAAAAA) {
-        float4 texColor = tex[pc.albedoIdx].Sample(in.uv);
-        baseColor *= texColor;
-    }
+if (pc.albedoIdx < 0xAAAAAAAA) {
+    float4 texColor = tex[pc.albedoIdx].Sample(in.uv);
+    baseColor *= texColor.rgb;
+    alpha *= texColor.a;
+}
 
-    float roughness = pc.roughnessFactor;
-    float metallic = pc.metallicFactor;
-    float occlusion = 1.0;
+if (alpha < 0.01) discard;
 
-    if (pc.ormIdx != 0xFFFFFFFF) {
-        float4 orm = tex[pc.ormIdx].Sample(in.uv);
-        occlusion = orm.r;
-        roughness *= orm.g;
-        metallic *= orm.b;
-    }
+float occlusion = 1.0;
+if (pc.ormIdx < 0xAAAAAAAA) {
+    float4 orm = tex[pc.ormIdx].Sample(in.uv);
+    occlusion = orm.r;
+    if (occlusion < 0.01) occlusion = 1.0;
+    perceptualRoughness = orm.g * perceptualRoughness;
+    metallic = orm.b * metallic;
+}
 
-    roughness = clamp(roughness, MIN_ROUGHNESS, 1.0);
-    metallic = saturate(metallic);
-    float alphaRoughness = roughness * roughness;
+perceptualRoughness = clamp(perceptualRoughness, MIN_ROUGHNESS, 1.0);
+metallic = clamp(metallic, 0.0, 1.0);
+float alphaRoughness = perceptualRoughness * perceptualRoughness;
 
-    float3 f0 = float3(0.04);
-    float3 diffuseColor = baseColor.rgb * (1.0 - metallic);
-    float3 specularColor = lerp(f0, baseColor.rgb, metallic);
+float3 f0 = float3(0.04);
+float3 diffuseColor = baseColor * (float3(1.0) - f0);
+diffuseColor *= 1.0 - metallic;
+
+float3 specularColor = lerp(f0, baseColor, metallic);
+
+float reflectance = max(max(specularColor.r, specularColor.g), specularColor.b);
+float reflectance90 = clamp(reflectance * 25.0, 0.0, 1.0);
+float3 specularEnvironmentR0 = specularColor;
+float3 specularEnvironmentR90 = float3(1.0, 1.0, 1.0) * reflectance90;
+
+float3 L = float3(0, 1, 0);
+float3 H = normalize(L + V);
+float3 reflection = normalize(reflect(-V, N));
+
+float NdotL = clamp(dot(N, L), 0.001, 1.0);
+float NdotV = clamp(abs(dot(N, V)), 0.001, 1.0);
+float NdotH = clamp(dot(N, H), 0.0, 1.0);
+float LdotH = clamp(dot(L, H), 0.0, 1.0);
+float VdotH = clamp(dot(V, H), 0.0, 1.0);
+
+PBRInfo pbrInputs;
+pbrInputs.NdotL = NdotL;
+pbrInputs.NdotV = NdotV;
+pbrInputs.NdotH = NdotH;
+pbrInputs.LdotH = LdotH;
+pbrInputs.VdotH = VdotH;
+pbrInputs.perceptualRoughness = perceptualRoughness;
+pbrInputs.metalness = metallic;
+pbrInputs.reflectance0 = specularEnvironmentR0;
+pbrInputs.reflectance90 = specularEnvironmentR90;
+pbrInputs.alphaRoughness = alphaRoughness;
+pbrInputs.diffuseColor = diffuseColor;
+pbrInputs.specularColor = specularColor;
 
 
-    float lod = roughness * float(pc.envMapMaxLod);
-    float3 prefilteredColor = envMap.SampleLevel(DirToUV(R), lod).rgb;
-    float2 envBRDF = EnvBRDFApprox(roughness, NdotV);
-    float3 specularIBL = prefilteredColor * (specularColor * envBRDF.x + envBRDF.y);
+float3 color = getIBLContribution(pbrInputs, N, reflection);
 
-    float3 irradiance = envMap.SampleLevel(DirToUV(N), float(pc.envMapMaxLod)).rgb;
-    float3 diffuseIBL = irradiance * diffuseColor;
+// ig occlusion gotta be done some other way idk about
+color = lerp(color, color *occlusion, 1.0);
 
-    float horizonOcclusion = 1.0 + occlusion;
-    specularIBL *= occlusion;
-    diffuseIBL *= occlusion;
+float3 emissive = pc.emissiveFactor;
+if (pc.emissiveIdx < 0xAAAAAAAA) {
+    emissive *= tex[pc.emissiveIdx].Sample(in.uv).rgb;
+}
+color += emissive;
 
-    float3 finalColor = diffuseIBL + specularIBL;
+color *= 0.6;
 
-    finalColor = ACESFilm(finalColor);
-
-    // 5. Gamma Correction (MANDATORY if Swapchain is UNORM)
-    // finalColor = pow(finalColor, 1.0 / 2.2);
-
-    return float4(finalColor, baseColor.a);
+return float4(color, alpha);
 }
