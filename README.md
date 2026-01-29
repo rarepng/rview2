@@ -41,23 +41,20 @@ The binary is only linked to the libraries statically.
 - vulkan 1.4+ sdk
 - Slang compiler
 - gcc 16+ or mingw 16+
-- if compiling for networked version: OpenSSL (must be gcc ABI compliant)
-#### pre-steps
-- install/make sure vulkan sdk is installed and make sure VULKAN_SDK is set and slangc is under VULKAN_SDK/Bin/ or is on path if installed elsewhere
-- install openssl on linux or build OpenSSL and ensure it's compiled and configured with mingw64 with no-shared and make sure OPENSSL_ROOT_DIR is set, msys2 can be used to make it easier, instructions follow if needed.
-- make sure resources are in resources directory
-- clone recursively```git clone --recursive``` or run either ```git pull --recurse-submodules``` or ```git submodule update --init --recursive``` after cloning to install the dependancy submodules
+- if compiling for networked version: OpenSSL (must be gcc ABI compliant) (will explain how to do that exactly on windows in the instructions section)
 
-#### steps
+
+#### instructions
+- clone recursively```git clone --recursive``` or run either ```git pull --recurse-submodules``` or ```git submodule update --init --recursive``` after cloning to install the dependancy submodules
 - download resources and extract to resources directory in repo root
-- install vulkan sdk
+- install vulkan sdk (including slang or install slang standalone (recommended))
 - install openssl
 	- window only:
 		- use msys2 (easiest) to build openssl from source
 			- cd /path/to/openssl
 			- export PATH="/path/to/mingw/bin:$PATH"
 			- export OPENSSL_USE_STATIC_LIBS=ON
-			- ./Configure --prefix=$PWD/dist no-idea no-mdc2 no-rc5 no-sharedmingw64
+			- ./Configure --prefix=$PWD/dist no-idea no-mdc2 no-rc5 no-shared mingw64
 			- make depend && make && make install
 		- set OPENSSL_ROOT_DIR environment variable to /path/to/openssl/dist or wherever u set the install prefix for openssl to
 		- compilers must match for ABI compatibility
