@@ -10,18 +10,19 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
 
 add_compile_options(
-    "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:-g>"
+    "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>,$<CONFIG:Sanitize>>:-g>"
     "$<$<CONFIG:Debug>:-Wall;-Wextra;-Wunused-variable>"
     "$<$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>>:-O3;-DNDEBUG>"
     "$<$<CONFIG:BleedingEdge>:-march=native>"
     "$<$<CONFIG:Distribution>:-march=x86-64-v3>"
+    "$<$<CONFIG:Sanitize>:-O1;-fno-omit-frame-pointer;-fsanitize=address>"
     # "$<$<CONFIG:Release>:-march=native>"
+    # way too slow
     # "$<$<CONFIG:Release>:-mstackrealign>"
 )
-
-# uncomment when debugging memory corruption
-# add_compile_options(-fsanitize=address)
-# add_link_options(-fsanitize=address)
+add_link_options(
+    "$<$<CONFIG:Sanitize>:-fsanitize=address>"
+)
 
 find_package(Vulkan REQUIRED)
 

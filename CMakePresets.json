@@ -28,7 +28,7 @@
       }
     },
     {
-      "name": "rel",
+      "name": "release",
       "inherits": "base",
       "displayName": "Release",
       "description": "Release build with GCC, Ninja, C++26",
@@ -62,6 +62,15 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "BleedingEdge"
       }
+    },
+    {
+      "name": "sanitize",
+      "inherits": "base",
+      "displayName": "Sanitize ASan",
+      "description": "for finding memory corruptions",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Sanitize"
+      }
     }
   ],
   "buildPresets": [
@@ -71,7 +80,7 @@
     },
     {
       "name": "release",
-      "configurePreset": "rel"
+      "configurePreset": "release"
     },
     {
       "name": "releasewithdebuginfo",
@@ -84,6 +93,10 @@
     {
       "name": "bleedingedge",
       "configurePreset": "bleed"
+    },
+    {
+      "name": "sanitize",
+      "configurePreset": "sanitize"
     }
   ]
 }
