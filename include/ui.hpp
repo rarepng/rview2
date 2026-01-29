@@ -13,56 +13,52 @@ struct selection {
 	size_t iidx{0};
 };
 
-class ui {
-public:
-	bool init(rvkbucket &mvkobjs);
-	void createdbgframe(rvkbucket &mvkobjs, selection &settingsz);
-	bool createloadingscreen(rvkbucket &mvkobjs);
-	bool createpausebuttons(rvkbucket &mvkobjs);
-	void addchat(std::string s);
-	void render(rvkbucket &mvkobjs, VkCommandBuffer &cbuffer);
-	void cleanup(rvkbucket &mvkobjs);
-	bool setnetwork{false};
-	void backspace();
-	bool chatfocus{false};
-	std::vector<int> playerwave;
+namespace ui {
+bool init(rvkbucket &mvkobjs);
+void createdbgframe(rvkbucket &mvkobjs, selection &settingsz);
+bool createloadingscreen(rvkbucket &mvkobjs);
+bool createpausebuttons(rvkbucket &mvkobjs);
+void addchat(std::string s);
+void render(rvkbucket &mvkobjs, VkCommandBuffer &cbuffer);
+void cleanup(rvkbucket &mvkobjs);
+void backspace();
 
-private:
-	std::string inputxt{};
-	std::vector<std::string> chattxts;
+static bool setnetwork{false};
+static bool chatfocus{false};
 
-	// unsigned int playergold;
+static std::string inputxt{};
+static std::vector<std::string> chattxts;
 
-	ppick mpick;
-	ppick aipick;
-	gstate mstate;
+static ppick mpick;
+static ppick aipick;
+static gstate mstate;
 
-	unsigned int nframes{0};
+static unsigned int nframes{0};
 
-	bool aipicking{false};
+static bool aipicking{false};
 
-	int selectednetwork{0};
+static int selectednetwork{0};
 
-	bool offline{true};
-	bool hosting{false};
-	bool connectingtohost{false};
+static bool offline{true};
+static bool hosting{false};
+static bool connectingtohost{false};
 
-	float mfps = 0.0f;
-	float mavgalpha = 0.96f;
-	std::vector<float> mfpsvalues{};
-	int mnumfpsvalues = 90;
-	std::vector<float> mframetimevalues{};
-	int mnumframetimevalues = 90;
-	std::vector<float> mmodeluploadvalues{};
-	int mnummodeluploadvalues = 90;
-	std::vector<float> mmatrixgenvalues{};
-	int mnummatrixgenvalues = 90;
-	std::vector<float> mikvalues{};
-	int mnumikvalues = 90;
-	std::vector<float> mmatrixuploadvalues{};
-	int mnummatrixuploadvalues = 90;
-	std::vector<float> muigenvalues{};
-	int mnumuigenvalues = 90;
-	std::vector<float> mmuidrawvalues{};
-	int mnummuidrawvalues = 90;
+static float mfps = 0.0f;
+static float mavgalpha = 0.96f;
+static std::vector<float> mfpsvalues{};
+static int mnumfpsvalues = 90;
+static std::vector<float> mframetimevalues{};
+static int mnumframetimevalues = 90;
+static std::vector<float> mmodeluploadvalues{};
+static int mnummodeluploadvalues = 90;
+static std::vector<float> mmatrixgenvalues{};
+static int mnummatrixgenvalues = 90;
+static std::vector<float> mikvalues{};
+static int mnumikvalues = 90;
+static std::vector<float> mmatrixuploadvalues{};
+static int mnummatrixuploadvalues = 90;
+static std::vector<float> muigenvalues{};
+static int mnumuigenvalues = 90;
+static std::vector<float> mmuidrawvalues{};
+static int mnummuidrawvalues = 90;
 };

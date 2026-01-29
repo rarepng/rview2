@@ -54,8 +54,8 @@ debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	return VK_FALSE;
 }
 
-void vkrenderer::immediate_submit(
-    std::function<void(VkCommandBuffer cbuffer)> &&fn) {
+void vkrenderer::immediate_submit(rvkbucket& mvkobjs,
+                                  std::function<void(VkCommandBuffer cbuffer)> &&fn) {
 	VkCommandBufferAllocateInfo allocInfo{
 		VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -86,7 +86,12 @@ void vkrenderer::immediate_submit(
 	vkFreeCommandBuffers(mvkobjs.vkdevice.device, mvkobjs.cpools_graphics.at(0),
 	                     1, &cbuffer);
 }
-
+std::function<void(rvkbucket::DummyTexture&,rvkbucket& mvkobjs)> destroyDummy =
+[](rvkbucket::DummyTexture& tex,rvkbucket& mvkobjs) {
+	vkDestroyImageView(mvkobjs.vkdevice.device, tex.view, nullptr);
+	vkDestroyImage(mvkobjs.vkdevice.device, tex.image, nullptr);
+	vkFreeMemory(mvkobjs.vkdevice.device, tex.memory, nullptr);
+};
 // temp
 void UpdateAllInstances(std::vector<genericinstance *> &instances) {
 	std::ranges::for_each(instances,
@@ -312,25 +317,19 @@ bool init_dummy_textures(rvkbucket &objs, VkCommandPool &cmdPool) {
 float map2(glm::vec3 x) {
 	return std::max(x.y, 0.0f);
 }
-vkrenderer::vkrenderer(SDL_Window *wind, const SDL_DisplayMode *mode,
-                       bool *mshutdown, SDL_Event *e) {
-	mvkobjs.wind = wind;
-	mvkobjs.rdmode = mode;
-	mvkobjs.e = e;
-	mvkobjs.mshutdown = mshutdown;
-}
-bool vkrenderer::init() {
+
+bool vkrenderer::init(rvkbucket& mvkobjs) {
 	std::srand(static_cast<int>(time(NULL)));
 	if (!mvkobjs.wind)
 		return false;
 	if (!std::apply(
 	[](auto &&...f) {
 	return (... && f());
-	}, std::tuple{[this]() {
-		return deviceinit() && initvma() && getqueue() &&
-		       createswapchain() && createdepthbuffer() &&
-		       createcommandpool() && createcommandbuffer() &&
-		       createsyncobjects() && createpools() && initcpuQs() &&
+	}, std::tuple{[&mvkobjs]() {
+		return initvma(mvkobjs) && getqueue(mvkobjs) &&
+		       createswapchain(mvkobjs) && createdepthbuffer(mvkobjs) &&
+		       createcommandpool(mvkobjs) && createcommandbuffer(mvkobjs) &&
+		       createsyncobjects(mvkobjs) && createpools(mvkobjs) && initcpuQs(mvkobjs) &&
 		       init_global_samplers(mvkobjs) &&
 		       init_dummy_textures(mvkobjs,
 		                           mvkobjs.cpools_graphics.at(0)) &&
@@ -344,7 +343,7 @@ bool vkrenderer::init() {
 	mvkobjs.height = mvkobjs.schain.extent.height;
 	mvkobjs.width = mvkobjs.schain.extent.width;
 
-	if (initui()) {
+	if (initui(mvkobjs)) {
 		ImGuiIO &io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
 	} else
@@ -354,10 +353,10 @@ bool vkrenderer::init() {
 
 	return true;
 }
-bool vkrenderer::initcpuQs() {
+bool vkrenderer::initcpuQs(rvkbucket& mvkobjs) {
 	return mvkobjs.sbelt.init(mvkobjs.alloc, 256 * 1024 * 1024);
 }
-bool vkrenderer::initscene() {
+bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 	mplayer.reserve(playerfname.size());
 	mplayer.resize(playerfname.size());
 
@@ -388,170 +387,24 @@ bool vkrenderer::initscene() {
 
 	return true;
 }
-ui *vkrenderer::getuihandle() {
-	return &mui;
-}
-
-bool vkrenderer::deviceinit() {
-	vkb::InstanceBuilder instbuild{};
-
-	auto instret = instbuild.use_default_debug_messenger()
-	               .request_validation_layers()
-	               .set_debug_callback(debugCallback)
-	               .require_api_version(1, 4)
-	               .build();
-	// auto instret = instbuild.require_api_version(1, 4).build();
-
-	if (!instret) {
-		std::cout << instret.full_error().type << std::endl;
-		std::cout << instret.full_error().vk_result << std::endl;
-		return false;
-	}
-	mvkobjs.inst = instret.value();
-
-	uint32_t gpuCount = 0;
-	vkEnumeratePhysicalDevices(instret.value(), &gpuCount, nullptr);
-	std::vector<VkPhysicalDevice> gpus(gpuCount);
-	vkEnumeratePhysicalDevices(instret.value(), &gpuCount, gpus.data());
-
-	for (auto gpu : gpus) {
-		VkPhysicalDeviceProperties props;
-		vkGetPhysicalDeviceProperties(gpu, &props);
-		std::cout << "available GPU: " << props.deviceName << std::endl;
-	}
-
-	bool res{false};
-	res =
-	    SDL_Vulkan_CreateSurface(mvkobjs.wind, mvkobjs.inst, nullptr, &msurface);
-	if (!res) {
-		std::cout << "SDL failed to create surface" << std::endl;
-		return false;
-	}
-
-	vkb::PhysicalDeviceSelector physicaldevsel{mvkobjs.inst};
-	auto firstphysicaldevselret =
-	    physicaldevsel.set_surface(msurface).set_minimum_version(1, 4).select();
-	if (!firstphysicaldevselret) {
-		std::cout << "CRITICAL ERROR: First GPU Selection Failed!" << std::endl;
-		std::cout << "Reason: " << firstphysicaldevselret.error().message()
-		          << std::endl;
-		return false;
-	}
-	VkPhysicalDeviceVulkan14Features physfeatures14{};
-	VkPhysicalDeviceVulkan13Features physfeatures13{};
-	VkPhysicalDeviceVulkan12Features physfeatures12{};
-	VkPhysicalDeviceVulkan11Features physfeatures11{};
-	VkPhysicalDeviceFeatures2 physfeatures{};
-
-	physfeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-	physfeatures11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-	physfeatures12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-	physfeatures13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-	physfeatures14.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
-
-	physfeatures.pNext = &physfeatures11;
-	physfeatures11.pNext = &physfeatures12;
-	physfeatures12.pNext = &physfeatures13;
-	physfeatures13.pNext = &physfeatures14;
-	physfeatures14.pNext = VK_NULL_HANDLE;
-	vkb::PhysicalDeviceSelector second_selector{mvkobjs.inst};
-
-	VkPhysicalDeviceRayQueryFeaturesKHR ray_query_feats = {};
-	ray_query_feats.sType =
-	    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
-	ray_query_feats.rayQuery = VK_TRUE;
-
-	VkPhysicalDeviceAccelerationStructureFeaturesKHR as_feats = {};
-	as_feats.sType =
-	    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
-	as_feats.accelerationStructure = VK_TRUE;
-
-	physfeatures12.bufferDeviceAddress = VK_TRUE;
-	physfeatures12.runtimeDescriptorArray = VK_TRUE;
-	physfeatures12.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
-	physfeatures12.shaderFloat16 = VK_TRUE;
-
-	vkGetPhysicalDeviceFeatures2(firstphysicaldevselret.value(), &physfeatures);
-	auto secondphysicaldevselret =
-	    second_selector.set_minimum_version(1, 4)
-	    .set_surface(msurface)
-	    .set_required_features(physfeatures.features)
-	    .set_required_features_11(physfeatures11)
-	    .set_required_features_12(physfeatures12)
-	    .set_required_features_13(physfeatures13)
-	    .set_required_features_14(physfeatures14)
-	    .add_required_extension(VK_KHR_RAY_QUERY_EXTENSION_NAME)
-	    .add_required_extension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)
-	    .add_required_extension(
-	        VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME)
-	    .add_required_extension(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)
-	    .add_required_extension(VK_KHR_SPIRV_1_4_EXTENSION_NAME)
-	    .add_required_extension(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME)
-	    .add_required_extension_features(ray_query_feats)
-	    .add_required_extension_features(as_feats)
-	    .select();
-	// //get last discrete device [[[for optimus laptops]]] [[[bad fix]]]
-	// if(gpus.size() > 1){
-	// 	for(const auto& gpu:gpus){
-	// 		VkPhysicalDeviceProperties props;
-	// 		vkGetPhysicalDeviceProperties(gpu, &props);
-	// 		if(props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
-	// 			mvkobjs.physdev = vkb::PhysicalDevice{instret,gpu};
-	// 	}
-	// }else{
-	if (!secondphysicaldevselret) {
-		std::cerr << "couldnt find appropriate gpu "
-		          << secondphysicaldevselret.error().message() << std::endl;
-		return false;
-	}
-
-	mvkobjs.physdev = secondphysicaldevselret.value();
-
-	vkb::DeviceBuilder devbuilder{mvkobjs.physdev};
-	auto devbuilderret = devbuilder.build();
-	if (!devbuilderret) {
-		std::cerr << "couldnt create device " << devbuilderret.error().message()
-		          << "\n";
-		return false;
-	}
-	mvkobjs.vkdevice = devbuilderret.value();
-
-	// }
-
-	VkPhysicalDeviceProperties props{};
-	vkGetPhysicalDeviceProperties(mvkobjs.physdev, &props);
-	std::cout << "Using GPU: " << props.deviceName << std::endl;
-
-	mminuniformbufferoffsetalignment =
-	    mvkobjs.physdev.properties.limits.minUniformBufferOffsetAlignment;
-
-	// VkSurfaceCapabilitiesKHR surcap;
-	// vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mvkobjs.rdvkbdevice.physical_device,
-	// mvkobjs.rdvkbphysdev.surface, &surcap); unsigned int excount{};
-	// vkEnumerateDeviceExtensionProperties(mvkobjs.rdvkbdevice.physical_device,
-	// nullptr, &excount, nullptr); std::vector<VkExtensionProperties>
-	// exvec(excount);
-	// vkEnumerateDeviceExtensionProperties(mvkobjs.rdvkbdevice.physical_device,
-	// nullptr, &excount, exvec.data()); for(const auto& x:exvec)std::cout << "ext
-	// name: " << x.extensionName << " " << std::endl << "version: " <<
-	// x.specVersion << std::endl;
-
-	return true;
-}
-bool vkrenderer::initvma() {
+bool vkrenderer::initvma(rvkbucket& mvkobjs) {
 	VmaAllocatorCreateInfo allocinfo{};
 	allocinfo.vulkanApiVersion = VK_API_VERSION_1_4;
-	allocinfo.physicalDevice = mvkobjs.physdev.physical_device;
+	allocinfo.physicalDevice = mvkobjs.vkdevice.physical_device;
 	allocinfo.device = mvkobjs.vkdevice.device;
 	allocinfo.instance = mvkobjs.inst.instance;
-	//dbg only
-	allocinfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+	VmaVulkanFunctions vma_functions{};
+	vma_functions.vkGetInstanceProcAddr = mvkobjs.inst.fp_vkGetInstanceProcAddr;
+	vma_functions.vkGetDeviceProcAddr = mvkobjs.inst.fp_vkGetDeviceProcAddr;
+	allocinfo.pVulkanFunctions = &vma_functions;
+	//dbg only require VK_EXT_MEMORY_BUDGET_EXTENSION_NAME
+	// allocinfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
 	if (vmaCreateAllocator(&allocinfo, &mvkobjs.alloc) != VK_SUCCESS) {
 		return false;
 	}
 	return true;
 }
-bool vkrenderer::getqueue() {
+bool vkrenderer::getqueue(rvkbucket& mvkobjs) {
 	auto graphqueueret = mvkobjs.vkdevice.get_queue(vkb::QueueType::graphics);
 	mvkobjs.graphicsQ = graphqueueret.value();
 	auto presentqueueret = mvkobjs.vkdevice.get_queue(vkb::QueueType::present);
@@ -563,7 +416,7 @@ bool vkrenderer::getqueue() {
 
 	return true;
 }
-bool vkrenderer::createpools() {
+bool vkrenderer::createpools(rvkbucket& mvkobjs) {
 	std::array<VkDescriptorPoolSize, 3> poolz{
 		{	{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 24},
 			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2},
@@ -572,7 +425,7 @@ bool vkrenderer::createpools() {
 	return rpool::create(poolz, mvkobjs.vkdevice.device,
 	                     &mvkobjs.dpools[rvkbucket::idxinitpool]);
 }
-bool vkrenderer::createdepthbuffer() {
+bool vkrenderer::createdepthbuffer(rvkbucket& mvkobjs) {
 	VkExtent3D depthimageextent = {mvkobjs.schain.extent.width,
 	                               mvkobjs.schain.extent.height, 1
 	                              };
@@ -619,12 +472,12 @@ bool vkrenderer::createdepthbuffer() {
 
 	return true;
 }
-bool vkrenderer::createswapchain() {
+bool vkrenderer::createswapchain(rvkbucket& mvkobjs) {
 	vkb::SwapchainBuilder swapchainbuild{mvkobjs.vkdevice};
 
 	VkSurfaceCapabilitiesKHR surcap;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mvkobjs.vkdevice.physical_device,
-	        msurface, &surcap);
+	        mvkobjs.surface, &surcap);
 
 	swapchainbuild.set_composite_alpha_flags((
 	            VkCompositeAlphaFlagBitsKHR)(surcap.supportedCompositeAlpha & 8 ? 8 : 1));
@@ -643,7 +496,7 @@ bool vkrenderer::createswapchain() {
 	mvkobjs.schainimgviews = mvkobjs.schain.get_image_views().value();
 	return true;
 }
-bool vkrenderer::recreateswapchain() {
+bool vkrenderer::recreateswapchain(rvkbucket& mvkobjs) {
 	SDL_GetWindowSize(mvkobjs.wind, &mvkobjs.width, &mvkobjs.height);
 
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
@@ -654,15 +507,15 @@ bool vkrenderer::recreateswapchain() {
 
 	mvkobjs.schain.destroy_image_views(mvkobjs.schainimgviews);
 
-	if (!createswapchain()) {
+	if (!createswapchain(mvkobjs)) {
 		return false;
 	}
-	if (!createdepthbuffer()) {
+	if (!createdepthbuffer(mvkobjs)) {
 		return false;
 	}
 	return true;
 }
-bool vkrenderer::createcommandpool() {
+bool vkrenderer::createcommandpool(rvkbucket& mvkobjs) {
 	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_graphics,vkb::QueueType::graphics)) [[unlikely]] {
 		return false;
 	}
@@ -674,7 +527,7 @@ bool vkrenderer::createcommandpool() {
 	}
 	return true;
 }
-bool vkrenderer::createcommandbuffer() {
+bool vkrenderer::createcommandbuffer(rvkbucket& mvkobjs) {
 	for (auto [cpool, cbuffers] : std::views::zip(mvkobjs.cpools_graphics, mvkobjs.cbuffers_graphics)) {
 		if (!commandbuffer::create(mvkobjs, cpool, cbuffers)) [[unlikely]] {
 			return false;
@@ -692,23 +545,23 @@ bool vkrenderer::createcommandbuffer() {
 	}
 	return true;
 }
-bool vkrenderer::createsyncobjects() {
+bool vkrenderer::createsyncobjects(rvkbucket& mvkobjs) {
 	if (!vksyncobjects::init(mvkobjs))
 		return false;
 	return true;
 }
-bool vkrenderer::initui() {
-	if (!mui.init(mvkobjs))
+bool vkrenderer::initui(rvkbucket& mvkobjs) {
+	if (!ui::init(mvkobjs))
 		return false;
 	return true;
 }
-void vkrenderer::cleanup() {
+void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
 
 	particle::destroyeveryting(mvkobjs);
 
-	mui.cleanup(mvkobjs);
+	ui::cleanup(mvkobjs);
 
 	vksyncobjects::cleanup(mvkobjs);
 	for (auto &x : mvkobjs.dpools)
@@ -765,10 +618,10 @@ void vkrenderer::cleanup() {
 
 	vmaDestroyAllocator(mvkobjs.alloc);
 
-	destroyDummy(mvkobjs.defaults.purple);
-	destroyDummy(mvkobjs.defaults.white);
-	destroyDummy(mvkobjs.defaults.normal);
-	destroyDummy(mvkobjs.defaults.black);
+	destroyDummy(mvkobjs.defaults.purple,mvkobjs);
+	destroyDummy(mvkobjs.defaults.white,mvkobjs);
+	destroyDummy(mvkobjs.defaults.normal,mvkobjs);
+	destroyDummy(mvkobjs.defaults.black,mvkobjs);
 
 	for (const auto &i : mvkobjs.samplerz)
 		vkDestroySampler(mvkobjs.vkdevice, i, nullptr);
@@ -777,11 +630,11 @@ void vkrenderer::cleanup() {
 	vkb::destroy_swapchain(mvkobjs.schain);
 
 	vkb::destroy_device(mvkobjs.vkdevice);
-	vkb::destroy_surface(mvkobjs.inst.instance, msurface);
+	vkb::destroy_surface(mvkobjs.inst.instance, mvkobjs.surface);
 	vkb::destroy_instance(mvkobjs.inst);
 }
 
-void vkrenderer::setsize(unsigned int w, unsigned int h) {
+void vkrenderer::setsize(rvkbucket& mvkobjs,unsigned int w, unsigned int h) {
 	mvkobjs.width = w;
 	mvkobjs.height = h;
 	if (!w || !h)
@@ -797,7 +650,7 @@ void vkrenderer::setsize(unsigned int w, unsigned int h) {
 		                         0.002f, 2000.0f);
 }
 
-bool vkrenderer::uploadfordraw(VkCommandBuffer cbuffer) {
+bool vkrenderer::uploadfordraw(rvkbucket& mvkobjs,VkCommandBuffer cbuffer) {
 	manimupdatetimer.start();
 
 	for (const auto &i : mplayer)
@@ -805,7 +658,7 @@ bool vkrenderer::uploadfordraw(VkCommandBuffer cbuffer) {
 	return true;
 }
 
-bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric> &x) {
+bool vkrenderer::uploadfordraw(rvkbucket& mvkobjs,std::shared_ptr<playoutgeneric> &x) {
 	manimupdatetimer.start();
 
 	x->uploadvboebo(mvkobjs,
@@ -816,7 +669,7 @@ bool vkrenderer::uploadfordraw(std::shared_ptr<playoutgeneric> &x) {
 	return true;
 }
 
-void vkrenderer::sdlevent(const SDL_Event& e) {
+void vkrenderer::sdlevent(rvkbucket& mvkobjs,const SDL_Event& e) {
 	switch (e.type) {
 	case SDL_EVENT_KEY_DOWN:
 		[[likely]]
@@ -851,7 +704,7 @@ void vkrenderer::sdlevent(const SDL_Event& e) {
 				}
 				break;
 			case SDLK_ESCAPE:
-				if (is_down) *mvkobjs.mshutdown = true;
+				if (is_down) mvkobjs.mshutdown = true;
 				break;
 			}
 			break;
@@ -870,7 +723,7 @@ void vkrenderer::sdlevent(const SDL_Event& e) {
 			while (SDL_WaitEvent(&min_event)) {
 				if (min_event.type == SDL_EVENT_WINDOW_RESTORED) break;
 				if (min_event.type == SDL_EVENT_QUIT) {
-					*mvkobjs.mshutdown = true;
+					mvkobjs.mshutdown = true;
 					break;
 				}
 			}
@@ -881,7 +734,7 @@ void vkrenderer::sdlevent(const SDL_Event& e) {
 		[[unlikely]]
 		{
 			std::string fname = e.drop.data;
-			pending_loads.push_back(std::async(std::launch::async, [this, fname]() {
+			pending_loads.push_back(std::async(std::launch::async, [&mvkobjs, fname]() {
 				auto newp = std::make_shared<playoutgeneric>();
 
 				bool success = newp->setup(mvkobjs, fname.c_str(), 1,
@@ -908,7 +761,7 @@ void vkrenderer::moveplayer() {
 	s.msworldpos = playermoveto;
 }
 
-void vkrenderer::movecam() {
+void vkrenderer::movecam(rvkbucket& mvkobjs) {
 	static ImGuiIO* io = &ImGui::GetIO();
 	float mx, my;
 	const SDL_MouseButtonFlags mouseMask = SDL_GetMouseState(&mx, &my);
@@ -987,8 +840,8 @@ glm::vec3 vkrenderer::navmeshnormal(float x, float z) {
 	return glm::vec3{0.0f, 1.0f, 0.0f};
 }
 
-void vkrenderer::checkforanimupdates() {
-	while (!*mvkobjs.mshutdown) {
+void vkrenderer::checkforanimupdates(rvkbucket& mvkobjs) {
+	while (!mvkobjs.mshutdown) {
 		muidrawtimer.start();
 		// updatemtx.lock();
 		for (const auto &i : mplayer)
@@ -997,8 +850,8 @@ void vkrenderer::checkforanimupdates() {
 	}
 }
 
-void vkrenderer::updateanims() {
-	while (!*mvkobjs.mshutdown) {
+void vkrenderer::updateanims(rvkbucket& mvkobjs) {
+	while (!mvkobjs.mshutdown) {
 		manimupdatetimer.start();
 		for (const auto &i : mplayer)
 			i->updateanims();
@@ -1006,7 +859,7 @@ void vkrenderer::updateanims() {
 	}
 }
 
-bool vkrenderer::draw() {
+bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 	if (vkWaitForFences(mvkobjs.vkdevice.device, 1,
 	                    &mvkobjs.fencez.at(rvkbucket::currentFrame), VK_TRUE,
@@ -1036,7 +889,7 @@ bool vkrenderer::draw() {
 	                   mvkobjs.vkdevice.device, mvkobjs.schain.swapchain, UINT64_MAX,
 	                   mvkobjs.semaphorez[0][rvkbucket::currentFrame], VK_NULL_HANDLE, &imgidx);
 	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
-		return recreateswapchain();
+		return recreateswapchain(mvkobjs);
 	} else {
 		if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) {
 			return false;
@@ -1076,14 +929,14 @@ bool vkrenderer::draw() {
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) {
 		ImGui_ImplSDL3_ProcessEvent(&e);
-		sdlevent(e);
+		sdlevent(mvkobjs,e);
 	}
 	if (!pending_loads.empty()) {
 		std::erase_if(pending_loads, [](auto& f) {
 			return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
 		});
 	}
-	movecam();
+	movecam(mvkobjs);
 
 	VkCommandBufferBeginInfo cmdbgninfo{};
 	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1096,7 +949,7 @@ bool vkrenderer::draw() {
 
 	// idfk
 	for (auto it = mplayerbuffer.begin(); it != mplayerbuffer.end();) {
-		uploadfordraw(*it);
+		uploadfordraw(mvkobjs,*it);
 		mplayer.push_back(std::move(*it));
 		mplayerbuffer.erase(it);
 		selectiondata.instancesettings.emplace_back();
@@ -1222,12 +1075,9 @@ bool vkrenderer::draw() {
 		i->draw(mvkobjs);
 	// VkDrawIndexedIndirectCommand();
 
-	lifetime = static_cast<double>(SDL_GetTicks()) / 1000.0;
-	lifetime2 = static_cast<double>(SDL_GetTicks()) / 1000.0;
+	ui::createdbgframe(mvkobjs, selectiondata);
 
-	mui.createdbgframe(mvkobjs, selectiondata);
-
-	mui.render(mvkobjs, mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame));
+	ui::render(mvkobjs, mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame));
 
 	vkCmdEndRendering(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame));
 	// vkCmdEndRenderPass(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame));
@@ -1314,7 +1164,7 @@ bool vkrenderer::draw() {
 	mvkobjs.mtx2->unlock();
 
 	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
-		return recreateswapchain();
+		return recreateswapchain(mvkobjs);
 	} else {
 		if (res != VK_SUCCESS) {
 			return false;

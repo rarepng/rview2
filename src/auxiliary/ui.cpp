@@ -61,7 +61,7 @@ bool ui::init(rvkbucket &renderData) {
 
 	ImGui_ImplVulkan_InitInfo imguiIinitInfo{};
 	imguiIinitInfo.Instance = renderData.inst.instance;
-	imguiIinitInfo.PhysicalDevice = renderData.physdev.physical_device;
+	imguiIinitInfo.PhysicalDevice = renderData.vkdevice.physical_device;
 	imguiIinitInfo.Device = renderData.vkdevice.device;
 	imguiIinitInfo.Queue = renderData.graphicsQ;
 	imguiIinitInfo.DescriptorPool = renderData.dpools[rvkbucket::idximguipool];
@@ -800,7 +800,7 @@ bool ui::createpausebuttons(rvkbucket &mvkobjs) {
 	ImGui::PushFont(io.Fonts->Fonts[0]);
 	ImGui::PopFont();
 	if (ImGui::Button("EXIT", {400, 120}))
-		*mvkobjs.mshutdown = true;
+		mvkobjs.mshutdown = true;
 	ImGui::PopStyleColor(7);
 	ImGui::PopStyleVar(0);
 	ImGui::EndGroup();

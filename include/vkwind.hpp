@@ -7,17 +7,8 @@
 #include <string>
 #include <vulkan/vulkan.h>
 
-class vkwind {
-public:
-	bool init(std::string title);
-	void frameupdate();
-	void cleanup();
-
-	SDL_Event *e{new SDL_Event{}};
-	bool shutdown{false};
-
-private:
-	SDL_Window *mwind = nullptr;
-	std::unique_ptr<vkrenderer> mvkrenderer;
-	ui *mui = nullptr;
+namespace vkwind {
+bool init(std::string title, rvkbucket& mvkobjs);
+void frameupdate(rvkbucket& mvkobjs);
+void cleanup(rvkbucket& mvkobjs);
 };

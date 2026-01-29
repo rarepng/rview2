@@ -60,7 +60,7 @@ struct jmats {
 
 [vk_push_constant] ConstantBuffer<consts> pc;
 [[vk::binding(0, 1)]] ConstantBuffer<cams> cammats;
-[[vk::binding(0, 2)]] RWStructuredBuffer<jmats> jmatbuffer;
+[[vk::binding(0, 2)]] StructuredBuffer<jmats> jmatbuffer;
 
 struct PBRInfo {
     float NdotL;

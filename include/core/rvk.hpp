@@ -14,12 +14,19 @@
 #include <functional>
 #include <execution>
 
+
+struct rctx {
+
+	//function pointer (hopefully)
+	PFN_vkCmdDrawMeshTasksEXT cmdDrawMeshTasks;
+};
+
 // future proof: gotta make everything use this now big TODO
 struct DeletionQueue {
-	std::deque<std::function<void()>> deletors;
+	std::vector<std::move_only_function<void()>> deletors;
 
-	void push_function(std::function<void()>&& function) {
-		deletors.push_back(function);
+	void push_function(std::move_only_function<void()>&& function) {
+		deletors.push_back(std::move(function));
 	}
 
 	void flush() {
@@ -83,11 +90,13 @@ struct texdata {
 	VkImageView imgview = VK_NULL_HANDLE;
 	VkSampler imgsampler = VK_NULL_HANDLE;
 	VmaAllocation alloc = nullptr;
+	uint32_t bindless_idx = 0;
 };
 
 struct GpuBuffer {
 	VkBuffer buffer = VK_NULL_HANDLE;
 	VmaAllocation alloc = nullptr;
+	VkDeviceAddress address = 0;
 	VkDeviceSize size = 0;
 };
 
@@ -145,6 +154,10 @@ struct vkpushconstants {
 // static_assert(sizeof(vkpushconstants) == 128, "Struct size mismatch!");
 struct rvkbucket {
 
+	rctx ctx{};
+
+	VkSurfaceKHR surface{};
+
 	DeletionQueue deletionQ{};
 	DeletionQueue cleanupQ{};
 	StagingBelt sbelt{};
@@ -157,6 +170,9 @@ struct rvkbucket {
 	inline static uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!! different devices might not serve 3 swapchain images
 	inline static uint32_t currentFrame{0};
 	inline static uint32_t hdrmiplod{0};
+
+
+	std::array<DeletionQueue,3> framedeletionQ{};
 
 	struct DummyTexture {
 		VkImage image = VK_NULL_HANDLE;
@@ -182,7 +198,7 @@ struct rvkbucket {
 	unsigned int gltftricount{0};
 	float fov = 1.0472f;
 
-	SDL_Event *e;
+	SDL_Event *e{new SDL_Event{}};
 
 	float frametime{0.0f};
 	float updateanimtime{0.0f};
@@ -192,7 +208,7 @@ struct rvkbucket {
 	float rduigeneratetime{0.0f};
 	float rduidrawtime{0.0f};
 
-	bool *mshutdown{nullptr};
+	bool mshutdown{false};
 
 	float loadingprog{0.0f};
 
@@ -211,7 +227,6 @@ struct rvkbucket {
 	VmaAllocator alloc = nullptr;
 
 	vkb::Instance inst{};
-	vkb::PhysicalDevice physdev{};
 	vkb::Device vkdevice{};
 	vkb::Swapchain schain{};
 
@@ -227,6 +242,12 @@ struct rvkbucket {
 	VkQueue presentQ = VK_NULL_HANDLE;
 	VkQueue computeQ = VK_NULL_HANDLE;
 	VkQueue transferQ = VK_NULL_HANDLE;
+
+	uint32_t graphicsQidx{};
+	uint32_t presentQidx{};
+	uint32_t computeQidx{};
+	uint32_t transferQidx{};
+
 
 	VkImage rddepthimage = VK_NULL_HANDLE;
 	VkImageView rddepthimageview = VK_NULL_HANDLE;
