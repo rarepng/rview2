@@ -1,0 +1,89 @@
+{
+  "version": 4,
+  "cmakeMinimumRequired": {
+    "major": 4,
+    "minor": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "description": "minimum",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_CXX_STANDARD": "26",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "dbg",
+      "inherits": "base",
+      "displayName": "Debug",
+      "description": "Debug build with GCC, Ninja, C++26",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "rel",
+      "inherits": "base",
+      "displayName": "Release",
+      "description": "Release build with GCC, Ninja, C++26",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "relwdbg",
+      "inherits": "base",
+      "displayName": "Release w Debug Info",
+      "description": "Release with GDB Symbols",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWDbg"
+      }
+    },
+    {
+      "name": "dist",
+      "inherits": "base",
+      "displayName": "Distribution",
+      "description": " HW RT no AVX512",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Distribution"
+      }
+    },
+    {
+      "name": "bleed",
+      "inherits": "base",
+      "displayName": "bleeding edge",
+      "description": "was going to be the avx-512 builds",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "BleedingEdge"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "dbg"
+    },
+    {
+      "name": "release",
+      "configurePreset": "rel"
+    },
+    {
+      "name": "releasewithdebuginfo",
+      "configurePreset": "relwdbg"
+    },
+    {
+      "name": "distribution",
+      "configurePreset": "dist"
+    },
+    {
+      "name": "bleedingedge",
+      "configurePreset": "bleed"
+    }
+  ]
+}

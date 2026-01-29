@@ -10,15 +10,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
 
 add_compile_options(
-    "$<$<CONFIG:Debug>:-Wall>"
-    "$<$<CONFIG:Debug>:-Wextra>"
-    "$<$<CONFIG:Debug>:-Wunused-variable>"
-    "$<$<CONFIG:Release>:-O3>"
-    "$<$<CONFIG:Release>:-DNDEBUG>"
-    "$<$<CONFIG:Release>:-march=native>"
-    "$<$<CONFIG:Release>:-mstackrealign>"
-    # comment -g for distribution build
-    "$<$<CONFIG:Release>:-g>"
+    "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:-g>"
+    "$<$<CONFIG:Debug>:-Wall;-Wextra;-Wunused-variable>"
+    "$<$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>>:-O3;-DNDEBUG>"
+    "$<$<CONFIG:BleedingEdge>:-march=native>"
+    "$<$<CONFIG:Distribution>:-march=x86-64-v3>"
+    # "$<$<CONFIG:Release>:-march=native>"
+    # "$<$<CONFIG:Release>:-mstackrealign>"
 )
 
 # uncomment when debugging memory corruption
