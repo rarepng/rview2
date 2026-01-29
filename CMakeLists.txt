@@ -146,6 +146,9 @@ set(FASTGLTF_COMPILE_AS_CPP20 ON CACHE BOOL "set" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "set" FORCE)
 
 
+# will have to add the rest later..
+set(FASTGLTF_INSTALL OFF CACHE BOOL "no install for fastgltf" FORCE)
+set(VkBootstrap_INSTALL OFF CACHE BOOL "no vkb install either" FORCE)
 
 
 add_subdirectory(${submodules_path}/simdjson)
@@ -182,15 +185,16 @@ target_sources(rview2
             mods/tex.cxxm
 )
 
+# consider only statically -static-libgcc -static-libstdc++ idk
+target_link_options(rview2 PRIVATE
+    "$<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>>:-static>"
+    # no idea here..
+    # "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWDbg>,$<CONFIG:Sanitize>>:-static>"
 
-if(UNIX)
-set_target_properties(rview2 PROPERTIES CMAKE_CXX_FLAGS '-static')
-else()
-# set_target_properties(rview2 PROPERTIES CMAKE_CXX_FLAGS '-static\ -mwindows')
-set_target_properties(rview2 PROPERTIES CMAKE_CXX_FLAGS '-static')
-endif()
+    "$<$<AND:$<PLATFORM_ID:Windows>,$<OR:$<CONFIG:Distribution>,$<CONFIG:Release>,$<CONFIG:BleedingEdge>>>:-mwindows>"
+)
 
-file(GLOB shaders ${PROJECT_BINARY_DIR}/shaders/*)
+file(GLOB_RECURSE shaders ${PROJECT_BINARY_DIR}/shaders/*)
 list(LENGTH shaders shader_len)
 
 # #wip
@@ -205,22 +209,24 @@ list(LENGTH shaders shader_len)
         COMMAND ${SHELL_CMD} -c "slangc -entry pxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage pixel -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/particle.slang -o ${PROJECT_BINARY_DIR}/shaders/ppx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/particle.slang
         COMMAND ${SHELL_CMD} -c "slangc -entry cxmain $<$<CONFIG:Debug>:-g> $<$<CONFIG:Release>:-O3> -stage compute -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/particle.slang -o ${PROJECT_BINARY_DIR}/shaders/pcx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/particle.slang
         )
-      list(APPEND SPIRV_BINARY_FILES ${PROJECT_BINARY_DIR}/shaders/vx.spv ${PROJECT_BINARY_DIR}/shaders/px.spv ${PROJECT_BINARY_DIR}/shaders/cx.spv ${PROJECT_BINARY_DIR}/shaders/pvx.spv ${PROJECT_BINARY_DIR}/shaders/ppx.spv ${PROJECT_BINARY_DIR}/shaders/pcx.spv)
+      list(APPEND SPIRV_BINARY_FILES ${PROJECT_BINARY_DIR}/shaders/vx.spv ${PROJECT_BINARY_DIR}/shaders/px.spv
+    #    ${PROJECT_BINARY_DIR}/shaders/cx.spv
+        ${PROJECT_BINARY_DIR}/shaders/pvx.spv ${PROJECT_BINARY_DIR}/shaders/ppx.spv ${PROJECT_BINARY_DIR}/shaders/pcx.spv)
     set_source_files_properties(${SPIRV_BINARY_FILES} PROPERTIES GENERATED TRUE)
   add_custom_target(shaders ALL DEPENDS ${SPIRV_BINARY_FILES})
   add_dependencies(rview2 shaders)
 
 
-
-
-set(resources_bin_dir "${PROJECT_BINARY_DIR}/resources")
+file(GLOB_RECURSE RESOURCE_FILES "${PROJECT_SOURCE_DIR}/resources/*")
 add_custom_command(
-    OUTPUT ${resources_bin_dir}
+    OUTPUT "${PROJECT_BINARY_DIR}/resources.stamp"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/resources"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/resources" "${PROJECT_BINARY_DIR}/resources"
-    DEPENDS "${PROJECT_SOURCE_DIR}/resources"
+    COMMAND ${CMAKE_COMMAND} -E touch "${PROJECT_BINARY_DIR}/resources.stamp"
+    DEPENDS ${RESOURCE_FILES}
 )
-add_custom_target(resources_bin_deps DEPENDS ${PROJECT_BINARY_DIR}/resources)
-add_dependencies(rview2 resources_bin_deps)
+add_custom_target(resources_copy ALL DEPENDS "${PROJECT_BINARY_DIR}/resources.stamp")
+add_dependencies(rview2 resources_copy)
 
 
 
@@ -381,3 +387,8 @@ target_include_directories(rview2
 
 set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/resources)
 set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/shaders)
+
+install(TARGETS rview2 RUNTIME DESTINATION .)
+install(FILES ${SPIRV_BINARY_FILES} DESTINATION shaders)
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/resources/" DESTINATION resources)
+
