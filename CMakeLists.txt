@@ -16,6 +16,7 @@ add_compile_options(
     "$<$<CONFIG:Release>:-O3>"
     "$<$<CONFIG:Release>:-DNDEBUG>"
     "$<$<CONFIG:Release>:-march=native>"
+    "$<$<CONFIG:Release>:-mstackrealign>"
 )
 
 # uncomment when debugging memory corruption
@@ -180,7 +181,8 @@ target_sources(rview2
 if(UNIX)
 set_target_properties(rview2 PROPERTIES CMAKE_CXX_FLAGS '-static')
 else()
-set_target_properties(rview2 PROPERTIES CMAKE_CXX_FLAGS '-static\ -mwindows')
+# set_target_properties(rview2 PROPERTIES CMAKE_CXX_FLAGS '-static\ -mwindows')
+set_target_properties(rview2 PROPERTIES CMAKE_CXX_FLAGS '-static')
 endif()
 
 file(GLOB shaders ${PROJECT_BINARY_DIR}/shaders/*)

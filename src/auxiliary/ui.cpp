@@ -79,7 +79,7 @@ bool ui::init(rvkbucket &renderData) {
 
 	ImGui::StyleColorsDark();
 
-	ImGui_ImplSDL3_ProcessEvent(renderData.e);
+	ImGui_ImplSDL3_ProcessEvent(&renderData.e);
 
 	/* init plot vectors */
 	mfpsvalues.reserve(mnumfpsvalues);
@@ -107,7 +107,7 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 	ImGui_ImplSDL3_NewFrame();
 	ImGui::NewFrame();
 
-	ImGui_ImplSDL3_ProcessEvent(renderData.e);
+	ImGui_ImplSDL3_ProcessEvent(&renderData.e);
 
 	{
 		ImGuiWindowFlags imguiWindowFlags = 0;
@@ -720,7 +720,7 @@ bool ui::createloadingscreen(rvkbucket &mvkobjs) {
 
 	ImGuiIO &io = ImGui::GetIO();
 
-	ImGui_ImplSDL3_ProcessEvent(mvkobjs.e);
+	ImGui_ImplSDL3_ProcessEvent(&mvkobjs.e);
 
 	ImGuiWindowFlags imguiWindowFlags = 0;
 	imguiWindowFlags |= ImGuiWindowFlags_NoBackground;
@@ -750,7 +750,7 @@ bool ui::createpausebuttons(rvkbucket &mvkobjs) {
 
 	ImGuiIO &io = ImGui::GetIO();
 
-	ImGui_ImplSDL3_ProcessEvent(mvkobjs.e);
+	ImGui_ImplSDL3_ProcessEvent(&mvkobjs.e);
 
 	ImGuiWindowFlags imguiWindowFlags = 0;
 	imguiWindowFlags |= ImGuiWindowFlags_MenuBar;
