@@ -17,6 +17,8 @@ add_compile_options(
     "$<$<CONFIG:Release>:-DNDEBUG>"
     "$<$<CONFIG:Release>:-march=native>"
     "$<$<CONFIG:Release>:-mstackrealign>"
+    # comment -g for distribution build
+    "$<$<CONFIG:Release>:-g>"
 )
 
 # uncomment when debugging memory corruption
@@ -151,6 +153,8 @@ add_subdirectory(${submodules_path}/sdl)
 add_subdirectory(${submodules_path}/sdlimg)
 add_subdirectory(${submodules_path}/glm)
 add_subdirectory(${submodules_path}/vk_boot)
+# rip
+target_compile_options(vk-bootstrap PRIVATE -mno-avx512f -mno-avx2 -mno-avx)
 add_subdirectory(${submodules_path}/vma)
 
 
@@ -376,4 +380,3 @@ target_include_directories(rview2
 
 set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/resources)
 set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/shaders)
-

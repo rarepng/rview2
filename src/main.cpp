@@ -7,7 +7,8 @@
 #include <string>
 #include <vulkan/vulkan.h>
 
-
+// idk mayble ill drop windows completely instead of having to do this lol
+__attribute__((force_align_arg_pointer))
 int main(int c, char **v) {
 
 	rvkbucket mvk{};
