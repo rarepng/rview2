@@ -26,6 +26,9 @@ public:
 
 	std::shared_ptr<genericinstance> getinst(int i);
 
+	size_t instcount();
+	
+
 	bool ready{false};
 
 	inline static VkPipelineLayout skinnedplayout = VK_NULL_HANDLE;
