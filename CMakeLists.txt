@@ -198,7 +198,7 @@ target_link_options(rview2 PRIVATE
     "$<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>>:-static>"
     # no idea here..
     # "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWDbg>,$<CONFIG:Sanitize>>:-static>"
-
+    
     "$<$<AND:$<PLATFORM_ID:Windows>,$<OR:$<CONFIG:Distribution>,$<CONFIG:Release>,$<CONFIG:BleedingEdge>>>:-mwindows>"
 )
 

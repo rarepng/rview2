@@ -42,17 +42,6 @@
 // maybe was not the best idea at this time
 import rview.rvk.tex;
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL
-debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-              VkDebugUtilsMessageTypeFlagsEXT messageType,
-              const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-              void *pUserData) {
-
-	std::cerr << "\n[VALIDATION ERROR]: " << pCallbackData->pMessage << "\n"
-	          << std::endl;
-
-	return VK_FALSE;
-}
 
 void vkrenderer::immediate_submit(rvkbucket& mvkobjs,
                                   std::function<void(VkCommandBuffer cbuffer)> &&fn) {
