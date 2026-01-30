@@ -55,7 +55,7 @@ static int mcamforward{0};
 static int mcamstrafe{0};
 static int mcamupdown{0};
 
-static std::vector<unsigned int> playercount{1};
+static std::vector<unsigned int> playercount{2};
 static std::vector<std::string> playerfname{{"resources/t0.glb"}};
 static const std::vector<std::vector<std::string>> playershaders{{"shaders/vx.spv", "shaders/px.spv"}};
 
