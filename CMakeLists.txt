@@ -185,6 +185,14 @@ target_sources(rview2
             mods/tex.cxxm
 )
 
+set(SLANG_COMMON_FLAGS
+    -target spirv 
+    -capability SPIRV_1_6
+    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWDbg>>:-g>
+    $<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>>:-O3>
+)
+
+
 # consider only statically -static-libgcc -static-libstdc++ idk
 target_link_options(rview2 PRIVATE
     "$<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>>:-static>"
@@ -194,32 +202,46 @@ target_link_options(rview2 PRIVATE
     "$<$<AND:$<PLATFORM_ID:Windows>,$<OR:$<CONFIG:Distribution>,$<CONFIG:Release>,$<CONFIG:BleedingEdge>>>:-mwindows>"
 )
 
-file(GLOB_RECURSE shaders ${PROJECT_BINARY_DIR}/shaders/*)
-list(LENGTH shaders shader_len)
+# wip wip
+# manually adding shaders for now
+function(add_shader)
+    set(options "")
+    set(oneValueArgs SOURCE ENTRY STAGE OUTPUT_NAME)
+    set(multiValueArgs "")
+    cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    set(SHADER_SOURCE "${PROJECT_SOURCE_DIR}/shaders/${ARG_SOURCE}")
+    set(SPV_OUTPUT "${PROJECT_BINARY_DIR}/shaders/${ARG_OUTPUT_NAME}")
+    get_filename_component(OUT_DIR ${SPV_OUTPUT} DIRECTORY)
+    file(MAKE_DIRECTORY ${OUT_DIR})
+    add_custom_command(
+        OUTPUT "${SPV_OUTPUT}"
+        COMMAND slangc
+            -entry ${ARG_ENTRY}
+            -stage ${ARG_STAGE}
+            ${SLANG_COMMON_FLAGS}
+            "${SHADER_SOURCE}"
+            -o "${SPV_OUTPUT}"
+            -depfile "${SPV_OUTPUT}.d"
+        DEPENDS "${SHADER_SOURCE}"
+        DEPFILE "${SPV_OUTPUT}.d"
+        VERBATIM
+        COMMAND_EXPAND_LISTS
+        COMMENT "compiling sader: ${ARG_SOURCE} (${ARG_ENTRY})"
+    )
+    set(ALL_SHADER_SPV_FILES ${ALL_SHADER_SPV_FILES} "${SPV_OUTPUT}" PARENT_SCOPE)
+endfunction()
+add_shader(SOURCE gen.slang ENTRY vxmain STAGE vertex OUTPUT_NAME vx.spv)
+add_shader(SOURCE gen.slang ENTRY pxmain STAGE pixel OUTPUT_NAME px.spv)
+add_shader(SOURCE gen.slang ENTRY cxmain STAGE compute OUTPUT_NAME cx.spv)
+add_shader(SOURCE particle.slang ENTRY vxmain STAGE vertex OUTPUT_NAME pvx.spv)
+add_shader(SOURCE particle.slang ENTRY pxmain STAGE pixel OUTPUT_NAME ppx.spv)
+add_shader(SOURCE particle.slang ENTRY cxmain STAGE compute OUTPUT_NAME pcx.spv)
+add_shader(SOURCE red.slang ENTRY vxmain STAGE vertex OUTPUT_NAME rvx.spv)
+add_shader(SOURCE red.slang ENTRY pxmain STAGE pixel OUTPUT_NAME rpx.spv)
+add_shader(SOURCE red.slang ENTRY cxmain STAGE compute OUTPUT_NAME rcx.spv)
 
-# #wip
-#manually adding shaders for now
-      add_custom_command(
-        OUTPUT ${PROJECT_BINARY_DIR}/shaders/vx.spv ${PROJECT_BINARY_DIR}/shaders/px.spv ${PROJECT_BINARY_DIR}/shaders/cx.spv ${PROJECT_BINARY_DIR}/shaders/pvx.spv ${PROJECT_BINARY_DIR}/shaders/ppx.spv ${PROJECT_BINARY_DIR}/shaders/pcx.spv
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders"
-        COMMAND ${SHELL_CMD} -c "slangc -entry vxmain $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWDbg>>:-g> $<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>>:-O3> -stage vertex -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/gen.slang -o ${PROJECT_BINARY_DIR}/shaders/vx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/gen.slang
-        COMMAND ${SHELL_CMD} -c "slangc -entry pxpbr $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWDbg>>:-g> $<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>>:-O3> -stage pixel -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/gen.slang -o ${PROJECT_BINARY_DIR}/shaders/px.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/gen.slang
-        # COMMAND ${SHELL_CMD} -c "$ENV{VULKAN_SD/bin/slangc -entry cxmain $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWDbg>>:-g> $<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>>:-O3> -stage compute -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/gen.slang -o ${PROJECT_BINARY_DIR}/shaders/cx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/gen.slang
-        COMMAND ${SHELL_CMD} -c "slangc -entry vxmain $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWDbg>>:-g> $<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>>:-O3> -stage vertex -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/particle.slang -o ${PROJECT_BINARY_DIR}/shaders/pvx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/particle.slang
-        COMMAND ${SHELL_CMD} -c "slangc -entry pxmain $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWDbg>>:-g> $<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>>:-O3> -stage pixel -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/particle.slang -o ${PROJECT_BINARY_DIR}/shaders/ppx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/particle.slang
-        COMMAND ${SHELL_CMD} -c "slangc -entry cxmain $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWDbg>>:-g> $<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>>:-O3> -stage compute -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/particle.slang -o ${PROJECT_BINARY_DIR}/shaders/pcx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/particle.slang
-        COMMAND ${SHELL_CMD} -c "slangc -entry vxmain $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWDbg>>:-g> $<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>>:-O3> -stage vertex -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/red.slang -o ${PROJECT_BINARY_DIR}/shaders/rvx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/red.slang
-        COMMAND ${SHELL_CMD} -c "slangc -entry pxmain $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWDbg>>:-g> $<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>>:-O3> -stage pixel -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/red.slang -o ${PROJECT_BINARY_DIR}/shaders/rpx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/red.slang
-        COMMAND ${SHELL_CMD} -c "slangc -entry cxmain $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWDbg>>:-g> $<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>>:-O3> -stage compute -target spirv -capability SPIRV_1_6 ${PROJECT_SOURCE_DIR}/shaders/red.slang -o ${PROJECT_BINARY_DIR}/shaders/rcx.spv" DEPENDS ${PROJECT_SOURCE_DIR}/shaders/red.slang
-        )
-      list(APPEND SPIRV_BINARY_FILES ${PROJECT_BINARY_DIR}/shaders/vx.spv ${PROJECT_BINARY_DIR}/shaders/px.spv
-    #    ${PROJECT_BINARY_DIR}/shaders/cx.spv
-        ${PROJECT_BINARY_DIR}/shaders/pvx.spv ${PROJECT_BINARY_DIR}/shaders/ppx.spv ${PROJECT_BINARY_DIR}/shaders/pcx.spv
-        ${PROJECT_BINARY_DIR}/shaders/rvx.spv ${PROJECT_BINARY_DIR}/shaders/rpx.spv ${PROJECT_BINARY_DIR}/shaders/rcx.spv
-        )
-    set_source_files_properties(${SPIRV_BINARY_FILES} PROPERTIES GENERATED TRUE)
-  add_custom_target(shaders ALL DEPENDS ${SPIRV_BINARY_FILES})
-  add_dependencies(rview2 shaders)
+add_custom_target(shaders_tar ALL DEPENDS ${ALL_SHADER_SPV_FILES})
+add_dependencies(rview2 shaders_tar)
 
 
 file(GLOB_RECURSE RESOURCE_FILES "${PROJECT_SOURCE_DIR}/resources/*")
@@ -230,8 +252,8 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E touch "${PROJECT_BINARY_DIR}/resources.stamp"
     DEPENDS ${RESOURCE_FILES}
 )
-add_custom_target(resources_copy ALL DEPENDS "${PROJECT_BINARY_DIR}/resources.stamp")
-add_dependencies(rview2 resources_copy)
+add_custom_target(resources_tar ALL DEPENDS "${PROJECT_BINARY_DIR}/resources.stamp")
+add_dependencies(rview2 resources_tar)
 
 
 
@@ -394,6 +416,6 @@ set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINA
 set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/shaders)
 
 install(TARGETS rview2 RUNTIME DESTINATION .)
-install(FILES ${SPIRV_BINARY_FILES} DESTINATION shaders)
+install(FILES ${ALL_SHADER_SPV_FILES} DESTINATION shaders)
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/resources/" DESTINATION resources)
 
