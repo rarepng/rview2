@@ -42,7 +42,9 @@ bool playoutgeneric::loadmodel(rvkbucket &objs, std::string fname) {
 		return false;
 	return true;
 }
-
+size_t playoutgeneric::instcount(){
+	return numinstancess;
+}
 bool playoutgeneric::createinstances(rvkbucket &objs, size_t count, bool rand) {
 	size_t numTriangles{};
 	for (size_t i{0}; i < count; ++i) {

@@ -743,11 +743,12 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs,const SDL_Event& e) {
 	}
 }
 void vkrenderer::moveplayer() {
+	//this was to add delay to the movement as in gradual movement as in movement in games
 	// currently selected
-	modelsettings &s = mplayer[selectiondata.midx]
-	                   ->getinst(selectiondata.iidx)
-	                   ->getinstancesettings();
-	s.msworldpos = playermoveto;
+	// modelsettings &s = mplayer[selectiondata.midx]
+	//                    ->getinst(selectiondata.iidx)
+	//                    ->getinstancesettings();
+	// s.msworldpos = playermoveto;
 }
 
 void vkrenderer::movecam(rvkbucket& mvkobjs) {
@@ -807,11 +808,11 @@ void vkrenderer::movecam(rvkbucket& mvkobjs) {
 			if (t >= 0.0f) {
 				glm::vec3 h = nearPt + t * d;
 				h.y = navmesh(h.x, h.z);
-				playermoveto = h;
 
 				modelsettings &s = mplayer[selectiondata.midx]
 				                   ->getinst(selectiondata.iidx)
 				                   ->getinstancesettings();
+				s.msworldpos = h;
 				playerlookto = glm::normalize(h - s.msworldpos);
 				if (glm::abs(h.x - s.msworldpos.x) > 2.1f || glm::abs(h.z - s.msworldpos.z) > 2.1f) {
 					s.msworldrot.y = glm::degrees(glm::atan(playerlookto.x, playerlookto.z));
@@ -834,7 +835,8 @@ void vkrenderer::checkforanimupdates(rvkbucket& mvkobjs) {
 		muidrawtimer.start();
 		// updatemtx.lock();
 		for (const auto &i : mplayer)
-			i->getinst(0)->checkforupdates();
+		for(size_t j{0};j<i->instcount();j++)
+			i->getinst(j)->checkforupdates();
 		mvkobjs.rduidrawtime = muidrawtimer.stop();
 	}
 }
@@ -954,7 +956,8 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	// joint check
 	// if (dummytick % 2) {
 	for (const auto &i : mplayer)
-		i->getinst(0)->checkforupdates();
+		for(size_t j{0};j<i->instcount();j++)
+			i->getinst(j)->checkforupdates();
 	// }
 
 	// dummytick++;
@@ -1052,17 +1055,12 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 	for (const auto &i : mplayer)
 		i->draw(mvkobjs);
-	// VkDrawIndexedIndirectCommand();
 
 	ui::createdbgframe(mvkobjs, selectiondata);
 
 	ui::render(mvkobjs, mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame));
 
 	vkCmdEndRendering(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame));
-	// vkCmdEndRenderPass(mvkobjs.cbuffers_graphics.at(rvkbucket::currentFrame));
-
-	// animmtx.lock();
-	// updatemtx.lock();
 
 	muploadubossbotimer.start();
 

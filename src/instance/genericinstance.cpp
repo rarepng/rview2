@@ -165,6 +165,12 @@ void genericinstance::checkforupdates() {
 			self->mmodelsettings.msiktargetworldpos =
 			    self->getwrot() * self->mmodelsettings.msiktargetpos + newPos;
 		}),
+		
+		Reaction(&InstanceState::worldRot, [](auto* self, const glm::vec3& newRot) {
+			self->mrootnode->setwrot(newRot);
+			self->mmodelsettings.msiktargetworldpos =
+			    self->getwrot() * self->mmodelsettings.msiktargetpos + self->mmodelsettings.msworldpos;
+		}),
 
 		Reaction(&InstanceState::ikIterations, [](auto* self, int newIter) {
 			self->setnumikiterations(newIter);
