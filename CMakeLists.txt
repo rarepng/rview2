@@ -198,7 +198,6 @@ target_link_options(rview2 PRIVATE
     "$<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>>:-static>"
     # no idea here..
     # "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWDbg>,$<CONFIG:Sanitize>>:-static>"
-    
     "$<$<AND:$<PLATFORM_ID:Windows>,$<OR:$<CONFIG:Distribution>,$<CONFIG:Release>,$<CONFIG:BleedingEdge>>>:-mwindows>"
 )
 
@@ -232,7 +231,7 @@ function(add_shader)
 endfunction()
 add_shader(SOURCE gen.slang ENTRY vxmain STAGE vertex OUTPUT_NAME vx.spv)
 add_shader(SOURCE gen.slang ENTRY pxmain STAGE pixel OUTPUT_NAME px.spv)
-add_shader(SOURCE gen.slang ENTRY cxmain STAGE compute OUTPUT_NAME cx.spv)
+# add_shader(SOURCE gen.slang ENTRY cxmain STAGE compute OUTPUT_NAME cx.spv)
 add_shader(SOURCE particle.slang ENTRY vxmain STAGE vertex OUTPUT_NAME pvx.spv)
 add_shader(SOURCE particle.slang ENTRY pxmain STAGE pixel OUTPUT_NAME ppx.spv)
 add_shader(SOURCE particle.slang ENTRY cxmain STAGE compute OUTPUT_NAME pcx.spv)
