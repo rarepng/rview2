@@ -255,77 +255,7 @@ PXin vxmain(VXin in, uint id: SV_VulkanInstanceID) {
 }
 
 [shader("pixel")]
-float4 pxmainmine(PXin in) : SV_Target {
-
-    //flat backup
-    // float3 N = normalize(cross(ddx(in.worldPos), ddy(in.worldPos)));
-    
-    float3 N = normalize(in.normal);
-    float3 T = normalize(in.tangent);
-    float3 B = normalize(in.bitangent);
-    float3x3 TBN = float3x3(T, B, N);
-
-    if (pc.normalIdx < 0xAAAAAAAA) {
-        float3 tNorm = tex[pc.normalIdx].Sample(in.uv).rgb * 2.0 - 1.0;
-        tNorm *= float3(pc.normalScale, pc.normalScale, 1.0);
-        N = normalize(mul(tNorm, TBN));
-    }
-
-    float4 baseColor = pc.baseColorFactor;
-    if (pc.albedoIdx < 0xAAAAAAAA) {
-        float4 texColor = tex[pc.albedoIdx].Sample(in.uv);
-        // texColor.rgb = pow(texColor.rgb, 2.2);
-        baseColor *= texColor;
-    }
-    baseColor *= in.vColor;
-    if (baseColor.a < 0.01) discard;
-
-    float occlusion = 1.0;
-    // float roughness = 1.0;
-    // float metallic = 0.0;
-
-    float roughness = pc.roughnessFactor;
-    float metallic = pc.metallicFactor;
-
-    if (pc.ormIdx != 0xFFFFFFFF) {
-        float4 orm = tex[pc.ormIdx].Sample(in.uv);
-        occlusion = orm.r;
-        roughness = orm.g * pc.roughnessFactor;
-        metallic = orm.b * pc.metallicFactor;
-    } else {
-        // i wanted to implement flat shading here
-    }
-    roughness = clamp(roughness, MIN_ROUGHNESS, 1.0);
-
-    float3 f0 = float3(0.04); 
-    float3 diffuseColor = baseColor.rgb * (1.0 - metallic);
-    float3 specularColor = lerp(f0, baseColor.rgb, metallic);
-    float alphaRoughness = roughness * roughness;
-
-    float3 V = normalize(cammats.camPos - in.worldPos);
-    float NdotV = max(dot(N, V), 0.0001);
-
-    float diffuseIntensity = 0.5;
-    float3 diffuseIBL = envMap.SampleLevel(DirToUV(N), 5.0).rgb * diffuseColor * diffuseIntensity;
-
-    float3 R = reflect(-V, N);
-
-    float lod = roughness * pc.envMapMaxLod;
-
-    float3 prefilteredColor = envMap.SampleLevel(DirToUV(R), lod).rgb;
-
-    float2 envBRDF = EnvBRDFApprox(roughness, NdotV);
-    float3 specularIBL = prefilteredColor * (specularColor * envBRDF.x + envBRDF.y);
-
-    float3 ambient = (diffuseIBL + specularIBL) * occlusion;
-
-    float3 finalColor = ambient;
-
-    return float4(finalColor, baseColor.a);
-}
-
-[shader("pixel")]
-float4 pxpbr(PXin in) : SV_Target {
+float4 pxmain(PXin in) : SV_Target {
 
 // float3 N = normalize(in.normal);
 // float3 T = normalize(in.tangent);
@@ -428,4 +358,9 @@ color += emissive;
 color *= 0.6;
 
 return float4(color, alpha);
+}
+
+[shader("compute")]
+void cxmain(){
+    
 }

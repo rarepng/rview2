@@ -255,7 +255,7 @@ PXin vxmain(VXin in, uint id: SV_VulkanInstanceID) {
 }
 
 [shader("pixel")]
-float4 pxmainmine(PXin in) : SV_Target {
+float4 pxold(PXin in) : SV_Target {
 
     //flat backup
     // float3 N = normalize(cross(ddx(in.worldPos), ddy(in.worldPos)));
@@ -325,7 +325,7 @@ float4 pxmainmine(PXin in) : SV_Target {
 }
 
 [shader("pixel")]
-float4 pxpbr(PXin in) : SV_Target {
+float4 pxmain(PXin in) : SV_Target {
 
 // float3 N = normalize(in.normal);
 // float3 T = normalize(in.tangent);
