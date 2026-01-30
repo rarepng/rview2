@@ -339,7 +339,7 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 		// might switch to passing mvk idk, maybe replace the whole mvkobjs
 		// bucket with something more functional
 	}}))
-	return false;
+		return false;
 	mvkobjs.height = mvkobjs.schain.extent.height;
 	mvkobjs.width = mvkobjs.schain.extent.width;
 
@@ -895,16 +895,6 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 			return false;
 		}
 	}
-
-	std::array<VkClearValue, 2> colorclearvalue{
-		VkClearValue{
-			.color = {
-				0.0f, 0.0f, 0.0f,
-				1.0f
-			}}, // no idea why i have to put VkClearValue
-		// here but not in the
-		// secon one, doesnt work without it
-		{.depthStencil = {1.0f, 0}}};
 
 	VkViewport viewport{};
 	viewport.x = 0.0f;

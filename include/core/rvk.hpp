@@ -319,14 +319,6 @@ static inline void destroy(const VkDevice& dev,VkDescriptorPool dpool) {
 	vkDestroyDescriptorPool(dev, dpool, nullptr);
 }
 };
-//i forgot
-namespace rbuffer {
-static inline bool create(const VkDevice& dev,VmaAllocator alloc,std::vector<VkBufferCreateInfo> binfos,std::vector<VkBuffer> buffs) {
-	// for()
-	return true;
-}
-};
-
 inline void safe_cleanup(rvkbucket& objs, GpuBuffer& bufferData) {
 	VkBuffer buf = bufferData.buffer;
 	VmaAllocation alloc = bufferData.alloc;

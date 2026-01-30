@@ -4,7 +4,18 @@ CompileFlags:
   Add: 
     - "-Iinclude"
     - "-std=gnu++2c"
+    # - "-w"
+    - -Wno-unused-parameter
+    - -Wno-missing-designated-field-initializers
+    - -Wno-missing-field-initializers
+    # - -Wno-everything
   Remove:
     - -fmodules-ts
     - -fmodule-mapper=*
     - -fdeps-format=*
+Diagnostics:
+  UnusedIncludes: None
+  # MissingIncludes: None
+  # Suppress:
+  #   - "unused-includes"
+  #   - "missing-includes"
