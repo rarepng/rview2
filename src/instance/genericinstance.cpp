@@ -259,24 +259,25 @@ void genericinstance::checkforupdates() {
 // }
 
 void genericinstance::updateanimation() {
-	if (mmodelsettings.msplayanimation) {
-		mmodelsettings.msanimendtime = getanimendtime(mmodelsettings.msanimclip);
-		if (mmodelsettings.msblendingmode == blendmode::crossfade || mmodelsettings.msblendingmode == blendmode::additive) {
-			playanimation(mmodelsettings.msanimclip, mmodelsettings.mscrossblenddestanimclip, mmodelsettings.msanimspeed,
-			              mmodelsettings.msanimcrossblendfactor, mmodelsettings.msanimationplaydirection);
+	if(manimclips.size() > 0)
+		if (mmodelsettings.msplayanimation) {
+			mmodelsettings.msanimendtime = getanimendtime(mmodelsettings.msanimclip);
+			if (mmodelsettings.msblendingmode == blendmode::crossfade || mmodelsettings.msblendingmode == blendmode::additive) {
+				playanimation(mmodelsettings.msanimclip, mmodelsettings.mscrossblenddestanimclip, mmodelsettings.msanimspeed,
+							mmodelsettings.msanimcrossblendfactor, mmodelsettings.msanimationplaydirection);
+			} else {
+				playanimation(mmodelsettings.msanimclip, mmodelsettings.msanimspeed, mmodelsettings.msanimblendfactor,
+							mmodelsettings.msanimationplaydirection);
+			}
 		} else {
-			playanimation(mmodelsettings.msanimclip, mmodelsettings.msanimspeed, mmodelsettings.msanimblendfactor,
-			              mmodelsettings.msanimationplaydirection);
+			mmodelsettings.msanimendtime = getanimendtime(mmodelsettings.msanimclip);
+			if (mmodelsettings.msblendingmode == blendmode::crossfade || mmodelsettings.msblendingmode == blendmode::additive) {
+				crossblendanimationframe(mmodelsettings.msanimclip, mmodelsettings.mscrossblenddestanimclip,
+										mmodelsettings.msanimtimepos, mmodelsettings.msanimcrossblendfactor);
+			} else {
+				blendanimationframe(mmodelsettings.msanimclip, mmodelsettings.msanimtimepos, mmodelsettings.msanimblendfactor);
+			}
 		}
-	} else {
-		mmodelsettings.msanimendtime = getanimendtime(mmodelsettings.msanimclip);
-		if (mmodelsettings.msblendingmode == blendmode::crossfade || mmodelsettings.msblendingmode == blendmode::additive) {
-			crossblendanimationframe(mmodelsettings.msanimclip, mmodelsettings.mscrossblenddestanimclip,
-			                         mmodelsettings.msanimtimepos, mmodelsettings.msanimcrossblendfactor);
-		} else {
-			blendanimationframe(mmodelsettings.msanimclip, mmodelsettings.msanimtimepos, mmodelsettings.msanimblendfactor);
-		}
-	}
 }
 
 void genericinstance::solveik() {
