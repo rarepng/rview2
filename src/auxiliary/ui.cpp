@@ -393,6 +393,7 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 			ImGui::PushButtonRepeat(true);
 			if (ImGui::ArrowButton("##LEFTMOD", ImGuiDir_Left) && settings.midx > 0) {
 				settings.midx--;
+				settings.iidx = 0;
 			}
 			ImGui::SameLine();
 			ImGui::PushItemWidth(30);
@@ -401,6 +402,7 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 			ImGui::SameLine();
 			if (ImGui::ArrowButton("##RIGHTMOD", ImGuiDir_Right) && settings.midx < settings.instancesettings.size() - 1) {
 				settings.midx++;
+				settings.iidx = 0;
 			}
 			ImGui::PopButtonRepeat();
 
