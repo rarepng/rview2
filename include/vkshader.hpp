@@ -2,10 +2,7 @@
 #include <string>
 #include <vulkan/vulkan.h>
 
-class vkshader {
-public:
-	static VkShaderModule loadshader(VkDevice dev, std::string filename);
-
-private:
-	static std::string loadfiletostr(std::string filename);
+namespace vkshader {
+	VkShaderModule loadshader(VkDevice dev, std::string filename);
+	std::string loadfiletostr(std::string_view filename);
 };

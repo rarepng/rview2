@@ -2,10 +2,9 @@
 #include "core/rvk.hpp"
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
-class ubo {
-public:
-	static bool init(rvkbucket &mvkobjs, std::span<ubodata> ubodata);
-	static bool createlayout(rvkbucket &mvkobjs, VkDescriptorSetLayout& dlayout);
-	static void upload(rvkbucket &mvkobjs, std::vector<ubodata> &ubodata, std::vector<glm::mat4> mats,const glm::vec3& campos);
-	static void cleanup(rvkbucket &mvkobjs, std::vector<ubodata> &ubodata);
+namespace ubo {
+	bool init(rvkbucket &mvkobjs, std::span<ubodata> ubodata);
+	bool createlayout(rvkbucket &mvkobjs, VkDescriptorSetLayout& dlayout);
+	void upload(rvkbucket &mvkobjs, std::vector<ubodata> &ubodata, std::vector<glm::mat4> mats,const glm::vec3& campos);
+	void cleanup(rvkbucket &mvkobjs, std::vector<ubodata> &ubodata);
 };

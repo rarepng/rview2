@@ -6,7 +6,7 @@
 
 VkShaderModule vkshader::loadshader(VkDevice dev, std::string filename) {
 	std::string shadertxt;
-	shadertxt = loadfiletostr(filename);
+	shadertxt = vkshader::loadfiletostr(filename);
 
 	VkShaderModuleCreateInfo shadercreateinfo{};
 	shadercreateinfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -19,8 +19,8 @@ VkShaderModule vkshader::loadshader(VkDevice dev, std::string filename) {
 	}
 	return shadermod;
 }
-std::string vkshader::loadfiletostr(std::string filename) {
-	std::ifstream infile(filename, std::ios::binary);
+std::string vkshader::loadfiletostr(std::string_view filename) {
+	std::ifstream infile(filename.data(), std::ios::binary);
 	std::string str;
 
 	if (infile.is_open()) {
