@@ -21,10 +21,10 @@ needed for default models:
 
 ## controls:
 
-left click - move default model to location<br>
+left click - move selected model to location<br>
 ESC - exit<br>
 wasdeq - camera controls, for debugging<br><br>
-Debug Menu - allows u to choose model to move/scale/rotate/change animation etc.<br>
+Debug Menu - allows u to select model to move/scale/rotate/change animation etc.<br>
 Drag & Drop - any model can be loaded if u drag and drop it in the window<br>
 
 
