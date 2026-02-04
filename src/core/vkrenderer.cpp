@@ -408,7 +408,7 @@ bool vkrenderer::getqueue(rvkbucket& mvkobjs) {
 bool vkrenderer::createpools(rvkbucket& mvkobjs) {
 	std::array<VkDescriptorPoolSize, 3> poolz{
 		{	{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 24},
-			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2},
+			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1},
 			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1}
 		}};
 	return rpool::create(poolz, mvkobjs.vkdevice.device,

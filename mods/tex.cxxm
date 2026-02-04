@@ -4,6 +4,7 @@ module;
 #include <functional>
 #include <string_view>
 #include <cstdint>
+#include "core/rvk.hpp"
 
 export module rview.rvk.tex;
 

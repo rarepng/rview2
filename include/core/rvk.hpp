@@ -14,6 +14,20 @@
 #include <functional>
 #include <execution>
 
+// all this &$#! for a stupid ugly diagram
+#ifndef __cpp_lib_move_only_function
+namespace std {
+    template<typename Signature>
+    struct move_only_function;
+
+    template<typename Ret, typename... Args>
+    struct move_only_function<Ret(Args...)> {
+        move_only_function() = default;
+        template<typename F> move_only_function(F&&) {}
+        Ret operator()(Args...) const { return Ret(); }
+    };
+}
+#endif
 
 struct rctx {
 

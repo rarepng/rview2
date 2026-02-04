@@ -16,6 +16,7 @@
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++",
         "CMAKE_CXX_STANDARD": "26",
+        "CMAKE_BUILD_TYPE": "${presetName}",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     },
@@ -23,55 +24,54 @@
       "name": "dbg",
       "inherits": "base",
       "displayName": "Debug",
-      "description": "Debug build with GCC, Ninja, C++26",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
+      "description": "Debug build with GCC, Ninja, C++26"
     },
     {
       "name": "release",
       "inherits": "base",
       "displayName": "Release",
-      "description": "Release build with GCC, Ninja, C++26",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
+      "description": "Release build with GCC, Ninja, C++26"
     },
     {
       "name": "relwdbg",
       "inherits": "base",
       "displayName": "Release w Debug Info",
-      "description": "Release with GDB Symbols",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWDbg"
-      }
+      "description": "Release with GDB Symbols"
     },
     {
       "name": "dist",
       "inherits": "base",
       "displayName": "Distribution",
-      "description": " HW RT no AVX512",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Distribution"
-      }
+      "description": " HW RT no AVX512"
     },
     {
       "name": "bleed",
       "inherits": "base",
       "displayName": "bleeding edge",
-      "description": "was going to be the avx-512 builds",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "BleedingEdge"
-      }
+      "description": "was going to be the avx-512 builds"
     },
     {
       "name": "sanitize",
       "inherits": "base",
       "displayName": "Sanitize ASan",
-      "description": "for finding memory corruptions",
+      "description": "for finding memory corruptions"
+    },
+    {
+      "name": "clanged",
+      "inherits": "base",
+      "displayName": "clang++uml",
+      "description": "diagrams and other useless stuff",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Sanitize"
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_CXX_FLAGS": "-DCLANG_UML"
       }
+    },
+    {
+      "name": "mermaid",
+      "inherits": "base",
+      "displayName": "mermaid",
+      "description": "gcc mermaid"
     }
   ],
   "buildPresets": [
@@ -98,6 +98,14 @@
     {
       "name": "sanitize",
       "configurePreset": "sanitize"
+    },
+    {
+      "name": "clanged",
+      "configurePreset": "clanged"
+    },
+    {
+      "name": "mermaid",
+      "configurePreset": "mermaid"
     }
   ]
 }

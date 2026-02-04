@@ -1,0 +1,36 @@
+HAVE_DOT               = YES
+DOT_NUM_THREADS        = 0
+DOT_MULTI_TARGETS      = YES
+SHORT_NAMES            = YES
+RECURSIVE              = YES
+EXCLUDE_PATTERNS       = */sub/* \
+                         */cmake_more_cache/* \
+                         */build/* \
+                         */.git/* \
+						 */docs/* \
+						*/html/* \
+						 */latex/* \
+						 */share/* \
+                         */CMakeFiles/* \
+						 */dist/*
+DOT_IMAGE_FORMAT       = svg
+DOT_GRAPH_MAX_NODES    = 250
+UML_LOOK               = YES
+HIDE_UNDOC_RELATIONS   = YES
+FILE_PATTERNS          = *.cpp *.hpp *.cxxm *.slang
+EXTENSION_MAPPING      = cxxm=C++ slang=C++
+OUTPUT_DIRECTORY 	   = share
+CALL_GRAPH = YES
+CALLER_GRAPH = YES
+DIR_GRAPH = YES
+MAX_DOT_GRAPH_DEPTH = 0
+INCLUDE_GRAPH = YES
+INCLUDED_BY_GRAPH = YES
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+DIRECTORY_GRAPH        = YES
+EXTRACT_ALL = YES
+EXTRACT_PRIVATE = YES
+DOT_TRANSPARENT        = YES

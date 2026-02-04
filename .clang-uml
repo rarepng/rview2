@@ -1,0 +1,91 @@
+# compilation_database_dir: build/dbg
+# output_directory: diagrams
+
+# query_driver: "C:/miasma/gg/bin/g++.exe"
+
+
+# add_compile_flags:
+#   - -Iinclude
+#   - -isystemC:/miasma/gg/include/c++/16.0.0
+#   - -isystemC:/miasma/gg/include/c++/16.0.0/x86_64-w64-mingw32
+#   - -isystemC:/miasma/gg/include/c++/16.0.0/backward
+#   - -isystemC:/miasma/gg/lib/gcc/x86_64-w64-mingw32/16.0.0/include
+#   - -std=c++26
+#   - -Wno-unknown-warning-option
+#   - -Wno-deprecated-declarations
+#   - -fmodules 
+#   - -fcxx-modules
+#   - -w
+
+# remove_compile_flags:
+#   - '-std=gnu\+\+.*'
+#   - '-fmodules-ts'
+#   - r: -fmodule-mapper=.*$
+#   - r: "-fdeps-format=.*"
+#   - '-fno-semantic-interposition'
+#   - '-fallocation-dce'
+
+# diagrams:
+#   my_class_diagram:
+#     type: class
+#     glob:
+#       - src/**/*.cpp
+#       - include/**/*.hpp
+#       # - mods/**/*.cxxm
+#     using_namespace: rview2
+
+# clanger stopped working
+compilation_database_dir: build/clanged
+output_directory: diagrams
+
+remove_compile_flags:
+  - "-fmodules"
+  - "-fcxx-modules"
+  - "-fmodules-ts"
+  - "-fimplicit-modules"
+  - "-fimplicit-module-maps"
+  - r: "-fmodule-file=.*"
+  - r: "-fmodule-mapper=.*"
+  - r: "-fprebuilt-module-path=.*"
+  - r: "-fmodule-map-file=.*"
+
+add_compile_flags:
+  - -nostdinc++
+  - -Wno-unknown-warning-option
+  - -isystemC:/miasma/realLLVM/include/c++/v1
+  - -isystemC:/miasma/realLLVM/lib/clang/22/include
+  - -march=x86-64
+  - -mno-avx512f
+  - -mno-avx512vl
+  - -DGLM_FORCE_PURE
+  - -D__STRICT_ANSI__
+  - -D_CRT_SECURE_NO_WARNINGS
+  - -fmodules 
+  - -fcxx-modules
+  - -std=c++26
+
+diagrams:
+  my_class_diagram:
+    type: class
+    glob:
+      - src/**/*.cpp
+      - include/**/*.hpp
+      - mods/**/*.cxxm 
+    using_namespace: rview2
+    
+    exclude:
+      namespaces:
+        - std
+        - "std::__1"
+    
+    type_aliases:
+      "std::__1::vector": "std::vector"
+      "std::__1::string": "std::string"
+      "std::__1::unique_ptr": "std::unique_ptr"
+      "std::__1::shared_ptr": "std::shared_ptr"
+git:
+  branch: "master"
+  # idk wtf these do
+  commit: "local"
+  revision: "local"
+  toplevel: "."

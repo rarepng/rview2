@@ -17,3 +17,8 @@ CMakeLists.txt.user
 .vscode
 *.swp
 out
+diagrams
+share
+docs
+CMakeUserPresets.json
+html

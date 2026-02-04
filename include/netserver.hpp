@@ -7,7 +7,7 @@
 #ifndef STEAMNETWORKINGSOCKETS_OPENSOURCE
 #include <steam/steam_api.h>
 #endif
-
+#include <vector>
 #include <functional>
 #include <glm/glm.hpp>
 #include <map>

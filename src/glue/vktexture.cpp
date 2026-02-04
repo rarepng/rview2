@@ -10,6 +10,8 @@ module;
 #include <ranges>
 #include <format>
 #include <filesystem>
+#include <string>
+#include <string_view>
 
 #include "core/rvk.hpp"
 
