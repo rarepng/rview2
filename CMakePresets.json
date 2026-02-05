@@ -21,31 +21,31 @@
       }
     },
     {
-      "name": "dbg",
+      "name": "Debug",
       "inherits": "base",
       "displayName": "Debug",
       "description": "Debug build with GCC, Ninja, C++26"
     },
     {
-      "name": "release",
+      "name": "Release",
       "inherits": "base",
       "displayName": "Release",
       "description": "Release build with GCC, Ninja, C++26"
     },
     {
-      "name": "relwdbg",
+      "name": "RelWithDebInfo",
       "inherits": "base",
       "displayName": "Release w Debug Info",
       "description": "Release with GDB Symbols"
     },
     {
-      "name": "dist",
+      "name": "Distribution",
       "inherits": "base",
-      "displayName": "Distribution",
+      "displayName": "dist",
       "description": " HW RT no AVX512"
     },
     {
-      "name": "bleed",
+      "name": "BleedingEdge",
       "inherits": "base",
       "displayName": "bleeding edge",
       "description": "was going to be the avx-512 builds"
@@ -72,28 +72,34 @@
       "inherits": "base",
       "displayName": "mermaid",
       "description": "gcc mermaid"
+    },
+    {
+      "name": "MinSizeRel",
+      "inherits": "base",
+      "displayName": "minrel",
+      "description": "dynamic min release"
     }
   ],
   "buildPresets": [
     {
-      "name": "debug",
-      "configurePreset": "dbg"
+      "name": "Debug",
+      "configurePreset": "Debug"
     },
     {
-      "name": "release",
-      "configurePreset": "release"
+      "name": "Release",
+      "configurePreset": "Release"
     },
     {
-      "name": "releasewithdebuginfo",
-      "configurePreset": "relwdbg"
+      "name": "RelWithDebInfo",
+      "configurePreset": "RelWithDebInfo"
     },
     {
-      "name": "distribution",
-      "configurePreset": "dist"
+      "name": "Distribution",
+      "configurePreset": "Distribution"
     },
     {
-      "name": "bleedingedge",
-      "configurePreset": "bleed"
+      "name": "BleedingEdge",
+      "configurePreset": "BleedingEdge"
     },
     {
       "name": "sanitize",
@@ -106,6 +112,10 @@
     {
       "name": "mermaid",
       "configurePreset": "mermaid"
+    },
+    {
+      "name": "MinSizeRel",
+      "configurePreset": "MinSizeRel"
     }
   ]
 }

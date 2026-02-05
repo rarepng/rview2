@@ -232,14 +232,14 @@ target_link_libraries(rview2
         GameNetworkingSockets_s
         OpenSSL::SSL
         OpenSSL::Crypto
-        "$<$<CONFIG:clanged>:protobufd>"
-        "$<$<NOT:$<CONFIG:clanged>>:protobuf>"
-        "$<$<CONFIG:clanged>:protocd>"
-        "$<$<NOT:$<CONFIG:clanged>>:protoc>"
-        "$<$<CONFIG:clanged>:upbd>"
-        "$<$<NOT:$<CONFIG:clanged>>:upb>"
-        "$<$<CONFIG:clanged>:protobuf-lited>"
-        "$<$<NOT:$<CONFIG:clanged>>:protobuf-lite>"
+        "$<$<CONFIG:Debug>:protobufd>"
+        "$<$<NOT:$<CONFIG:Debug>>:protobuf>"
+        "$<$<CONFIG:Debug>:protocd>"
+        "$<$<NOT:$<CONFIG:Debug>>:protoc>"
+        "$<$<CONFIG:Debug>:upbd>"
+        "$<$<NOT:$<CONFIG:Debug>>:upb>"
+        "$<$<CONFIG:Debug>:protobuf-lited>"
+        "$<$<NOT:$<CONFIG:Debug>>:protobuf-lite>"
         utf8_range
         utf8_validity
 
@@ -379,16 +379,16 @@ target_sources(rview2
 )
 
 target_compile_options(rview2 PUBLIC
-    "$<$<OR:$<CONFIG:dbg>,$<CONFIG:relwdbg>,$<CONFIG:sanitize>>:-g>"
-    "$<$<CONFIG:dbg>:-Wall;-Wextra;-Wunused-variable>"
-    "$<$<OR:$<CONFIG:release>,$<CONFIG:relwdbg>,$<CONFIG:dist>,$<CONFIG:bleed>>:-O3;-DNDEBUG>"
-    "$<$<CONFIG:bleed>:-march=native>"
-    "$<$<CONFIG:dist>:-march=x86-64-v3>"
+    "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>,$<CONFIG:sanitize>>:-g>"
+    "$<$<CONFIG:Debug>:-Wall;-Wextra;-Wunused-variable>"
+    "$<$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>:-O3;-DNDEBUG>"
+    "$<$<CONFIG:BleedingEdge>:-march=native>"
+    "$<$<CONFIG:Distribution>:-march=x86-64-v3>"
     "$<$<CONFIG:sanitize>:-O1;-fno-omit-frame-pointer;-fsanitize=address>"
-    # "$<$<CONFIG:relwdbg>:-mstackrealign>"
-    # "$<$<CONFIG:release>:-march=native>"
+    # "$<$<CONFIG:RelWithDebInfo>:-mstackrealign>"
+    # "$<$<CONFIG:Release>:-march=native>"
     # way too slow
-    # "$<$<CONFIG:release>:-mstackrealign>"
+    # "$<$<CONFIG:Release>:-mstackrealign>"
     "$<$<CONFIG:clanged>:-std=c++26;-fmodules;-fcxx-modules;-fno-implicit-modules;-fno-implicit-module-maps;-Wno-module-import-in-extern-c>"
     "$<$<CONFIG:mermaid>:-g;-fdump-lang-class>"
 )
@@ -401,17 +401,17 @@ target_link_options(rview2 PUBLIC
 set(SLANG_COMMON_FLAGS
     -target spirv 
     -capability SPIRV_1_6
-    $<$<OR:$<CONFIG:dbg>,$<CONFIG:relwdbg>>:-g>
-    $<$<OR:$<CONFIG:release>,$<CONFIG:dist>,$<CONFIG:bleed>>:-O3>
+    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:-g>
+    $<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>:-O3>
 )
 
 
 # consider only statically -static-libgcc -static-libstdc++ idk
 target_link_options(rview2 PRIVATE
-    "$<$<OR:$<CONFIG:release>,$<CONFIG:dist>,$<CONFIG:bleed>>:-static>"
+    "$<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>:-static>"
     # no idea here..
-    # "$<$<OR:$<CONFIG:dbg>,$<CONFIG:relwdbg>,$<CONFIG:sanitize>>:-static>"
-    "$<$<AND:$<PLATFORM_ID:Windows>,$<OR:$<CONFIG:dist>,$<CONFIG:release>,$<CONFIG:bleed>>>:-mwindows>"
+    # "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>,$<CONFIG:sanitize>>:-static>"
+    "$<$<AND:$<PLATFORM_ID:Windows>,$<OR:$<CONFIG:Distribution>,$<CONFIG:Release>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>>:-mwindows>"
 )
 
 # wip wip
