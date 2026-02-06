@@ -58,3 +58,6 @@
 [submodule "sub/meshoptimizer"]
 	path = sub/meshoptimizer
 	url = ../../zeux/meshoptimizer
+[submodule "sub/tracy"]
+	path = sub/tracy
+	url = ../../wolfpld/tracy

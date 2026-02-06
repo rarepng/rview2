@@ -287,13 +287,13 @@ float4 pxold(PXin in) : SV_Target {
     float roughness = pc.roughnessFactor;
     float metallic = pc.metallicFactor;
 
-    if (pc.ormIdx != 0xFFFFFFFF) {
+    if (pc.ormIdx < 0xAAAAAAAA) {
         float4 orm = tex[pc.ormIdx].Sample(in.uv);
         occlusion = orm.r;
         roughness = orm.g * pc.roughnessFactor;
         metallic = orm.b * pc.metallicFactor;
     } else {
-        // i wanted to implement flat shading here
+        // i wanted to implement flat shading here but i dont think that'll work quite right
     }
     roughness = clamp(roughness, MIN_ROUGHNESS, 1.0);
 

@@ -11,7 +11,7 @@ struct P {
 };
 namespace particle {
 
-static VkPipeline gpline;
+static VkPipeline gpline{};
 static VkPipeline cpline{};
 static VkPipelineLayout cplayout{};
 static VkPipelineLayout gplayout{};
