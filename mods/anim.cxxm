@@ -1,0 +1,96 @@
+module;
+
+#include <vector>
+#include <functional>
+#include <string_view>
+#include <cstdint>
+#include "core/rvk.hpp"
+
+#define MAX_BONES 512
+
+export module rview.rvk.anim;
+
+extern "C++" {
+	struct VkImage_T;
+	using VkImage = VkImage_T*;
+	struct VkImageView_T;
+	using VkImageView = VkImageView_T*;
+	struct VkSampler_T;
+	using VkSampler = VkSampler_T*;
+	struct VkDescriptorSetLayout_T;
+	using VkDescriptorSetLayout = VkDescriptorSetLayout_T*;
+	struct VkDescriptorSet_T;
+	using VkDescriptorSet = VkDescriptorSet_T*;
+	struct VmaAllocation_T;
+	using VmaAllocation = VmaAllocation_T*;
+	struct VkDescriptorPool_T;
+	using VkDescriptorPool = VkDescriptorPool_T*;
+
+
+	namespace fastgltf { class Asset;struct Image; }
+
+	struct rvkbucket;
+	struct texdata;
+}
+
+export namespace rview::rvk {
+
+}
+
+
+
+export namespace rview::rvk::anim {
+
+    struct AnimHeader {
+    uint32_t startOffset;  // Index in the float[] buffer
+    uint32_t frameCount;   // Total frames in this clip
+    float duration;        // In seconds
+    float sampleRate;      // e.g., 30.0f
+};
+struct alignas(16) PackedBone {
+    glm::vec3 translation;
+    float pad0; // potential for scale.x if needed, or packing
+    glm::vec4 rotation; // Quaternion
+    glm::vec3 scale;
+    float pad1;
+};
+
+struct alignas(16) InstanceState {
+    uint32_t animID;         // Which clip to play?
+    float time;              // Current playback time (seconds)
+    float playbackSpeed;     // 1.0 = normal
+    uint32_t boneCount;      // Bones in this skeleton
+    
+    uint32_t outputOffset;   // Where to write matrices in GlobalBuffer
+    uint32_t headBoneIndex;  // Index of head (-1 if none)
+    uint32_t padding0;       // Align to 16 bytes
+    uint32_t padding1;
+
+    glm::vec4 lookAtTarget;  // xyz = target pos, w = weight (0=off, 1=on)
+};
+
+struct SkeletonDef {
+    int32_t parentIndices[MAX_BONES]; // Parent index for each bone
+    glm::mat4 inverseBindMatrices[MAX_BONES]; // T-Pose inverses
+};
+
+
+struct BakedAnimationClip {
+    uint32_t startOffset; // Index in the GPU buffer where this clip begins
+    uint32_t frameCount;  // How many frames are in this clip
+    float duration;       // Total time in seconds
+    float sampleRate;     // e.g., 30.0 or 60.0
+    bool looping;
+};
+
+// The Manager Class
+class AnimationManager {
+    // The Big GPU Buffer (VRAM)
+    // ComputeBuffer* globalPoseBuffer; 
+    
+    // The Map (CPU)
+    // "Run" -> { start: 0, count: 60 ... }
+    // "Walk" -> { start: 3000, count: 45 ... }
+    std::unordered_map<std::string, BakedAnimationClip> clips;
+};
+}
