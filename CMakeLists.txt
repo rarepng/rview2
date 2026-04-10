@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 4.0)
 project(rview2 LANGUAGES CXX)
 
 include(ExternalProject)
+include(FetchContent)
 
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -132,6 +133,14 @@ ExternalProject_Add(gnsEX
 
 endif()
 
+FetchContent_Declare(
+    stdexec
+    GIT_REPOSITORY https://github.com/NVIDIA/stdexec.git
+    GIT_TAG        main
+    SOURCE_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/external/stdexec"
+)
+FetchContent_MakeAvailable(stdexec)
+
 
 set(FASTGLTF_COMPILE_AS_CPP20 ON CACHE BOOL "set" FORCE)
 
@@ -155,7 +164,7 @@ target_compile_options(vk-bootstrap PRIVATE -mno-avx512f -mno-avx2 -mno-avx)
 add_subdirectory(${submodules_path}/vma)
 
 
-file(GLOB PROJECT_HEADERS "include/*.hpp")
+file(GLOB PROJECT_HEADERS "include/*.hpp" "generated/*.hpp")
 file(GLOB PROJECT_SOURCES "src/main.cpp" "src/*/*.cpp")
 set(OTHER_SOURCES
     ${submodules_path}/imgui/imgui.cpp
@@ -242,6 +251,7 @@ target_link_libraries(rview2
         "$<$<NOT:$<CONFIG:Debug>>:protobuf-lite>"
         utf8_range
         utf8_validity
+        STDEXEC::stdexec
 
         absl_base
         absl_city
@@ -330,6 +340,7 @@ target_link_libraries(rview2
         absl_time_zone
         absl_utf8_for_code_point
         absl_vlog_config_internal
+
         "-Wl,--end-group"
 )
 if(UNIX)
@@ -467,7 +478,23 @@ add_custom_command(
 add_custom_target(resources_tar ALL DEPENDS "${PROJECT_BINARY_DIR}/resources.stamp")
 add_dependencies(rview2 resources_tar)
 
-
+# add_custom_command(
+#     OUTPUT "${PROJECT_SOURCE_DIR}/generated/animation.hpp"
+#     COMMAND slangc
+#             "${PROJECT_SOURCE_DIR}/shared/animation.slang"
+#             -o "${PROJECT_SOURCE_DIR}/generated/animation.hpp"
+#             -target c++
+#             -depfile "${CMAKE_CURRENT_BINARY_DIR}/generated/animation.hpp.d"
+#         DEPENDS "${PROJECT_SOURCE_DIR}/shared/animation.slang"
+#         DEPFILE "${CMAKE_CURRENT_BINARY_DIR}/generated/animation.hpp.d"
+#         VERBATIM
+#         COMMAND_EXPAND_LISTS
+#         COMMENT "generating headers"
+# )
+# add_custom_target(shared_tar ALL DEPENDS "${PROJECT_SOURCE_DIR}/generated/animation.hpp")
+# add_dependencies(rview2 shared_tar)
+#
+# and other horrific ideas
 
 
 set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/resources)

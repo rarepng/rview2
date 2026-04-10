@@ -11,7 +11,9 @@
 __attribute__((force_align_arg_pointer))
 int main(int c, char **v) {
 
+	//SEGMENT THIS PLEASEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
 	rvkbucket mvk{};
+	
 	if (vkwind::init("RViewer",mvk)) {
 		vkwind::frameupdate(mvk);
 		vkwind::cleanup(mvk);

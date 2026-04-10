@@ -9,6 +9,7 @@ class playoutgeneric {
 public:
 	bool loadmodel(rvkbucket &objs, std::string fname);
 	bool createinstances(rvkbucket &objs, size_t count, bool rand);
+	bool modifyInstances(size_t target_count, bool rand);
 	bool createubo(rvkbucket &objs);
 	bool createssbomat(rvkbucket &objs);
 	bool createssbostatic(rvkbucket &objs);

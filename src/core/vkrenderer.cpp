@@ -25,7 +25,6 @@
 #include <iostream>
 #include <ranges>
 
-#include "renderpass.hpp"
 #include "vk/commandbuffer.hpp"
 #include "vk/commandpool.hpp"
 #include "vk/framebuffer.hpp"
@@ -552,7 +551,6 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 
 	ui::cleanup(mvkobjs);
 
-	vksyncobjects::cleanup(mvkobjs);
 	for (auto &x : mvkobjs.dpools)
 		rpool::destroy(mvkobjs.vkdevice.device, x);
 
@@ -726,14 +724,14 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs,const SDL_Event& e) {
 			pending_loads.push_back(std::async(std::launch::async, [&mvkobjs, fname]() {
 				auto newp = std::make_shared<playoutgeneric>();
 
-				bool success = newp->setup(mvkobjs, fname.c_str(), 1,
+				bool success = newp->setup(mvkobjs, fname.c_str(), 2,
 				                           playershaders[0][0], playershaders[0][1]);
 
 				if (success) {
 					std::lock_guard<std::mutex> lock(load_mutex);
 					mplayerbuffer.push_back(newp);
 				} else {
-					std::cout << "model not added, probably wrong format. \nonly binary gltf files (.glb) are accepted. Provided was: " << fname << std::endl;
+					std::cout << "model not added, probably wrong format. \nonly binary gltf files (.glb) are accepted. File Provided was: " << fname << std::endl;
 				}
 			}));
 			break;

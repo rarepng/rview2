@@ -15,9 +15,9 @@ glm::mat4 vkcam::getview(rvkbucket &mvkobjs) {
 
 	mup = glm::normalize(glm::cross(mright, mforward));
 
-	mvkobjs.camwpos += mvkobjs.camfor * static_cast<float>(mvkobjs.tickdiff) * mforward +
-	                   mvkobjs.camright * static_cast<float>(mvkobjs.tickdiff) * mright +
-	                   mvkobjs.camup * static_cast<float>(mvkobjs.tickdiff) * mup;
+	mvkobjs.camwpos += mvkobjs.camfor * static_cast<float>(mvkobjs.metrics.tickdiff) * mforward +
+	                   mvkobjs.camright * static_cast<float>(mvkobjs.metrics.tickdiff) * mright +
+	                   mvkobjs.camup * static_cast<float>(mvkobjs.metrics.tickdiff) * mup;
 
 	return glm::lookAt(mvkobjs.camwpos, mvkobjs.camwpos + mforward, mup);
 }

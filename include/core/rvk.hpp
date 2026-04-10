@@ -29,6 +29,8 @@ namespace std {
 }
 #endif
 
+inline constexpr std::size_t CACHE_LINE = 64;
+
 struct rctx {
 
 	//function pointer (hopefully)
@@ -99,6 +101,12 @@ struct StagingBelt {
 	}
 };
 
+struct DummyTexture {
+	VkImage image = VK_NULL_HANDLE;
+	VkDeviceMemory memory = VK_NULL_HANDLE;
+	VkImageView view = VK_NULL_HANDLE;
+};
+
 struct texdata {
 	VkImage img = VK_NULL_HANDLE;
 	VkImageView imgview = VK_NULL_HANDLE;
@@ -166,12 +174,15 @@ struct vkpushconstants {
 };
 // idk
 // static_assert(sizeof(vkpushconstants) == 128, "Struct size mismatch!");
-struct alignas(64) rvkbucket {
 
+// // consider this arch with count at the end for the buffers and semaphores
+// enum class CmdType : size_t { Graphics = 0, Compute = 1, Transfer = 2, Present = 3, Count = 4 };
+// enum class SemType : size_t { ImageAvailable = 0, RenderFinished = 1, ComputeFinished = 2, Count = 3 };
+
+	struct alignas(CACHE_LINE) frozen{
 	vkb::Instance inst{};
 	vkb::Device vkdevice{};
 	VmaAllocator alloc = nullptr;
-	vkb::Swapchain schain{};
 	VkSurfaceKHR surface{};
 
 	VkQueue graphicsQ = VK_NULL_HANDLE;
@@ -179,64 +190,13 @@ struct alignas(64) rvkbucket {
 	VkQueue computeQ = VK_NULL_HANDLE;
 	VkQueue transferQ = VK_NULL_HANDLE;
 
-	// tex=1
-	std::array<VkCommandPool,3> cpools_graphics = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-	std::array<VkCommandPool,3> cpools_compute = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-	std::array<VkCommandPool,3> cpools_transfer = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-	// useless apparently
-	std::array<VkCommandPool,3> cpools_present = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-
-	std::array<std::array<VkCommandBuffer,3>,3> cbuffers_graphics = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
-	std::array<std::array<VkCommandBuffer,3>,3> cbuffers_compute = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
-	std::array<std::array<VkCommandBuffer,3>,3> cbuffers_transfer = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
-
-	// {image available, renderfinished, compute finished}
-	std::array<std::array<VkSemaphore, 3>, 3> semaphorez {{
-			{{ VK_NULL_HANDLE,VK_NULL_HANDLE, VK_NULL_HANDLE }},
-			{{ VK_NULL_HANDLE,VK_NULL_HANDLE, VK_NULL_HANDLE }},
-			{{ VK_NULL_HANDLE,VK_NULL_HANDLE, VK_NULL_HANDLE }}
-		}};
-	std::array<VkFence,3> fencez{VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
-	std::array<VkDescriptorPool,6> dpools = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
 	
-	
-	VkImage rddepthimage = VK_NULL_HANDLE;
-	VkImageView rddepthimageview = VK_NULL_HANDLE;
-	VmaAllocation rddepthimagealloc = VK_NULL_HANDLE;
-	VkImage rddepthimageref = VK_NULL_HANDLE;
-	VkImageView rddepthimageviewref = VK_NULL_HANDLE;
-	VmaAllocation rddepthimageallocref = VK_NULL_HANDLE;
-	
-	SDL_Window *wind = nullptr;
-	const SDL_DisplayMode *rdmode;
-	SDL_Event e{SDL_Event{}};
-
-    glm::vec3 camwpos{0.0f, 6.0f, 12.0f};
-    float cam_pad0; // Explicit padding to keep 16-byte alignment if needed
-    glm::vec3 raymarchpos{0.0f};
-    float cam_pad1; 
-
-
-
-
-	rctx ctx{};
-	DeletionQueue deletionQ{};
-	DeletionQueue cleanupQ{};
-	StagingBelt sbelt{};
-	std::array<DeletionQueue,3> framedeletionQ{};
+	uint32_t graphicsQidx{};
+	uint32_t presentQidx{};
+	uint32_t computeQidx{};
+	uint32_t transferQidx{};
 
 	
-
-	std::array<texdata,1> exrtex{};
-	VkDescriptorSet exrdset = VK_NULL_HANDLE;
-	std::array<VkSampler,4> samplerz{};
-
-	struct DummyTexture {
-		VkImage image = VK_NULL_HANDLE;
-		VkDeviceMemory memory = VK_NULL_HANDLE;
-		VkImageView view = VK_NULL_HANDLE;
-	};
-
 	struct {
 		DummyTexture purple;
 		DummyTexture white;
@@ -245,44 +205,122 @@ struct alignas(64) rvkbucket {
 	} defaults;
 
 
+	
+	VkImage rddepthimage = VK_NULL_HANDLE;
+	VkImageView rddepthimageview = VK_NULL_HANDLE;
+	VmaAllocation rddepthimagealloc = VK_NULL_HANDLE;
+	VkImage rddepthimageref = VK_NULL_HANDLE;
+	VkImageView rddepthimageviewref = VK_NULL_HANDLE;
+	VmaAllocation rddepthimageallocref = VK_NULL_HANDLE;
+	VkFormat rddepthformat{};
+	VkFormat rddepthformatref{};
 
-	double tickdiff{0.0f};
-	float frametime{0.0f};
-	float updateanimtime{0.0f};
-	float updatemattime{0.0f};
-	float uploadubossbotime{0.0f};
-	float iksolvetime{0.0f};
-	float rduigeneratetime{0.0f};
-	float rduidrawtime{0.0f};
-	float loadingprog{0.0f};
+	std::array<VkDescriptorPool,6> dpools = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
 
+	
+	std::array<texdata,1> exrtex{};
+	VkDescriptorSet exrdset = VK_NULL_HANDLE;
+	std::array<VkSampler,4> samplerz{};
+
+	inline static std::shared_ptr<VkDescriptorSetLayout> texlayout = std::make_shared<VkDescriptorSetLayout>();
+	inline static VkDescriptorSetLayout ubolayout = VK_NULL_HANDLE;
+	inline static VkDescriptorSetLayout ssbolayout = VK_NULL_HANDLE;
+	inline static VkDescriptorSetLayout hdrlayout = VK_NULL_HANDLE;
+
+
+	};
+
+	struct alignas(CACHE_LINE) framedata{
+
+	// tex=1
+	VkCommandPool cpools_graphics = VK_NULL_HANDLE;
+	VkCommandPool cpools_compute = VK_NULL_HANDLE; 
+	VkCommandPool cpools_transfer = VK_NULL_HANDLE;
+	// useless apparently
+	// VkCommandPool cpools_present = VK_NULL_HANDLE
+
+	std::array<VkCommandBuffer,3> cbuffers_graphics = {{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}};
+	std::array<VkCommandBuffer,3> cbuffers_compute = {{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}};
+	std::array<VkCommandBuffer,3> cbuffers_transfer = {{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}};
+
+	// {image available, renderfinished, compute finished}
+	std::array<VkSemaphore, 3> semaphorez {
+			{ VK_NULL_HANDLE,VK_NULL_HANDLE, VK_NULL_HANDLE }
+		};
+	VkFence fencez{VK_NULL_HANDLE};
+
+	
+
+	rctx ctx{};
+	StagingBelt sbelt{};
+	DeletionQueue framedeletionQ{};
+
+	};
+
+	struct alignas(CACHE_LINE) hot{
+		
+	vkb::Swapchain schain{};
+	std::vector<VkImage> schainimgs;
+	std::vector<VkImageView> schainimgviews;
+
+	SDL_Window *wind = nullptr;
+	const SDL_DisplayMode *rdmode;
+	SDL_Event e{SDL_Event{}};
+
+	
+	int width{0};
+	int height{0};
+
+	bool fullscreen{false};
+	bool mshutdown{false};
+
+
+
+	};
+
+	
+	struct alignas(CACHE_LINE) molten{
+
+	std::atomic<double> tickdiff{0.0f};
+	std::atomic<float> frametime{0.0f};
+	std::atomic<float> updateanimtime{0.0f};
+	std::atomic<float> updatemattime{0.0f};
+	std::atomic<float> uploadubossbotime{0.0f};
+	std::atomic<float> iksolvetime{0.0f};
+	std::atomic<float> rduigeneratetime{0.0f};
+	std::atomic<float> rduidrawtime{0.0f};
+	std::atomic<float> loadingprog{0.0f};
+
+	
+	unsigned int tricount{0};
+	unsigned int gltftricount{0};
+
+	};
+
+
+struct alignas(CACHE_LINE) rvkbucket {
+
+	frozen core{};
+	std::array<framedata,3> framez{}; // MAX_FRAMES_IN_FLIGHT
+	hot window{};
+	molten metrics{};
+
+    glm::vec3 camwpos{0.0f, 6.0f, 12.0f};
+    // float cam_pad0; // do i need this
+    // glm::vec3 raymarchpos{0.0f};
+    // float cam_pad1;
+
+	DeletionQueue deletionQ{};
+	DeletionQueue cleanupQ{};
 
 
 	float fov = 1.0472f;
 	float azimuth{15.0f};
 	float elevation{-25.0f};
 
-
-	int width{0};
-	int height{0};
-	unsigned int tricount{0};
-	unsigned int gltftricount{0};
-
-
-
 	int camfor{0};
 	int camright{0};
 	int camup{0};
-
-
-	uint32_t graphicsQidx{};
-	uint32_t presentQidx{};
-	uint32_t computeQidx{};
-	uint32_t transferQidx{};
-
-
-	VkFormat rddepthformat{};
-	VkFormat rddepthformatref{};
 
 	inline static const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
 
@@ -291,11 +329,6 @@ struct alignas(64) rvkbucket {
 	inline static uint32_t currentFrame{0};
 	inline static uint32_t hdrmiplod{0};
 
-
-	inline static std::shared_ptr<VkDescriptorSetLayout> texlayout = std::make_shared<VkDescriptorSetLayout>();
-	inline static VkDescriptorSetLayout ubolayout = VK_NULL_HANDLE;
-	inline static VkDescriptorSetLayout ssbolayout = VK_NULL_HANDLE;
-	inline static VkDescriptorSetLayout hdrlayout = VK_NULL_HANDLE;
 	inline static constexpr size_t idxinitpool{0};
 	inline static constexpr size_t idximguipool{1};
 	inline static constexpr size_t idxruntimepool0{2};
@@ -303,12 +336,11 @@ struct alignas(64) rvkbucket {
 	inline static constexpr size_t idxruntimepool2{4};
 	inline static constexpr size_t idxruntimepool3{5};
 
-	bool fullscreen{false};
-	bool mshutdown{false};
+	[[nodiscard]] constexpr auto active_frame(this auto&& self) noexcept -> auto& {
+        [[assume(self.currentFrame < 3)]]; // 3 is MAX_FRAMES_IN_FLIGHT
+        return self.frames[self.currentFrame];
+    }
 
-
-	std::vector<VkImage> schainimgs;
-	std::vector<VkImageView> schainimgviews;
 
 
 };
@@ -338,7 +370,7 @@ inline void safe_cleanup(rvkbucket& objs, GpuBuffer& bufferData) {
 	VmaAllocation alloc = bufferData.alloc;
 	if (buf != VK_NULL_HANDLE) {
 		objs.deletionQ.push_function([=, &objs]() {
-			vmaDestroyBuffer(objs.alloc, buf, alloc);
+			vmaDestroyBuffer(objs.core.alloc, buf, alloc);
 		});
 	}
 	bufferData.buffer = VK_NULL_HANDLE;

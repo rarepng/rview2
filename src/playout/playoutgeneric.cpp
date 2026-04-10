@@ -58,6 +58,33 @@ bool playoutgeneric::createinstances(rvkbucket &objs, size_t count, bool rand) {
 		return false;
 	return true;
 }
+bool playoutgeneric::modifyInstances(size_t target_count, bool rand) {
+    const size_t current_count{ minstances.size() };
+    if (target_count == current_count) [[unlikely]] {
+        return true;
+    }
+    // if (!mgltf) [[unlikely]] {
+    //     return false;
+    // }
+    if (target_count < current_count) {
+        minstances.resize(target_count);
+    } else {
+        const size_t diff{ target_count - current_count };
+        minstances.reserve(target_count);
+
+        for (size_t i{0}; i < diff; ++i) {
+            minstances.emplace_back(std::make_shared<genericinstance>(
+                mgltf, 
+                glm::vec3{0.0f, 0.0f, 0.0f}, 
+                rand
+            ));
+        }
+    }
+    numinstancess = target_count;
+	if (!minstances.size())
+		return false;
+    return true;
+}
 bool playoutgeneric::createubo(rvkbucket &objs) {
 	ubo::createlayout(objs,rvkbucket::ubolayout);
 	if (!ubo::init(objs, rdperspviewmatrixubo))

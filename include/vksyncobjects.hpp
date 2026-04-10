@@ -5,5 +5,4 @@
 class vksyncobjects {
 public:
 	static bool init(rvkbucket &rdata);
-	static void cleanup(rvkbucket &rdata);
 };

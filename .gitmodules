@@ -61,3 +61,6 @@
 [submodule "sub/tracy"]
 	path = sub/tracy
 	url = ../../wolfpld/tracy
+[submodule "sub/stdexec"]
+	path = sub/stdexec
+	url = ../../NVIDIA/stdexec

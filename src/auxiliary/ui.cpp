@@ -43,7 +43,7 @@ bool ui::init(rvkbucket &renderData) {
 	imguiPoolInfo.poolSizeCount = imguiPoolSizes.size();
 	imguiPoolInfo.pPoolSizes = imguiPoolSizes.data();
 
-	if (vkCreateDescriptorPool(renderData.vkdevice.device, &imguiPoolInfo, nullptr,
+	if (vkCreateDescriptorPool(renderData.core.vkdevice.device, &imguiPoolInfo, nullptr,
 	                           &renderData.dpools[rvkbucket::idximguipool])) {
 		return false;
 	}
@@ -60,13 +60,13 @@ bool ui::init(rvkbucket &renderData) {
 
 
 	ImGui_ImplVulkan_InitInfo imguiIinitInfo{};
-	imguiIinitInfo.Instance = renderData.inst.instance;
-	imguiIinitInfo.PhysicalDevice = renderData.vkdevice.physical_device;
-	imguiIinitInfo.Device = renderData.vkdevice.device;
-	imguiIinitInfo.Queue = renderData.graphicsQ;
+	imguiIinitInfo.Instance = renderData.core.inst.instance;
+	imguiIinitInfo.PhysicalDevice = renderData.core.vkdevice.physical_device;
+	imguiIinitInfo.Device = renderData.core.vkdevice.device;
+	imguiIinitInfo.Queue = renderData.core.graphicsQ;
 	imguiIinitInfo.DescriptorPool = renderData.dpools[rvkbucket::idximguipool];
 	imguiIinitInfo.MinImageCount = 2;
-	imguiIinitInfo.ImageCount = renderData.schainimgs.size();
+	imguiIinitInfo.ImageCount = renderData.window.schainimgs.size();
 	imguiIinitInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 	imguiIinitInfo.RenderPass = VK_NULL_HANDLE;
 	imguiIinitInfo.PipelineRenderingCreateInfo = plinerenderinginfo;
@@ -79,7 +79,7 @@ bool ui::init(rvkbucket &renderData) {
 
 	ImGui::StyleColorsDark();
 
-	ImGui_ImplSDL3_ProcessEvent(&renderData.e);
+	ImGui_ImplSDL3_ProcessEvent(&renderData.window.e);
 
 	/* init plot vectors */
 	mfpsvalues.reserve(mnumfpsvalues);

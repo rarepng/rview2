@@ -27,13 +27,30 @@ extern "C++" {
 	using VkDescriptorPool = VkDescriptorPool_T*;
 
 
-	namespace fastgltf { class Asset; }
+	namespace fastgltf { class Asset;struct Image; }
 
 	struct rvkbucket;
 	struct texdata;
 }
 
 export namespace rview::rvk {
+
+	// In production, query physicalDevice.properties.limits.maxPerStageDescriptorUpdateAfterBindSamplers
+    constexpr uint32_t MAX_GLOBAL_TEXTURES = 4096;
+
+    struct TextureHeap {
+        VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+		// no one else is going to use this pool
+        VkDescriptorPool pool = VK_NULL_HANDLE;
+        VkDescriptorSet set = VK_NULL_HANDLE;
+        uint32_t current_head = 0;
+
+        bool can_alloc(uint32_t count) const { return current_head + count <= MAX_GLOBAL_TEXTURES; }
+    };
+
+	void init_heap(rvkbucket& bucket, TextureHeap& heap);
+    int32_t upload_texture(rvkbucket& bucket, TextureHeap& heap, fastgltf::Image& image, fastgltf::Asset& asset);
+	void destroy_heap(rvkbucket& bucket, TextureHeap& heap);
 
 using TextureErrorCallback = std::function<void(std::string_view)>;
 

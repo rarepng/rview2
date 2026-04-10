@@ -22,3 +22,5 @@ share
 docs
 CMakeUserPresets.json
 html
+external
+vendor
