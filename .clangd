@@ -13,6 +13,7 @@ CompileFlags:
     - -fmodules-ts
     - -fmodule-mapper=*
     - -fdeps-format=*
+    - -fconcepts-diagnostics-depth=*
 Diagnostics:
   UnusedIncludes: None
   # MissingIncludes: None
