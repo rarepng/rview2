@@ -50,17 +50,17 @@ void configure_selector(vkb::PhysicalDeviceSelector& selector) {
 	selector
 	.set_minimum_version(1, 4)
 	.prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
-	.set_required_features_13(f13)
-	.set_required_features_12(f12)
-	.set_required_features(features)
-	.add_required_extension(VK_EXT_MESH_SHADER_EXTENSION_NAME)
-	.add_required_extension(VK_KHR_RAY_QUERY_EXTENSION_NAME)
-	.add_required_extension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)
-	.add_required_extension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME)
-	//need to add debug ones
-	.add_required_extension_features(ray_query_feats)
-	.add_required_extension_features(as_feats)
-	.add_required_extension_features(f_mesh)
+	// .set_required_features_13(f13)
+	// .set_required_features_12(f12)
+	// .set_required_features(features)
+	// .add_required_extension(VK_EXT_MESH_SHADER_EXTENSION_NAME)
+	// .add_required_extension(VK_KHR_RAY_QUERY_EXTENSION_NAME)
+	// .add_required_extension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)
+	// .add_required_extension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME)
+	// //need to add debug ones
+	// .add_required_extension_features(ray_query_feats)
+	// .add_required_extension_features(as_feats)
+	// .add_required_extension_features(f_mesh)
 	.require_present(false);
 }
 

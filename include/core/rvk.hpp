@@ -12,7 +12,6 @@
 #include <iostream>
 #include <deque>
 #include <functional>
-#include <execution>
 
 // all this &$#! for a stupid ugly diagram
 #ifndef __cpp_lib_move_only_function
