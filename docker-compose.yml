@@ -1,0 +1,12 @@
+services:
+  gserver:
+    container_name: rview2_server
+    image: alpine:latest
+    networks:
+      - gamenet
+    env_file:
+      - .envS
+  gclient:
+    1
+networks:
+  - gamenet
