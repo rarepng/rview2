@@ -1,4 +1,3 @@
-module;
 #include <fastgltf/core.hpp>
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
@@ -15,7 +14,8 @@ module;
 
 #include "core/rvk.hpp"
 
-module rview.rvk.tex;
+#include "vktex.hpp"
+
 
 //todo: use the proper pools, descriptors, layouts and buffers
 //after fixing the intellisense problems caused by modules..

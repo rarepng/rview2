@@ -16,7 +16,7 @@
 #include "genericmodel.hpp"
 #include "vkvbo.hpp"
 
-import rview.rvk.tex;
+#include "vktex.hpp"
 
 bool genericmodel::loadmodel(rvkbucket &objs, std::string fname) {
 

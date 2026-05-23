@@ -38,9 +38,8 @@
 
 #include "exp/particle.hpp"
 
-// might revert the whole module thing
-// maybe was not the best idea at this time
-import rview.rvk.tex;
+// yep revereted all modules
+#include "vktex.hpp"
 
 
 void vkrenderer::immediate_submit(rvkbucket& mvkobjs,
