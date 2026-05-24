@@ -56,6 +56,14 @@ private:
 
 	int mjnodecount{0};
 
+	std::vector<uint32_t> mskinJointOffsets{};
+	std::vector<uint32_t> mmeshToSkinOffset{};
+	
+	void extractmaterials(rvkbucket &objs);
+
+	std::vector<uint32_t> m_global_material_indices; 
+
+
 	fastgltf::Asset mmodel2;
 
 	const std::unordered_map<fastgltf::AccessorType, uint8_t> numotypes{

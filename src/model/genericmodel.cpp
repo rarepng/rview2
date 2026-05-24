@@ -67,7 +67,58 @@ bool genericmodel::loadmodel(rvkbucket &objs, std::string fname) {
 	} else {
 		skinned = false;
 	}
+
+	extractmaterials(objs);
+
 	return true;
+}
+
+void genericmodel::extractmaterials(rvkbucket &objs) {
+	std::vector<MaterialData> matBuffer;
+	matBuffer.reserve(mmodel2.materials.size() + 1);
+
+	for (const auto& mat : mmodel2.materials) {
+		MaterialData md{};
+		md.envMapMaxLod = rvkbucket::hdrmiplod - 1;
+		md.baseColorFactor = glm::make_vec4(mat.pbrData.baseColorFactor.data());
+		md.roughnessFactor = mat.pbrData.roughnessFactor;
+		md.metallicFactor  = mat.pbrData.metallicFactor;
+		md.emissiveFactor  = glm::make_vec3(mat.emissiveFactor.data());
+		md.normalScale     = mat.normalTexture.has_value() ? mat.normalTexture.value().scale : 1.0f;
+
+		md.albedoIdx = mat.pbrData.baseColorTexture.has_value() ? static_cast<uint32_t>(mmodel2.textures[mat.pbrData.baseColorTexture.value().textureIndex].imageIndex.value() + 4) : 1;
+		md.normalIdx = mat.normalTexture.has_value() ? static_cast<uint32_t>(mmodel2.textures[mat.normalTexture.value().textureIndex].imageIndex.value() + 4) : 2;
+		md.ormIdx = mat.pbrData.metallicRoughnessTexture.has_value() ? static_cast<uint32_t>(mmodel2.textures[mat.pbrData.metallicRoughnessTexture.value().textureIndex].imageIndex.value() + 4) : 1;
+		md.emissiveIdx = mat.emissiveTexture.has_value() ? static_cast<uint32_t>(mmodel2.textures[mat.emissiveTexture.value().textureIndex].imageIndex.value() + 4) : 3;
+
+		md.transmissionIdx = 3; md.sheenIdx = 3; md.clearcoatIdx = 3; md.thicknessIdx = 1;
+		matBuffer.push_back(md);
+	}
+
+	MaterialData defaultMat{};
+	defaultMat.baseColorFactor = glm::vec4(1.0f);
+	defaultMat.roughnessFactor = 1.0f;
+	defaultMat.metallicFactor = 0.0f;
+	defaultMat.albedoIdx = 1; defaultMat.normalIdx = 2; defaultMat.ormIdx = 1; defaultMat.emissiveIdx = 3;
+	defaultMat.transmissionIdx = 3; defaultMat.sheenIdx = 3; defaultMat.clearcoatIdx = 3; defaultMat.thicknessIdx = 1;
+	defaultMat.envMapMaxLod = rvkbucket::hdrmiplod - 1;
+	matBuffer.push_back(defaultMat);
+
+	std::lock_guard<std::mutex> lock(rvkbucket::global_materials.mtx);
+	if (rvkbucket::global_materials.free_slots.size() < matBuffer.size()) {
+		std::cerr << "VULKAN ERROR: Global Material Heap Exhausted!" << std::endl;
+		return;
+	}
+	MaterialData* global_array = static_cast<MaterialData*>(rvkbucket::global_materials.mapped_data);
+
+	for (size_t i = 0; i < matBuffer.size(); i++) {
+		uint32_t global_slot = rvkbucket::global_materials.free_slots.front();
+		rvkbucket::global_materials.free_slots.pop();
+		
+		m_global_material_indices.push_back(global_slot);
+		
+		global_array[global_slot] = matBuffer[i];
+	}
 }
 
 int genericmodel::getnodecount() {
@@ -93,38 +144,63 @@ gltfnodedata genericmodel::getgltfnodes() {
 }
 
 void genericmodel::getjointdata() {
-	mnodetojoint.reserve(mmodel2.nodes.size());
-	mnodetojoint.resize(mmodel2.nodes.size());
+	mnodetojoint.reserve(mmodel2.nodes.size() * mmodel2.skins.size());
+	mnodetojoint.resize(mmodel2.nodes.size() * mmodel2.skins.size());
 
-	const fastgltf::Skin &skin = mmodel2.skins.at(0);
-	for (unsigned int i = 0; i < skin.joints.size(); ++i) {
-		mnodetojoint.at(skin.joints.at(i)) = i;
+	mnodetojoint.assign(mmodel2.nodes.size(), 0);
+	unsigned int globalJointIndex = 0;
+	for (const auto& skin : mmodel2.skins) {
+		for (const size_t nodeIndex : skin.joints) {
+			mnodetojoint.at(nodeIndex) = globalJointIndex++;
+		}
 	}
 }
 
 void genericmodel::getinvbindmats() {
 
-	const fastgltf::Skin &skin = mmodel2.skins.at(0);
-	size_t invBindMatAccessor = skin.inverseBindMatrices.value();
+	minversebindmats.clear();
+	mskinJointOffsets.clear();
+	size_t currentOffset = 0;
+	size_t totalJoints = 0;
+	
 
-	const fastgltf::Accessor &accessor = mmodel2.accessors.at(invBindMatAccessor);
-	const fastgltf::BufferView &bufferView =
-	    mmodel2.bufferViews.at(accessor.bufferViewIndex.value());
-	const fastgltf::Buffer &buffer = mmodel2.buffers.at(bufferView.bufferIndex);
+	for (const auto& skin : mmodel2.skins) totalJoints += skin.joints.size();
+	minversebindmats.reserve(totalJoints);
 
-	minversebindmats.reserve(skin.joints.size());
-	minversebindmats.resize(skin.joints.size());
+	for (const auto& skin : mmodel2.skins) {
+		mskinJointOffsets.push_back(currentOffset);
+		size_t jointCount = skin.joints.size();
 
-	size_t newbytelength{skin.joints.size() * 4 * 4 * 4};
-	std::visit(fastgltf::visitor{[](auto &arg) {},
-	[&](const fastgltf::sources::Array &vector) {
-		std::memcpy(minversebindmats.data(),
-		            vector.bytes.data() +
-		            bufferView.byteOffset +
-		            accessor.byteOffset,
-		            newbytelength);
-	}},
-	buffer.data);
+		if (!skin.inverseBindMatrices.has_value()) {
+			for (size_t i = 0; i < jointCount; ++i) minversebindmats.push_back(glm::mat4(1.0f));
+		} else {
+			size_t invBindMatAccessor = skin.inverseBindMatrices.value();
+			const fastgltf::Accessor &accessor = mmodel2.accessors.at(invBindMatAccessor);
+			const fastgltf::BufferView &bufferView = mmodel2.bufferViews.at(accessor.bufferViewIndex.value());
+			const fastgltf::Buffer &buffer = mmodel2.buffers.at(bufferView.bufferIndex);
+
+			std::vector<glm::mat4> skinMats(jointCount);
+			std::visit(fastgltf::visitor{
+				[](auto &) {},
+				[&](const fastgltf::sources::Array &vector) {
+					std::memcpy(skinMats.data(),
+					            vector.bytes.data() + bufferView.byteOffset + accessor.byteOffset,
+					            jointCount * sizeof(glm::mat4));
+				}
+			}, buffer.data);
+
+			minversebindmats.insert(minversebindmats.end(), skinMats.begin(), skinMats.end());
+		}
+		currentOffset += jointCount;
+	}
+
+	mmeshToSkinOffset.assign(mmodel2.meshes.size(), 0);
+	for (const auto& node : mmodel2.nodes) {
+		if (node.meshIndex.has_value() && node.skinIndex.has_value()) {
+			mmeshToSkinOffset[node.meshIndex.value()] = mskinJointOffsets[node.skinIndex.value()];
+		}
+	}
+
 }
 
 void genericmodel::getanims() {
@@ -425,13 +501,19 @@ void genericmodel::uploadvboebo(rvkbucket &objs, VkCommandBuffer &cbuffer) {
 }
 
 size_t genericmodel::gettricount(size_t i, size_t j) {
-	const fastgltf::Primitive &prims = mmodel2.meshes.at(i).primitives.at(j);
-	const fastgltf::Accessor &acc =
-	    mmodel2.accessors.at(prims.indicesAccessor.value());
-	size_t c{acc.count / 3};
-	return c;
+	const fastgltf::Primitive &prim = mmodel2.meshes.at(i).primitives.at(j);
+	
+	if (prim.indicesAccessor.has_value()) {
+		const fastgltf::Accessor &acc = mmodel2.accessors.at(prim.indicesAccessor.value());
+		return acc.count / 3;
+	} else {
+		if (auto* posAttr = prim.findAttribute("POSITION")) {
+			const fastgltf::Accessor &acc = mmodel2.accessors.at(posAttr->accessorIndex);
+			return acc.count / 3;
+		}
+		return 0;
+	}
 }
-
 void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
                                  VkPipeline &vkpline, VkPipeline &vkplineuint,
                                  int instancecount, int stride) {
@@ -440,6 +522,11 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
 	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 	                        VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1,
 	                        &mgltfobjs.dset, 0, nullptr);
+
+	vkCmdBindDescriptorSets(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
+	                        VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 4, 1,
+	                        &rvkbucket::global_materials.dset, 0, nullptr);
+
 	for (size_t i = 0; i < mgltfobjs.vbos.size(); i++) {
 		for (size_t j = 0; j < mgltfobjs.vbos.at(i).size(); j++) {
 			VkPipeline pipeline = meshjointtype[i][j] ? vkplineuint : vkpline;
@@ -449,66 +536,68 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
 			auto& buffers2 = mgltfobjs.vbos[i][j];
 			bool hasSkin = (buffers2[4].buffer != VK_NULL_HANDLE && buffers2[5].buffer != VK_NULL_HANDLE);
 			push.stride = hasSkin ? stride : 0;
-			push.envMapMaxLod = rvkbucket::hdrmiplod - 1;
-			push.stride = stride;
+			// push.envMapMaxLod = rvkbucket::hdrmiplod - 1;
+			// push.stride = stride;
 			push.t = static_cast<float>(SDL_GetTicks()) / 1000.0f;
+			push.jointOffset = mmeshToSkinOffset.empty() ? 0 : mmeshToSkinOffset[i];
 
-			const fastgltf::Material* mat = nullptr;
-			if (mmodel2.meshes.at(i).primitives.at(j).materialIndex.has_value()) {
-				mat = &mmodel2.materials[mmodel2.meshes.at(i).primitives.at(j).materialIndex.value()];
-			}
+			uint32_t local_idx = mmodel2.meshes.at(i).primitives.at(j).materialIndex.has_value() ? 
+		                     mmodel2.meshes.at(i).primitives.at(j).materialIndex.value() : mmodel2.materials.size(); // default fallback
+		                     
+		push.materialID = this->m_global_material_indices[local_idx];
 
-			if (mat) {
-				push.baseColorFactor = glm::make_vec4(mat->pbrData.baseColorFactor.data());
-				push.roughnessFactor = mat->pbrData.roughnessFactor;
-				push.metallicFactor  = mat->pbrData.metallicFactor;
-				push.emissiveFactor  = glm::make_vec3(mat->emissiveFactor.data());
-				push.normalScale     = 1.0f;
-				if (mat->normalTexture.has_value()) push.normalScale = mat->normalTexture.value().scale;
-				if (mat->pbrData.baseColorTexture.has_value()) {
-					size_t texIdx = mat->pbrData.baseColorTexture.value().textureIndex;
-					size_t imgIdx = mmodel2.textures[texIdx].imageIndex.value();
-					push.albedoIdx = static_cast<uint32_t>(imgIdx + 4);
-				} else {
-					push.albedoIdx = 1;
-				}
 
-				if (mat->normalTexture.has_value()) {
-					size_t texIdx = mat->normalTexture.value().textureIndex;
-					size_t imgIdx = mmodel2.textures[texIdx].imageIndex.value();
-					push.normalIdx = static_cast<uint32_t>(imgIdx + 4);
-				} else {
-					push.normalIdx = 2;
-				}
+			// if (mat) {
+			// 	push.baseColorFactor = glm::make_vec4(mat->pbrData.baseColorFactor.data());
+			// 	push.roughnessFactor = mat->pbrData.roughnessFactor;
+			// 	push.metallicFactor  = mat->pbrData.metallicFactor;
+			// 	push.emissiveFactor  = glm::make_vec3(mat->emissiveFactor.data());
+			// 	push.normalScale     = 1.0f;
+			// 	if (mat->normalTexture.has_value()) push.normalScale = mat->normalTexture.value().scale;
+			// 	if (mat->pbrData.baseColorTexture.has_value()) {
+			// 		size_t texIdx = mat->pbrData.baseColorTexture.value().textureIndex;
+			// 		size_t imgIdx = mmodel2.textures[texIdx].imageIndex.value();
+			// 		push.albedoIdx = static_cast<uint32_t>(imgIdx + 4);
+			// 	} else {
+			// 		push.albedoIdx = 1;
+			// 	}
 
-				if (mat->pbrData.metallicRoughnessTexture.has_value()) {
-					size_t texIdx = mat->pbrData.metallicRoughnessTexture.value().textureIndex;
-					size_t imgIdx = mmodel2.textures[texIdx].imageIndex.value();
-					push.ormIdx = static_cast<uint32_t>(imgIdx + 4);
-				} else {
-					push.ormIdx = 1;
-				}
-				if (mat->emissiveTexture.has_value()) {
-					size_t texIdx = mat->emissiveTexture.value().textureIndex;
-					size_t imgIdx = mmodel2.textures[texIdx].imageIndex.value();
-					push.emissiveIdx = static_cast<uint32_t>(imgIdx + 4);
-				} else {
-					push.emissiveIdx = 3;
-				}
-				push.transmissionIdx = 3;
-				push.sheenIdx = 3;
-				push.clearcoatIdx = 3;
-				push.thicknessIdx = 1;
+			// 	if (mat->normalTexture.has_value()) {
+			// 		size_t texIdx = mat->normalTexture.value().textureIndex;
+			// 		size_t imgIdx = mmodel2.textures[texIdx].imageIndex.value();
+			// 		push.normalIdx = static_cast<uint32_t>(imgIdx + 4);
+			// 	} else {
+			// 		push.normalIdx = 2;
+			// 	}
 
-			} else {
-				push.baseColorFactor = glm::vec4(1.0f);
-				push.roughnessFactor = 1.0f;
-				push.metallicFactor = 0.0f;
-				push.albedoIdx = 1;
-				push.normalIdx = 2;
-				push.ormIdx = 1;
-				push.emissiveIdx = 3;
-			}
+			// 	if (mat->pbrData.metallicRoughnessTexture.has_value()) {
+			// 		size_t texIdx = mat->pbrData.metallicRoughnessTexture.value().textureIndex;
+			// 		size_t imgIdx = mmodel2.textures[texIdx].imageIndex.value();
+			// 		push.ormIdx = static_cast<uint32_t>(imgIdx + 4);
+			// 	} else {
+			// 		push.ormIdx = 1;
+			// 	}
+			// 	if (mat->emissiveTexture.has_value()) {
+			// 		size_t texIdx = mat->emissiveTexture.value().textureIndex;
+			// 		size_t imgIdx = mmodel2.textures[texIdx].imageIndex.value();
+			// 		push.emissiveIdx = static_cast<uint32_t>(imgIdx + 4);
+			// 	} else {
+			// 		push.emissiveIdx = 3;
+			// 	}
+			// 	push.transmissionIdx = 3;
+			// 	push.sheenIdx = 3;
+			// 	push.clearcoatIdx = 3;
+			// 	push.thicknessIdx = 1;
+
+			// } else {
+			// 	push.baseColorFactor = glm::vec4(1.0f);
+			// 	push.roughnessFactor = 1.0f;
+			// 	push.metallicFactor = 0.0f;
+			// 	push.albedoIdx = 1;
+			// 	push.normalIdx = 2;
+			// 	push.ormIdx = 1;
+			// 	push.emissiveIdx = 3;
+			// }
 			vkCmdPushConstants(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
 			                   vkplayout,
 			                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -528,13 +617,39 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
 				                       binding, 1, &bufToBind, &offset);
 			}
 
-			vkCmdBindIndexBuffer(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
-			                     mgltfobjs.ebos.at(i).at(j).buffer, 0,
-			                     VK_INDEX_TYPE_UINT16);
+			const auto& prim = mmodel2.meshes.at(i).primitives.at(j);
+			uint32_t drawCount = static_cast<uint32_t>(gettricount(i, j) * 3);
 
-			vkCmdDrawIndexed(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
-			                 static_cast<uint32_t>(gettricount(i, j) * 3),
-			                 instancecount, 0, 0, 0);
+			if (prim.indicesAccessor.has_value()) {
+				const fastgltf::Accessor& idxAcc = mmodel2.accessors.at(prim.indicesAccessor.value());
+				
+				VkIndexType vkIndexType = VK_INDEX_TYPE_UINT16;
+				switch (idxAcc.componentType) {
+					case fastgltf::ComponentType::UnsignedByte:
+						vkIndexType = VK_INDEX_TYPE_UINT8_EXT;
+						break;
+					case fastgltf::ComponentType::UnsignedShort:
+						vkIndexType = VK_INDEX_TYPE_UINT16;
+						break;
+					case fastgltf::ComponentType::UnsignedInt:
+						vkIndexType = VK_INDEX_TYPE_UINT32;
+						break;
+					default:
+						break;
+				}
+
+				vkCmdBindIndexBuffer(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
+				                     mgltfobjs.ebos.at(i).at(j).buffer, 0,
+				                     vkIndexType);
+
+				vkCmdDrawIndexed(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
+				                 drawCount,
+				                 instancecount, 0, 0, 0);
+			} else {
+				vkCmdDraw(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
+				          drawCount,
+				          instancecount, 0, 0);
+			}
 		}
 	}
 }
@@ -556,6 +671,11 @@ void genericmodel::cleanup(rvkbucket &objs) {
 	for (size_t i{0}; i < mgltfobjs.texs.size(); i++) {
 		rview::rvk::tex::cleanup(objs, mgltfobjs.texs[i]);
 	}
+	std::lock_guard<std::mutex> lock(rvkbucket::global_materials.mtx);
+	for (uint32_t slot : m_global_material_indices) {
+		rvkbucket::global_materials.free_slots.push(slot);
+	}
+	m_global_material_indices.clear();
 	//temp
 	rview::rvk::tex::cleanuptpl(objs,*rvkbucket::texlayout,mgltfobjs.texpool);
 }

@@ -12,6 +12,7 @@
 #include <iostream>
 #include <deque>
 #include <functional>
+#include <queue>
 
 // all this &$#! for a stupid ugly diagram
 #ifndef __cpp_lib_move_only_function
@@ -98,6 +99,35 @@ struct StagingBelt {
 	}
 };
 
+struct alignas(16) MaterialData {
+	uint32_t albedoIdx;
+	uint32_t normalIdx;
+	uint32_t ormIdx;
+	uint32_t emissiveIdx;
+	
+	uint32_t transmissionIdx;
+	uint32_t sheenIdx;
+	uint32_t clearcoatIdx;
+	uint32_t thicknessIdx;
+	
+	glm::vec4 baseColorFactor;
+	glm::vec3 emissiveFactor;
+	float normalScale;
+	
+	float roughnessFactor;
+	float metallicFactor;
+	float transmissionFactor;
+	float ior;
+	
+	glm::vec3 sheenColorFactor;
+	float sheenRoughnessFactor;
+	float clearcoatFactor;
+	float clearcoatRoughnessFactor;
+	
+	float thicknessFactor;
+	float envMapMaxLod;
+};
+
 struct texdata {
 	VkImage img = VK_NULL_HANDLE;
 	VkImageView imgview = VK_NULL_HANDLE;
@@ -129,40 +159,22 @@ struct ssbodata {
 	VkDescriptorSet dset = VK_NULL_HANDLE;
 };
 struct vkpushconstants {
-	int stride{};
-	float t{};
-
-	uint32_t albedoIdx{};
-	uint32_t normalIdx{};
-	uint32_t ormIdx{};
-	uint32_t emissiveIdx{};
-	uint32_t transmissionIdx{};
-	uint32_t sheenIdx{};
-	uint32_t clearcoatIdx{};
-	uint32_t thicknessIdx{};
-
-	//fu padding [-2 days]
-	float _pad0[2];
-
-	glm::vec4 baseColorFactor;
-	glm::vec3 emissiveFactor;
-	float normalScale;
-
-	float roughnessFactor;
-	float metallicFactor;
-	float transmissionFactor;
-	float ior;
-
-	glm::vec3 sheenColorFactor;
-	float sheenRoughnessFactor;
-
-	float clearcoatFactor;
-	float clearcoatRoughnessFactor;
-	float thicknessFactor;
-
-	//more padding
-	float envMapMaxLod;
+	int stride;
+	float t;
+	uint32_t materialID;
+	uint32_t jointOffset; 
 };
+
+	struct GlobalMaterialHeap {
+		VkBuffer buffer = VK_NULL_HANDLE;
+		VmaAllocation alloc = VK_NULL_HANDLE;
+		VkDescriptorSet dset = VK_NULL_HANDLE;
+		VkDescriptorPool dedicated_pool = VK_NULL_HANDLE;
+		
+		std::mutex mtx;
+		std::queue<uint32_t> free_slots;
+		void* mapped_data = nullptr;
+	};
 // idk
 // static_assert(sizeof(vkpushconstants) == 128, "Struct size mismatch!");
 struct alignas(64) rvkbucket {
@@ -215,6 +227,8 @@ struct alignas(64) rvkbucket {
     glm::vec3 raymarchpos{0.0f};
     float cam_pad1; 
 
+
+	inline static VkDescriptorSetLayout materiallayout = VK_NULL_HANDLE;
 
 
 
@@ -309,8 +323,13 @@ struct alignas(64) rvkbucket {
 	std::vector<VkImage> schainimgs;
 	std::vector<VkImageView> schainimgviews;
 
+	
+	inline static GlobalMaterialHeap global_materials{};
+	static constexpr size_t MAX_GLOBAL_MATERIALS = 10000;
+
 
 };
+
 struct vkgltfobjs {
 	std::vector<std::vector<std::vector<GpuBuffer>>> vbos{};
 	std::vector<std::vector<GpuBuffer>> ebos{};

@@ -54,7 +54,22 @@ static inline bool init(rvkbucket &objs, ssbodata &ssboData, size_t buffersize) 
 
 	return true;
 }
+static inline bool createmateriallayout(rvkbucket &core, VkDescriptorSetLayout& dlayout) {
+	if (dlayout != VK_NULL_HANDLE) return true;
+	VkDescriptorSetLayoutBinding matBind{};
+	matBind.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	matBind.binding = 0;
+	matBind.descriptorCount = 1;
+	matBind.pImmutableSamplers = nullptr;
+	matBind.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
+	VkDescriptorSetLayoutCreateInfo info{};
+	info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	info.bindingCount = 1;
+	info.pBindings = &matBind;
+
+	return vkCreateDescriptorSetLayout(core.vkdevice.device, &info, nullptr, &dlayout) == VK_SUCCESS;
+}
 static inline bool createlayout(rvkbucket &core,VkDescriptorSetLayout& dlayout) {
 	VkDescriptorSetLayoutBinding ssboBind{};
 	ssboBind.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;

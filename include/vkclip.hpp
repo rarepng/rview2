@@ -2,7 +2,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-// #include <tinygltf/tiny_gltf.h>
 #include "vkchannel.hpp"
 #include "vknode.hpp"
 

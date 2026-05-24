@@ -29,22 +29,24 @@ struct PXin {
     float4 vColor;
 };
 
-struct consts {
-    int stride; float t;
-    
+struct MaterialData {
     uint albedoIdx; uint normalIdx; uint ormIdx; uint emissiveIdx;
     uint transmissionIdx; uint sheenIdx; uint clearcoatIdx; uint thicknessIdx;
-
-    float _pad0[2];
-
     float4 baseColorFactor;
     float3 emissiveFactor; float normalScale;
     float roughnessFactor; float metallicFactor; float transmissionFactor; float ior;
-    
     float3 sheenColorFactor; float sheenRoughnessFactor;
     float clearcoatFactor; float clearcoatRoughnessFactor; float thicknessFactor;
+    float envMapMaxLod;
+};
 
-    uint envMapMaxLod;
+[[vk::binding(0, 4)]] StructuredBuffer<MaterialData> materials;
+
+struct consts {
+    int stride;
+    float t;
+    uint materialID;
+    uint jointOffset;
 };
 
 struct cams {
@@ -137,8 +139,8 @@ float microfacetDistribution(PBRInfo pbrInputs) {
     return roughnessSq / (PI * f * f);
 }
 
-float3 getIBLContribution(PBRInfo pbrInputs, float3 n, float3 reflection) {
-    float lod = (pbrInputs.perceptualRoughness * float(pc.envMapMaxLod));
+float3 getIBLContribution(PBRInfo pbrInputs, float3 n, float3 reflection, float envMapMaxLod) {
+    float lod = (pbrInputs.perceptualRoughness * envMapMaxLod);
 
     float2 brdf = EnvBRDFApprox(pbrInputs.perceptualRoughness, pbrInputs.NdotV);
 
@@ -225,12 +227,13 @@ PXin vxmain(VXin in, uint id: SV_VulkanInstanceID) {
     float4x4 skinMat = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
 
     if (pc.stride > 1) {
-        uint offset = pc.stride * id; 
+        uint offset = pc.stride * id;
+        uint jointBase = pc.jointOffset + offset;
         skinMat =
-            jmatbuffer[in.joints.x + offset].jointmats * in.weights.x +
-            jmatbuffer[in.joints.y + offset].jointmats * in.weights.y +
-            jmatbuffer[in.joints.z + offset].jointmats * in.weights.z +
-            jmatbuffer[in.joints.w + offset].jointmats * in.weights.w;
+            jmatbuffer[in.joints.x + jointBase].jointmats * in.weights.x +
+            jmatbuffer[in.joints.y + jointBase].jointmats * in.weights.y +
+            jmatbuffer[in.joints.z + jointBase].jointmats * in.weights.z +
+            jmatbuffer[in.joints.w + jointBase].jointmats * in.weights.w;
     }
 
     float4 locPos = mul(skinMat, float4(in.pos, 1.0));
@@ -254,78 +257,80 @@ PXin vxmain(VXin in, uint id: SV_VulkanInstanceID) {
     return out;
 }
 
-[shader("pixel")]
-float4 pxold(PXin in) : SV_Target {
+// [shader("pixel")]
+// float4 pxold(PXin in) : SV_Target {
 
-    //flat backup
-    // float3 N = normalize(cross(ddx(in.worldPos), ddy(in.worldPos)));
+//     //flat backup
+//     // float3 N = normalize(cross(ddx(in.worldPos), ddy(in.worldPos)));
     
-    float3 N = normalize(in.normal);
-    float3 T = normalize(in.tangent);
-    float3 B = normalize(in.bitangent);
-    float3x3 TBN = float3x3(T, B, N);
+//     float3 N = normalize(in.normal);
+//     float3 T = normalize(in.tangent);
+//     float3 B = normalize(in.bitangent);
+//     float3x3 TBN = float3x3(T, B, N);
 
-    if (pc.normalIdx < 0xAAAAAAAA) {
-        float3 tNorm = tex[pc.normalIdx].Sample(in.uv).rgb * 2.0 - 1.0;
-        tNorm *= float3(pc.normalScale, pc.normalScale, 1.0);
-        N = normalize(mul(tNorm, TBN));
-    }
+//     if (mat.normalIdx < 0xAAAAAAAA) {
+//         float3 tNorm = tex[pc.normalIdx].Sample(in.uv).rgb * 2.0 - 1.0;
+//         tNorm *= float3(pc.normalScale, pc.normalScale, 1.0);
+//         N = normalize(mul(tNorm, TBN));
+//     }
 
-    float4 baseColor = pc.baseColorFactor;
-    if (pc.albedoIdx < 0xAAAAAAAA) {
-        float4 texColor = tex[pc.albedoIdx].Sample(in.uv);
-        // texColor.rgb = pow(texColor.rgb, 2.2);
-        baseColor *= texColor;
-    }
-    baseColor *= in.vColor;
-    if (baseColor.a < 0.01) discard;
+//     float4 baseColor = pc.baseColorFactor;
+//     if (pc.albedoIdx < 0xAAAAAAAA) {
+//         float4 texColor = tex[pc.albedoIdx].Sample(in.uv);
+//         // texColor.rgb = pow(texColor.rgb, 2.2);
+//         baseColor *= texColor;
+//     }
+//     baseColor *= in.vColor;
+//     if (baseColor.a < 0.01) discard;
 
-    float occlusion = 1.0;
-    // float roughness = 1.0;
-    // float metallic = 0.0;
+//     float occlusion = 1.0;
+//     // float roughness = 1.0;
+//     // float metallic = 0.0;
 
-    float roughness = pc.roughnessFactor;
-    float metallic = pc.metallicFactor;
+//     float roughness = pc.roughnessFactor;
+//     float metallic = pc.metallicFactor;
 
-    if (pc.ormIdx < 0xAAAAAAAA) {
-        float4 orm = tex[pc.ormIdx].Sample(in.uv);
-        occlusion = orm.r;
-        roughness = orm.g * pc.roughnessFactor;
-        metallic = orm.b * pc.metallicFactor;
-    } else {
-        // i wanted to implement flat shading here but i dont think that'll work quite right
-    }
-    roughness = clamp(roughness, MIN_ROUGHNESS, 1.0);
+//     if (pc.ormIdx < 0xAAAAAAAA) {
+//         float4 orm = tex[pc.ormIdx].Sample(in.uv);
+//         occlusion = orm.r;
+//         roughness = orm.g * pc.roughnessFactor;
+//         metallic = orm.b * pc.metallicFactor;
+//     } else {
+//         // i wanted to implement flat shading here but i dont think that'll work quite right
+//     }
+//     roughness = clamp(roughness, MIN_ROUGHNESS, 1.0);
 
-    float3 f0 = float3(0.04); 
-    float3 diffuseColor = baseColor.rgb * (1.0 - metallic);
-    float3 specularColor = lerp(f0, baseColor.rgb, metallic);
-    float alphaRoughness = roughness * roughness;
+//     float3 f0 = float3(0.04); 
+//     float3 diffuseColor = baseColor.rgb * (1.0 - metallic);
+//     float3 specularColor = lerp(f0, baseColor.rgb, metallic);
+//     float alphaRoughness = roughness * roughness;
 
-    float3 V = normalize(cammats.camPos - in.worldPos);
-    float NdotV = max(dot(N, V), 0.0001);
+//     float3 V = normalize(cammats.camPos - in.worldPos);
+//     float NdotV = max(dot(N, V), 0.0001);
 
-    float diffuseIntensity = 0.5;
-    float3 diffuseIBL = envMap.SampleLevel(DirToUV(N), 5.0).rgb * diffuseColor * diffuseIntensity;
+//     float diffuseIntensity = 0.5;
+//     float3 diffuseIBL = envMap.SampleLevel(DirToUV(N), 5.0).rgb * diffuseColor * diffuseIntensity;
 
-    float3 R = reflect(-V, N);
+//     float3 R = reflect(-V, N);
 
-    float lod = roughness * pc.envMapMaxLod;
+//     float lod = roughness * pc.envMapMaxLod;
 
-    float3 prefilteredColor = envMap.SampleLevel(DirToUV(R), lod).rgb;
+//     float3 prefilteredColor = envMap.SampleLevel(DirToUV(R), lod).rgb;
 
-    float2 envBRDF = EnvBRDFApprox(roughness, NdotV);
-    float3 specularIBL = prefilteredColor * (specularColor * envBRDF.x + envBRDF.y);
+//     float2 envBRDF = EnvBRDFApprox(roughness, NdotV);
+//     float3 specularIBL = prefilteredColor * (specularColor * envBRDF.x + envBRDF.y);
 
-    float3 ambient = (diffuseIBL + specularIBL) * occlusion;
+//     float3 ambient = (diffuseIBL + specularIBL) * occlusion;
 
-    float3 finalColor = ambient;
+//     float3 finalColor = ambient;
 
-    return float4(finalColor, baseColor.a);
-}
+//     return float4(finalColor, baseColor.a);
+// }
 
 [shader("pixel")]
 float4 pxmain(PXin in) : SV_Target {
+
+MaterialData mat = materials[pc.materialID];
 
 // float3 N = normalize(in.normal);
 // float3 T = normalize(in.tangent);
@@ -342,9 +347,9 @@ float4 pxmain(PXin in) : SV_Target {
 // }
 
 float3 N;
-if (pc.normalIdx < 0xAAAAAAAA) {
+if (mat.normalIdx < 0xAAAAAAAA) {
     // temporarily bypassing tangent until i unify float4 n float3 ones
-    N = getNormalFromMap(in.worldPos, in.normal, in.uv, pc.normalIdx, pc.normalScale);
+    N = getNormalFromMap(in.worldPos, in.normal, in.uv, mat.normalIdx, mat.normalScale);
 } else {
     // Fallback if no normal map
     N = normalize(in.normal);
@@ -352,13 +357,13 @@ if (pc.normalIdx < 0xAAAAAAAA) {
 
 float3 V = normalize(cammats.camPos - in.worldPos);
 
-float perceptualRoughness = pc.roughnessFactor;
-float metallic = pc.metallicFactor;
-float3 baseColor = pc.baseColorFactor.rgb * in.vColor.rgb;
-float alpha = pc.baseColorFactor.a * in.vColor.a;
+float perceptualRoughness = mat.roughnessFactor;
+float metallic = mat.metallicFactor;
+float3 baseColor = mat.baseColorFactor.rgb * in.vColor.rgb;
+float alpha = mat.baseColorFactor.a * in.vColor.a;
 
-if (pc.albedoIdx < 0xAAAAAAAA) {
-    float4 texColor = tex[pc.albedoIdx].Sample(in.uv);
+if (mat.albedoIdx < 0xAAAAAAAA) {
+    float4 texColor = tex[mat.albedoIdx].Sample(in.uv);
     baseColor *= texColor.rgb;
     alpha *= texColor.a;
 }
@@ -366,8 +371,8 @@ if (pc.albedoIdx < 0xAAAAAAAA) {
 if (alpha < 0.01) discard;
 
 float occlusion = 1.0;
-if (pc.ormIdx < 0xAAAAAAAA) {
-    float4 orm = tex[pc.ormIdx].Sample(in.uv);
+if (mat.ormIdx < 0xAAAAAAAA) {
+    float4 orm = tex[mat.ormIdx].Sample(in.uv);
     occlusion = orm.r;
     if (occlusion < 0.01) occlusion = 1.0;
     perceptualRoughness = orm.g * perceptualRoughness;
@@ -414,14 +419,14 @@ pbrInputs.diffuseColor = diffuseColor;
 pbrInputs.specularColor = specularColor;
 
 
-float3 color = getIBLContribution(pbrInputs, N, reflection);
+float3 color = getIBLContribution(pbrInputs, N, reflection, mat.envMapMaxLod);
 
 // ig occlusion gotta be done some other way idk about
 color = lerp(color, color *occlusion, 1.0);
 
-float3 emissive = pc.emissiveFactor;
-if (pc.emissiveIdx < 0xAAAAAAAA) {
-    emissive *= tex[pc.emissiveIdx].Sample(in.uv).rgb;
+float3 emissive = mat.emissiveFactor;
+if (mat.emissiveIdx < 0xAAAAAAAA) {
+    emissive *= tex[mat.emissiveIdx].Sample(in.uv).rgb;
 }
 color += emissive;
 

@@ -24,7 +24,6 @@ namespace rview::rvk {
             return current_head + count <= MAX_GLOBAL_TEXTURES; 
         }
     };
-
     void init_heap(rvkbucket& bucket, TextureHeap& heap);
     int32_t upload_texture(rvkbucket& bucket, TextureHeap& heap, fastgltf::Image& image, fastgltf::Asset& asset);
     void destroy_heap(rvkbucket& bucket, TextureHeap& heap);
@@ -61,6 +60,28 @@ namespace rview::rvk::tex {
         VkDescriptorSet& target_set,
         VkDescriptorSetLayout& target_lay
     );
+    
+    static inline bool createlayout(rvkbucket &objs, std::shared_ptr<VkDescriptorSetLayout> layout) {
+	if (*layout != VK_NULL_HANDLE) return true;
+
+	VkDescriptorSetLayoutBinding binding{};
+	binding.binding = 0;
+	binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	binding.descriptorCount = 1024;
+	binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	VkDescriptorBindingFlags bindFlag = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+	VkDescriptorSetLayoutBindingFlagsCreateInfo flagsInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO};
+	flagsInfo.bindingCount = 1;
+	flagsInfo.pBindingFlags = &bindFlag;
+
+	VkDescriptorSetLayoutCreateInfo layoutInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
+	layoutInfo.pNext = &flagsInfo;
+	layoutInfo.bindingCount = 1;
+	layoutInfo.pBindings = &binding;
+
+	return vkCreateDescriptorSetLayout(objs.vkdevice.device, &layoutInfo, nullptr, layout.get()) == VK_SUCCESS;
+}
 
     void cleanup(rvkbucket& rdata, texdata& tex);
     void cleanuptpl(rvkbucket& rdata, VkDescriptorSetLayout& layout, VkDescriptorPool& pool);

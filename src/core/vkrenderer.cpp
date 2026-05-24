@@ -563,6 +563,8 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	                             nullptr);
 	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, rvkbucket::hdrlayout,
 	                             nullptr);
+	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, rvkbucket::materiallayout,
+	                             nullptr);
 
 	for (const auto &i : mplayer)
 		i->cleanuplines(mvkobjs);
@@ -594,15 +596,20 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 
 	mvkobjs.sbelt.free(mvkobjs.alloc);
 
+	vmaDestroyBuffer(mvkobjs.alloc, rvkbucket::global_materials.buffer, rvkbucket::global_materials.alloc);
+
+	vkDestroyDescriptorPool(mvkobjs.vkdevice.device, rvkbucket::global_materials.dedicated_pool, VK_NULL_HANDLE);
+	
+
 	//dbg only block
-	// char* statsString = nullptr;
-	// vmaBuildStatsString(mvkobjs.alloc, &statsString, true);
-	// if (statsString) {
-	// 	std::cout << "=== VMA REPORT !! ===" << std::endl;
-	// 	std::cout << statsString << std::endl;
-	// 	std::cout << "=======================" << std::endl;
-	// 	vmaFreeStatsString(mvkobjs.alloc, statsString);
-	// }
+	char* statsString = nullptr;
+	vmaBuildStatsString(mvkobjs.alloc, &statsString, true);
+	if (statsString) {
+		std::cout << "=== VMA REPORT !! ===" << std::endl;
+		std::cout << statsString << std::endl;
+		std::cout << "=======================" << std::endl;
+		vmaFreeStatsString(mvkobjs.alloc, statsString);
+	}
 
 	vmaDestroyAllocator(mvkobjs.alloc);
 

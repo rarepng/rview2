@@ -31,14 +31,14 @@ void configure_selector(vkb::PhysicalDeviceSelector& selector) {
 	f13.synchronization2 = VK_TRUE;
 	f13.shaderDemoteToHelperInvocation = VK_TRUE;
 	VkPhysicalDeviceVulkan12Features f12{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
-	f12.bufferDeviceAddress = VK_TRUE;
+	// f12.bufferDeviceAddress = VK_TRUE;
 	f12.runtimeDescriptorArray = VK_TRUE;
-	f12.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+	// f12.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
 	f12.descriptorBindingPartiallyBound = VK_TRUE;
-	f12.shaderFloat16 = VK_TRUE;
+	// f12.shaderFloat16 = VK_TRUE;
 	VkPhysicalDeviceFeatures features{};
 	features.samplerAnisotropy = VK_TRUE;
-	features.vertexPipelineStoresAndAtomics = VK_TRUE;
+	// features.vertexPipelineStoresAndAtomics = VK_TRUE;
 	VkPhysicalDeviceMeshShaderFeaturesEXT f_mesh{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT};
 	f_mesh.meshShader = VK_TRUE;
 	f_mesh.taskShader = VK_TRUE;
@@ -46,13 +46,18 @@ void configure_selector(vkb::PhysicalDeviceSelector& selector) {
 	ray_query_feats.rayQuery = VK_TRUE;
 	VkPhysicalDeviceAccelerationStructureFeaturesKHR as_feats{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR};
 	as_feats.accelerationStructure = VK_TRUE;
+	VkPhysicalDeviceIndexTypeUint8FeaturesEXT uint8_feature{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT,
+		.indexTypeUint8 = VK_TRUE
+	};
 
 	selector
 	.set_minimum_version(1, 4)
 	.prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
-	// .set_required_features_13(f13)
-	// .set_required_features_12(f12)
-	// .set_required_features(features)
+	.add_required_extension_features(uint8_feature)
+	.set_required_features_13(f13)
+	.set_required_features_12(f12)
+	.set_required_features(features)
 	// .add_required_extension(VK_EXT_MESH_SHADER_EXTENSION_NAME)
 	// .add_required_extension(VK_KHR_RAY_QUERY_EXTENSION_NAME)
 	// .add_required_extension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)
