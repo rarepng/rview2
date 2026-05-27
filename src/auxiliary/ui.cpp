@@ -491,6 +491,7 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 			}
 
 			ImGui::Text("clip   ");
+			if(settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.size()>0){
 			ImGui::SameLine();
 			if (ImGui::BeginCombo(
 			            "##ClipCombo",
@@ -510,6 +511,7 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 					}
 				}
 				ImGui::EndCombo();
+			}
 			}
 
 			if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msplayanimation) {

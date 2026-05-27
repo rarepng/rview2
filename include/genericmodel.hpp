@@ -21,7 +21,7 @@ public:
 	bool loadmodel(rvkbucket &objs, std::string fname);
 	void draw(rvkbucket &objs);
 	void drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout, VkPipeline &vkpline, VkPipeline &vkplineuint,
-	                   int instancecount, int stride);
+	                   int instancecount, int stride, uint32_t modelID);
 	void cleanup(rvkbucket &objs);
 	void uploadvboebo(rvkbucket &objs, VkCommandBuffer &cbuffer);
 	std::vector<texdata> gettexdata();

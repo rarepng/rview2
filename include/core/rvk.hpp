@@ -12,6 +12,7 @@
 #include <iostream>
 #include <deque>
 #include <functional>
+#include <atomic>
 #include <queue>
 
 // all this &$#! for a stupid ugly diagram
@@ -33,6 +34,7 @@ struct rctx {
 
 	//function pointer (hopefully)
 	PFN_vkCmdDrawMeshTasksEXT cmdDrawMeshTasks;
+	PFN_vkCmdSetVertexInputEXT cmdSetVertexInputEXT;
 };
 
 // future proof: gotta make everything use this now big TODO
@@ -141,6 +143,7 @@ struct GpuBuffer {
 	VmaAllocation alloc = nullptr;
 	VkDeviceAddress address = 0;
 	VkDeviceSize size = 0;
+	uint32_t bindless_idx = 0;
 };
 
 struct ubodata {
@@ -162,10 +165,19 @@ struct vkpushconstants {
 	int stride;
 	float t;
 	uint32_t materialID;
-	uint32_t jointOffset; 
+	uint32_t modelID;
+
+	uint32_t posIdx;
+    uint32_t normIdx;
+    uint32_t uvIdx;
+    uint32_t jointIdx;
+    uint32_t weightIdx;
+	// coloridx
+	uint32_t jointFmt;
+    uint32_t weightFmt;
 };
 
-	struct GlobalMaterialHeap {
+struct GlobalMaterialHeap {
 		VkBuffer buffer = VK_NULL_HANDLE;
 		VmaAllocation alloc = VK_NULL_HANDLE;
 		VkDescriptorSet dset = VK_NULL_HANDLE;
@@ -175,6 +187,10 @@ struct vkpushconstants {
 		std::queue<uint32_t> free_slots;
 		void* mapped_data = nullptr;
 	};
+struct GlobalBufferHeap {
+    std::mutex mtx;
+    std::queue<uint32_t> free_slots;
+};
 // idk
 // static_assert(sizeof(vkpushconstants) == 128, "Struct size mismatch!");
 struct alignas(64) rvkbucket {
@@ -185,10 +201,17 @@ struct alignas(64) rvkbucket {
 	vkb::Swapchain schain{};
 	VkSurfaceKHR surface{};
 
+	inline static std::atomic<uint32_t> globalBufferCounter{1};
+
 	VkQueue graphicsQ = VK_NULL_HANDLE;
 	VkQueue presentQ = VK_NULL_HANDLE;
 	VkQueue computeQ = VK_NULL_HANDLE;
 	VkQueue transferQ = VK_NULL_HANDLE;
+
+	
+
+	inline static GlobalBufferHeap global_buffers{};
+	inline static constexpr uint32_t MAX_BINDLESS_BUFFERS = 1024;
 
 	// tex=1
 	std::array<VkCommandPool,3> cpools_graphics = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
@@ -228,7 +251,6 @@ struct alignas(64) rvkbucket {
     float cam_pad1; 
 
 
-	inline static VkDescriptorSetLayout materiallayout = VK_NULL_HANDLE;
 
 
 
@@ -305,10 +327,23 @@ struct alignas(64) rvkbucket {
 	inline static uint32_t hdrmiplod{0};
 
 
-	inline static std::shared_ptr<VkDescriptorSetLayout> texlayout = std::make_shared<VkDescriptorSetLayout>();
-	inline static VkDescriptorSetLayout ubolayout = VK_NULL_HANDLE;
-	inline static VkDescriptorSetLayout ssbolayout = VK_NULL_HANDLE;
-	inline static VkDescriptorSetLayout hdrlayout = VK_NULL_HANDLE;
+	// inline static std::shared_ptr<VkDescriptorSetLayout> texlayout = std::make_shared<VkDescriptorSetLayout>();
+	// inline static VkDescriptorSetLayout ubolayout = VK_NULL_HANDLE;
+	// inline static VkDescriptorSetLayout ssbolayout = VK_NULL_HANDLE;
+	// inline static VkDescriptorSetLayout hdrlayout = VK_NULL_HANDLE;
+	// inline static VkDescriptorSetLayout materiallayout = VK_NULL_HANDLE;
+
+	inline static VkDescriptorSetLayout globalBindlessLayout = VK_NULL_HANDLE;
+	inline static VkDescriptorPool globalBindlessPool = VK_NULL_HANDLE;
+	inline static VkDescriptorSet globalBindlessSet = VK_NULL_HANDLE;
+
+	inline static std::atomic<uint32_t> globalTextureCounter{4};
+	inline static std::atomic<uint32_t> globalModelCounter{0};
+
+	inline static ubodata globalCameraUBO{};
+
+	inline static VkPipelineLayout globalPipelineLayout = VK_NULL_HANDLE;
+	
 	inline static constexpr size_t idxinitpool{0};
 	inline static constexpr size_t idximguipool{1};
 	inline static constexpr size_t idxruntimepool0{2};

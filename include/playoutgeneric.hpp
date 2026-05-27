@@ -12,7 +12,6 @@ public:
 	bool createubo(rvkbucket &objs);
 	bool createssbomat(rvkbucket &objs);
 	bool createssbostatic(rvkbucket &objs);
-	static bool createskinnedplayout(rvkbucket &objs);
 	static bool createpline(rvkbucket &objs, std::string vfile, std::string ffile);
 	bool setup(rvkbucket &objs, std::string fname, size_t count, std::string vfile, std::string ffile);
 	void draw(rvkbucket &objs);
@@ -31,14 +30,15 @@ public:
 
 	bool ready{false};
 
-	inline static VkPipelineLayout skinnedplayout = VK_NULL_HANDLE;
 	inline static VkPipeline skinnedpline = VK_NULL_HANDLE;
 	inline static VkPipeline skinnedplineuint = VK_NULL_HANDLE;
 
 private:
 
-	inline static std::vector<ubodata> rdperspviewmatrixubo{{}};
+	// inline static std::vector<ubodata> rdperspviewmatrixubo{{}};
 	ssbodata rdjointmatrixssbo{};
+
+	uint32_t m_modelID;
 
 	bool uploadreq{true};
 

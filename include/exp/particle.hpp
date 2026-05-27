@@ -82,50 +82,71 @@ static inline bool createeverything(rvkbucket &objs) {
 		    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
 		VmaAllocationCreateInfo vmaAllocInfo2{};
-		vmaAllocInfo2.usage = VMA_MEMORY_USAGE_AUTO;				  // auto
-		vmaAllocInfo2.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT; // auto
+		vmaAllocInfo2.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE; // FIXED: Forces buffer into Device VRAM
 
 		if (vmaCreateBuffer(objs.alloc, &bufferInfo2, &vmaAllocInfo2, &x, &y, nullptr) != VK_SUCCESS) {
 			return false;
 		}
 
+		// 1. Allocate a clean command buffer just for this upload
+		VkCommandBufferAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandPool = objs.cpools_graphics.at(0);
+		allocInfo.commandBufferCount = 1;
+
+		VkCommandBuffer cbuffer;
+		if (vkAllocateCommandBuffers(objs.vkdevice.device, &allocInfo, &cbuffer) != VK_SUCCESS) {
+			return false;
+		}
+
+		// 2. Record the copy
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		vkBeginCommandBuffer(cbuffer, &beginInfo);
+
 		VkBufferCopy2 copyRegion2 = {
 			.sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
-			.pNext = NULL,
 			.srcOffset = 0,
 			.dstOffset = 0,
 			.size = stagingbuffersize,
 		};
 		VkCopyBufferInfo2 copyInfo = {
 			.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
-			.pNext = NULL,
 			.srcBuffer = stagingbuffer,
 			.dstBuffer = x,
 			.regionCount = 1,
 			.pRegions = &copyRegion2,
 		};
+		vkCmdCopyBuffer2(cbuffer, &copyInfo);
+		vkEndCommandBuffer(cbuffer);
 
-		// uploading buffer
-		VkCommandBufferBeginInfo beginInfo{};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		vkResetCommandBuffer(objs.cbuffers_graphics.at(0).at(2), 0);
-		vkBeginCommandBuffer(objs.cbuffers_graphics.at(0).at(2), &beginInfo);
-		vkCmdCopyBuffer2(objs.cbuffers_graphics.at(0).at(2), &copyInfo);
-		vkEndCommandBuffer(objs.cbuffers_graphics.at(0).at(2));
+		// 3. Clean Submit (No dangling garbage semaphore pointers)
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &cbuffer;
 
-		VkSubmitInfo submitinfo{};
-		submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitinfo.commandBufferCount = 1;
-		submitinfo.pCommandBuffers = &objs.cbuffers_graphics.at(0).at(2);
-		submitinfo.pSignalSemaphores = &objs.semaphorez.at(2).at(rvkbucket::currentFrame);
-
-		objs.mtx2->lock();
-		if (vkQueueSubmit(objs.graphicsQ, 1, &submitinfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+		VkFenceCreateInfo fenceInfo{};
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		VkFence tempFence;
+		if (vkCreateFence(objs.vkdevice.device, &fenceInfo, nullptr, &tempFence) != VK_SUCCESS) {
 			return false;
 		}
-		vkQueueWaitIdle(objs.graphicsQ);
+
+		objs.mtx2->lock();
+		if (vkQueueSubmit(objs.graphicsQ, 1, &submitInfo, tempFence) != VK_SUCCESS) {
+			objs.mtx2->unlock();
+			return false;
+		}
 		objs.mtx2->unlock();
+
+		// 4. Safely Wait and Cleanup
+		vkWaitForFences(objs.vkdevice.device, 1, &tempFence, VK_TRUE, UINT64_MAX);
+		
+		vkDestroyFence(objs.vkdevice.device, tempFence, nullptr);
+		vkFreeCommandBuffers(objs.vkdevice.device, objs.cpools_graphics.at(0), 1, &cbuffer);
 	}
 
 	vmaDestroyBuffer(objs.alloc, stagingbuffer, stagingbufferalloc);

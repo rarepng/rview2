@@ -26,6 +26,7 @@ debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 // i think i must explicitly define everything required by the renderer to make sure it runs on all the suitable devices, right?
 void configure_selector(vkb::PhysicalDeviceSelector& selector) {
 
+	VkPhysicalDeviceVulkan14Features f14{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES};
 	VkPhysicalDeviceVulkan13Features f13{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
 	f13.dynamicRendering = VK_TRUE;
 	f13.synchronization2 = VK_TRUE;
@@ -34,8 +35,17 @@ void configure_selector(vkb::PhysicalDeviceSelector& selector) {
 	// f12.bufferDeviceAddress = VK_TRUE;
 	f12.runtimeDescriptorArray = VK_TRUE;
 	// f12.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+	f12.storageBuffer8BitAccess = VK_TRUE;
+	f12.shaderInt8 = VK_TRUE;
 	f12.descriptorBindingPartiallyBound = VK_TRUE;
+	f12.descriptorIndexing = VK_TRUE;
+	f12.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
+	f12.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+	f12.descriptorBindingVariableDescriptorCount = VK_TRUE;
 	// f12.shaderFloat16 = VK_TRUE;
+	VkPhysicalDeviceVulkan11Features f11{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+    f11.shaderDrawParameters = VK_TRUE;
+	f11.storageBuffer16BitAccess = VK_TRUE;
 	VkPhysicalDeviceFeatures features{};
 	features.samplerAnisotropy = VK_TRUE;
 	// features.vertexPipelineStoresAndAtomics = VK_TRUE;
@@ -50,22 +60,30 @@ void configure_selector(vkb::PhysicalDeviceSelector& selector) {
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT,
 		.indexTypeUint8 = VK_TRUE
 	};
+	// VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT dynamicVertexFeats{
+	// 	.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT,
+	// 	.vertexInputDynamicState = VK_TRUE
+	// };
 
 	selector
 	.set_minimum_version(1, 4)
 	.prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
 	.add_required_extension_features(uint8_feature)
+	// .set_required_features_14(f14)
 	.set_required_features_13(f13)
 	.set_required_features_12(f12)
+	.set_required_features_11(f11)
 	.set_required_features(features)
 	// .add_required_extension(VK_EXT_MESH_SHADER_EXTENSION_NAME)
 	// .add_required_extension(VK_KHR_RAY_QUERY_EXTENSION_NAME)
 	// .add_required_extension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)
 	// .add_required_extension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME)
+	// .add_required_extension("VK_EXT_vertex_input_dynamic")
 	// //need to add debug ones
 	// .add_required_extension_features(ray_query_feats)
 	// .add_required_extension_features(as_feats)
 	// .add_required_extension_features(f_mesh)
+	// .add_required_extension_features(dynamicVertexFeats)
 	.require_present(false);
 }
 
@@ -121,7 +139,8 @@ finalize_device(rvkbucket& mvkobjs, vkb::PhysicalDevice candidate_gpu) noexcept 
 	mvkobjs.vkdevice = dev_ret.value();
 
 	rctx ctx;
-	ctx.cmdDrawMeshTasks = (PFN_vkCmdDrawMeshTasksEXT)vkGetDeviceProcAddr(mvkobjs.vkdevice, "vkCmdDrawMeshTasksEXT");
+	// ctx.cmdDrawMeshTasks = (PFN_vkCmdDrawMeshTasksEXT)vkGetDeviceProcAddr(mvkobjs.vkdevice, "vkCmdDrawMeshTasksEXT");
+	// ctx.cmdSetVertexInputEXT = (PFN_vkCmdSetVertexInputEXT)vkGetDeviceProcAddr(mvkobjs.vkdevice, "vkCmdSetVertexInputEXT");
 
 	return ctx;
 }

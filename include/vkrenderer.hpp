@@ -72,6 +72,7 @@ static std::vector<glm::mat4> persviewproj{glm::mat4{1.0f},glm::mat4{1.0f}};
 
 bool ges();
 bool initcpuQs(rvkbucket& mvkobjs);
+bool initglobalmats(rvkbucket& mvkobjs);
 
 void immediate_submit(rvkbucket& mvkobjs,std::function<void(VkCommandBuffer cbuffer)>&& fn);
 bool init(rvkbucket& mvkobjs);

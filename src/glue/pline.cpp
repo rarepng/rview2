@@ -43,10 +43,10 @@ bool pline::init(rvkbucket &objs, VkPipelineLayout &playout, VkPipeline &pipelin
 		attribs.push_back({idx, idx, fmt, 0});
 	};
 
-	add(sizeof(glm::vec3), VK_FORMAT_R32G32B32_SFLOAT);
-	add(sizeof(glm::vec3), VK_FORMAT_R32G32B32_SFLOAT);
-	add(sizeof(glm::vec4), VK_FORMAT_R32G32B32A32_SFLOAT);
-	add(sizeof(glm::vec2), VK_FORMAT_R32G32_SFLOAT);
+	// add(sizeof(glm::vec3), VK_FORMAT_R32G32B32_SFLOAT);
+	// add(sizeof(glm::vec3), VK_FORMAT_R32G32B32_SFLOAT);
+	// add(sizeof(glm::vec4), VK_FORMAT_R32G32B32A32_SFLOAT);
+	// add(sizeof(glm::vec2), VK_FORMAT_R32G32_SFLOAT);
 
 	//starting to reconsider this decision
 	if (!char_or_short) add(sizeof(uint8_t)*4, VK_FORMAT_R8G8B8A8_UINT);
@@ -55,10 +55,10 @@ bool pline::init(rvkbucket &objs, VkPipelineLayout &playout, VkPipeline &pipelin
 	add(sizeof(glm::vec4), VK_FORMAT_R32G32B32A32_SFLOAT);
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
-	vertexInputInfo.vertexBindingDescriptionCount = (uint32_t)bindings.size();
-	vertexInputInfo.pVertexBindingDescriptions = bindings.data();
-	vertexInputInfo.vertexAttributeDescriptionCount = (uint32_t)attribs.size();
-	vertexInputInfo.pVertexAttributeDescriptions = attribs.data();
+	vertexInputInfo.vertexBindingDescriptionCount = 0;
+	vertexInputInfo.pVertexBindingDescriptions = nullptr;
+	vertexInputInfo.vertexAttributeDescriptionCount = 0;
+	vertexInputInfo.pVertexAttributeDescriptions = nullptr;
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
 	inputAssemblyInfo.topology = topology;

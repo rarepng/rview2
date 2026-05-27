@@ -377,12 +377,12 @@ target_include_directories(rview2
 
 
 #worst decision so far
-target_sources(rview2
-    PUBLIC
-        FILE_SET CXX_MODULES 
-        FILES
-            mods/tex.cxxm
-)
+# target_sources(rview2
+#     PUBLIC
+#         FILE_SET CXX_MODULES 
+#         FILES
+#             mods/tex.cxxm
+# )
 
 target_compile_options(rview2 PUBLIC
     "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>,$<CONFIG:sanitize>>:-g>"
@@ -448,15 +448,17 @@ function(add_shader)
     )
     set(ALL_SHADER_SPV_FILES ${ALL_SHADER_SPV_FILES} "${SPV_OUTPUT}" PARENT_SCOPE)
 endfunction()
-add_shader(SOURCE gen.slang ENTRY vxmain STAGE vertex OUTPUT_NAME vx.spv)
-add_shader(SOURCE gen.slang ENTRY pxmain STAGE pixel OUTPUT_NAME px.spv)
+add_shader(SOURCE red.slang ENTRY vxmain STAGE vertex OUTPUT_NAME vx.spv)
+add_shader(SOURCE red.slang ENTRY pxmain STAGE pixel OUTPUT_NAME px.spv)
+# add_shader(SOURCE dbg.slang ENTRY vxmain STAGE vertex OUTPUT_NAME vx.spv)
+# add_shader(SOURCE dbg.slang ENTRY pxmain STAGE pixel OUTPUT_NAME px.spv)
 # add_shader(SOURCE gen.slang ENTRY cxmain STAGE compute OUTPUT_NAME cx.spv)
 add_shader(SOURCE particle.slang ENTRY vxmain STAGE vertex OUTPUT_NAME pvx.spv)
 add_shader(SOURCE particle.slang ENTRY pxmain STAGE pixel OUTPUT_NAME ppx.spv)
 add_shader(SOURCE particle.slang ENTRY cxmain STAGE compute OUTPUT_NAME pcx.spv)
-add_shader(SOURCE red.slang ENTRY vxmain STAGE vertex OUTPUT_NAME rvx.spv)
-add_shader(SOURCE red.slang ENTRY pxmain STAGE pixel OUTPUT_NAME rpx.spv)
-add_shader(SOURCE red.slang ENTRY cxmain STAGE compute OUTPUT_NAME rcx.spv)
+# add_shader(SOURCE red.slang ENTRY vxmain STAGE vertex OUTPUT_NAME rvx.spv)
+# add_shader(SOURCE red.slang ENTRY pxmain STAGE pixel OUTPUT_NAME rpx.spv)
+# add_shader(SOURCE red.slang ENTRY cxmain STAGE compute OUTPUT_NAME rcx.spv)
 
 add_custom_target(shaders_tar ALL DEPENDS ${ALL_SHADER_SPV_FILES})
 add_dependencies(rview2 shaders_tar)

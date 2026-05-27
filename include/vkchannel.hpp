@@ -2,6 +2,8 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <vector>
 #include <fastgltf/core.hpp>
+#include <fastgltf/tools.hpp>
+#include <fastgltf/glm_element_traits.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 

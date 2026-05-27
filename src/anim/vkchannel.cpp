@@ -1,24 +1,84 @@
 #include "vkchannel.hpp"
 
+namespace fastgltf {
+    template <> struct ElementTraits<glm::quat> : ElementTraitsBase<glm::quat, AccessorType::Vec4, float> {};
+}
+
+// void vkchannel::loadchannel(const fastgltf::Asset &model, const fastgltf::Animation &anim,
+//                             const fastgltf::AnimationChannel &chann) {
+// 	targetNode = chann.nodeIndex.value();
+// 	const fastgltf::Accessor &inacc = model.accessors.at(anim.samplers.at(chann.samplerIndex).inputAccessor);
+// 	const fastgltf::BufferView &inbuffview = model.bufferViews.at(inacc.bufferViewIndex.value());
+// 	const fastgltf::Buffer &inbuff = model.buffers.at(inbuffview.bufferIndex);
+// 	std::vector<float> times{};
+// 	times.reserve(inacc.count);
+// 	times.resize(inacc.count);
+// 	std::visit(fastgltf::visitor{[](auto &arg) {},
+// 	[&](const fastgltf::sources::Array &vector) {
+// 		std::memcpy(times.data(),
+// 		            vector.bytes.data() + inbuffview.byteOffset + inacc.byteOffset,
+// 		            inacc.count * 4);
+// 	}},
+// 	inbuff.data);
+// 	setTimings(times);
+// 	const fastgltf::AnimationSampler sampler = anim.samplers.at(chann.samplerIndex);
+// 	if (sampler.interpolation == fastgltf::AnimationInterpolation::Step) {
+// 		interpolationtype0 = interpolationType::STEP;
+// 	} else if (sampler.interpolation == fastgltf::AnimationInterpolation::Linear) {
+// 		interpolationtype0 = interpolationType::LINEAR;
+// 	} else {
+// 		interpolationtype0 = interpolationType::CUBICSPLINE;
+// 	}
+// 	const fastgltf::Accessor &outacc = model.accessors.at(anim.samplers.at(chann.samplerIndex).outputAccessor);
+// 	const fastgltf::BufferView &outbuffview = model.bufferViews.at(outacc.bufferViewIndex.value());
+// 	const fastgltf::Buffer &outbuff = model.buffers.at(outbuffview.bufferIndex);
+// 	std::visit(fastgltf::visitor{
+// 		[](auto &arg) {},
+// 		[&](const fastgltf::sources::Array &vector) {
+// 			if (chann.path == fastgltf::AnimationPath::Rotation) {
+// 				animtype0 = animType::ROTATION;
+// 				std::vector<glm::quat> rotations0;
+// 				rotations0.reserve(outacc.count);
+// 				rotations0.resize(outacc.count);
+// 				rot.reserve(outacc.count);
+// 				rot.resize(outacc.count);
+// 				std::memcpy(rotations0.data(), vector.bytes.data() + outbuffview.byteOffset + outacc.byteOffset,
+// 				            outacc.count * 4 * 4);
+// 				setRots(rotations0);
+// 			} else if (chann.path == fastgltf::AnimationPath::Translation) {
+// 				animtype0 = animType::TRANSLATION;
+// 				std::vector<glm::vec3> translations;
+// 				translations.reserve(outacc.count);
+// 				translations.resize(outacc.count);
+// 				trans.reserve(outacc.count);
+// 				trans.resize(outacc.count);
+// 				std::memcpy(translations.data(), vector.bytes.data() + outbuffview.byteOffset + outacc.byteOffset,
+// 				            outacc.count * 4 * 3);
+// 				setTranses(translations);
+// 			} else {
+// 				animtype0 = animType::SCALE;
+// 				std::vector<glm::vec3> scalings;
+// 				scalings.reserve(outacc.count);
+// 				scalings.resize(outacc.count);
+// 				scale.reserve(outacc.count);
+// 				scale.resize(outacc.count);
+// 				std::memcpy(scalings.data(), vector.bytes.data() + outbuffview.byteOffset + outacc.byteOffset,
+// 				            outacc.count * 4 * 3);
+// 				setScales(scalings);
+// 			}
+// 		}},
+// 	inbuff.data);
+// }
+
 void vkchannel::loadchannel(const fastgltf::Asset &model, const fastgltf::Animation &anim,
                             const fastgltf::AnimationChannel &chann) {
 	targetNode = chann.nodeIndex.value();
 	const fastgltf::Accessor &inacc = model.accessors.at(anim.samplers.at(chann.samplerIndex).inputAccessor);
-	const fastgltf::BufferView &inbuffview = model.bufferViews.at(inacc.bufferViewIndex.value());
-	const fastgltf::Buffer &inbuff = model.buffers.at(inbuffview.bufferIndex);
-	std::vector<float> times{};
-	times.reserve(inacc.count);
-	times.resize(inacc.count);
-
-	std::visit(fastgltf::visitor{[](auto &arg) {},
-	[&](const fastgltf::sources::Array &vector) {
-		std::memcpy(times.data(),
-		            vector.bytes.data() + inbuffview.byteOffset + inacc.byteOffset,
-		            inacc.count * 4);
-	}},
-	inbuff.data);
-
+	
+	std::vector<float> times(inacc.count);
+	fastgltf::copyFromAccessor<float>(model, inacc, times.data());
 	setTimings(times);
+
 	const fastgltf::AnimationSampler sampler = anim.samplers.at(chann.samplerIndex);
 
 	if (sampler.interpolation == fastgltf::AnimationInterpolation::Step) {
@@ -30,46 +90,32 @@ void vkchannel::loadchannel(const fastgltf::Asset &model, const fastgltf::Animat
 	}
 
 	const fastgltf::Accessor &outacc = model.accessors.at(anim.samplers.at(chann.samplerIndex).outputAccessor);
-	const fastgltf::BufferView &outbuffview = model.bufferViews.at(outacc.bufferViewIndex.value());
-	const fastgltf::Buffer &outbuff = model.buffers.at(outbuffview.bufferIndex);
 
-	std::visit(fastgltf::visitor{
-		[](auto &arg) {},
-		[&](const fastgltf::sources::Array &vector) {
-			if (chann.path == fastgltf::AnimationPath::Rotation) {
-				animtype0 = animType::ROTATION;
-				std::vector<glm::quat> rotations0;
-				rotations0.reserve(outacc.count);
-				rotations0.resize(outacc.count);
-				rot.reserve(outacc.count);
-				rot.resize(outacc.count);
-
-				std::memcpy(rotations0.data(), vector.bytes.data() + outbuffview.byteOffset + outacc.byteOffset,
-				            outacc.count * 4 * 4);
-				setRots(rotations0);
-			} else if (chann.path == fastgltf::AnimationPath::Translation) {
-				animtype0 = animType::TRANSLATION;
-				std::vector<glm::vec3> translations;
-				translations.reserve(outacc.count);
-				translations.resize(outacc.count);
-				trans.reserve(outacc.count);
-				trans.resize(outacc.count);
-				std::memcpy(translations.data(), vector.bytes.data() + outbuffview.byteOffset + outacc.byteOffset,
-				            outacc.count * 4 * 3);
-				setTranses(translations);
-			} else {
-				animtype0 = animType::SCALE;
-				std::vector<glm::vec3> scalings;
-				scalings.reserve(outacc.count);
-				scalings.resize(outacc.count);
-				scale.reserve(outacc.count);
-				scale.resize(outacc.count);
-				std::memcpy(scalings.data(), vector.bytes.data() + outbuffview.byteOffset + outacc.byteOffset,
-				            outacc.count * 4 * 3);
-				setScales(scalings);
-			}
-		}},
-	inbuff.data);
+	if (chann.path == fastgltf::AnimationPath::Rotation) {
+		animtype0 = animType::ROTATION;
+		std::vector<glm::quat> rotations0(outacc.count);
+		fastgltf::copyFromAccessor<glm::quat>(model, outacc, rotations0.data());
+		setRots(rotations0);
+		
+		rot.reserve(outacc.count);
+		rot.resize(outacc.count);
+	} else if (chann.path == fastgltf::AnimationPath::Translation) {
+		animtype0 = animType::TRANSLATION;
+		std::vector<glm::vec3> translations(outacc.count);
+		fastgltf::copyFromAccessor<glm::vec3>(model, outacc, translations.data());
+		setTranses(translations);
+		
+		trans.reserve(outacc.count);
+		trans.resize(outacc.count);
+	} else {
+		animtype0 = animType::SCALE;
+		std::vector<glm::vec3> scalings(outacc.count);
+		fastgltf::copyFromAccessor<glm::vec3>(model, outacc, scalings.data());
+		setScales(scalings);
+		
+		scale.reserve(outacc.count);
+		scale.resize(outacc.count);
+	}
 }
 
 void vkchannel::setTimings(std::vector<float> timings) {

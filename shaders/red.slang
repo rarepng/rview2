@@ -1,12 +1,17 @@
 static const float PI = 3.14159265359;
 static const float MIN_ROUGHNESS = 0.04;
 
-layout(set = 0, binding = 0) uniform Sampler2D tex[];
+
 
 //complete mess idfk
 
-//hdri
-[[vk::binding(0, 3)]] Sampler2D envMap; 
+// hdri
+[[vk::binding(0, 0)]] Sampler2D tex[];
+[[vk::binding(1, 0)]] ConstantBuffer<cams> cammats;
+[[vk::binding(2, 0)]] StructuredBuffer<jmats> globalJoints[];
+[[vk::binding(3, 0)]] Sampler2D envMap;
+[[vk::binding(4, 0)]] StructuredBuffer<MaterialData> materials;
+[[vk::binding(5, 0)]] ByteAddressBuffer vertexBuffers[];
 
 struct VXin {
     [[vk::location(0)]] float3 pos : POSITION;
@@ -29,22 +34,31 @@ struct PXin {
     float4 vColor;
 };
 
-struct consts {
-    int stride; float t;
-    
+struct MaterialData {
     uint albedoIdx; uint normalIdx; uint ormIdx; uint emissiveIdx;
     uint transmissionIdx; uint sheenIdx; uint clearcoatIdx; uint thicknessIdx;
-
-    float _pad0[2];
-
     float4 baseColorFactor;
     float3 emissiveFactor; float normalScale;
     float roughnessFactor; float metallicFactor; float transmissionFactor; float ior;
-    
     float3 sheenColorFactor; float sheenRoughnessFactor;
     float clearcoatFactor; float clearcoatRoughnessFactor; float thicknessFactor;
+    float envMapMaxLod;
+};
 
-    uint envMapMaxLod;
+
+struct consts {
+    int stride;
+    float t;
+    uint32_t materialID;
+    uint32_t modelID;
+    uint32_t posIdx;
+    uint32_t normIdx;
+    uint32_t uvIdx;
+    uint32_t jointIdx;
+    uint32_t weightIdx;
+    // coloridx x_x
+    uint32_t jointFmt;
+    uint32_t weightFmt;
 };
 
 struct cams {
@@ -59,8 +73,7 @@ struct jmats {
 }
 
 [vk_push_constant] ConstantBuffer<consts> pc;
-[[vk::binding(0, 1)]] ConstantBuffer<cams> cammats;
-[[vk::binding(0, 2)]] StructuredBuffer<jmats> jmatbuffer;
+
 
 struct PBRInfo {
     float NdotL;
@@ -137,8 +150,8 @@ float microfacetDistribution(PBRInfo pbrInputs) {
     return roughnessSq / (PI * f * f);
 }
 
-float3 getIBLContribution(PBRInfo pbrInputs, float3 n, float3 reflection) {
-    float lod = (pbrInputs.perceptualRoughness * float(pc.envMapMaxLod));
+float3 getIBLContribution(PBRInfo pbrInputs, float3 n, float3 reflection, float envMapMaxLod) {
+    float lod = (pbrInputs.perceptualRoughness * envMapMaxLod);
 
     float2 brdf = EnvBRDFApprox(pbrInputs.perceptualRoughness, pbrInputs.NdotV);
 
@@ -219,37 +232,86 @@ float3 LinearToSRGB(float3 color) {
 }
 
 [shader("vertex")]
-PXin vxmain(VXin in, uint id: SV_VulkanInstanceID) {
+PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
     PXin out;
+    out.sv_pos = float4(0, 0, 0, 0);
+    out.worldPos = float3(0);
+    out.uv = float2(0);
+    out.normal = float3(0, 1, 0);
+    out.tangent = float3(0);
+    out.bitangent = float3(0);
+    out.vColor = float4(1);
+
+    // 1. HARDWARE BOUNDS CHECK - Stop the TDR instantly
+    uint posSize = 0;
+    vertexBuffers[pc.posIdx].GetDimensions(posSize);
+    if (pc.posIdx == 0 || (vertexID * 12) + 12 > posSize) {
+        return out; // ABORT VERTEX SAFELY (Will just draw nothing instead of crashing)
+    }
+
+    float3 inPos = vertexBuffers[pc.posIdx].Load<float3>(vertexID * 12);
+
+    // 2. Safe Normal Load
+    float3 inNormal = float3(0, 1, 0);
+    if (pc.normIdx != 0) {
+        uint normSize = 0;
+        vertexBuffers[pc.normIdx].GetDimensions(normSize);
+        if ((vertexID * 12) + 12 <= normSize) {
+            inNormal = vertexBuffers[pc.normIdx].Load<float3>(vertexID * 12);
+        }
+    }
+
+    // 3. Safe UV Load
+    float2 inUv = float2(0, 0);
+    if (pc.uvIdx != 0) {
+        uint uvSize = 0;
+        vertexBuffers[pc.uvIdx].GetDimensions(uvSize);
+        if ((vertexID * 8) + 8 <= uvSize) {
+            inUv = vertexBuffers[pc.uvIdx].Load<float2>(vertexID * 8);
+        }
+    }
 
     float4x4 skinMat = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
 
-    if (pc.stride > 1) {
-        uint offset = pc.stride * id; 
+    if (pc.stride > 1 && pc.jointIdx != 0 && pc.weightIdx != 0) {
+        uint4 inJoints = uint4(0);
+        float4 inWeights = float4(0);
+
+        if (pc.jointFmt == 0) {
+            uint packedJ = vertexBuffers[pc.jointIdx].Load<uint>(vertexID * 4);
+            inJoints = uint4(packedJ & 0xFF, (packedJ >> 8) & 0xFF, (packedJ >> 16) & 0xFF, packedJ >> 24);
+        } else {
+            uint2 packedJ = vertexBuffers[pc.jointIdx].Load<uint2>(vertexID * 8);
+            inJoints = uint4(packedJ.x & 0xFFFF, packedJ.x >> 16, packedJ.y & 0xFFFF, packedJ.y >> 16);
+        }
+
+        if (pc.weightFmt == 0) {
+            uint packedW = vertexBuffers[pc.weightIdx].Load<uint>(vertexID * 4);
+            inWeights = float4(packedW & 0xFF, (packedW >> 8) & 0xFF, (packedW >> 16) & 0xFF, packedW >> 24) / 255.0;
+        } else if (pc.weightFmt == 1) {
+            uint2 packedW = vertexBuffers[pc.weightIdx].Load<uint2>(vertexID * 8);
+            inWeights = float4(packedW.x & 0xFFFF, packedW.x >> 16, packedW.y & 0xFFFF, packedW.y >> 16) / 65535.0;
+        } else {
+            inWeights = vertexBuffers[pc.weightIdx].Load<float4>(vertexID * 16);
+        }
+
+        uint offset = pc.stride * id;
         skinMat =
-            jmatbuffer[in.joints.x + offset].jointmats * in.weights.x +
-            jmatbuffer[in.joints.y + offset].jointmats * in.weights.y +
-            jmatbuffer[in.joints.z + offset].jointmats * in.weights.z +
-            jmatbuffer[in.joints.w + offset].jointmats * in.weights.w;
+            globalJoints[pc.modelID][inJoints.x + offset].jointmats * inWeights.x +
+            globalJoints[pc.modelID][inJoints.y + offset].jointmats * inWeights.y +
+            globalJoints[pc.modelID][inJoints.z + offset].jointmats * inWeights.z +
+            globalJoints[pc.modelID][inJoints.w + offset].jointmats * inWeights.w;
+    } else if (pc.stride == 1) {
+        skinMat = globalJoints[pc.modelID][id].jointmats;
     }
 
-    float4 locPos = mul(skinMat, float4(in.pos, 1.0));
+    float4 locPos = mul(skinMat, float4(inPos, 1.0));
     out.worldPos = locPos.xyz;
     out.sv_pos = mul(mul(cammats.projection, cammats.view), locPos);
-    out.uv = in.uv;
+    out.uv = inUv;
 
-    //todo:fix!!
-    out.vColor = float4(1.0f,1.0f,1.0f,1.0f);//(dot(in.color, in.color) > 0.01) ? in.color : float4(1.0);
-
-    float3x3 normalMat = (float3x3)skinMat; 
-    float3 N = normalize(mul(normalMat, in.normal));
-    float3 T = normalize(mul(normalMat, in.tangent.xyz));
-    T = normalize(T - dot(T, N) * N);
-    float3 B = cross(N, T) * in.tangent.w;
-
-    out.normal = N;
-    out.tangent = T;
-    out.bitangent = B;
+    float3x3 normalMat = (float3x3)skinMat;
+    out.normal = normalize(mul(normalMat, inNormal));
 
     return out;
 }
@@ -257,110 +319,106 @@ PXin vxmain(VXin in, uint id: SV_VulkanInstanceID) {
 [shader("pixel")]
 float4 pxmain(PXin in) : SV_Target {
 
-// float3 N = normalize(in.normal);
-// float3 T = normalize(in.tangent);
-// float3 B = normalize(in.bitangent);
-// float3x3 TBN = float3x3(T, B, N);
+    MaterialData mat = materials[pc.materialID];
 
-// float3 V = normalize(cammats.camPos - in.worldPos);
+    // float3 N = normalize(in.normal);
+    // float3 T = normalize(in.tangent);
+    // float3 B = normalize(in.bitangent);
+    // float3x3 TBN = float3x3(T, B, N);
 
-// if (pc.normalIdx < 0xAAAAAAAA) {
-//     float3 tNorm = tex[pc.normalIdx].Sample(in.uv).rgb * 2.0 - 1.0;
-//     tNorm *= float3(pc.normalScale, pc.normalScale, 1.0);
-//     N = normalize(mul(tNorm, TBN)); // Transform to world space
-//     // N.y *= -1.0; // GLSL sometimes flips Y, adjust if normal map looks inverted
-// }
+    // float3 V = normalize(cammats.camPos - in.worldPos);
 
-float3 N;
-if (pc.normalIdx < 0xAAAAAAAA) {
-    // temporarily bypassing tangent until i unify float4 n float3 ones
-    N = getNormalFromMap(in.worldPos, in.normal, in.uv, pc.normalIdx, pc.normalScale);
-} else {
-    // Fallback if no normal map
-    N = normalize(in.normal);
-}
+    // if (pc.normalIdx < 0xAAAAAAAA) {
+    //     float3 tNorm = tex[pc.normalIdx].Sample(in.uv).rgb * 2.0 - 1.0;
+    //     tNorm *= float3(pc.normalScale, pc.normalScale, 1.0);
+    //     N = normalize(mul(tNorm, TBN)); // Transform to world space
+    //     // N.y *= -1.0; // GLSL sometimes flips Y, adjust if normal map looks inverted
+    // }
 
-float3 V = normalize(cammats.camPos - in.worldPos);
+    float3 N;
+    if (mat.normalIdx < 0xAAAAAAAA) {
+        // temporarily bypassing tangent until i unify float4 n float3 ones
+        N = getNormalFromMap(in.worldPos, in.normal, in.uv, mat.normalIdx, mat.normalScale);
+    } else {
+        // Fallback if no normal map
+        N = normalize(in.normal);
+    }
 
-float perceptualRoughness = pc.roughnessFactor;
-float metallic = pc.metallicFactor;
-float3 baseColor = pc.baseColorFactor.rgb * in.vColor.rgb;
-float alpha = pc.baseColorFactor.a * in.vColor.a;
+    float3 V = normalize(cammats.camPos - in.worldPos);
 
-if (pc.albedoIdx < 0xAAAAAAAA) {
-    float4 texColor = tex[pc.albedoIdx].Sample(in.uv);
-    baseColor *= texColor.rgb;
-    alpha *= texColor.a;
-}
+    float perceptualRoughness = mat.roughnessFactor;
+    float metallic = mat.metallicFactor;
+    float3 baseColor = mat.baseColorFactor.rgb * in.vColor.rgb;
+    float alpha = mat.baseColorFactor.a * in.vColor.a;
 
-if (alpha < 0.01) discard;
+    if (mat.albedoIdx < 0xAAAAAAAA) {
+        float4 texColor = tex[mat.albedoIdx].Sample(in.uv);
+        baseColor *= texColor.rgb;
+        alpha *= texColor.a;
+    }
 
-float occlusion = 1.0;
-if (pc.ormIdx < 0xAAAAAAAA) {
-    float4 orm = tex[pc.ormIdx].Sample(in.uv);
-    occlusion = orm.r;
-    if (occlusion < 0.01) occlusion = 1.0;
-    perceptualRoughness = orm.g * perceptualRoughness;
-    metallic = orm.b * metallic;
-}
+    if (alpha < 0.01) discard;
 
-perceptualRoughness = clamp(perceptualRoughness, MIN_ROUGHNESS, 1.0);
-metallic = clamp(metallic, 0.0, 1.0);
-float alphaRoughness = perceptualRoughness * perceptualRoughness;
+    float occlusion = 1.0;
+    if (mat.ormIdx < 0xAAAAAAAA) {
+        float4 orm = tex[mat.ormIdx].Sample(in.uv);
+        occlusion = orm.r;
+        if (occlusion < 0.01) occlusion = 1.0;
+        perceptualRoughness = orm.g * perceptualRoughness;
+        metallic = orm.b * metallic;
+    }
 
-float3 f0 = float3(0.04);
-float3 diffuseColor = baseColor * (float3(1.0) - f0);
-diffuseColor *= 1.0 - metallic;
+    perceptualRoughness = clamp(perceptualRoughness, MIN_ROUGHNESS, 1.0);
+    metallic = clamp(metallic, 0.0, 1.0);
+    float alphaRoughness = perceptualRoughness * perceptualRoughness;
 
-float3 specularColor = lerp(f0, baseColor, metallic);
+    float3 f0 = float3(0.04);
+    float3 diffuseColor = baseColor * (float3(1.0) - f0);
+    diffuseColor *= 1.0 - metallic;
 
-float reflectance = max(max(specularColor.r, specularColor.g), specularColor.b);
-float reflectance90 = clamp(reflectance * 25.0, 0.0, 1.0);
-float3 specularEnvironmentR0 = specularColor;
-float3 specularEnvironmentR90 = float3(1.0, 1.0, 1.0) * reflectance90;
+    float3 specularColor = lerp(f0, baseColor, metallic);
 
-float3 L = float3(0, 1, 0);
-float3 H = normalize(L + V);
-float3 reflection = normalize(reflect(-V, N));
+    float reflectance = max(max(specularColor.r, specularColor.g), specularColor.b);
+    float reflectance90 = clamp(reflectance * 25.0, 0.0, 1.0);
+    float3 specularEnvironmentR0 = specularColor;
+    float3 specularEnvironmentR90 = float3(1.0, 1.0, 1.0) * reflectance90;
 
-float NdotL = clamp(dot(N, L), 0.001, 1.0);
-float NdotV = clamp(abs(dot(N, V)), 0.001, 1.0);
-float NdotH = clamp(dot(N, H), 0.0, 1.0);
-float LdotH = clamp(dot(L, H), 0.0, 1.0);
-float VdotH = clamp(dot(V, H), 0.0, 1.0);
+    float3 L = float3(0, 1, 0);
+    float3 H = normalize(L + V);
+    float3 reflection = normalize(reflect(-V, N));
 
-PBRInfo pbrInputs;
-pbrInputs.NdotL = NdotL;
-pbrInputs.NdotV = NdotV;
-pbrInputs.NdotH = NdotH;
-pbrInputs.LdotH = LdotH;
-pbrInputs.VdotH = VdotH;
-pbrInputs.perceptualRoughness = perceptualRoughness;
-pbrInputs.metalness = metallic;
-pbrInputs.reflectance0 = specularEnvironmentR0;
-pbrInputs.reflectance90 = specularEnvironmentR90;
-pbrInputs.alphaRoughness = alphaRoughness;
-pbrInputs.diffuseColor = diffuseColor;
-pbrInputs.specularColor = specularColor;
+    float NdotL = clamp(dot(N, L), 0.001, 1.0);
+    float NdotV = clamp(abs(dot(N, V)), 0.001, 1.0);
+    float NdotH = clamp(dot(N, H), 0.0, 1.0);
+    float LdotH = clamp(dot(L, H), 0.0, 1.0);
+    float VdotH = clamp(dot(V, H), 0.0, 1.0);
 
+    PBRInfo pbrInputs;
+    pbrInputs.NdotL = NdotL;
+    pbrInputs.NdotV = NdotV;
+    pbrInputs.NdotH = NdotH;
+    pbrInputs.LdotH = LdotH;
+    pbrInputs.VdotH = VdotH;
+    pbrInputs.perceptualRoughness = perceptualRoughness;
+    pbrInputs.metalness = metallic;
+    pbrInputs.reflectance0 = specularEnvironmentR0;
+    pbrInputs.reflectance90 = specularEnvironmentR90;
+    pbrInputs.alphaRoughness = alphaRoughness;
+    pbrInputs.diffuseColor = diffuseColor;
+    pbrInputs.specularColor = specularColor;
 
-float3 color = getIBLContribution(pbrInputs, N, reflection);
+    float3 color = getIBLContribution(pbrInputs, N, reflection, mat.envMapMaxLod);
 
-// ig occlusion gotta be done some other way idk about
-color = lerp(color, color *occlusion, 1.0);
+    // ig occlusion gotta be done some other way idk about
+    color = lerp(color, color * occlusion, 1.0);
 
-float3 emissive = pc.emissiveFactor;
-if (pc.emissiveIdx < 0xAAAAAAAA) {
-    emissive *= tex[pc.emissiveIdx].Sample(in.uv).rgb;
-}
-color += emissive;
+    float3 emissive = mat.emissiveFactor;
+    if (mat.emissiveIdx < 0xAAAAAAAA) {
+        emissive *= tex[mat.emissiveIdx].Sample(in.uv).rgb;
+    }
+    color += emissive;
 
-color *= 0.6;
+    color *= 0.6;
 
-return float4(color, alpha);
-}
-
-[shader("compute")]
-void cxmain(){
-    
+    return float4(color, alpha);
 }

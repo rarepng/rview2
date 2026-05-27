@@ -44,21 +44,15 @@ namespace rview::rvk::tex {
         rview::rvk::TextureErrorCallback on_error = nullptr
     );
 
-    bool update_descriptor_set(
-        rvkbucket& rdata,
-        const std::vector<texdata>& textures,
-        VkDescriptorSetLayout& layout,
-        VkDescriptorPool& pool,
-        VkDescriptorSet& target_set
-    );
+    bool update_descriptor_set(rvkbucket& rdata, std::vector<texdata>& textures);
 
     void init_descriptors(rvkbucket& rdata);
     
     bool load_env_map(
         rvkbucket& rdata,
-        texdata& out_env_map,
-        VkDescriptorSet& target_set,
-        VkDescriptorSetLayout& target_lay
+        texdata& out_env_map
+        // ,VkDescriptorSet& target_set,
+        // VkDescriptorSetLayout& target_lay
     );
     
     static inline bool createlayout(rvkbucket &objs, std::shared_ptr<VkDescriptorSetLayout> layout) {

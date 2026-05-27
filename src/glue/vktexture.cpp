@@ -45,15 +45,29 @@ BatchResult load_batch(
 	out_textures.clear();
 	out_textures.resize(model.images.size());
 
+	uint32_t graphicsQIndex = rdata.vkdevice.get_queue_index(vkb::QueueType::graphics).value();
+	
+	VkCommandPoolCreateInfo poolInfo = {
+		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+		.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+		.queueFamilyIndex = graphicsQIndex
+	};
+	
+	VkCommandPool threadLocalPool;
+	if (vkCreateCommandPool(rdata.vkdevice.device, &poolInfo, nullptr, &threadLocalPool) != VK_SUCCESS) {
+		return {0, false};
+	}
+
 	VkCommandBufferAllocateInfo allocInfo = {
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-		.commandPool = rdata.cpools_graphics.at(1),
+		.commandPool = threadLocalPool,
 		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 		.commandBufferCount = 1
 	};
 
 	VkCommandBuffer cmd;
 	if (vkAllocateCommandBuffers(rdata.vkdevice.device, &allocInfo, &cmd) != VK_SUCCESS) {
+		vkDestroyCommandPool(rdata.vkdevice.device, threadLocalPool, nullptr);
 		return {0, false};
 	}
 
@@ -187,141 +201,165 @@ BatchResult load_batch(
 	vkWaitForFences(rdata.vkdevice.device, 1, &fence, VK_TRUE, UINT64_MAX);
 	vkDestroyFence(rdata.vkdevice.device, fence, nullptr);
 
-	vkFreeCommandBuffers(rdata.vkdevice.device, rdata.cpools_graphics.at(1), 1, &cmd);
+	// vkFreeCommandBuffers(rdata.vkdevice.device, rdata.cpools_graphics.at(1), 1, &cmd);
+	vkDestroyCommandPool(rdata.vkdevice.device, threadLocalPool, nullptr);
 
 	for (auto& t : trash_bin) vmaDestroyBuffer(rdata.alloc, t.b, t.a);
 	return BatchResult{ (uint32_t)model.images.size(), all_good };
 }
 
-bool update_descriptor_set(
-    rvkbucket& rdata,
-    const std::vector<texdata>& textures,
-    VkDescriptorSetLayout& layout,
-    VkDescriptorPool& pool,
-    VkDescriptorSet& target_set
-) {
-	VkDevice device = rdata.vkdevice.device;
+bool update_descriptor_set(rvkbucket& rdata, std::vector<texdata>& textures) {
 
-	//what is this called? lazy inits? todo:find out and reconsider
-	if (layout == VK_NULL_HANDLE) {
-		VkDescriptorSetLayoutBinding binding{};
-		binding.binding = 0;
-		binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		binding.descriptorCount = 1024;//idk
-		binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	if (textures.empty()) return true;
 
-		VkDescriptorBindingFlags bindFlag = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
-		VkDescriptorSetLayoutBindingFlagsCreateInfo flagsInfo{};
-		flagsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-		flagsInfo.bindingCount = 1;
-		flagsInfo.pBindingFlags = &bindFlag;
+    std::vector<VkDescriptorImageInfo> infos(textures.size());
+    std::vector<VkWriteDescriptorSet> writes(textures.size());
 
-		VkDescriptorSetLayoutCreateInfo layoutInfo{};
-		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		layoutInfo.pNext = &flagsInfo;
-		layoutInfo.bindingCount = 1;
-		layoutInfo.pBindings = &binding;
+    for(size_t i = 0; i < textures.size(); ++i) {
+        // 1. Claim a unique index in the global 10,000 element array securely
+        textures[i].bindless_idx = rvkbucket::globalTextureCounter.fetch_add(1, std::memory_order_relaxed);
 
-		if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &layout) != VK_SUCCESS) {
-			std::cout << "[Error] Failed to create Texture Layout!" << std::endl;
-			return false;
-		}
-	}
-	if (pool == VK_NULL_HANDLE) {
-		VkDescriptorPoolSize poolSize{};
-		poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		poolSize.descriptorCount = 1024;
+        // 2. Setup Image Info
+        infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        infos[i].imageView = textures[i].imgview ? textures[i].imgview : rdata.defaults.purple.view;
+        infos[i].sampler = textures[i].imgsampler ? textures[i].imgsampler : rdata.samplerz[0];
 
-		VkDescriptorPoolCreateInfo poolInfo{};
-		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.poolSizeCount = 1;
-		poolInfo.pPoolSizes = &poolSize;
-		poolInfo.maxSets = 1;
+        // 3. Setup Write Descriptor targeting Set 0, Binding 0
+        writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[i].dstSet = rvkbucket::globalBindlessSet;
+        writes[i].dstBinding = 0;
+        writes[i].dstArrayElement = textures[i].bindless_idx;
+        writes[i].descriptorCount = 1;
+        writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[i].pImageInfo = &infos[i];
+    }
 
-		if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
-			std::cout << "[Error] Failed to create Texture Pool!" << std::endl;
-			return false;
-		}
-	}
-	if (target_set == VK_NULL_HANDLE) {
-		VkDescriptorSetAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool = pool;
-		allocInfo.descriptorSetCount = 1;
-		allocInfo.pSetLayouts = &layout;
+    // 4. Update the global set concurrently
+    vkUpdateDescriptorSets(rdata.vkdevice.device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+    return true;
 
-		if (vkAllocateDescriptorSets(device, &allocInfo, &target_set) != VK_SUCCESS) {
-			std::cout << "[Error] Failed to allocate Texture Set!" << std::endl;
-			return false;
-		}
-	}
+	// VkDevice device = rdata.vkdevice.device;
+
+	// //what is this called? lazy inits? todo:find out and reconsider
+	// if (layout == VK_NULL_HANDLE) {
+	// 	VkDescriptorSetLayoutBinding binding{};
+	// 	binding.binding = 0;
+	// 	binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	// 	binding.descriptorCount = 1024;//idk
+	// 	binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	// 	VkDescriptorBindingFlags bindFlag = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+	// 	VkDescriptorSetLayoutBindingFlagsCreateInfo flagsInfo{};
+	// 	flagsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+	// 	flagsInfo.bindingCount = 1;
+	// 	flagsInfo.pBindingFlags = &bindFlag;
+
+	// 	VkDescriptorSetLayoutCreateInfo layoutInfo{};
+	// 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	// 	layoutInfo.pNext = &flagsInfo;
+	// 	layoutInfo.bindingCount = 1;
+	// 	layoutInfo.pBindings = &binding;
+
+	// 	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &layout) != VK_SUCCESS) {
+	// 		std::cout << "[Error] Failed to create Texture Layout!" << std::endl;
+	// 		return false;
+	// 	}
+	// }
+	// if (pool == VK_NULL_HANDLE) {
+	// 	VkDescriptorPoolSize poolSize{};
+	// 	poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	// 	poolSize.descriptorCount = 1024;
+
+	// 	VkDescriptorPoolCreateInfo poolInfo{};
+	// 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	// 	poolInfo.poolSizeCount = 1;
+	// 	poolInfo.pPoolSizes = &poolSize;
+	// 	poolInfo.maxSets = 1;
+
+	// 	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
+	// 		std::cout << "[Error] Failed to create Texture Pool!" << std::endl;
+	// 		return false;
+	// 	}
+	// }
+	// if (target_set == VK_NULL_HANDLE) {
+	// 	VkDescriptorSetAllocateInfo allocInfo{};
+	// 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	// 	allocInfo.descriptorPool = pool;
+	// 	allocInfo.descriptorSetCount = 1;
+	// 	allocInfo.pSetLayouts = &layout;
+
+	// 	if (vkAllocateDescriptorSets(device, &allocInfo, &target_set) != VK_SUCCESS) {
+	// 		std::cout << "[Error] Failed to allocate Texture Set!" << std::endl;
+	// 		return false;
+	// 	}
+	// }
 
 
 
-	std::vector<VkWriteDescriptorSet> writes;
-	VkDescriptorImageInfo dummy0{ .sampler = rdata.samplerz[0], .imageView = rdata.defaults.purple.view, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-	VkDescriptorImageInfo dummy1{ .sampler = rdata.samplerz[0], .imageView = rdata.defaults.white.view,  .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-	VkDescriptorImageInfo dummy2{ .sampler = rdata.samplerz[0], .imageView = rdata.defaults.normal.view, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-	VkDescriptorImageInfo dummy3{ .sampler = rdata.samplerz[0], .imageView = rdata.defaults.black.view,  .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	// std::vector<VkWriteDescriptorSet> writes;
+	// VkDescriptorImageInfo dummy0{ .sampler = rdata.samplerz[0], .imageView = rdata.defaults.purple.view, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	// VkDescriptorImageInfo dummy1{ .sampler = rdata.samplerz[0], .imageView = rdata.defaults.white.view,  .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	// VkDescriptorImageInfo dummy2{ .sampler = rdata.samplerz[0], .imageView = rdata.defaults.normal.view, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	// VkDescriptorImageInfo dummy3{ .sampler = rdata.samplerz[0], .imageView = rdata.defaults.black.view,  .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 
-	auto add_write = [&](uint32_t index, VkDescriptorImageInfo* info) {
-		writes.push_back(VkWriteDescriptorSet{
-			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-			.dstSet = target_set,
-			.dstBinding = 0,
-			.dstArrayElement = index,
-			.descriptorCount = 1,
-			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-			.pImageInfo = info
-		});
-	};
+	// auto add_write = [&](uint32_t index, VkDescriptorImageInfo* info) {
+	// 	writes.push_back(VkWriteDescriptorSet{
+	// 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+	// 		.dstSet = target_set,
+	// 		.dstBinding = 0,
+	// 		.dstArrayElement = index,
+	// 		.descriptorCount = 1,
+	// 		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+	// 		.pImageInfo = info
+	// 	});
+	// };
 
-	add_write(0, &dummy0);
-	add_write(1, &dummy1);
-	add_write(2, &dummy2);
-	add_write(3, &dummy3);
+	// add_write(0, &dummy0);
+	// add_write(1, &dummy1);
+	// add_write(2, &dummy2);
+	// add_write(3, &dummy3);
 
-	std::vector<VkDescriptorImageInfo> modelInfos;
-	modelInfos.reserve(textures.size());
+	// std::vector<VkDescriptorImageInfo> modelInfos;
+	// modelInfos.reserve(textures.size());
 
-	for (const auto& tex : textures) {
-		VkDescriptorImageInfo info{};
-		info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	// for (const auto& tex : textures) {
+	// 	VkDescriptorImageInfo info{};
+	// 	info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-		if (tex.imgview != VK_NULL_HANDLE && tex.imgsampler != VK_NULL_HANDLE) {
-			info.imageView = tex.imgview;
-			info.sampler = tex.imgsampler;
-		} else {
-			info.imageView = rdata.defaults.purple.view;
-			info.sampler = rdata.samplerz[0];
-		}
-		modelInfos.push_back(info);
-	}
+	// 	if (tex.imgview != VK_NULL_HANDLE && tex.imgsampler != VK_NULL_HANDLE) {
+	// 		info.imageView = tex.imgview;
+	// 		info.sampler = tex.imgsampler;
+	// 	} else {
+	// 		info.imageView = rdata.defaults.purple.view;
+	// 		info.sampler = rdata.samplerz[0];
+	// 	}
+	// 	modelInfos.push_back(info);
+	// }
 
-	if (!modelInfos.empty()) {
-		writes.push_back(VkWriteDescriptorSet{
-			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-			.dstSet = target_set,
-			.dstBinding = 0,
-			.dstArrayElement = 4,
-			.descriptorCount = static_cast<uint32_t>(modelInfos.size()),
-			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-			.pImageInfo = modelInfos.data()
-		});
-	}
+	// if (!modelInfos.empty()) {
+	// 	writes.push_back(VkWriteDescriptorSet{
+	// 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+	// 		.dstSet = target_set,
+	// 		.dstBinding = 0,
+	// 		.dstArrayElement = 4,
+	// 		.descriptorCount = static_cast<uint32_t>(modelInfos.size()),
+	// 		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+	// 		.pImageInfo = modelInfos.data()
+	// 	});
+	// }
 
-	if (!writes.empty()) {
-		vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
-	}
+	// if (!writes.empty()) {
+	// 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+	// }
 
-	return true;
+	// return true;
 }
 
 bool load_env_map(
     rvkbucket& rdata,
-    texdata& out_env_map,
-    VkDescriptorSet& target_set,
-    VkDescriptorSetLayout& target_lay
+    texdata& out_env_map
+	// ,VkDescriptorSet& target_set,
+    // VkDescriptorSetLayout& target_lay
 ) {
 
 	int w, h, channels;
@@ -383,29 +421,6 @@ bool load_env_map(
 	std::memcpy(data, pixels, static_cast<size_t>(imageSize));
 	vmaUnmapMemory(rdata.alloc, stage_alloc);
 	stbi_image_free(pixels);
-
-//im not sure if this properly sets up the hdr at binding 3 set 0, have to verify.
-	VkDescriptorSetLayoutBinding bindInfo{};
-	bindInfo.binding = 0;
-	bindInfo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	bindInfo.descriptorCount = 1;
-	bindInfo.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-	VkDescriptorSetLayoutCreateInfo layoutInfo{};
-	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.bindingCount = 1;
-	layoutInfo.pBindings = &bindInfo;
-
-	vkCreateDescriptorSetLayout(rdata.vkdevice.device, &layoutInfo, nullptr, &target_lay);
-
-	VkDescriptorSetAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = rdata.dpools[0];
-	allocInfo.descriptorSetCount = 1;
-	allocInfo.pSetLayouts = &target_lay;
-
-	vkAllocateDescriptorSets(rdata.vkdevice.device, &allocInfo, &target_set);
-
 
 
 	VkCommandBuffer cmd = rdata.cbuffers_graphics.at(1).at(rvkbucket::currentFrame);
@@ -520,8 +535,8 @@ bool load_env_map(
 
 	VkWriteDescriptorSet descriptorWrite{};
 	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	descriptorWrite.dstSet = target_set;
-	descriptorWrite.dstBinding = 0;
+	descriptorWrite.dstSet = rvkbucket::globalBindlessSet;
+	descriptorWrite.dstBinding = 3;
 	descriptorWrite.dstArrayElement = 0;
 	descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	descriptorWrite.descriptorCount = 1;
