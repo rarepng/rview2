@@ -6,13 +6,19 @@ include(ExternalProject)
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+# set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
 
 find_package(Vulkan REQUIRED)
 
 set(OPENSSL_USE_STATIC_LIBS ON)
 find_package(OpenSSL REQUIRED)
+
+file(DOWNLOAD
+     https://github.com/cpm-cmake/CPM.cmake/releases/latest/download/get_cpm.cmake
+     ${CMAKE_CURRENT_BINARY_DIR}/cpm.cmake
+)
+include(${CMAKE_CURRENT_BINARY_DIR}/cpm.cmake)
 
 
 set(submodules_path
@@ -149,34 +155,100 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "set" FORCE)
 set(FASTGLTF_INSTALL OFF CACHE BOOL "no install for fastgltf" FORCE)
 set(VkBootstrap_INSTALL OFF CACHE BOOL "no vkb install either" FORCE)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS OFF)
 
-add_subdirectory(${submodules_path}/simdjson)
-add_subdirectory(${submodules_path}/fastgltf)
-add_subdirectory(${submodules_path}/sdl)
-add_subdirectory(${submodules_path}/sdlimg)
-add_subdirectory(${submodules_path}/glm)
-add_subdirectory(${submodules_path}/vk_boot)
-# rip
-target_compile_options(vk-bootstrap PRIVATE -mno-avx512f -mno-avx2 -mno-avx)
-add_subdirectory(${submodules_path}/vma)
+CPMAddPackage(
+    NAME glm
+    GITHUB_REPOSITORY g-truc/glm
+    GIT_TAG 1.0.1
+    DOWNLOAD_ONLY YES
+    EXCLUDE_FROM_ALL YES
+)
+# if(glm_ADDED)
+    add_library(glm INTERFACE)
+    target_include_directories(glm SYSTEM INTERFACE ${glm_SOURCE_DIR})
+# endif()
 
-
-file(GLOB PROJECT_HEADERS "include/*.hpp")
-file(GLOB PROJECT_SOURCES "src/main.cpp" "src/*/*.cpp")
-set(OTHER_SOURCES
-    ${submodules_path}/imgui/imgui.cpp
-    ${submodules_path}/imgui/backends/imgui_impl_vulkan.cpp
-    ${submodules_path}/imgui/backends/imgui_impl_sdl3.cpp
-    ${submodules_path}/imgui/misc/cpp/imgui_stdlib.cpp
-    ${submodules_path}/imgui/imgui_tables.cpp
-    ${submodules_path}/imgui/imgui_widgets.cpp
-    ${submodules_path}/imgui/imgui_draw.cpp
-    ${submodules_path}/imgui/imgui_demo.cpp
+CPMAddPackage(
+    NAME simdjson
+    GITHUB_REPOSITORY simdjson/simdjson
+    GIT_TAG v4.6.4
+    EXCLUDE_FROM_ALL YES
 )
 
+CPMAddPackage(
+    NAME volk
+    GITHUB_REPOSITORY zeux/volk
+    GIT_TAG 1.4.350
+    EXCLUDE_FROM_ALL YES
+)
+
+CPMAddPackage(
+    NAME sdl
+    GITHUB_REPOSITORY libsdl-org/SDL
+    GIT_TAG release-3.4.4
+    EXCLUDE_FROM_ALL YES
+    OPTIONS
+        "SDL_SHARED OFF"
+        "SDL_STATIC ON"
+        "SDL_TESTS OFF"
+)
+
+CPMAddPackage(
+    NAME sdlimg
+    GITHUB_REPOSITORY libsdl-org/SDL_image
+    GIT_TAG release-3.4.4
+    EXCLUDE_FROM_ALL YES
+    OPTIONS
+        "SDLSHARED OFF"
+        "SDLSTATIC ON"
+        "SDL3IMAGE_SAMPLES OFF"
+        "SDL3IMAGE_TESTS OFF"
+)
+
+CPMAddPackage(
+    NAME imgui
+    GITHUB_REPOSITORY ocornut/imgui
+    GIT_TAG master
+    EXCLUDE_FROM_ALL YES
+    DOWNLOAD_ONLY YES
+)
+
+CPMAddPackage(
+    NAME stb
+    GITHUB_REPOSITORY nothings/stb
+    GIT_TAG master
+    EXCLUDE_FROM_ALL YES
+    DOWNLOAD_ONLY YES
+)
+
+set(CMAKE_SKIP_INSTALL_RULES ON)
+
+
+add_subdirectory(${submodules_path}/fastgltf EXCLUDE_FROM_ALL)
+add_subdirectory(${submodules_path}/vk_boot EXCLUDE_FROM_ALL)
+# rip
+target_compile_options(vk-bootstrap PRIVATE -mno-avx512f -mno-avx2 -mno-avx)
+add_subdirectory(${submodules_path}/vma EXCLUDE_FROM_ALL)
+set(CMAKE_SKIP_INSTALL_RULES OFF)
+
+
+file(GLOB_RECURSE PROJECT_HEADERS "include/*.hpp")
+file(GLOB PROJECT_SOURCES "src/main.cpp" "src/*/*.cpp")
+set(OTHER_SOURCES
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
+    ${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_demo.cpp
+)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 if(CMAKE_BUILD_TYPE STREQUAL "clanged")
 
-add_library(rview2 ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_HEADERS})
+    add_library(rview2 ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_HEADERS})
 
 
     target_include_directories(rview2 PUBLIC
@@ -185,15 +257,11 @@ add_library(rview2 ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_HEADERS})
         "${PROJECT_SOURCE_DIR}/cmake_more_cache/gns/include"
         "${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include"
         "${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include"
+        "${submodules_path}/vma/include"
         "${submodules_path}/vk_boot/src"
         "${submodules_path}/fastgltf/include"
-        "${submodules_path}/glm"
-        "${submodules_path}/simdjson/include"
-        "${submodules_path}/stb"
-        "${submodules_path}/imgui"
-        "${submodules_path}/vma/include"
-        "${submodules_path}/sdl/include"
-        "${submodules_path}/sdlimg/include"
+        "${stb_SOURCE_DIR}"
+        "${imgui_SOURCE_DIR}"
         "${submodules_path}/jolt"
         "${submodules_path}/meshoptimizer/src"
         "${PROJECT_SOURCE_DIR}/include"
@@ -365,10 +433,9 @@ target_include_directories(rview2
     BEFORE
     PUBLIC
         "${PROJECT_SOURCE_DIR}/cmake_more_cache/gns/include/GameNetworkingSockets"
-        "${submodules_path}/stb"
-        "${submodules_path}/imgui"
+        "${stb_SOURCE_DIR}"
+        "${imgui_SOURCE_DIR}"
         "${submodules_path}/vma/include"
-        "${submodules_path}/sdl/include"
         "${submodules_path}/jolt"
         "${submodules_path}/meshoptimizer/src"
         "${PROJECT_SOURCE_DIR}/include"
@@ -397,6 +464,11 @@ target_compile_options(rview2 PUBLIC
     # "$<$<CONFIG:Release>:-mstackrealign>"
     "$<$<CONFIG:clanged>:-std=c++26;-fmodules;-fcxx-modules;-fno-implicit-modules;-fno-implicit-module-maps;-Wno-module-import-in-extern-c>"
     "$<$<CONFIG:mermaid>:-g;-fdump-lang-class>"
+
+    # temporary
+    "$<$<CONFIG:Debug>:-Wno-unused-parameter>"
+    "$<$<CONFIG:Debug>:-Wno-missing-field-initializers>"
+
 )
 target_link_options(rview2 PUBLIC
     "$<$<CONFIG:sanitize>:-static-libasan>"
@@ -414,7 +486,9 @@ set(SLANG_COMMON_FLAGS
 
 # consider only statically -static-libgcc -static-libstdc++ idk
 target_link_options(rview2 PRIVATE
-    "$<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>:-static>"
+    # "$<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>:-static>"
+    # "$<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>:-static-libstdc++>"
+    # "$<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>:-static-libgcc>"
     # no idea here..
     # "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>,$<CONFIG:sanitize>>:-static>"
     "$<$<AND:$<PLATFORM_ID:Windows>,$<OR:$<CONFIG:Distribution>,$<CONFIG:Release>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>>:-mwindows>"
@@ -481,7 +555,41 @@ add_dependencies(rview2 resources_tar)
 set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/resources)
 set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/shaders)
 
-install(TARGETS rview2 RUNTIME DESTINATION .)
+
+install(TARGETS rview2 RUNTIME DESTINATION . CONFIGURATIONS Release Distribution BleedingEdge MinSizeRel)
 install(FILES ${ALL_SHADER_SPV_FILES} DESTINATION shaders)
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/resources/" DESTINATION resources)
+
+if(WIN32)
+    get_filename_component(RVIEW2_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+
+    install(CODE "
+        message(STATUS \"resolving dynamic libraries for $<TARGET_FILE_NAME:rview2>...\")
+        
+        file(GET_RUNTIME_DEPENDENCIES
+            EXECUTABLES \"$<TARGET_FILE:rview2>\"
+            DIRECTORIES \"${RVIEW2_BIN_DIR}\"
+            RESOLVED_DEPENDENCIES_VAR RESOLVED_DEPS
+            UNRESOLVED_DEPENDENCIES_VAR UNRESOLVED_DEPS
+            PRE_EXCLUDE_REGEXES 
+                \"api-ms-.*\" 
+                \"ext-ms-.*\" 
+                \".*[Ss]ystem32.*\" 
+                \".*[Ss]ys[Ww][Oo][Ww]64.*\" 
+                \".*[Ww]in[Ss]x[Ss].*\"
+        )
+
+        foreach(DEP \${RESOLVED_DEPS})
+            get_filename_component(DEP_NAME \${DEP} NAME)
+            string(TOLOWER \${DEP_NAME} LOWER_DEP_NAME)
+            
+            if(NOT LOWER_DEP_NAME MATCHES \"^(kernel32|kernelbase|user32|msvcrt|msvcp.*|advapi32|ws2_32|shell32|setupapi|ole32|oleaut32|gdi32|imm32|version|winmm|crypt32|dbghelp|iphlpapi|vulkan-1|ntdll|combase|sechost|rpcrt4|win32u|cfgmgr32)\\\\.dll$\")
+                message(STATUS \"deploying \${DEP_NAME}\")
+                file(INSTALL DESTINATION \"\${CMAKE_INSTALL_PREFIX}\" TYPE SHARED_LIBRARY FILES \"\${DEP}\")
+            endif()
+        endforeach()
+    "
+    CONFIGURATIONS Release Distribution BleedingEdge MinSizeRel)
+    # maybe ill setup a launcher pattern
+endif()
 

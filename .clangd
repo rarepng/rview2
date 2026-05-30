@@ -1,21 +1,60 @@
+# # CompileFlags:
+# #   # these cause stupid intellisense errors for clangd which i use only for intellisense & clang-format
+# #   Compiler: "C:/miasma/gg/bin/g++.exe"
+# #   Add:
+# #     # - "-w"
+# #     - "--target=x86_64-w64-windows-gnu"
+# #     - -Wno-unused-parameter
+# #     - -Wno-missing-designated-field-initializers
+# #     - -Wno-missing-field-initializers
+# #     - -Wno-unknown-type-name
+# #     # - -Wno-everything
+
+# #     - -ferror-limit=0
+# #   Remove:
+# #     - "--target=*"
+# #     - "-std=gnu++2c"
+# #     - "-std=c++2c"
+# #     - "-std=gnu++26"
+# #     - "-std=c++26"
+# #     - -fmodules-ts
+# #     - -fmodule-mapper=*
+# #     - -fdeps-format=*
+# # Diagnostics:
+# #   UnusedIncludes: None
+# #   # MissingIncludes: None
+# #   # Suppress:
+# #   #   - "unused-includes"
+# #   #   - "missing-includes"
+
 CompileFlags:
-  # these cause stupid intellisense errors for clangd which i use only for intellisense & clang-format
-  Compiler: "g++"
-  Add: 
-    - "-Iinclude"
-    - "-std=gnu++2c"
-    # - "-w"
+  Add:
+    - "-std=c++23"
+    
     - -Wno-unused-parameter
     - -Wno-missing-designated-field-initializers
     - -Wno-missing-field-initializers
-    # - -Wno-everything
+    - -Wno-unknown-type-name
+    - -Wno-unused-variable
+    - -Wno-unused-variable
+    - -Wno-format
+    - -Wno-sign-compare
+    - -ferror-limit=0
+
   Remove:
+    - "-std=gnu++2c"
+    - "-std=c++2c"
+    - "-std=gnu++26"
+    - "-std=c++26"
+
     - -fmodules-ts
     - -fmodule-mapper=*
     - -fdeps-format=*
+
 Diagnostics:
   UnusedIncludes: None
-  # MissingIncludes: None
-  # Suppress:
-  #   - "unused-includes"
-  #   - "missing-includes"
+---
+If:
+  PathMatch: [.*sub/.*, .*build/.*, .*cmake_more_cache/.*]
+Diagnostics:
+  Suppress: "*"
