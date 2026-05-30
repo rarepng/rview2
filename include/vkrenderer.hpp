@@ -25,6 +25,8 @@
 
 #include "core/rvk.hpp"
 
+#include "core/jobs.hpp"
+
 enum InputKey : uint8_t {
 	Key_W = 0, Key_S, Key_A, Key_D, Key_Q, Key_E,
 	Key_RightClick,
@@ -36,7 +38,6 @@ namespace vkrenderer {
 // static std::chrono::high_resolution_clock::time_point starttick = std::chrono::high_resolution_clock::now();
 
 static std::bitset<Input_Count> input_state;
-static std::vector<std::future<void>> pending_loads;
 static std::mutex load_mutex;
 
 static vkcam mcam{};

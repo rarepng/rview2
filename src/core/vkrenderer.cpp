@@ -834,7 +834,8 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs,const SDL_Event& e) {
 		[[unlikely]]
 		{
 			std::string fname = e.drop.data;
-			pending_loads.push_back(std::async(std::launch::async, [&mvkobjs, fname]() {
+			
+			g_jobs.enqueue([&mvkobjs, fname]() {
 				auto newp = std::make_shared<playoutgeneric>();
 
 				bool success = newp->setup(mvkobjs, fname.c_str(), 1,
@@ -846,7 +847,7 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs,const SDL_Event& e) {
 				} else {
 					std::cout << "model not added, probably wrong format. \nonly binary gltf files (.glb) are accepted. Provided was: " << fname << std::endl;
 				}
-			}));
+			});
 			break;
 		}
 	case SDL_EVENT_DROP_COMPLETE:
@@ -1023,11 +1024,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		ImGui_ImplSDL3_ProcessEvent(&e);
 		sdlevent(mvkobjs,e);
 	}
-	if (!pending_loads.empty()) {
-		std::erase_if(pending_loads, [](auto& f) {
-			return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
-		});
-	}
+
 	movecam(mvkobjs);
 
 	VkCommandBufferBeginInfo cmdbgninfo{};

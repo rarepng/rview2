@@ -67,12 +67,10 @@ bool ui::init(rvkbucket &renderData) {
 	imguiIinitInfo.DescriptorPool = renderData.dpools[rvkbucket::idximguipool];
 	imguiIinitInfo.MinImageCount = 2;
 	imguiIinitInfo.ImageCount = renderData.schainimgs.size();
-	imguiIinitInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-	imguiIinitInfo.RenderPass = VK_NULL_HANDLE;
-	imguiIinitInfo.PipelineRenderingCreateInfo = plinerenderinginfo;
 	imguiIinitInfo.UseDynamicRendering = true;
-
-	// imguiIinitInfo.UseDynamicRendering = true;
+	imguiIinitInfo.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+	imguiIinitInfo.PipelineInfoMain.RenderPass = VK_NULL_HANDLE;
+	imguiIinitInfo.PipelineInfoMain.PipelineRenderingCreateInfo = plinerenderinginfo;
 
 	ImGui_ImplVulkan_Init(&imguiIinitInfo);
 
@@ -147,7 +145,7 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 
 		if (updateTime < ImGui::GetTime()) {
 			mfpsvalues.at(fpsOffset) = mfps;
-			fpsOffset = ++fpsOffset % mnumfpsvalues;
+			fpsOffset = (fpsOffset + 1) % mnumfpsvalues;
 
 			mframetimevalues.at(frameTimeOffset) = renderData.frametime;
 			frameTimeOffset = ++frameTimeOffset % mnumframetimevalues;

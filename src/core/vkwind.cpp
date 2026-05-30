@@ -5,6 +5,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <expected>
+#include <immintrin.h>
 
 #include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_vulkan.h>
@@ -144,6 +145,8 @@ finalize_device(rvkbucket& mvkobjs, vkb::PhysicalDevice candidate_gpu) noexcept 
 
 	return ctx;
 }
+
+
 bool vkwind::init(std::string title,rvkbucket& mvkobjs) {
 	if (!SDL_Init(SDL_INIT_VIDEO)) {
 		return false;
@@ -190,17 +193,50 @@ bool vkwind::init(std::string title,rvkbucket& mvkobjs) {
 }
 
 void vkwind::frameupdate(rvkbucket& mvkobjs) {
-	if (!mvkobjs.mshutdown) {
+	if (mvkobjs.mshutdown) return;
+
 		vkrenderer::initscene(mvkobjs);
 		vkrenderer::immediate_submit(mvkobjs,[&](VkCommandBuffer cbuffer) {
 			vkrenderer::uploadfordraw(mvkobjs,cbuffer);
 		});
+		
+		const double perf_freq = static_cast<double>(SDL_GetPerformanceFrequency());
+		uint64_t last_counter = SDL_GetPerformanceCounter();
+		double accumulator = 0.0;
+		const double fixed_dt = 1.0 / 60.0;
+		double target_fps = 144.0; 
+		double target_frame_time = target_fps > 0.0 ? (1.0 / target_fps) : 0.0;
+
 		while (!mvkobjs.mshutdown) {
+			uint64_t current_counter = SDL_GetPerformanceCounter();
+			double dt = static_cast<double>(current_counter - last_counter) / perf_freq;
+			last_counter = current_counter;
+			if (dt > 0.25) dt = 0.25;
+			accumulator += dt;
+			while (accumulator >= fixed_dt) {
+				accumulator -= fixed_dt;
+			}
+
 			if (!vkrenderer::draw(mvkobjs)) {
 				break;
 			}
+
+			if (target_frame_time > 0.0) {
+				uint64_t frame_end = SDL_GetPerformanceCounter();
+				double elapsed_frame_time = static_cast<double>(frame_end - current_counter) / perf_freq;
+				
+				while (elapsed_frame_time < target_frame_time) {
+					double remaining_time = target_frame_time - elapsed_frame_time;
+					if (remaining_time > 0.002) {
+						std::this_thread::sleep_for(std::chrono::duration<double>(remaining_time - 0.0015));
+					} else {
+						_mm_pause(); 
+					}
+					frame_end = SDL_GetPerformanceCounter();
+					elapsed_frame_time = static_cast<double>(frame_end - current_counter) / perf_freq;
+				}
+			}
 		}
-	}
 }
 
 void vkwind::cleanup(rvkbucket& mvkobjs) {
