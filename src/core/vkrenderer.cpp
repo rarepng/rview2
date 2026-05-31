@@ -395,6 +395,7 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 
     if (!ubo::init_global(mvkobjs)) return false;
     if (!initglobalmats(mvkobjs)) return false;
+	if (!initglobalinstances(mvkobjs))return false;
 
     vkDeviceWaitIdle(mvkobjs.vkdevice.device);
 
@@ -481,6 +482,35 @@ bool vkrenderer::initglobalmats(rvkbucket &mvkobjs){
 	write.pBufferInfo = &ssboInfo;
 
 	vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &write, 0, nullptr);
+	return true;
+}
+bool vkrenderer::initglobalinstances(rvkbucket& mvkobjs){
+	for (uint32_t i = 0; i < rvkbucket::MAX_FRAMES_IN_FLIGHT; ++i) {
+		VkBufferCreateInfo ibinfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+		ibinfo.size = sizeof(GPUInstanceData) * 65536;
+		ibinfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+		VmaAllocationCreateInfo ivmaallocinfo{};
+		ivmaallocinfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+		ivmaallocinfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+		if (vmaCreateBuffer(mvkobjs.alloc, &ibinfo, &ivmaallocinfo,
+		                    &mvkobjs.globalInstanceBuffers[i].buffer,
+		                    &mvkobjs.globalInstanceBuffers[i].alloc, nullptr) != VK_SUCCESS) {
+			return false;
+		}
+
+		VkDescriptorBufferInfo issboInfo{mvkobjs.globalInstanceBuffers[i].buffer, 0, VK_WHOLE_SIZE};
+		VkWriteDescriptorSet iwrite{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+		iwrite.dstSet = rvkbucket::globalBindlessSet;
+		iwrite.dstBinding = 7;
+		iwrite.dstArrayElement = i;
+		iwrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		iwrite.descriptorCount = 1;
+		iwrite.pBufferInfo = &issboInfo;
+
+		vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &iwrite, 0, nullptr);
+	}
 	return true;
 }
 bool vkrenderer::initvma(rvkbucket& mvkobjs) {
@@ -705,6 +735,8 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	vkDestroyDescriptorPool(mvkobjs.vkdevice.device, rvkbucket::globalBindlessPool, nullptr);
 	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, rvkbucket::globalBindlessLayout, nullptr);
 	vmaDestroyBuffer(mvkobjs.alloc, rvkbucket::globalCameraUBO.buffer, rvkbucket::globalCameraUBO.alloc);
+	for(auto&& x: mvkobjs.globalInstanceBuffers)
+		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
 
 	//dbg only block
 	// char* statsString = nullptr;
@@ -1064,6 +1096,37 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 	mvkobjs.updatemattime = mmatupdatetimer.stop();
 
+	std::vector<GPUInstanceData> frameInstances;
+	frameInstances.reserve(10000); // reconsider this number..
+
+	for (const auto &player : mplayer) {
+		uint32_t modelID = player->get_modelID();
+		bool isSkinned = player->is_skinned();
+		
+		uint32_t stride = isSkinned ? player->getinst(0)->getjointmatrixsize() : 1;
+
+		for (size_t i = 0; i < player->instcount(); ++i) {
+			auto inst = player->getinst(i);
+			if (!inst->getinstancesettings().msdrawmodel) continue;
+
+			GPUInstanceData idata{};
+			idata.worldTransform = inst->calcstaticmat();
+			idata.modelID = modelID;
+			idata.jointOffset = i * stride;
+			idata.isSkinned = isSkinned ? 1 : 0;
+			idata.padding = 0;
+
+			frameInstances.push_back(idata);
+		}
+	}
+
+	if (!frameInstances.empty()) {
+		void* data;
+		vmaMapMemory(mvkobjs.alloc, mvkobjs.globalInstanceBuffers[rvkbucket::currentFrame].alloc, &data);
+		std::memcpy(data, frameInstances.data(), frameInstances.size() * sizeof(GPUInstanceData));
+		vmaUnmapMemory(mvkobjs.alloc, mvkobjs.globalInstanceBuffers[rvkbucket::currentFrame].alloc);
+	}
+
 	// joint check
 	// if (dummytick % 2) {
 	for (const auto &i : mplayer)
@@ -1076,7 +1139,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	moveplayer();
 
 	currentgraph.add_pass([&]{
-		
+
 		VkBufferMemoryBarrier2 particleBarrier{
 			VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
 		particleBarrier.buffer = particle::ssbobuffsnallocs.at(0).first;

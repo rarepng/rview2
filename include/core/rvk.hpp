@@ -150,6 +150,14 @@ struct GpuBuffer {
 	uint32_t bindless_idx = 0;
 };
 
+struct alignas(16) GPUInstanceData {
+	glm::mat4 worldTransform;
+	uint32_t modelID;
+	uint32_t jointOffset;
+	uint32_t isSkinned;
+	uint32_t padding;
+};
+
 struct ubodata {
 	size_t size{0};
 	VkBuffer buffer = VK_NULL_HANDLE;
@@ -270,6 +278,11 @@ struct alignas(64) rframe {
 // idk
 // static_assert(sizeof(vkpushconstants) == 128, "Struct size mismatch!");
 struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
+	
+	inline static constexpr uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!! different devices might not serve 3 swapchain images
+	inline static uint32_t currentFrame{0};
+	inline static uint32_t hdrmiplod{0};
+
 
 	inline static std::atomic<uint32_t> globalBufferCounter{1};
 	inline static GlobalBufferHeap global_buffers{};
@@ -308,6 +321,8 @@ struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
 	inline static GlobalMaterialHeap global_materials{};
 	static constexpr size_t MAX_GLOBAL_MATERIALS = 10000;
 
+	std::array<GpuBuffer, rvkbucket::MAX_FRAMES_IN_FLIGHT> globalInstanceBuffers{};
+
 
     glm::vec3 camwpos{0.0f, 6.0f, 12.0f};
     float cam_pad0; // explicit padding
@@ -340,10 +355,6 @@ struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
 	inline static const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
 
 	std::array<RenderGraph, 3> frameGraphs{};
-
-	inline static uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!! different devices might not serve 3 swapchain images
-	inline static uint32_t currentFrame{0};
-	inline static uint32_t hdrmiplod{0};
 
 
 	inline static constexpr size_t idxinitpool{0};

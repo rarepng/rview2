@@ -33,6 +33,9 @@ public:
 	inline static VkPipeline skinnedpline = VK_NULL_HANDLE;
 	inline static VkPipeline skinnedplineuint = VK_NULL_HANDLE;
 
+	inline uint32_t get_modelID() const { return m_modelID; }
+	inline bool is_skinned() const { return mgltf->skinned; }
+
 private:
 
 	// inline static std::vector<ubodata> rdperspviewmatrixubo{{}};
