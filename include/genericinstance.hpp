@@ -13,6 +13,7 @@
 #include "core/rvk.hpp"
 #include <functional>
 #include <tuple>
+#include "anim/flatskelly.hpp"
 
 template <typename T, typename MemberType, typename Func>
 struct Reaction {

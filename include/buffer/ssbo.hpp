@@ -32,6 +32,17 @@ static inline void upload(const rvkbucket &objs, const ssbodata &ssbodata, const
     std::memcpy(data, mats.data(), mats.size() * sizeof(T));
     vmaUnmapMemory(objs.alloc, ssbodata.alloc);
 }
+// "fast path"
+template <typename T>
+static inline void upload(const rvkbucket &objs, const ssbodata &ssbodata, const T* data_ptr, size_t count) {
+    if (count == 0 || data_ptr == nullptr) {
+        return;
+    }
+    void *data;
+    vmaMapMemory(objs.alloc, ssbodata.alloc, &data);
+    std::memcpy(data, data_ptr, count * sizeof(T));
+    vmaUnmapMemory(objs.alloc, ssbodata.alloc);
+}
 static inline void cleanup(rvkbucket &objs, ssbodata &ssbodata) {
 	vmaDestroyBuffer(objs.alloc, ssbodata.buffer, ssbodata.alloc);
 }

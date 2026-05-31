@@ -124,6 +124,27 @@ int genericinstance::getjointmatrixsize() {
 }
 
 std::vector<glm::mat4> genericinstance::getjointmats() {
+	if (mgltfmodel->skinned) {
+		
+		if (mmodelsettings.msplayanimation && mmodelsettings.msanimclip < mgltfmodel->bakedClips.size()) {
+			const auto& clip = mgltfmodel->bakedClips[mmodelsettings.msanimclip];
+			const glm::mat4* frameData = clip.GetFrame(mmodelsettings.msanimtimepos, mmodelsettings.animloop);
+			
+			if (frameData) {
+				size_t copyBytes = mgltfmodel->flatskelly.nodeCount * sizeof(glm::mat4);
+				std::memcpy(mgltfmodel->flatskelly.localTransforms.data(), frameData, copyBytes);
+			}
+		}
+
+		glm::mat4 worldTransform = glm::scale(glm::mat4(1.0f), mmodelsettings.msworldscale);
+		worldTransform = glm::toMat4(getwrot()) * worldTransform;
+		worldTransform = glm::translate(glm::mat4(1.0f), mmodelsettings.msworldpos) * worldTransform;
+		
+		mgltfmodel->flatskelly.UpdateGlobalMatrices(worldTransform);
+		
+		return std::vector<glm::mat4>(mgltfmodel->flatskelly.finalJointMatrices.begin(), 
+		                              mgltfmodel->flatskelly.finalJointMatrices.begin() + mgltfmodel->flatskelly.jointCount);
+	}
 	return mjointmats;
 }
 int genericinstance::getjointdualquatssize() {

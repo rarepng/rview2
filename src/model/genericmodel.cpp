@@ -47,6 +47,8 @@ bool genericmodel::loadmodel(rvkbucket &objs, std::string fname) {
   // 	return false;
 
   createvboebo(objs);
+  
+  flatskelly = AssetBaker::BakeSkeleton(mmodel2, 0);
 
   if (mmodel2.skins.size()) {
     getjointdata();
@@ -54,10 +56,11 @@ bool genericmodel::loadmodel(rvkbucket &objs, std::string fname) {
 
     mjnodecount = mmodel2.nodes.size();
 
-    getanims();
   } else {
     skinned = false;
   }
+  
+    getanims();
 
   extractmaterials(objs);
 
@@ -260,17 +263,47 @@ void genericmodel::getinvbindmats() {
 }
 
 void genericmodel::getanims() {
-  manimclips.reserve(mmodel2.animations.size());
-  for (auto &anim0 : mmodel2.animations) {
-    std::shared_ptr<vkclip> clip0 =
-        std::make_shared<vkclip>(static_cast<std::string>(anim0.name));
-    for (auto &c : anim0.channels) {
-      clip0->addchan(mmodel2, anim0, c);
-    }
-    manimclips.push_back(clip0);
-  }
-}
+	manimclips.reserve(mmodel2.animations.size());
+	
+	gltfnodedata nodedata = getgltfnodes();
+	std::vector<bool> allTrueMask(nodedata.nodelist.size(), true);
 
+	for (auto &anim0 : mmodel2.animations) {
+		std::shared_ptr<vkclip> clip0 = std::make_shared<vkclip>(static_cast<std::string>(anim0.name));
+		for (auto &c : anim0.channels) {
+			clip0->addchan(mmodel2, anim0, c);
+		}
+		manimclips.push_back(clip0);
+
+		DODAnimationClip baked{};
+		baked.name = clip0->getName();
+		baked.duration = clip0->getEndTime();
+		baked.sampleRate = 12.0f;
+		baked.nodeCount = flatskelly.nodeCount;
+		baked.frameCount = static_cast<uint32_t>(baked.duration * baked.sampleRate) + 1;
+		
+		baked.localTransforms.resize(baked.frameCount * baked.nodeCount, glm::mat4(1.0f));
+
+		for (uint32_t f = 0; f < baked.frameCount; ++f) {
+			float t = static_cast<float>(f) / baked.sampleRate;
+			clip0->setFrame(nodedata.nodelist, allTrueMask, t); 
+			
+			uint32_t frameOffset = f * baked.nodeCount;
+
+			for (uint32_t n = 0; n < nodedata.nodelist.size(); ++n) {
+        if (n >= MAX_BONES) continue;
+				int32_t topoIdx = flatskelly.gltfToTopoMap[n];
+				
+				if (topoIdx >= 0 && topoIdx < static_cast<int32_t>(baked.nodeCount)) { 
+					if (nodedata.nodelist[n]) {
+						baked.localTransforms[frameOffset + topoIdx] = nodedata.nodelist[n]->getlocalmatrix();
+					}
+				}
+			}
+		}
+		bakedClips.push_back(std::move(baked));
+	}
+}
 std::vector<std::shared_ptr<vkclip>> genericmodel::getanimclips() {
   return manimclips;
 }

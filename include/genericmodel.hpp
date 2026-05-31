@@ -10,10 +10,32 @@
 #include <string>
 #include <vector>
 #include <vulkan/vulkan.h>
+#include "anim/flatskelly.hpp"
+#include "anim/baker2.hpp"
 
 struct gltfnodedata {
 	std::shared_ptr<vknode> rootnode;
 	std::vector<std::shared_ptr<vknode>> nodelist;
+};
+
+struct DODAnimationClip {
+	std::string name;
+	float duration{0.0f};
+	float sampleRate{60.0f};
+	uint32_t frameCount{0};
+	uint32_t nodeCount{0};
+	
+	std::vector<glm::mat4> localTransforms; 
+
+	inline const glm::mat4* GetFrame(float time, bool loop) const {
+		if (duration <= 0.0f || frameCount == 0) return nullptr;
+		float t = loop ? std::fmod(time, duration) : std::clamp(time, 0.0f, duration);
+		if (t < 0.0f) t += duration; 
+		
+		uint32_t frameIdx = static_cast<uint32_t>(t * sampleRate);
+		if (frameIdx >= frameCount) frameIdx = frameCount - 1;
+		return &localTransforms[frameIdx * nodeCount];
+	}
 };
 
 class genericmodel {
@@ -37,6 +59,9 @@ public:
 
 	void resetnodedata(std::shared_ptr<vknode> treenode);
 	bool skinned{true};
+	FlatSkeleton flatskelly{};
+	std::vector<DODAnimationClip> bakedClips;
+
 
 private:
 	std::vector<std::vector<bool>> meshjointtype{};

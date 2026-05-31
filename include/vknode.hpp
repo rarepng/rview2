@@ -43,6 +43,10 @@ public:
 	void setwrot(glm::vec3 r);
 
 	void calculatelocalmat();
+	inline glm::mat4 getlocalmatrix() { 
+		calculatelocalmat(); 
+		return localmat; 
+	}
 	void calculatenodemat();
 	glm::mat<4, 4, float> getnodematrix();
 

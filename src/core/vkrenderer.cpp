@@ -1240,7 +1240,7 @@ vkCmdBindDescriptorSets(
 	submitinfo.pWaitSemaphores = waitsemas.data();
 
 	submitinfo.signalSemaphoreCount = 1;
-	submitinfo.pSignalSemaphores = &mvkobjs.semaphorez.at(1).at(rvkbucket::currentFrame);
+	submitinfo.pSignalSemaphores = &mvkobjs.semaphorez.at(1).at(imgidx);
 
 	submitinfo.commandBufferCount = 1;
 	submitinfo.pCommandBuffers =
@@ -1252,7 +1252,7 @@ vkCmdBindDescriptorSets(
 		std::lock_guard<std::shared_mutex> lock(*mvkobjs.mtx2);
 		auto res  = vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo,
 		                  mvkobjs.fencez.at(rvkbucket::currentFrame));
-						  vkQueueWaitIdle(mvkobjs.graphicsQ);
+						//   vkQueueWaitIdle(mvkobjs.graphicsQ);
 						  if(res != VK_SUCCESS){
 							std::cout << "QUEUE ERROR : " << res << std::endl; 
 							return false;
@@ -1263,7 +1263,7 @@ vkCmdBindDescriptorSets(
 	VkPresentInfoKHR presentinfo{};
 	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentinfo.waitSemaphoreCount = 1;
-	presentinfo.pWaitSemaphores = &mvkobjs.semaphorez.at(1).at(rvkbucket::currentFrame);
+	presentinfo.pWaitSemaphores = &mvkobjs.semaphorez.at(1).at(imgidx);
 
 	presentinfo.swapchainCount = 1;
 	presentinfo.pSwapchains = &mvkobjs.schain.swapchain;

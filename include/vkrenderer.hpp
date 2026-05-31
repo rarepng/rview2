@@ -24,8 +24,8 @@
 #include "playoutgeneric.hpp"
 
 #include "core/rvk.hpp"
-
 #include "core/jobs.hpp"
+#include "core/scene.hpp"
 
 enum InputKey : uint8_t {
 	Key_W = 0, Key_S, Key_A, Key_D, Key_Q, Key_E,
