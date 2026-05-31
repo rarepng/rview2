@@ -14,6 +14,7 @@
 #include <functional>
 #include <atomic>
 #include <queue>
+#include <rend/graph.hpp>
 
 // all this &$#! for a stupid ugly diagram
 #ifndef __cpp_lib_move_only_function
@@ -338,6 +339,7 @@ struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
 
 	inline static const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
 
+	std::array<RenderGraph, 3> frameGraphs{};
 
 	inline static uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!! different devices might not serve 3 swapchain images
 	inline static uint32_t currentFrame{0};

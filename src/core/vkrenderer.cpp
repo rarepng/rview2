@@ -976,6 +976,9 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	//temp
 	mvkobjs.deletionQ.flush();
 
+	auto& currentgraph = mvkobjs.frameGraphs[rvkbucket::currentFrame];
+	currentgraph.clear();
+
 	particle::drawcomp(mvkobjs);
 
 	double tick = static_cast<double>(SDL_GetTicks()) / 1000.0;
@@ -1072,113 +1075,120 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 	moveplayer();
 
-	VkBufferMemoryBarrier2 particleBarrier{
-		VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
-	particleBarrier.buffer = particle::ssbobuffsnallocs.at(0).first;
-	particleBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-	particleBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
-	particleBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
-	particleBarrier.dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
-	particleBarrier.size = VK_WHOLE_SIZE;
-	particleBarrier.offset = 0;
+	currentgraph.add_pass([&]{
+		
+		VkBufferMemoryBarrier2 particleBarrier{
+			VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
+		particleBarrier.buffer = particle::ssbobuffsnallocs.at(0).first;
+		particleBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+		particleBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
+		particleBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
+		particleBarrier.dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+		particleBarrier.size = VK_WHOLE_SIZE;
+		particleBarrier.offset = 0;
 
-	VkMemoryBarrier2 uploadBarrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER_2};
-	uploadBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-	uploadBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-	uploadBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
-	uploadBarrier.dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
-	VkImageMemoryBarrier2 imageBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
-	imageBarrier.image = mvkobjs.schainimgs.at(imgidx);
-	imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-	imageBarrier.srcAccessMask = 0;
-	imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-	imageBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-	imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	imageBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+		VkMemoryBarrier2 uploadBarrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER_2};
+		uploadBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+		uploadBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		uploadBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
+		uploadBarrier.dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+		VkImageMemoryBarrier2 imageBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
+		imageBarrier.image = mvkobjs.schainimgs.at(imgidx);
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		imageBarrier.srcAccessMask = 0;
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		imageBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 
-	VkImageMemoryBarrier2 depthBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
-	depthBarrier.image = mvkobjs.rddepthimage;
-	depthBarrier.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+		VkImageMemoryBarrier2 depthBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
+		depthBarrier.image = mvkobjs.rddepthimage;
+		depthBarrier.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
 
-	depthBarrier.srcStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
-	                            VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-	depthBarrier.srcAccessMask = 0;
-	depthBarrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
-	                            VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-	depthBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		depthBarrier.srcStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+									VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+		depthBarrier.srcAccessMask = 0;
+		depthBarrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+									VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+		depthBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-	depthBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depthBarrier.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-	VkImageMemoryBarrier2 barriers[] = {imageBarrier, depthBarrier};
-	VkDependencyInfo dep{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
-	dep.memoryBarrierCount = 1;
-	dep.pMemoryBarriers = &uploadBarrier;
-	dep.bufferMemoryBarrierCount = 1;
-	dep.pBufferMemoryBarriers = &particleBarrier;
-	dep.imageMemoryBarrierCount = 2;
-	dep.pImageMemoryBarriers = barriers;
-	vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
-	                      &dep);
+		depthBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		depthBarrier.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+		VkImageMemoryBarrier2 barriers[] = {imageBarrier, depthBarrier};
+		VkDependencyInfo dep{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+		dep.memoryBarrierCount = 1;
+		dep.pMemoryBarriers = &uploadBarrier;
+		dep.bufferMemoryBarrierCount = 1;
+		dep.pBufferMemoryBarriers = &particleBarrier;
+		dep.imageMemoryBarrierCount = 2;
+		dep.pImageMemoryBarriers = barriers;
+		vkCmdPipelineBarrier2(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
+							&dep);
 
-	VkRenderingAttachmentInfo color_attach{};
-	color_attach.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-	color_attach.imageView = mvkobjs.schainimgviews.at(imgidx);
-	color_attach.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-	color_attach.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	color_attach.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	color_attach.clearValue = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-	VkRenderingAttachmentInfo depth_attach{};
-	depth_attach.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-	depth_attach.imageView = mvkobjs.rddepthimageview;
-	depth_attach.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-	depth_attach.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depth_attach.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	depth_attach.clearValue = {.depthStencil = {1.0f, 0}};
+		VkRenderingAttachmentInfo color_attach{};
+		color_attach.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		color_attach.imageView = mvkobjs.schainimgviews.at(imgidx);
+		color_attach.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+		color_attach.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		color_attach.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		color_attach.clearValue = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+		VkRenderingAttachmentInfo depth_attach{};
+		depth_attach.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		depth_attach.imageView = mvkobjs.rddepthimageview;
+		depth_attach.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+		depth_attach.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		depth_attach.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		depth_attach.clearValue = {.depthStencil = {1.0f, 0}};
 
-	VkRenderingInfo render_info{};
-	render_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-	render_info.renderArea = scissor;
-	render_info.layerCount = 1;
-	render_info.colorAttachmentCount = 1;
-	render_info.pColorAttachments = &color_attach;
-	render_info.pDepthAttachment = &depth_attach;
+		VkRenderingInfo render_info{};
+		render_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+		render_info.renderArea = scissor;
+		render_info.layerCount = 1;
+		render_info.colorAttachmentCount = 1;
+		render_info.pColorAttachments = &color_attach;
+		render_info.pDepthAttachment = &depth_attach;
 
-	vkCmdBeginRendering(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
-	                    &render_info);
+		vkCmdBeginRendering(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
+							&render_info);
 
-	vkCmdSetViewport(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), 0, 1,
-	                 &viewport);
-	vkCmdSetScissor(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), 0, 1,
-	                &scissor);
+		vkCmdSetViewport(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), 0, 1,
+						&viewport);
+		vkCmdSetScissor(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), 0, 1,
+						&scissor);
 
-	VkDeviceSize coffsets{0};
-	vkCmdBindPipeline(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
-	                  VK_PIPELINE_BIND_POINT_GRAPHICS, particle::gpline);
-	vkCmdBindVertexBuffers(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
-	                       0, 1, &particle::ssbobuffsnallocs.at(0).first,
-	                       &coffsets);
-	vkCmdDraw(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), 8192, 1, 0,
-	          0);
+		VkDeviceSize coffsets{0};
+		vkCmdBindPipeline(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
+						VK_PIPELINE_BIND_POINT_GRAPHICS, particle::gpline);
+		vkCmdBindVertexBuffers(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
+							0, 1, &particle::ssbobuffsnallocs.at(0).first,
+							&coffsets);
+		vkCmdDraw(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), 8192, 1, 0,
+				0);
 
 
-vkCmdBindDescriptorSets(
-    mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
-    VK_PIPELINE_BIND_POINT_GRAPHICS,
-    rvkbucket::globalPipelineLayout, 
-    0, 1, 
-    &rvkbucket::globalBindlessSet, 
-    0, nullptr
-);
+		vkCmdBindDescriptorSets(
+			mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			rvkbucket::globalPipelineLayout, 
+			0, 1, 
+			&rvkbucket::globalBindlessSet, 
+			0, nullptr
+		);
 
-	for (const auto &i : mplayer)
-		i->draw(mvkobjs);
+		for (const auto &i : mplayer)
+			i->draw(mvkobjs);
 
-	ui::createdbgframe(mvkobjs, selectiondata);
+		ui::createdbgframe(mvkobjs, selectiondata);
 
-	ui::render(mvkobjs, mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame));
+		ui::render(mvkobjs, mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame));
 
-	vkCmdEndRendering(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame));
+		vkCmdEndRendering(mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame));
+
+	});
+
+	currentgraph.execute();
+
 
 	muploadubossbotimer.start();
 
