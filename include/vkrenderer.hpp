@@ -75,6 +75,7 @@ bool ges();
 bool initcpuQs(rvkbucket& mvkobjs);
 bool initglobalmats(rvkbucket& mvkobjs);
 bool initglobalinstances(rvkbucket& mvkobjs);
+bool initglobalindirect(rvkbucket& mvkobjs);
 
 void immediate_submit(rvkbucket& mvkobjs,std::function<void(VkCommandBuffer cbuffer)>&& fn);
 bool init(rvkbucket& mvkobjs);

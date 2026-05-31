@@ -426,7 +426,11 @@ static inline bool drawcomp(rvkbucket &objs) {
 
 	return true;
 }
-
+static inline void record_compute(VkCommandBuffer c) {
+    vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_COMPUTE, cpline);
+    vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_COMPUTE, cplayout, 0, 1, &cdset, 0, VK_NULL_HANDLE);
+    vkCmdDispatch(c, Ps.size() / 256, 1, 1);
+}
 static inline void destroyeveryting(rvkbucket &objs) {
 	vkDestroyPipeline(objs.vkdevice.device,gpline,VK_NULL_HANDLE);
 	vkDestroyPipelineLayout(objs.vkdevice.device,gplayout,VK_NULL_HANDLE);

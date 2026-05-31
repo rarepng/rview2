@@ -49,6 +49,7 @@ void configure_selector(vkb::PhysicalDeviceSelector& selector) {
 	f11.storageBuffer16BitAccess = VK_TRUE;
 	VkPhysicalDeviceFeatures features{};
 	features.samplerAnisotropy = VK_TRUE;
+	features.multiDrawIndirect = VK_TRUE;
 	// features.vertexPipelineStoresAndAtomics = VK_TRUE;
 	VkPhysicalDeviceMeshShaderFeaturesEXT f_mesh{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT};
 	f_mesh.meshShader = VK_TRUE;

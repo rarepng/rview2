@@ -14,7 +14,7 @@ public:
 	bool createssbostatic(rvkbucket &objs);
 	static bool createpline(rvkbucket &objs, std::string vfile, std::string ffile);
 	bool setup(rvkbucket &objs, std::string fname, size_t count, std::string vfile, std::string ffile);
-	void draw(rvkbucket &objs);
+	void draw(rvkbucket &objs, uint32_t indirectoffset);
 	void updateanims();
 	void updatemats();
 	void cleanuplines(rvkbucket &objs);
@@ -36,9 +36,28 @@ public:
 	inline uint32_t get_modelID() const { return m_modelID; }
 	inline bool is_skinned() const { return mgltf->skinned; }
 
+	inline uint32_t getindexcount() const { 
+        if (!mgltf || mgltf->getgltfnodes().nodelist.empty()) return 0;
+        return static_cast<uint32_t>(mgltf->gettricount(0, 0) * 3); 
+    }
+    
+	// hardcoded cause separate meshes
+    inline uint32_t getfirstindex() const { 
+        return 0;
+    }
+
+    // hardcoded cause separate meshes also this is incorrect as of now
+    inline int32_t getvertexoffset() const { 
+        return 0;
+    }
+
+    // temp
+    inline VkBuffer get_ebo() const {
+        return mgltf->get_ebo_buffer(0, 0); 
+    }
+
 private:
 
-	// inline static std::vector<ubodata> rdperspviewmatrixubo{{}};
 	ssbodata rdjointmatrixssbo{};
 
 	uint32_t m_modelID;

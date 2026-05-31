@@ -155,6 +155,9 @@ struct alignas(16) GPUInstanceData {
 	uint32_t modelID;
 	uint32_t jointOffset;
 	uint32_t isSkinned;
+	uint32_t indexCount;
+	uint32_t firstIndex;
+	int32_t  vertexOffset;
 	uint32_t padding;
 };
 
@@ -178,6 +181,7 @@ struct vkpushconstants {
 	float t;
 	uint32_t materialID;
 	uint32_t modelID;
+	uint32_t frameIndex;
 
 	uint32_t posIdx;
     uint32_t normIdx;
@@ -322,6 +326,13 @@ struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
 	static constexpr size_t MAX_GLOBAL_MATERIALS = 10000;
 
 	std::array<GpuBuffer, rvkbucket::MAX_FRAMES_IN_FLIGHT> globalInstanceBuffers{};
+	std::array<GpuBuffer, rvkbucket::MAX_FRAMES_IN_FLIGHT> globalIndirectBuffers{};
+
+	
+	std::vector<GPUInstanceData> frameInstances;
+
+	
+	inline static VkPipeline globalcullpline = VK_NULL_HANDLE;
 
 
     glm::vec3 camwpos{0.0f, 6.0f, 12.0f};

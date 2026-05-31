@@ -43,7 +43,7 @@ public:
 	bool loadmodel(rvkbucket &objs, std::string fname);
 	void draw(rvkbucket &objs);
 	void drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout, VkPipeline &vkpline, VkPipeline &vkplineuint,
-	                   int instancecount, int stride, uint32_t modelID);
+	                   int instancecount, int stride, uint32_t modelID, uint32_t indirectoffset);
 	void cleanup(rvkbucket &objs);
 	void uploadvboebo(rvkbucket &objs, VkCommandBuffer &cbuffer);
 	std::vector<texdata> gettexdata();
@@ -61,6 +61,11 @@ public:
 	bool skinned{true};
 	FlatSkeleton flatskelly{};
 	std::vector<DODAnimationClip> bakedClips;
+	
+	//temp
+	inline VkBuffer get_ebo_buffer(size_t i,size_t j){
+		return mgltfobjs.ebos[i][j].buffer;
+	}
 
 
 private:

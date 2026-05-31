@@ -6,7 +6,7 @@
 #include <VkBootstrap.h>
 #include <glm/glm.hpp>
 
-bool pline::init(rvkbucket &objs, VkPipelineLayout &playout, VkPipeline &pipeline, VkPrimitiveTopology topology,
+bool pline::init(rvkbucket &mvkobjs, VkPipelineLayout &playout, VkPipeline &pipeline, VkPrimitiveTopology topology,
                  unsigned int v_in, unsigned int atts, std::vector<std::string> sfiles, bool char_or_short, VkFormat cformat, VkFormat dformat) {
 	if (sfiles.size() < 2)
 		return false;
@@ -18,7 +18,7 @@ bool pline::init(rvkbucket &objs, VkPipelineLayout &playout, VkPipeline &pipelin
 	shaderStageInfo.resize(sfiles.size());
 
 	for (size_t i{0}; i < sfiles.size(); i++) {
-		shaders[i] = vkshader::loadshader(objs.vkdevice.device, sfiles[i]);
+		shaders[i] = vkshader::loadshader(mvkobjs.vkdevice.device, sfiles[i]);
 		shaderStageInfo[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shaderStageInfo[i].module = shaders[i];
 		shaderStageInfo[i].pName = "main";
@@ -125,18 +125,59 @@ bool pline::init(rvkbucket &objs, VkPipelineLayout &playout, VkPipeline &pipelin
 	pipelineCreateInfo.pDynamicState = &dynStatesInfo;
 	pipelineCreateInfo.layout = playout;
 
-	if (vkCreateGraphicsPipelines(objs.vkdevice.device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline) != VK_SUCCESS) {
-		vkDestroyPipelineLayout(objs.vkdevice.device, playout, nullptr);
+	if (vkCreateGraphicsPipelines(mvkobjs.vkdevice.device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline) != VK_SUCCESS) {
+		vkDestroyPipelineLayout(mvkobjs.vkdevice.device, playout, nullptr);
 		return false;
 	}
 
 	for (const auto &s : shaders) {
-		vkDestroyShaderModule(objs.vkdevice.device, s, nullptr);
+		vkDestroyShaderModule(mvkobjs.vkdevice.device, s, nullptr);
 	}
 
 	return true;
 }
+bool pline::initcompute(rvkbucket &mvkobjs, VkPipelineLayout &playout, VkPipeline &pipeline, std::vector<std::string> sfiles){
+	if (sfiles.size() < 1)
+		return false;
+	std::vector<VkShaderModule> shaders;
+	std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfo;
+	std::vector<VkComputePipelineCreateInfo> computePipelineCreateInfo;
+	shaders.reserve(sfiles.size());
+	shaders.resize(sfiles.size());
+	shaderStageInfo.reserve(sfiles.size());
+	shaderStageInfo.resize(sfiles.size());
+	computePipelineCreateInfo.reserve(sfiles.size());
+	computePipelineCreateInfo.resize(sfiles.size());
 
-void pline::cleanup(rvkbucket &objs, VkPipeline &pipeline) {
-	vkDestroyPipeline(objs.vkdevice.device, pipeline, nullptr);
+	for (size_t i{0}; i < sfiles.size(); i++) {
+		shaders[i] = vkshader::loadshader(mvkobjs.vkdevice.device, sfiles[i]);
+
+		shaderStageInfo[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shaderStageInfo[i].module = shaders[i];
+		shaderStageInfo[i].pName = "main";
+		shaderStageInfo[i].stage = VK_SHADER_STAGE_COMPUTE_BIT;
+
+		computePipelineCreateInfo[i].sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+		computePipelineCreateInfo[i].layout = playout;
+		computePipelineCreateInfo[i].stage = shaderStageInfo[0];
+	}
+
+	if (vkCreateComputePipelines(
+			mvkobjs.vkdevice.device, 
+			VK_NULL_HANDLE, 
+			shaderStageInfo.size(),
+			computePipelineCreateInfo.data(),
+			nullptr,
+			&pipeline) != VK_SUCCESS) {
+				return false;
+	}
+
+	for(size_t i{0};i<shaders.size();i++)
+		vkDestroyShaderModule(mvkobjs.vkdevice.device, shaders[i], nullptr);
+
+	return true;
+}
+
+void pline::cleanup(rvkbucket &mvkobjs, VkPipeline &pipeline) {
+	vkDestroyPipeline(mvkobjs.vkdevice.device, pipeline, nullptr);
 }

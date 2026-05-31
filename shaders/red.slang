@@ -12,6 +12,8 @@ static const float MIN_ROUGHNESS = 0.04;
 [[vk::binding(3, 0)]] Sampler2D envMap;
 [[vk::binding(4, 0)]] StructuredBuffer<MaterialData> materials;
 [[vk::binding(5, 0)]] ByteAddressBuffer vertexBuffers[];
+[[vk::binding(7, 0)]] StructuredBuffer<GPUInstanceData> instanceData[];
+[[vk::binding(8, 0)]] RWStructuredBuffer<VkDrawIndexedIndirectCommand> indirectCommands[];
 
 struct VXin {
     [[vk::location(0)]] float3 pos : POSITION;
@@ -51,6 +53,7 @@ struct consts {
     float t;
     uint32_t materialID;
     uint32_t modelID;
+    uint32_t frameIndex;
     uint32_t posIdx;
     uint32_t normIdx;
     uint32_t uvIdx;
@@ -230,6 +233,25 @@ float3 ACESFilm(float3 x) {
 float3 LinearToSRGB(float3 color) {
     return pow(color, 1.0 / 2.2);
 }
+struct GPUInstanceData {
+    float4x4 worldTransform;
+    uint modelID;
+    uint jointOffset;
+    uint isSkinned;
+    uint indexCount;
+    uint firstIndex;
+    int vertexOffset;
+    uint padding;
+};
+
+// [[EXPERIMENTAL]]
+struct VkDrawIndexedIndirectCommand {
+    uint indexCount;
+    uint instanceCount;
+    uint firstIndex;
+    int vertexOffset;
+    uint firstInstance;
+};
 
 [shader("vertex")]
 PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
@@ -242,37 +264,28 @@ PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
     out.bitangent = float3(0);
     out.vColor = float4(1);
 
-    // 1. HARDWARE BOUNDS CHECK - Stop the TDR instantly
     uint posSize = 0;
     vertexBuffers[pc.posIdx].GetDimensions(posSize);
-    if (pc.posIdx == 0 || (vertexID * 12) + 12 > posSize) {
-        return out; // ABORT VERTEX SAFELY (Will just draw nothing instead of crashing)
-    }
+    if (pc.posIdx == 0 || (vertexID * 12) + 12 > posSize) return out;
 
     float3 inPos = vertexBuffers[pc.posIdx].Load<float3>(vertexID * 12);
 
-    // 2. Safe Normal Load
     float3 inNormal = float3(0, 1, 0);
     if (pc.normIdx != 0) {
-        uint normSize = 0;
-        vertexBuffers[pc.normIdx].GetDimensions(normSize);
-        if ((vertexID * 12) + 12 <= normSize) {
-            inNormal = vertexBuffers[pc.normIdx].Load<float3>(vertexID * 12);
-        }
+        inNormal = vertexBuffers[pc.normIdx].Load<float3>(vertexID * 12);
     }
 
-    // 3. Safe UV Load
     float2 inUv = float2(0, 0);
     if (pc.uvIdx != 0) {
-        uint uvSize = 0;
-        vertexBuffers[pc.uvIdx].GetDimensions(uvSize);
-        if ((vertexID * 8) + 8 <= uvSize) {
-            inUv = vertexBuffers[pc.uvIdx].Load<float2>(vertexID * 8);
-        }
+        inUv = vertexBuffers[pc.uvIdx].Load<float2>(vertexID * 8);
     }
+
+    // uint frame = pc.frameIndex;
+    // GPUInstanceData inst = instanceData[frame][id];
 
     float4x4 skinMat = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
 
+    // if (inst.isSkinned != 0 && pc.jointIdx != 0 && pc.weightIdx != 0) {
     if (pc.stride > 1 && pc.jointIdx != 0 && pc.weightIdx != 0) {
         uint4 inJoints = uint4(0);
         float4 inWeights = float4(0);
@@ -295,7 +308,16 @@ PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
             inWeights = vertexBuffers[pc.weightIdx].Load<float4>(vertexID * 16);
         }
 
+        // uint offset = inst.jointOffset;
         uint offset = pc.stride * id;
+        // skinMat =
+        //     globalJoints[inst.modelID][inJoints.x + offset].jointmats * inWeights.x +
+        //     globalJoints[inst.modelID][inJoints.y + offset].jointmats * inWeights.y +
+        //     globalJoints[inst.modelID][inJoints.z + offset].jointmats * inWeights.z +
+        //     globalJoints[inst.modelID][inJoints.w + offset].jointmats * inWeights.w;
+        // } else if (inst.isSkinned == 0) {
+        //     skinMat = globalJoints[inst.modelID][inst.jointOffset].jointmats;
+        // }
         skinMat =
             globalJoints[pc.modelID][inJoints.x + offset].jointmats * inWeights.x +
             globalJoints[pc.modelID][inJoints.y + offset].jointmats * inWeights.y +
@@ -421,4 +443,23 @@ float4 pxmain(PXin in) : SV_Target {
     color *= 0.6;
 
     return float4(color, alpha);
+}
+
+[shader("compute")]
+[numthreads(64, 1, 1)]
+void cxmain(uint3 globalID: SV_DispatchThreadID) {
+    uint idx = globalID.x;
+    uint frame = pc.frameIndex;
+
+    if (instanceData[frame][idx].indexCount == 0) {
+        indirectCommands[frame][idx].instanceCount = 0;
+        return;
+    }
+
+    bool isVisible = true;
+    indirectCommands[frame][idx].indexCount = instanceData[frame][idx].indexCount;
+    indirectCommands[frame][idx].instanceCount = isVisible ? 1 : 0;
+    indirectCommands[frame][idx].firstIndex = instanceData[frame][idx].firstIndex;
+    indirectCommands[frame][idx].vertexOffset = instanceData[frame][idx].vertexOffset;
+    indirectCommands[frame][idx].firstInstance = idx;
 }

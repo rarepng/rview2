@@ -19,7 +19,7 @@ void createdbgframe(rvkbucket &mvkobjs, selection &settingsz);
 bool createloadingscreen(rvkbucket &mvkobjs);
 bool createpausebuttons(rvkbucket &mvkobjs);
 void addchat(std::string s);
-void render(rvkbucket &mvkobjs, VkCommandBuffer &cbuffer);
+void render(rvkbucket &mvkobjs, VkCommandBuffer cbuffer);
 void cleanup(rvkbucket &mvkobjs);
 void backspace();
 

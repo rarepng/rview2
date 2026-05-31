@@ -75,6 +75,8 @@ bool playoutgeneric::createpline(rvkbucket &objs, std::string vfile, std::string
 	if (!pline::init(objs, rvkbucket::globalPipelineLayout, skinnedplineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 6, 63,
 	                 std::vector<std::string> {vfile, ffile}, true,objs.schain.image_format,objs.rddepthformat))
 		return false;
+	if(!pline::initcompute(objs,rvkbucket::globalPipelineLayout,rvkbucket::globalcullpline,std::vector<std::string> {"shaders/cx.spv"}))
+		return false;
 	return true;
 }
 
@@ -152,6 +154,7 @@ void playoutgeneric::cleanuplines(rvkbucket &objs) {
 	static const bool _ = [&] {
 		pline::cleanup(objs, skinnedpline);
 		pline::cleanup(objs, skinnedplineuint);
+		pline::cleanup(objs, rvkbucket::globalcullpline);
 		return true;
 	}();
 }
@@ -169,11 +172,11 @@ void playoutgeneric::cleanupmodels(rvkbucket &objs) {
 	mgltf.reset();
 }
 
-void playoutgeneric::draw(rvkbucket &objs) {
+void playoutgeneric::draw(rvkbucket &objs, uint32_t indirectoffset) {
     if (minstances[0]->getinstancesettings().msdrawmodel) {
         
         stride = mgltf->skinned ? minstances.at(0)->getjointmatrixsize() : 1;
         
-        mgltf->drawinstanced(objs, rvkbucket::globalPipelineLayout, skinnedpline, skinnedplineuint, numinstancess, stride, m_modelID);
+        mgltf->drawinstanced(objs, rvkbucket::globalPipelineLayout, skinnedpline, skinnedplineuint, numinstancess, stride, m_modelID, indirectoffset);
     }
 }

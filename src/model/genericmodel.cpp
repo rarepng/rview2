@@ -752,7 +752,7 @@ size_t genericmodel::gettricount(size_t i, size_t j) {
 }
 void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
                                  VkPipeline &vkpline, VkPipeline &vkplineuint,
-                                 int instancecount, int stride, uint32_t modelID) {
+                                 int instancecount, int stride, uint32_t modelID, uint32_t indirectoffset) {
   VkDeviceSize offset = 0;
 
 //   vkCmdBindDescriptorSets(
@@ -768,9 +768,7 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
   for (size_t i = 0; i < mgltfobjs.vbos.size(); i++) {
     for (size_t j = 0; j < mgltfobjs.vbos.at(i).size(); j++) {
       VkPipeline pipeline = meshjointtype[i][j] ? vkplineuint : vkpline;
-      vkCmdBindPipeline(
-          objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
-          VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+      vkCmdBindPipeline(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
       vkpushconstants push{};
       auto &buffers2 = mgltfobjs.vbos[i][j];
@@ -778,10 +776,11 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
       push.t = static_cast<float>(SDL_GetTicks()) / 1000.0f;
       push.modelID = modelID;
 
-      uint32_t local_idx =
-          mmodel2.meshes.at(i).primitives.at(j).materialIndex.has_value()
-              ? mmodel2.meshes.at(i).primitives.at(j).materialIndex.value()
-              : mmodel2.materials.size(); // default fallback
+      push.frameIndex = rvkbucket::currentFrame;
+
+      uint32_t local_idx = mmodel2.meshes.at(i).primitives.at(j).materialIndex.has_value()
+                ? mmodel2.meshes.at(i).primitives.at(j).materialIndex.value()
+                : mmodel2.materials.size(); // default fallback
 
       push.materialID = this->m_global_material_indices[local_idx];
 
@@ -816,10 +815,9 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
           }
       }
 
-      vkCmdPushConstants(
-          objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), vkplayout,
-          VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-          sizeof(vkpushconstants), &push);
+      vkCmdPushConstants(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), vkplayout,
+                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT, 0,
+                               sizeof(vkpushconstants), &push);
 
 
       if (prim.indicesAccessor.has_value()) {
@@ -828,29 +826,28 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
 
         VkIndexType vkIndexType = VK_INDEX_TYPE_UINT16;
         switch (idxAcc.componentType) {
-        case fastgltf::ComponentType::UnsignedByte:
-          vkIndexType = VK_INDEX_TYPE_UINT8_EXT;
-          break;
-        case fastgltf::ComponentType::UnsignedShort:
-          vkIndexType = VK_INDEX_TYPE_UINT16;
-          break;
-        case fastgltf::ComponentType::UnsignedInt:
-          vkIndexType = VK_INDEX_TYPE_UINT32;
-          break;
-        default:
-          break;
-        }
+                    case fastgltf::ComponentType::UnsignedByte: vkIndexType = VK_INDEX_TYPE_UINT8_EXT; break;
+                    case fastgltf::ComponentType::UnsignedShort: vkIndexType = VK_INDEX_TYPE_UINT16; break;
+                    case fastgltf::ComponentType::UnsignedInt: vkIndexType = VK_INDEX_TYPE_UINT32; break;
+                    default: break;
+                }
 
-        vkCmdBindIndexBuffer(
-            objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
-            mgltfobjs.ebos.at(i).at(j).buffer, 0, vkIndexType);
+        vkCmdBindIndexBuffer(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
+                                     mgltfobjs.ebos.at(i).at(j).buffer, 0, vkIndexType);
 
-        vkCmdDrawIndexed(
-            objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), drawCount,
-            instancecount, 0, 0, 0);
+        // vkCmdDrawIndexedIndirect(
+        //     objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
+        //     objs.globalIndirectBuffers[rvkbucket::currentFrame].buffer,
+        //     indirectoffset * sizeof(VkDrawIndexedIndirectCommand),
+        //     instancecount,
+        //     sizeof(VkDrawIndexedIndirectCommand)
+        // );
+
+        vkCmdDrawIndexed(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), drawCount,
+                                 instancecount, 0, 0, 0);
+                                 
       } else {
-        vkCmdDraw(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
-                  drawCount, instancecount, 0, 0);
+        vkCmdDraw(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), drawCount, instancecount, 0, 0);
       }
     }
   }

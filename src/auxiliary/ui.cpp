@@ -821,7 +821,7 @@ void ui::addchat(std::string s) {
 	chattxts.push_back(s);
 }
 
-void ui::render(rvkbucket &renderData, VkCommandBuffer &cbuffer) {
+void ui::render(rvkbucket &renderData, VkCommandBuffer cbuffer) {
 	ImGui::Render();
 
 	// renderData.mtx2.lock();

@@ -32,7 +32,7 @@ bool playout::init_bindless(rvkbucket& objs) {
     for (uint32_t i = 1; i < rvkbucket::MAX_BINDLESS_BUFFERS; ++i) {
         objs.global_buffers.free_slots.push(i);
     }
-    std::array<VkDescriptorSetLayoutBinding, 8> bindings{};
+    std::array<VkDescriptorSetLayoutBinding, 9> bindings{};
 
     // tex
     bindings[0].binding = 0;
@@ -76,13 +76,19 @@ bool playout::init_bindless(rvkbucket& objs) {
     bindings[6].descriptorCount = MAX_BINDLESS;
     bindings[6].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-    // for instances
+    // instances [[culling]]
     bindings[7].binding = 7;
 	bindings[7].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	bindings[7].descriptorCount = rvkbucket::MAX_FRAMES_IN_FLIGHT;
 	bindings[7].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
 
-    std::array<VkDescriptorBindingFlags, 8> flags{};
+    // indirect drawing
+    bindings[8].binding = 8;
+	bindings[8].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	bindings[8].descriptorCount = rvkbucket::MAX_FRAMES_IN_FLIGHT;
+	bindings[8].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+    std::array<VkDescriptorBindingFlags, 9> flags{};
     VkDescriptorBindingFlags bindlessFlags = 
         VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | 
         VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
@@ -95,6 +101,7 @@ bool playout::init_bindless(rvkbucket& objs) {
     flags[5] = bindlessFlags;
     flags[6] = bindlessFlags;
     flags[7] = bindlessFlags;
+    flags[8] = bindlessFlags;
 
     VkDescriptorSetLayoutBindingFlagsCreateInfo flagsInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO};
     flagsInfo.bindingCount = static_cast<uint32_t>(flags.size());
@@ -115,7 +122,7 @@ bool playout::init_bindless(rvkbucket& objs) {
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSizes[1].descriptorCount = 1;
     poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    poolSizes[2].descriptorCount = (MAX_BINDLESS * 3) + 2 + rvkbucket::MAX_FRAMES_IN_FLIGHT; // joints + mats + vbo + ebo + {3}xfor-instances
+    poolSizes[2].descriptorCount = (MAX_BINDLESS * 3) + 2 + (rvkbucket::MAX_FRAMES_IN_FLIGHT * 3); // joints + mats + vbo + ebo + {3}xfor-instances
 
     VkDescriptorPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
     poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
@@ -137,7 +144,7 @@ bool playout::init_bindless(rvkbucket& objs) {
 	VkPushConstantRange pCs{};
 	pCs.offset = 0;
 	pCs.size = sizeof(vkpushconstants);
-	pCs.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	pCs.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
 
 	VkPipelineLayoutCreateInfo plinfo{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
 	plinfo.setLayoutCount = 1;
