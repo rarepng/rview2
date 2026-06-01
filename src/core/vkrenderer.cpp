@@ -826,6 +826,7 @@ bool vkrenderer::uploadfordraw(rvkbucket& mvkobjs,VkCommandBuffer cbuffer) {
 }
 
 bool vkrenderer::uploadfordraw(rvkbucket& mvkobjs,std::shared_ptr<playoutgeneric> &x) {
+	ZoneScoped;
 	manimupdatetimer.start();
 
 	x->uploadvboebo(mvkobjs,
@@ -1021,6 +1022,7 @@ void vkrenderer::checkforanimupdates(rvkbucket& mvkobjs) {
 }
 
 void vkrenderer::updateanims(rvkbucket& mvkobjs) {
+	ZoneScoped;
 	while (!mvkobjs.mshutdown) {
 		manimupdatetimer.start();
 		for (const auto &i : mplayer)
@@ -1030,6 +1032,7 @@ void vkrenderer::updateanims(rvkbucket& mvkobjs) {
 }
 
 bool vkrenderer::draw(rvkbucket& mvkobjs) {
+	ZoneScoped;
 
 	if (vkWaitForFences(mvkobjs.vkdevice.device, 1,
 	                    &mvkobjs.fencez.at(rvkbucket::currentFrame), VK_TRUE,
@@ -1320,15 +1323,19 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 		vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_GRAPHICS, particle::gpline);
 
-        VkDeviceSize coffsets{0};
-        vkCmdBindVertexBuffers(c, 0, 1, &particle::ssbobuffsnallocs.at(0).first, &coffsets);
+		vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_GRAPHICS, rvkbucket::globalPipelineLayout, 0, 1, &rvkbucket::globalBindlessSet, 0, nullptr);
+        
+
+        vkpushconstants push{};
+        push.posIdx = particle::bindless_idx;
+        vkCmdPushConstants(c, rvkbucket::globalPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(vkpushconstants), &push);
+
         vkCmdDraw(c, 8192, 1, 0, 0);
 
 
 
 		
 		// if (!mvkobjs.frameInstances.empty()) {
-            vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_GRAPHICS, rvkbucket::globalPipelineLayout, 0, 1, &rvkbucket::globalBindlessSet, 0, nullptr);
             uint32_t indirect_offset = 0;
             for (const auto &player : mplayer) {
                 if (player->instcount() > 0) {

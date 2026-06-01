@@ -222,9 +222,16 @@ CPMAddPackage(
     DOWNLOAD_ONLY YES
 )
 
+CPMAddPackage(
+    NAME tracy
+    GITHUB_REPOSITORY wolfpld/tracy
+    GIT_TAG v0.13.1
+    EXCLUDE_FROM_ALL YES
+    OPTIONS 
+        "TRACY_ENABLE ON"
+)
+
 set(CMAKE_SKIP_INSTALL_RULES ON)
-
-
 add_subdirectory(${submodules_path}/fastgltf EXCLUDE_FROM_ALL)
 add_subdirectory(${submodules_path}/vk_boot EXCLUDE_FROM_ALL)
 # rip
@@ -262,6 +269,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "clanged")
         "${submodules_path}/fastgltf/include"
         "${stb_SOURCE_DIR}"
         "${imgui_SOURCE_DIR}"
+        "${tracy_SOURCE_DIR}/public"
         "${submodules_path}/jolt"
         "${submodules_path}/meshoptimizer/src"
         "${PROJECT_SOURCE_DIR}/include"
@@ -296,6 +304,7 @@ add_dependencies(rview2 gnsEX)
 
 target_link_libraries(rview2
     PRIVATE
+        "$<$<CONFIG:Debug>:TracyClient>"
         SDL3-static
         SDL3_image-static
         fastgltf

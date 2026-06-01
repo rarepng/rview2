@@ -8,6 +8,7 @@
 #include <memory>
 #include <mutex>
 #include <semaphore>
+#include <tracy/Tracy.hpp>
 
 struct alignas(64) job {
     void (*execute)(void*){nullptr};
@@ -69,6 +70,17 @@ public:
             workers.emplace_back(&threadpool::worker_loop, this);
         }
     }
+    void stop_and_join_all() {
+        if (running.exchange(false, std::memory_order_acq_rel)) {
+            jobs_available.release(workers.size() * 2);
+            for (auto& w : workers) {
+                if (w.joinable()) {
+                    w.join();
+                }
+            }
+        }
+    }
+
 
     ~threadpool() {
         running.store(false, std::memory_order_release);
@@ -76,6 +88,7 @@ public:
         for (auto& w : workers) {
             if (w.joinable()) w.join();
         }
+        stop_and_join_all();
     }
         
 
@@ -108,6 +121,7 @@ private:
     std::vector<std::thread> workers;
 
     void worker_loop() {
+        tracy::SetThreadName("worker");
         while (running.load(std::memory_order_acquire)) {
             jobs_available.acquire();
             if (!running.load(std::memory_order_acquire)) return;
@@ -125,7 +139,7 @@ private:
                 
                 head = (head + 1) & QUEUE_MASK;
             }
-
+            ZoneScopedN("jobexec");
             current_job.run_and_dispose();
 
         }

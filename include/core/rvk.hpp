@@ -15,6 +15,7 @@
 #include <atomic>
 #include <queue>
 #include <rend/graph.hpp>
+#include <tracy/Tracy.hpp>
 
 // all this &$#! for a stupid ugly diagram
 #ifndef __cpp_lib_move_only_function
@@ -165,16 +166,12 @@ struct ubodata {
 	size_t size{0};
 	VkBuffer buffer = VK_NULL_HANDLE;
 	VmaAllocation alloc = nullptr;
-
-	VkDescriptorSet dset = VK_NULL_HANDLE;
 };
 
 struct ssbodata {
 	size_t size{0};
 	VkBuffer buffer = VK_NULL_HANDLE;
 	VmaAllocation alloc = nullptr;
-
-	VkDescriptorSet dset = VK_NULL_HANDLE;
 };
 struct vkpushconstants {
 	int stride;
@@ -306,7 +303,6 @@ struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
 
 
 	std::array<texdata,1> exrtex{};
-	VkDescriptorSet exrdset = VK_NULL_HANDLE;
 
 	
 	struct DummyTexture {
@@ -385,8 +381,6 @@ struct vkgltfobjs {
 	std::vector<std::vector<std::vector<GpuBuffer>>> vbos{};
 	std::vector<std::vector<GpuBuffer>> ebos{};
 	std::vector<texdata> texs{};
-	VkDescriptorSet dset = VK_NULL_HANDLE;
-	VkDescriptorPool texpool = VK_NULL_HANDLE;
 };
 namespace rpool {
 static inline bool create(const std::span<VkDescriptorPoolSize>& pools,const VkDevice& dev,VkDescriptorPool* dpool) {

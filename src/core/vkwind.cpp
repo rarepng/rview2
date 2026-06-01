@@ -50,7 +50,7 @@ void configure_selector(vkb::PhysicalDeviceSelector& selector) {
 	VkPhysicalDeviceFeatures features{};
 	features.samplerAnisotropy = VK_TRUE;
 	features.multiDrawIndirect = VK_TRUE;
-	// features.vertexPipelineStoresAndAtomics = VK_TRUE;
+	features.vertexPipelineStoresAndAtomics = VK_TRUE;
 	VkPhysicalDeviceMeshShaderFeaturesEXT f_mesh{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT};
 	f_mesh.meshShader = VK_TRUE;
 	f_mesh.taskShader = VK_TRUE;
@@ -237,10 +237,13 @@ void vkwind::frameupdate(rvkbucket& mvkobjs) {
 					elapsed_frame_time = static_cast<double>(frame_end - current_counter) / perf_freq;
 				}
 			}
+			FrameMark;
 		}
 }
 
 void vkwind::cleanup(rvkbucket& mvkobjs) {
+	g_jobs.stop_and_join_all();
+	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
 	vkrenderer::cleanup(mvkobjs);
 	SDL_DestroyWindow(mvkobjs.wind);
 	SDL_Quit();

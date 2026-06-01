@@ -4,6 +4,7 @@
 #include <memory>
 #include <type_traits>
 #include <new>
+#include <tracy/Tracy.hpp>
 
 class alignas(64) RenderGraph {
 public:
@@ -54,7 +55,9 @@ public:
 	}
 
 	inline void execute() {
+		ZoneScoped;
 		for (uint32_t i = 0; i < pass_count; ++i) {
+			ZoneScopedN("pass");
 			passes[i].execute(passes[i].payload);
 		}
 	}
