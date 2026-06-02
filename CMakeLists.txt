@@ -288,7 +288,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "clanged")
 else()
 add_executable(rview2 ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_HEADERS})
 
-
+target_compile_definitions(rview2 PRIVATE
+"RVIEW_DEBUG=$<IF:$<CONFIG:Debug>,1,0>"
+)
 
 target_link_directories(rview2 PRIVATE
 ${PROJECT_SOURCE_DIR}/cmake_more_cache/gns/lib
@@ -536,13 +538,10 @@ add_shader(SOURCE red.slang ENTRY pxmain STAGE pixel OUTPUT_NAME px.spv)
 add_shader(SOURCE red.slang ENTRY cxmain STAGE compute OUTPUT_NAME cx.spv)
 # add_shader(SOURCE dbg.slang ENTRY vxmain STAGE vertex OUTPUT_NAME vx.spv)
 # add_shader(SOURCE dbg.slang ENTRY pxmain STAGE pixel OUTPUT_NAME px.spv)
-# add_shader(SOURCE gen.slang ENTRY cxmain STAGE compute OUTPUT_NAME cx.spv)
+# add_shader(SOURCE dbg.slang ENTRY cxmain STAGE compute OUTPUT_NAME cx.spv)
 add_shader(SOURCE particle.slang ENTRY vxmain STAGE vertex OUTPUT_NAME pvx.spv)
 add_shader(SOURCE particle.slang ENTRY pxmain STAGE pixel OUTPUT_NAME ppx.spv)
 add_shader(SOURCE particle.slang ENTRY cxmain STAGE compute OUTPUT_NAME pcx.spv)
-# add_shader(SOURCE red.slang ENTRY vxmain STAGE vertex OUTPUT_NAME rvx.spv)
-# add_shader(SOURCE red.slang ENTRY pxmain STAGE pixel OUTPUT_NAME rpx.spv)
-# add_shader(SOURCE red.slang ENTRY cxmain STAGE compute OUTPUT_NAME rcx.spv)
 
 add_custom_target(shaders_tar ALL DEPENDS ${ALL_SHADER_SPV_FILES})
 add_dependencies(rview2 shaders_tar)

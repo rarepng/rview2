@@ -7,7 +7,7 @@
 #include <glm/glm.hpp>
 
 bool pline::init(rvkbucket &mvkobjs, VkPipelineLayout &playout, VkPipeline &pipeline, VkPrimitiveTopology topology,
-                 unsigned int v_in, unsigned int atts, std::vector<std::string> sfiles, bool char_or_short, VkFormat cformat, VkFormat dformat) {
+                 std::vector<std::string> sfiles, VkFormat cformat, VkFormat dformat) {
 	if (sfiles.size() < 2)
 		return false;
 	std::vector<VkShaderModule> shaders;
@@ -25,34 +25,6 @@ bool pline::init(rvkbucket &mvkobjs, VkPipelineLayout &playout, VkPipeline &pipe
 	}
 	shaderStageInfo.front().stage = VK_SHADER_STAGE_VERTEX_BIT;
 	shaderStageInfo.back().stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-	// vxinput as of now
-	// loc 0: pos
-	// loc 1: nor
-	// loc 2: tan
-	// loc 3: uv
-	// loc 4: joints
-	// loc 5: weights
-
-	std::vector<VkVertexInputBindingDescription> bindings;
-	std::vector<VkVertexInputAttributeDescription> attribs;
-
-	auto add = [&](uint32_t size, VkFormat fmt) {
-		uint32_t idx = static_cast<uint32_t>(bindings.size());
-		bindings.push_back({idx, size, VK_VERTEX_INPUT_RATE_VERTEX});
-		attribs.push_back({idx, idx, fmt, 0});
-	};
-
-	// add(sizeof(glm::vec3), VK_FORMAT_R32G32B32_SFLOAT);
-	// add(sizeof(glm::vec3), VK_FORMAT_R32G32B32_SFLOAT);
-	// add(sizeof(glm::vec4), VK_FORMAT_R32G32B32A32_SFLOAT);
-	// add(sizeof(glm::vec2), VK_FORMAT_R32G32_SFLOAT);
-
-	//starting to reconsider this decision
-	if (!char_or_short) add(sizeof(uint8_t)*4, VK_FORMAT_R8G8B8A8_UINT);
-	else add(sizeof(uint32_t)*4, VK_FORMAT_R32G32B32A32_UINT);
-
-	add(sizeof(glm::vec4), VK_FORMAT_R32G32B32A32_SFLOAT);
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
 	vertexInputInfo.vertexBindingDescriptionCount = 0;

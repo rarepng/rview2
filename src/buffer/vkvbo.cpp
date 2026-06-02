@@ -65,8 +65,8 @@ VkBufferMemoryBarrier2 vkvbo::record_upload(rvkbucket &mvkobjs,
 	VkBufferMemoryBarrier2 barrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
 	barrier.srcStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
 	barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-	barrier.dstStageMask  = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
-	barrier.dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_2_INDEX_READ_BIT;
+	barrier.dstStageMask  = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
+	barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_INDEX_READ_BIT;
 	barrier.buffer        = targetBuffer.buffer;
 	barrier.size          = VK_WHOLE_SIZE;
 	barrier.offset        = 0;

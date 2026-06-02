@@ -38,11 +38,10 @@ namespace vkrenderer {
 // static std::chrono::high_resolution_clock::time_point starttick = std::chrono::high_resolution_clock::now();
 
 static std::bitset<Input_Count> input_state;
-static std::mutex load_mutex;
 
 static vkcam mcam{};
 static std::vector<std::shared_ptr<playoutgeneric>> mplayer;
-static std::vector<std::shared_ptr<playoutgeneric>> mplayerbuffer;
+static LockFreeMPMC<std::shared_ptr<playoutgeneric>, 32> pending_models;
 static selection selectiondata{};
 static glm::vec3 playermoveto{0.0f};
 static glm::vec3 playerlookto{0.0f};
@@ -92,13 +91,10 @@ void sdlevent(rvkbucket& mvkobjs,const SDL_Event& e);
 void checkforanimupdates(rvkbucket& mvkobjs);
 void updateanims(rvkbucket& mvkobjs);
 
-bool createpools(rvkbucket& mvkobjs);
 bool deviceinit();
 bool getqueue(rvkbucket& mvkobjs);
 bool createdepthbuffer(rvkbucket& mvkobjs);
 bool createswapchain(rvkbucket& mvkobjs);
-bool createrenderpass(rvkbucket& mvkobjs);
-bool createframebuffer(rvkbucket& mvkobjs);
 bool createcommandpool(rvkbucket& mvkobjs);
 bool createcommandbuffer(rvkbucket& mvkobjs);
 bool createsyncobjects(rvkbucket& mvkobjs);

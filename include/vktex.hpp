@@ -51,8 +51,6 @@ namespace rview::rvk::tex {
     bool load_env_map(
         rvkbucket& rdata,
         texdata& out_env_map
-        // ,VkDescriptorSet& target_set,
-        // VkDescriptorSetLayout& target_lay
     );
     
     static inline bool createlayout(rvkbucket &objs, std::shared_ptr<VkDescriptorSetLayout> layout) {

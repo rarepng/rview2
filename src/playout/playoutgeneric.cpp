@@ -69,11 +69,11 @@ bool playoutgeneric::createssbostatic(rvkbucket &objs) {
     return true;
 }
 bool playoutgeneric::createpline(rvkbucket &objs, std::string vfile, std::string ffile) {
-	if (!pline::init(objs, rvkbucket::globalPipelineLayout, skinnedpline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 6, 63,
-	                 std::vector<std::string> {vfile, ffile},false,objs.schain.image_format,objs.rddepthformat))
+	if (!pline::init(objs, rvkbucket::globalPipelineLayout, skinnedpline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+	                 std::vector<std::string> {vfile, ffile},objs.schain.image_format,objs.rddepthformat))
 		return false;
-	if (!pline::init(objs, rvkbucket::globalPipelineLayout, skinnedplineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 6, 63,
-	                 std::vector<std::string> {vfile, ffile}, true,objs.schain.image_format,objs.rddepthformat))
+	if (!pline::init(objs, rvkbucket::globalPipelineLayout, skinnedplineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+	                 std::vector<std::string> {vfile, ffile},objs.schain.image_format,objs.rddepthformat))
 		return false;
 	if(!pline::initcompute(objs,rvkbucket::globalPipelineLayout,rvkbucket::globalcullpline,std::vector<std::string> {"shaders/cx.spv"}))
 		return false;
@@ -114,7 +114,6 @@ void playoutgeneric::updatemats() {
 
 	//might have to put if skinned here
 
-	totaltricount = 0;
 	jointmats.clear();
 	jointdqs.clear();
 
@@ -135,7 +134,6 @@ void playoutgeneric::updatemats() {
 				jointmats.insert(jointmats.end(), mats.begin(), mats.end());
 				nummats++;
 			}
-			totaltricount += mgltf->gettricount(0, 0);
 		}
 	} else {
 		//todo dual quats
@@ -145,7 +143,6 @@ void playoutgeneric::updatemats() {
 				continue;
 			jointmats.push_back(i->calcstaticmat());
 			nummats++;
-			totaltricount += mgltf->gettricount(0, 0);
 		}
 	}
 }

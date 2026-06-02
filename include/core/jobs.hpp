@@ -9,6 +9,7 @@
 #include <mutex>
 #include <semaphore>
 #include <tracy/Tracy.hpp>
+#include <cstddef>
 
 struct alignas(64) job {
     void (*execute)(void*){nullptr};
@@ -149,4 +150,71 @@ private:
 inline threadpool g_jobs{};
 
 
+template<typename T, size_t Capacity>
+class LockFreeMPMC {
+private:
+    struct Cell {
+        std::atomic<size_t> sequence;
+        T data;
+    };
 
+    static_assert((Capacity != 0) && ((Capacity & (~Capacity + 1)) == Capacity), 
+                  "Capacity must be a power of 2");
+    static constexpr size_t buffer_mask = Capacity - 1;
+    
+    std::array<Cell, Capacity> buffer;
+    
+    alignas(std::hardware_destructive_interference_size) std::atomic<size_t> enqueue_pos{0};
+    alignas(std::hardware_destructive_interference_size) std::atomic<size_t> dequeue_pos{0};
+
+public:
+    LockFreeMPMC() {
+        for (size_t i = 0; i < Capacity; ++i) {
+            buffer[i].sequence.store(i, std::memory_order_relaxed);
+        }
+    }
+
+    bool push(T data) {
+        Cell* cell = nullptr;
+        size_t pos = enqueue_pos.load(std::memory_order_relaxed);
+        for (;;) {
+            cell = &buffer[pos & buffer_mask];
+            size_t seq = cell->sequence.load(std::memory_order_acquire);
+            std::ptrdiff_t dif = static_cast<std::ptrdiff_t>(seq) - static_cast<std::ptrdiff_t>(pos);
+            
+            if (dif == 0) {
+                if (enqueue_pos.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed)) break;
+            } else if (dif < 0) {
+                return false; 
+            } else {
+                pos = enqueue_pos.load(std::memory_order_relaxed);
+            }
+        }
+        
+        cell->data = std::move(data);
+        cell->sequence.store(pos + 1, std::memory_order_release);
+        return true;
+    }
+
+    bool pop(T& data) {
+        Cell* cell = nullptr;
+        size_t pos = dequeue_pos.load(std::memory_order_relaxed);
+        for (;;) {
+            cell = &buffer[pos & buffer_mask];
+            size_t seq = cell->sequence.load(std::memory_order_acquire);
+            std::ptrdiff_t dif = static_cast<std::ptrdiff_t>(seq) - static_cast<std::ptrdiff_t>(pos + 1);
+            
+            if (dif == 0) {
+                if (dequeue_pos.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed)) break;
+            } else if (dif < 0) {
+                return false; 
+            } else {
+                pos = dequeue_pos.load(std::memory_order_relaxed);
+            }
+        }
+        
+        data = std::move(cell->data);
+        cell->sequence.store(pos + buffer_mask + 1, std::memory_order_release);
+        return true;
+    }
+};

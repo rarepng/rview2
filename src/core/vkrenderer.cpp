@@ -25,10 +25,8 @@
 #include <iostream>
 #include <ranges>
 
-#include "renderpass.hpp"
 #include "vk/commandbuffer.hpp"
 #include "vk/commandpool.hpp"
-#include "vk/framebuffer.hpp"
 #include "vksyncobjects.hpp"
 // #ifdef _DEBUG
 // #include "logger.hpp"
@@ -186,43 +184,6 @@ bool init_dummy_textures(rvkbucket &objs, VkCommandPool &cmdPool) {
 		                     &barrier);
 	};
 
-	auto immediate_submit = [&](std::function<void(VkCommandBuffer)> &&fn) {
-		VkCommandBufferAllocateInfo allocInfo{
-			VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandPool = cmdPool;
-		allocInfo.commandBufferCount = 1;
-
-		VkCommandBuffer cbuffer;
-		vkAllocateCommandBuffers(objs.vkdevice.device, &allocInfo, &cbuffer);
-
-		VkCommandBufferBeginInfo beginInfo{
-			VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		vkBeginCommandBuffer(cbuffer, &beginInfo);
-
-		fn(cbuffer);
-
-		vkEndCommandBuffer(cbuffer);
-
-		VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &cbuffer;
-
-		VkFenceCreateInfo fenceInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-		VkFence tempFence;
-		vkCreateFence(objs.vkdevice.device, &fenceInfo, nullptr, &tempFence);
-
-		objs.mtx2->lock();
-		vkQueueSubmit(objs.graphicsQ, 1, &submitInfo, tempFence);
-		objs.mtx2->unlock();
-
-		vkWaitForFences(objs.vkdevice.device, 1, &tempFence, VK_TRUE, UINT64_MAX);
-		vkDestroyFence(objs.vkdevice.device, tempFence, nullptr);
-
-		vkFreeCommandBuffers(objs.vkdevice.device, cmdPool, 1, &cbuffer);
-	};
-
 	auto create_1x1_texture = [&](uint32_t pixelData) -> rvkbucket::DummyTexture {
 		rvkbucket::DummyTexture tex{};
 
@@ -279,7 +240,7 @@ bool init_dummy_textures(rvkbucket &objs, VkCommandPool &cmdPool) {
 		memcpy(data, &pixelData, (size_t)imageSize);
 		vkUnmapMemory(objs.vkdevice.device, stagingMem);
 
-		immediate_submit([&](VkCommandBuffer cmd) {
+		vkrenderer::immediate_submit(objs,[&](VkCommandBuffer cmd) {
 			record_barrier(
 			    cmd, tex.image, VK_IMAGE_LAYOUT_UNDEFINED,
 			    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -383,7 +344,6 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
     if (!createcommandpool(mvkobjs)) return false;
     if (!createcommandbuffer(mvkobjs)) return false;
     if (!createsyncobjects(mvkobjs)) return false;
-    if (!createpools(mvkobjs)) return false;
     if (!initcpuQs(mvkobjs)) return false;
 
     if (!playout::init_bindless(mvkobjs)) return false;
@@ -474,7 +434,6 @@ bool vkrenderer::initglobalmats(rvkbucket &mvkobjs){
 		rvkbucket::global_materials.free_slots.push(i);
 	}
 
-	// VkDescriptorBufferInfo ssboInfo{ rvkbucket::global_materials.buffer, 0, bufferSize };
 	VkDescriptorBufferInfo ssboInfo{ rvkbucket::global_materials.buffer, 0, bufferSize };
 	VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
 	write.dstSet = rvkbucket::globalBindlessSet;
@@ -574,15 +533,6 @@ bool vkrenderer::getqueue(rvkbucket& mvkobjs) {
 	mvkobjs.transferQ = transqueueret.value();
 
 	return true;
-}
-bool vkrenderer::createpools(rvkbucket& mvkobjs) {
-	std::array<VkDescriptorPoolSize, 3> poolz{
-		{	{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 24},
-			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1},
-			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1}
-		}};
-	return rpool::create(poolz, mvkobjs.vkdevice.device,
-	                     &mvkobjs.dpools[rvkbucket::idxinitpool]);
 }
 bool vkrenderer::createdepthbuffer(rvkbucket& mvkobjs) {
 	VkExtent3D depthimageextent = {mvkobjs.schain.extent.width,
@@ -733,7 +683,6 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	for (const auto &i : mplayer)
 		i->cleanuplines(mvkobjs);
 
-	renderpass::cleanup(mvkobjs);
 	for (const auto &i : mplayer)
 		i->cleanupbuffers(mvkobjs);
 
@@ -899,25 +848,28 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs,const SDL_Event& e) {
 		}
 
 	case SDL_EVENT_DROP_FILE:
-		[[unlikely]]
-		{
-			std::string fname = e.drop.data;
-			
-			g_jobs.enqueue([&mvkobjs, fname]() {
-				auto newp = std::make_shared<playoutgeneric>();
+    [[unlikely]]
+    {
+        std::string fname = e.drop.data;
+        
+        g_jobs.enqueue([&mvkobjs, fname]() {
+            auto newp = std::make_shared<playoutgeneric>();
 
-				bool success = newp->setup(mvkobjs, fname.c_str(), 1,
-				                           playershaders[0][0], playershaders[0][1]);
+            bool success = newp->setup(mvkobjs, fname.c_str(), 1,
+                                       playershaders[0][0], playershaders[0][1]);
 
-				if (success) {
-					std::lock_guard<std::mutex> lock(load_mutex);
-					mplayerbuffer.push_back(newp);
-				} else {
-					std::cout << "model not added, probably wrong format. \nonly binary gltf files (.glb) are accepted. Provided was: " << fname << std::endl;
-				}
-			});
-			break;
-		}
+            if (success) {
+                if (!pending_models.push(std::move(newp))) {
+                    std::cout << "Engine queue full! Dropped model: " << fname << "\n";
+                }
+            } else {
+                std::cout << "model not added, probably wrong format. \n"
+                          << "only binary gltf files (.glb) are accepted. Provided was: " 
+                          << fname << std::endl;
+            }
+        });
+        break;
+    }
 	case SDL_EVENT_DROP_COMPLETE:
 		break;
 	}
@@ -1010,26 +962,6 @@ glm::vec3 vkrenderer::navmeshnormal(float x, float z) {
 	return glm::vec3{0.0f, 1.0f, 0.0f};
 }
 
-void vkrenderer::checkforanimupdates(rvkbucket& mvkobjs) {
-	while (!mvkobjs.mshutdown) {
-		muidrawtimer.start();
-		// updatemtx.lock();
-		for (const auto &i : mplayer)
-		for(size_t j{0};j<i->instcount();j++)
-			i->getinst(j)->checkforupdates();
-		mvkobjs.rduidrawtime = muidrawtimer.stop();
-	}
-}
-
-void vkrenderer::updateanims(rvkbucket& mvkobjs) {
-	ZoneScoped;
-	while (!mvkobjs.mshutdown) {
-		manimupdatetimer.start();
-		for (const auto &i : mplayer)
-			i->updateanims();
-		mvkobjs.updateanimtime = manimupdatetimer.stop();
-	}
-}
 
 bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	ZoneScoped;
@@ -1102,16 +1034,18 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	movecam(mvkobjs);
 
 	
-	// idfk
-	for (auto it = mplayerbuffer.begin(); it != mplayerbuffer.end();) {
-		uploadfordraw(mvkobjs,*it);
-		mplayer.push_back(std::move(*it));
-		mplayerbuffer.erase(it);
+	// isdfk
+	std::shared_ptr<playoutgeneric> newly_loaded_model;
+
+	while (pending_models.pop(newly_loaded_model)) {
+		uploadfordraw(mvkobjs, newly_loaded_model);
+		mplayer.push_back(newly_loaded_model);
+		
 		selectiondata.instancesettings.emplace_back();
 		selectiondata.instancesettings.back().emplace_back(
-		                                  &mplayer.back()->getinst(0)->getinstancesettings());
+			&mplayer.back()->getinst(0)->getinstancesettings()
+		);
 	}
-
 	// joint anims
 	// if (dummytick / 2) {
 	for (const auto &i : mplayer)

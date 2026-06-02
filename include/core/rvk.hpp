@@ -36,7 +36,6 @@ struct rctx {
 
 	//function pointer (hopefully)
 	PFN_vkCmdDrawMeshTasksEXT cmdDrawMeshTasks;
-	PFN_vkCmdSetVertexInputEXT cmdSetVertexInputEXT;
 };
 
 // future proof: gotta make everything use this now big TODO
@@ -162,16 +161,11 @@ struct alignas(16) GPUInstanceData {
 	uint32_t padding;
 };
 
-struct ubodata {
-	size_t size{0};
-	VkBuffer buffer = VK_NULL_HANDLE;
-	VmaAllocation alloc = nullptr;
-};
-
 struct ssbodata {
 	size_t size{0};
 	VkBuffer buffer = VK_NULL_HANDLE;
 	VmaAllocation alloc = nullptr;
+	void* mapped_data = nullptr;
 };
 struct vkpushconstants {
 	int stride;
@@ -227,7 +221,7 @@ struct alignas(64) rdev {
 	DeletionQueue cleanupQ{};
 	StagingBelt sbelt{};
 
-	std::array<VkDescriptorPool,6> dpools = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
+	std::array<VkDescriptorPool,1> dpools = {VK_NULL_HANDLE};
 	std::array<VkSampler,4> samplerz{};
 };
 
@@ -297,7 +291,7 @@ struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
 	inline static std::atomic<uint32_t> globalModelCounter{0};
 
 	
-	inline static ubodata globalCameraUBO{};
+	inline static ssbodata globalCameraUBO{};
 
 	inline static VkPipelineLayout globalPipelineLayout = VK_NULL_HANDLE;
 
@@ -364,12 +358,7 @@ struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
 	std::array<RenderGraph, 3> frameGraphs{};
 
 
-	inline static constexpr size_t idxinitpool{0};
-	inline static constexpr size_t idximguipool{1};
-	inline static constexpr size_t idxruntimepool0{2};
-	inline static constexpr size_t idxruntimepool1{3};
-	inline static constexpr size_t idxruntimepool2{4};
-	inline static constexpr size_t idxruntimepool3{5};
+	inline static constexpr size_t idximguipool{0};
 
 
 

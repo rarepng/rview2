@@ -5,7 +5,6 @@ static const float MIN_ROUGHNESS = 0.04;
 
 //complete mess idfk
 
-// hdri
 [[vk::binding(0, 0)]] Sampler2D tex[];
 [[vk::binding(1, 0)]] ConstantBuffer<cams> cammats;
 [[vk::binding(2, 0)]] StructuredBuffer<jmats> globalJoints[];
@@ -14,17 +13,6 @@ static const float MIN_ROUGHNESS = 0.04;
 [[vk::binding(5, 0)]] ByteAddressBuffer vertexBuffers[];
 [[vk::binding(7, 0)]] StructuredBuffer<GPUInstanceData> instanceData[];
 [[vk::binding(8, 0)]] RWStructuredBuffer<VkDrawIndexedIndirectCommand> indirectCommands[];
-
-struct VXin {
-    [[vk::location(0)]] float3 pos : POSITION;
-    [[vk::location(1)]] float3 normal : NORMAL;
-    [[vk::location(2)]] float4 tangent : TANGENT;
-    [[vk::location(3)]] float2 uv : TEXCOORD_0;
-    [[vk::location(4)]] uint4 joints : JOINTS_0;
-    [[vk::location(5)]] float4 weights : WEIGHTS_0;
-    // will add back when i add fallback for it first
-    // [[vk::location(6)]] float4 color : COLOR_0; 
-};
 
 struct PXin {
     float4 sv_pos : SV_Position;
@@ -342,20 +330,6 @@ PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
 float4 pxmain(PXin in) : SV_Target {
 
     MaterialData mat = materials[pc.materialID];
-
-    // float3 N = normalize(in.normal);
-    // float3 T = normalize(in.tangent);
-    // float3 B = normalize(in.bitangent);
-    // float3x3 TBN = float3x3(T, B, N);
-
-    // float3 V = normalize(cammats.camPos - in.worldPos);
-
-    // if (pc.normalIdx < 0xAAAAAAAA) {
-    //     float3 tNorm = tex[pc.normalIdx].Sample(in.uv).rgb * 2.0 - 1.0;
-    //     tNorm *= float3(pc.normalScale, pc.normalScale, 1.0);
-    //     N = normalize(mul(tNorm, TBN)); // Transform to world space
-    //     // N.y *= -1.0; // GLSL sometimes flips Y, adjust if normal map looks inverted
-    // }
 
     float3 N;
     if (mat.normalIdx < 0xAAAAAAAA) {

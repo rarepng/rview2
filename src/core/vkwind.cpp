@@ -11,6 +11,7 @@
 #include <backends/imgui_impl_vulkan.h>
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
+#include <dbg/trace.hpp>
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL
 debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -94,15 +95,14 @@ std::expected<vkb::PhysicalDevice, std::string>
 find_capable_gpu(rvkbucket& mvkobjs) noexcept {
 
 	vkb::InstanceBuilder instbuild{};
-	auto instret = instbuild
-	               .set_app_name("rview2")
-	               .require_api_version(1, 4)
-#ifndef NDEBUG
-	               .request_validation_layers(true)
-	               .use_default_debug_messenger()
-	               .set_debug_callback(debugCallback)
-#endif
-	               .build();
+	instbuild.set_app_name("rview2")
+			 .require_api_version(1, 4);
+	if constexpr (vkdebug::is_active) {
+		instbuild.request_validation_layers(true)
+				 .use_default_debug_messenger()
+				 .set_debug_callback(debugCallback);
+	}
+	auto instret = instbuild.build();
 
 	if (!instret) return std::unexpected(instret.error().message());
 	mvkobjs.inst = instret.value();

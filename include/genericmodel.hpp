@@ -76,7 +76,6 @@ private:
 	void createvboebo(rvkbucket &objs);
 
 	void getjointdata();
-	void getweightdata();
 	void getinvbindmats();
 	void getanims();
 	void getnodes(std::shared_ptr<vknode> treenode);
@@ -96,27 +95,12 @@ private:
 
 	fastgltf::Asset mmodel2;
 
-	const std::unordered_map<fastgltf::AccessorType, uint8_t> numotypes{
-		{fastgltf::AccessorType::Vec2, 2},   {fastgltf::AccessorType::Vec3, 3},	{fastgltf::AccessorType::Vec4, 4},
-		{fastgltf::AccessorType::Mat2, 4},   {fastgltf::AccessorType::Mat3, 9},	{fastgltf::AccessorType::Mat4, 16},
-		{fastgltf::AccessorType::Scalar, 1}, {fastgltf::AccessorType::Invalid, 0}};
-
 	std::vector<glm::mat4> minversebindmats{};
 
-	std::vector<std::vector<std::vector<int>>> mattribaccs{};
 	std::vector<unsigned int> mnodetojoint{};
 
 	std::vector<std::shared_ptr<vkclip>> manimclips{};
 
 	vkgltfobjs mgltfobjs{};
 
-	std::vector<unsigned short> jointz{};
-	std::vector<unsigned char> jointzchar{};
-	std::vector<unsigned int> jointzint{};
-
-	unsigned int jointofx{0};
-
-	std::map<std::string, unsigned int> atts = {
-		{"POSITION", 0}, {"NORMAL", 1}, {"TEXCOORD_0", 2}, {"JOINTS_0", 3}, {"WEIGHTS_0", 4}
-	};
 };
