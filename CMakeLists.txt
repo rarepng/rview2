@@ -12,6 +12,8 @@ set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
 find_package(Vulkan REQUIRED)
 
 set(OPENSSL_USE_STATIC_LIBS ON)
+set(ZLIB_USE_STATIC_LIBS ON)
+find_package(ZLIB REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 file(DOWNLOAD
@@ -55,7 +57,7 @@ add_definitions(-DSTEAMNETWORKINGSOCKETS_STATIC_LINK=1)
 add_definitions(-DABSL_OPTION_USE_STD_ORDERING=0)
 
 if(UNIX)
-    set(GNS_LINKER_FLAGS "-static -lstdc++")
+    set(GNS_LINKER_FLAGS "-static -lstdc++ -lz -lpthread -ldl")
 else()
     set(GNS_LINKER_FLAGS "-static -lws2_32 -lcrypt32 -lstdc++")
 endif()
@@ -134,6 +136,16 @@ ExternalProject_Add(gnsEX
         -Dprotobuf_BUILD_TESTS=OFF
         -Dprotobuf_BUILD_SHARED_LIBS=OFF
         -DOPENSSL_USE_STATIC_LIBS=ON
+        -DZLIB_USE_STATIC_LIBS=ON
+        -DOPENSSL_INCLUDE_DIR=${OPENSSL_INCLUDE_DIR}
+        -DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_CRYPTO_LIBRARY}
+        -DOPENSSL_SSL_LIBRARY=${OPENSSL_SSL_LIBRARY}
+        
+        # 2. Bypass the failing OpenSSL version check:
+        -DHAVE_EVP_MD_CTX_FREE=1
+        
+        # 3. Provide dependencies for any other internal static link checks GNS might run:
+        -DCMAKE_REQUIRED_LIBRARIES=dl;pthread
         -DProtobuf_LIBRARIES=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib/libprotobuf.a
         -DProtobuf_INCLUDE_DIR=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include
         -DBUILD_SHARED_LIB=OFF
