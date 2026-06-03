@@ -11,9 +11,11 @@ genericinstance::~genericinstance() {}
 genericinstance::genericinstance(std::shared_ptr<genericmodel> model, glm::vec3 worldpos, bool randomize) {
 	if (!model)
 		return;
+
 	mgltfmodel = model;
 	mmodelsettings.msworldpos = worldpos;
 	mnodecount = mgltfmodel->getnodecount();
+
 	if (mnodecount) {
 		minversebindmats = mgltfmodel->getinversebindmats();
 		mnodetojoint = mgltfmodel->getnodetojoint();
@@ -38,6 +40,7 @@ genericinstance::genericinstance(std::shared_ptr<genericmodel> model, glm::vec3 
 		mnodelist = nodedata.nodelist;
 
 		mmodelsettings.msskelsplitnode = mnodecount - 1;
+
 		for (const auto &node : mnodelist) {
 			if (node) {
 				mmodelsettings.msskelnodenames.push_back(node->getname());
@@ -45,6 +48,7 @@ genericinstance::genericinstance(std::shared_ptr<genericmodel> model, glm::vec3 
 				mmodelsettings.msskelnodenames.push_back("(invalid)");
 			}
 		}
+
 		updatenodematrices(mrootnode);
 
 		manimclips = mgltfmodel->getanimclips();
@@ -52,6 +56,7 @@ genericinstance::genericinstance(std::shared_ptr<genericmodel> model, glm::vec3 
 		for (const auto &clip : manimclips) {
 			mmodelsettings.msclipnames.push_back(clip->getName());
 		}
+
 		unsigned int animclipsize = manimclips.size();
 
 		if (randomize) {
@@ -65,6 +70,7 @@ genericinstance::genericinstance(std::shared_ptr<genericmodel> model, glm::vec3 
 			mrootnode->setwrot(mmodelsettings.msworldrot);
 		}
 	}
+
 	checkforupdates();
 
 	if (mnodecount) {
@@ -87,11 +93,13 @@ void genericinstance::resetnodedata() {
 
 void genericinstance::updatenodematrices(std::shared_ptr<vknode> treenode) {
 	treenode->calculatenodemat();
+
 	if (mmodelsettings.mvertexskinningmode == skinningmode::linear) {
 		updatejointmatrices(treenode);
 	} else {
 		updatejointdualquats(treenode);
 	}
+
 	for (auto &child : treenode->getchildren()) {
 		updatenodematrices(child);
 	}
@@ -113,6 +121,7 @@ void genericinstance::updatejointdualquats(std::shared_ptr<vknode> treenode) {
 	glm::dualquat dq0;
 
 	glm::mat4 nodejointmat = treenode->getnodematrix() * minversebindmats.at(mnodetojoint.at(nodenum));
+
 	if (glm::decompose(nodejointmat, scale0, orientation, trans0, skew0, pers0)) {
 		dq0[0] = orientation;
 		dq0[1] = glm::quat(0.0f, trans0.x, trans0.y, trans0.z) * orientation * 0.5f;
@@ -125,11 +134,11 @@ int genericinstance::getjointmatrixsize() {
 
 std::vector<glm::mat4> genericinstance::getjointmats() {
 	if (mgltfmodel->skinned) {
-		
+
 		if (mmodelsettings.msplayanimation && mmodelsettings.msanimclip < mgltfmodel->bakedClips.size()) {
 			const auto& clip = mgltfmodel->bakedClips[mmodelsettings.msanimclip];
 			const glm::mat4* frameData = clip.GetFrame(mmodelsettings.msanimtimepos, mmodelsettings.animloop);
-			
+
 			if (frameData) {
 				size_t copyBytes = mgltfmodel->flatskelly.nodeCount * sizeof(glm::mat4);
 				std::memcpy(mgltfmodel->flatskelly.localTransforms.data(), frameData, copyBytes);
@@ -139,12 +148,13 @@ std::vector<glm::mat4> genericinstance::getjointmats() {
 		glm::mat4 worldTransform = glm::scale(glm::mat4(1.0f), mmodelsettings.msworldscale);
 		worldTransform = glm::toMat4(getwrot()) * worldTransform;
 		worldTransform = glm::translate(glm::mat4(1.0f), mmodelsettings.msworldpos) * worldTransform;
-		
+
 		mgltfmodel->flatskelly.UpdateGlobalMatrices(worldTransform);
-		
-		return std::vector<glm::mat4>(mgltfmodel->flatskelly.finalJointMatrices.begin(), 
+
+		return std::vector<glm::mat4>(mgltfmodel->flatskelly.finalJointMatrices.begin(),
 		                              mgltfmodel->flatskelly.finalJointMatrices.begin() + mgltfmodel->flatskelly.jointCount);
 	}
+
 	return mjointmats;
 }
 int genericinstance::getjointdualquatssize() {
@@ -163,37 +173,38 @@ void genericinstance::checkforupdates() {
 	auto& curr = mmodelsettings;
 	auto reactions = std::tuple {
 
-		Reaction(&InstanceState::skelSplitNode, [](auto* self, int newVal) {
+		Reaction(&InstanceState::skelSplitNode, [](auto * self, int newVal) {
 			self->setskeletonsplitnode(newVal);
 			self->resetnodedata();
 		}),
 
-		Reaction(&InstanceState::blendingMode, [](auto* self, blendmode newVal) {
+		Reaction(&InstanceState::blendingMode, [](auto * self, blendmode newVal) {
 			if (newVal != blendmode::additive) {
 				self->mmodelsettings.msskelsplitnode = self->mnodecount - 1;
 			}
+
 			self->resetnodedata();
 		}),
 
-		Reaction(&InstanceState::worldScale, [](auto* self, const glm::vec3& newScale) {
+		Reaction(&InstanceState::worldScale, [](auto * self, const glm::vec3 & newScale) {
 			self->mrootnode->setscale(newScale);
 			self->mmodelsettings.msiktargetworldpos =
 			    self->getwrot() * self->mmodelsettings.msiktargetpos + self->mmodelsettings.msworldpos;
 		}),
 
-		Reaction(&InstanceState::worldPos, [](auto* self, const glm::vec3& newPos) {
+		Reaction(&InstanceState::worldPos, [](auto * self, const glm::vec3 & newPos) {
 			self->mrootnode->setwpos(newPos);
 			self->mmodelsettings.msiktargetworldpos =
 			    self->getwrot() * self->mmodelsettings.msiktargetpos + newPos;
 		}),
-		
-		Reaction(&InstanceState::worldRot, [](auto* self, const glm::vec3& newRot) {
+
+		Reaction(&InstanceState::worldRot, [](auto * self, const glm::vec3 & newRot) {
 			self->mrootnode->setwrot(newRot);
 			self->mmodelsettings.msiktargetworldpos =
 			    self->getwrot() * self->mmodelsettings.msiktargetpos + self->mmodelsettings.msworldpos;
 		}),
 
-		Reaction(&InstanceState::ikIterations, [](auto* self, int newIter) {
+		Reaction(&InstanceState::ikIterations, [](auto * self, int newIter) {
 			self->setnumikiterations(newIter);
 			self->resetnodedata();
 		})
@@ -280,21 +291,23 @@ void genericinstance::checkforupdates() {
 // }
 
 void genericinstance::updateanimation() {
-	if(manimclips.size() > 0)
+	if (manimclips.size() > 0)
 		if (mmodelsettings.msplayanimation) {
 			mmodelsettings.msanimendtime = getanimendtime(mmodelsettings.msanimclip);
+
 			if (mmodelsettings.msblendingmode == blendmode::crossfade || mmodelsettings.msblendingmode == blendmode::additive) {
 				playanimation(mmodelsettings.msanimclip, mmodelsettings.mscrossblenddestanimclip, mmodelsettings.msanimspeed,
-							mmodelsettings.msanimcrossblendfactor, mmodelsettings.msanimationplaydirection);
+				              mmodelsettings.msanimcrossblendfactor, mmodelsettings.msanimationplaydirection);
 			} else {
 				playanimation(mmodelsettings.msanimclip, mmodelsettings.msanimspeed, mmodelsettings.msanimblendfactor,
-							mmodelsettings.msanimationplaydirection);
+				              mmodelsettings.msanimationplaydirection);
 			}
 		} else {
 			mmodelsettings.msanimendtime = getanimendtime(mmodelsettings.msanimclip);
+
 			if (mmodelsettings.msblendingmode == blendmode::crossfade || mmodelsettings.msblendingmode == blendmode::additive) {
 				crossblendanimationframe(mmodelsettings.msanimclip, mmodelsettings.mscrossblenddestanimclip,
-										mmodelsettings.msanimtimepos, mmodelsettings.msanimcrossblendfactor);
+				                         mmodelsettings.msanimtimepos, mmodelsettings.msanimcrossblendfactor);
 			} else {
 				blendanimationframe(mmodelsettings.msanimclip, mmodelsettings.msanimtimepos, mmodelsettings.msanimblendfactor);
 			}
@@ -303,14 +316,16 @@ void genericinstance::updateanimation() {
 
 void genericinstance::solveik() {
 	switch (mmodelsettings.msikmode) {
-	case ikmode::ccd:
-		solveikbyccd(mmodelsettings.msiktargetworldpos);
-		break;
-	case ikmode::fabrik:
-		solveikbyfabrik(mmodelsettings.msiktargetworldpos);
-		break;
-	default:
-		break;
+		case ikmode::ccd:
+			solveikbyccd(mmodelsettings.msiktargetworldpos);
+			break;
+
+		case ikmode::fabrik:
+			solveikbyfabrik(mmodelsettings.msiktargetworldpos);
+			break;
+
+		default:
+			break;
 	}
 }
 
@@ -318,11 +333,13 @@ void genericinstance::playanimation(int animNum, float speedDivider, float blend
 	double currentTime =
 	    std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch())
 	    .count();
+
 	if (mmodelsettings.animloop)
 		mmodelsettings.msanimtimepos = std::fmod((currentTime - mmodelsettings.animstart) / 1000.0 * speedDivider,
 		                               manimclips.at(animNum)->getEndTime());
 	else
 		mmodelsettings.msanimtimepos = (currentTime - mmodelsettings.animstart) / 1000.0 * speedDivider;
+
 	if (direction == replaydirection::backward) {
 		blendanimationframe(animNum, mmodelsettings.msanimtimepos, blendFactor);
 	} else {
@@ -345,6 +362,7 @@ void genericinstance::playanimation(int sourceAnimNumber, int destAnimNumber, fl
 	} else {
 		if (!mmodelsettings.animloop) {
 			currentTime -= mmodelsettings.animstart;
+
 			if (currentTime < manimclips.at(sourceAnimNumber)->getEndTime())
 				crossblendanimationframe(
 				    sourceAnimNumber, destAnimNumber,
@@ -386,6 +404,7 @@ void genericinstance::updateadditivemask(std::shared_ptr<vknode> treeNode, int s
 	}
 
 	madditiveanimationmask.at(treeNode->getnum()) = false;
+
 	for (auto &childNode : treeNode->getchildren()) {
 		updateadditivemask(childNode, splitNodeNum);
 	}
@@ -403,7 +422,7 @@ void genericinstance::setinstancesettings(modelsettings &settings) {
 	mmodelsettings = settings;
 }
 
-modelsettings &genericinstance::getinstancesettings() {
+modelsettings& genericinstance::getinstancesettings() {
 	return mmodelsettings;
 }
 
@@ -434,10 +453,13 @@ void genericinstance::setinversekindematicsnode(int effectorNodeNum, int ikChain
 	int currentNodeNum = effectorNodeNum;
 
 	ikNodes.insert(ikNodes.begin(), mnodelist.at(effectorNodeNum));
+
 	while (currentNodeNum != ikChainRootNodeNum) {
 		std::shared_ptr<vknode> node = mnodelist.at(currentNodeNum);
+
 		if (node) {
 			std::shared_ptr<vknode> parentNode = node->getparent();
+
 			if (parentNode) {
 				currentNodeNum = parentNode->getnum();
 				ikNodes.push_back(parentNode);
@@ -455,7 +477,7 @@ void genericinstance::setnumikiterations(int iterations) {
 	miksolver.setnumiterations(iterations);
 }
 
-glm::vec3 *genericinstance::getinstpos() {
+glm::vec3* genericinstance::getinstpos() {
 	return &mmodelsettings.msworldpos;
 }
 

@@ -1,0 +1,10 @@
+# useless but wth will transition out of astyle in the future
+
+MaxEmptyLinesToKeep: 4
+KeepEmptyLinesAtTheStartOfBlocks: true
+
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignConsecutiveMacros: false
+
+ReflowComments: false

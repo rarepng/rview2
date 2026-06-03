@@ -13,16 +13,27 @@
 #include "vk/commandbuffer.hpp"
 #include "ui.hpp"
 
+#if defined(__cpp_reflection)
+template <typename T>
+void DrawAutoUI(const T& obj) {
+    ImGui::SeparatorText("reflection test dump");
+    template for (constexpr auto member : std::meta::nonstatic_data_members_of(^T)) {
+        constexpr std::string_view name = std::meta::identifier_of(member);
+        ImGui::BulletText("%s", name.data());
+    }
+}
+#endif
+
 bool ui::init(rvkbucket &renderData) {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 
 	ImGuiIO &io = ImGui::GetIO();
-
+	//hardcoded but ig it's fine here
 	io.Fonts->AddFontFromFileTTF("resources/comicbd.ttf", 29.0f);
 	io.Fonts->AddFontFromFileTTF("resources/bruce.ttf", 52.0f);
 
-	std::array<VkDescriptorPoolSize,11> imguiPoolSizes{{{VK_DESCRIPTOR_TYPE_SAMPLER, 24},
+	std::array<VkDescriptorPoolSize, 11> imguiPoolSizes{{{VK_DESCRIPTOR_TYPE_SAMPLER, 24},
 			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 24},
 			{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 24},
 			{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 24},
@@ -46,6 +57,7 @@ bool ui::init(rvkbucket &renderData) {
 	                           &renderData.dpools[rvkbucket::idximguipool])) {
 		return false;
 	}
+
 	ImGui_ImplSDL3_InitForVulkan(renderData.wind);
 
 
@@ -96,10 +108,12 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 		ImGui::Begin("debug", nullptr, imguiWindowFlags);
 
 		static float newFps = 0.0f;
+
 		/* avoid inf values (division by zero) */
 		if (renderData.frametime > 0.0) {
 			newFps = 1.0f / renderData.frametime * 1000.f;
 		}
+
 		/* make an averge value to avoid jumps */
 		// mfps = (mavgalpha * mfps) + (1.0f - mavgalpha) * newFps;
 		mfps = newFps;
@@ -354,19 +368,23 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 			ImGui::Text("selected model :");
 			ImGui::SameLine();
 			ImGui::PushButtonRepeat(true);
+
 			if (ImGui::ArrowButton("##LEFTMOD", ImGuiDir_Left) && settings.midx > 0) {
 				settings.midx--;
 				settings.iidx = 0;
 			}
+
 			ImGui::SameLine();
 			ImGui::PushItemWidth(30);
 			ImGui::DragScalar("##SELMOD", ImGuiDataType_U64, &settings.midx, flags);
 			ImGui::PopItemWidth();
 			ImGui::SameLine();
+
 			if (ImGui::ArrowButton("##RIGHTMOD", ImGuiDir_Right) && settings.midx < settings.instancesettings.size() - 1) {
 				settings.midx++;
 				settings.iidx = 0;
 			}
+
 			ImGui::PopButtonRepeat();
 
 			ImGui::Text("instance count  : %d", settings.instancesettings.at(settings.midx).size());
@@ -374,9 +392,11 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 			ImGui::Text("selected instance :");
 			ImGui::SameLine();
 			ImGui::PushButtonRepeat(true);
+
 			if (ImGui::ArrowButton("##LEFTINST", ImGuiDir_Left) && settings.iidx > 0) {
 				settings.iidx--;
 			}
+
 			ImGui::SameLine();
 			ImGui::PushItemWidth(30);
 			ImGui::DragScalar("##SELINST", ImGuiDataType_U64, &settings.iidx, flags);
@@ -384,10 +404,12 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 			//     renderData.rdnumberofinstances - 1, "%3d", flags);
 			ImGui::PopItemWidth();
 			ImGui::SameLine();
+
 			if (ImGui::ArrowButton("##RIGHTINST", ImGuiDir_Right) &&
 			        settings.iidx < settings.instancesettings.at(settings.midx).size() - 1) {
 				settings.iidx++;
 			}
+
 			ImGui::PopButtonRepeat();
 
 			ImGui::Text("scale :");
@@ -414,16 +436,19 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 
 			ImGui::Text("skinning:");
 			ImGui::SameLine();
+
 			if (ImGui::RadioButton("linear",
 			                       settings.instancesettings.at(settings.midx).at(settings.iidx)->mvertexskinningmode ==
 			                       skinningmode::linear)) {
 				settings.instancesettings.at(settings.midx).at(settings.iidx)->mvertexskinningmode = skinningmode::linear;
 			}
+
 			// ImGui::SameLine();
 			// if (ImGui::RadioButton("dual quats",
 			//     settings.mvertexskinningmode == skinningmode::dualquat)) {
 			//     settings.mvertexskinningmode = skinningmode::dualquat;
 			// }
+			// DrawAutoUI(*settings.instancesettings.at(settings.midx).at(settings.iidx));
 		}
 
 		if (ImGui::CollapsingHeader("animation")) {
@@ -435,13 +460,16 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 
 			ImGui::Text("playback direction:");
 			ImGui::SameLine();
+
 			if (ImGui::RadioButton("forward",
 			                       settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimationplaydirection ==
 			                       replaydirection::forward)) {
 				settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimationplaydirection =
 				                             replaydirection::forward;
 			}
+
 			ImGui::SameLine();
+
 			if (ImGui::RadioButton("backward",
 			                       settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimationplaydirection ==
 			                       replaydirection::backward)) {
@@ -454,27 +482,32 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 			}
 
 			ImGui::Text("clip   ");
-			if(settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.size()>0){
-			ImGui::SameLine();
-			if (ImGui::BeginCombo(
-			            "##ClipCombo",
-			            settings.instancesettings.at(settings.midx)
-			            .at(settings.iidx)
-			            ->msclipnames.at(settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimclip)
-			            .c_str())) {
-				for (size_t i {0}; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.size(); ++i) {
-					const bool isSelected = (settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimclip == i);
-					if (ImGui::Selectable(
-					            settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.at(i).c_str(),
-					            isSelected)) {
-						settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimclip = i;
+
+			if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.size() > 0) {
+				ImGui::SameLine();
+
+				if (ImGui::BeginCombo(
+				            "##ClipCombo",
+				            settings.instancesettings.at(settings.midx)
+				            .at(settings.iidx)
+				            ->msclipnames.at(settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimclip)
+				            .c_str())) {
+					for (size_t i {0}; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.size(); ++i) {
+						const bool isSelected = (settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimclip == i);
+
+						if (ImGui::Selectable(
+						            settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.at(i).c_str(),
+						            isSelected)) {
+							settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimclip = i;
+						}
+
+						if (isSelected) {
+							ImGui::SetItemDefaultFocus();
+						}
 					}
-					if (isSelected) {
-						ImGui::SetItemDefaultFocus();
-					}
+
+					ImGui::EndCombo();
 				}
-				ImGui::EndCombo();
-			}
 			}
 
 			if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msplayanimation) {
@@ -494,18 +527,23 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 		if (ImGui::CollapsingHeader("blending")) {
 			ImGui::Text("blend type:");
 			ImGui::SameLine();
+
 			if (ImGui::RadioButton("Fade In/Out",
 			                       settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode ==
 			                       blendmode::fadeinout)) {
 				settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode = blendmode::fadeinout;
 			}
+
 			ImGui::SameLine();
+
 			if (ImGui::RadioButton("crossfading",
 			                       settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode ==
 			                       blendmode::crossfade)) {
 				settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode = blendmode::crossfade;
 			}
+
 			ImGui::SameLine();
+
 			if (ImGui::RadioButton("additive",
 			                       settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode ==
 			                       blendmode::additive)) {
@@ -524,6 +562,7 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 			        settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode == blendmode::additive) {
 				ImGui::Text("Dest Clip   ");
 				ImGui::SameLine();
+
 				if (ImGui::BeginCombo(
 				            "##DestClipCombo",
 				            settings.instancesettings.at(settings.midx)
@@ -534,15 +573,18 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 					for (size_t i {0}; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.size(); ++i) {
 						const bool isSelected =
 						    (settings.instancesettings.at(settings.midx).at(settings.iidx)->mscrossblenddestanimclip == i);
+
 						if (ImGui::Selectable(
 						            settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.at(i).c_str(),
 						            isSelected)) {
 							settings.instancesettings.at(settings.midx).at(settings.iidx)->mscrossblenddestanimclip = i;
 						}
+
 						if (isSelected) {
 							ImGui::SetItemDefaultFocus();
 						}
 					}
+
 					ImGui::EndCombo();
 				}
 
@@ -556,6 +598,7 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 			if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode == blendmode::additive) {
 				ImGui::Text("Split Node  ");
 				ImGui::SameLine();
+
 				if (ImGui::BeginCombo(
 				            "##SplitNodeCombo",
 				            settings.instancesettings.at(settings.midx)
@@ -570,16 +613,19 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 						        .compare("(invalid)") != 0) {
 							const bool isSelected =
 							    (settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelsplitnode == i);
+
 							if (ImGui::Selectable(
 							            settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.at(i).c_str(),
 							            isSelected)) {
 								settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelsplitnode = i;
 							}
+
 							if (isSelected) {
 								ImGui::SetItemDefaultFocus();
 							}
 						}
 					}
+
 					ImGui::EndCombo();
 				}
 			}
@@ -590,12 +636,16 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 			                       settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode == ikmode::off)) {
 				settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode = ikmode::off;
 			}
+
 			ImGui::SameLine();
+
 			if (ImGui::RadioButton("CCD",
 			                       settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode == ikmode::ccd)) {
 				settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode = ikmode::ccd;
 			}
+
 			ImGui::SameLine();
+
 			if (ImGui::RadioButton("FABRIK", settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode ==
 			                       ikmode::fabrik)) {
 				settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode = ikmode::fabrik;
@@ -616,6 +666,7 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 				    "%.3f", flags);
 				ImGui::Text("Effector Node  :");
 				ImGui::SameLine();
+
 				if (ImGui::BeginCombo("##EffectorNodeCombo",
 				                      settings.instancesettings.at(settings.midx)
 				                      .at(settings.iidx)
@@ -630,6 +681,7 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 						        .compare("(invalid)") != 0) {
 							const bool isSelected =
 							    (settings.instancesettings.at(settings.midx).at(settings.iidx)->msikeffectornode == i);
+
 							if (ImGui::Selectable(
 							            settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.at(i).c_str(),
 							            isSelected)) {
@@ -641,10 +693,13 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 							}
 						}
 					}
+
 					ImGui::EndCombo();
 				}
+
 				ImGui::Text("IK Root Node   :");
 				ImGui::SameLine();
+
 				if (ImGui::BeginCombo(
 				            "##RootNodeCombo",
 				            settings.instancesettings.at(settings.midx)
@@ -659,6 +714,7 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 						        .compare("(invalid)") != 0) {
 							const bool isSelected =
 							    (settings.instancesettings.at(settings.midx).at(settings.iidx)->msikrootnode == i);
+
 							if (ImGui::Selectable(
 							            settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.at(i).c_str(),
 							            isSelected)) {
@@ -670,6 +726,7 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 							}
 						}
 					}
+
 					ImGui::EndCombo();
 				}
 			}
@@ -752,8 +809,10 @@ bool ui::createpausebuttons(rvkbucket &mvkobjs) {
 				mvkobjs.fullscreen = !mvkobjs.fullscreen;
 				SDL_SetWindowFullscreen(mvkobjs.wind, mvkobjs.fullscreen);
 			}
+
 			ImGui::EndMenu();
 		}
+
 		ImGui::EndMenuBar();
 	}
 
@@ -766,6 +825,7 @@ bool ui::createpausebuttons(rvkbucket &mvkobjs) {
 	bool p = ImGui::Button("continue", {400, 200});
 	ImGui::PushFont(io.Fonts->Fonts[0]);
 	ImGui::PopFont();
+
 	if (ImGui::Button("EXIT", {400, 120}))
 		mvkobjs.mshutdown = true;
 	ImGui::PopStyleColor(7);

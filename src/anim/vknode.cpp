@@ -35,9 +35,11 @@ void vknode::addchildren(fastgltf::pmr::MaybeSmallVector<size_t, 0> children) {
 
 std::shared_ptr<vknode> vknode::getparent() {
 	std::shared_ptr<vknode> pNode = parentnode.lock();
+
 	if (pNode) {
 		return pNode;
 	}
+
 	return nullptr;
 }
 
@@ -190,9 +192,11 @@ void vknode::printtree() {
 
 void vknode::printnodes(std::shared_ptr<vknode> node, int indent) {
 	std::string indendString = "";
+
 	for (int i = 0; i < indent; ++i) {
 		indendString += " ";
 	}
+
 	indendString += "-";
 
 	for (const auto &childNode : node->childnodes) {

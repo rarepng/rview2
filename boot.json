@@ -1,0 +1,13 @@
+{
+    "models": [
+        {
+            "file": "resources/t0.glb",
+            "count": 2,
+            "shaders": {
+                "vx": "shaders/vx.spv",
+                "px": "shaders/px.spv",
+                "cx": "shaders/cx.spv"
+            }
+        }
+    ]
+}

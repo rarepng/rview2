@@ -3,7 +3,7 @@
 #include <chrono>
 #include <iostream>
 
-static netserver *s_Instance = nullptr;
+static netserver* s_Instance = nullptr;
 
 netserver::netserver(int port) : m_Port(port) {}
 
@@ -30,6 +30,7 @@ void netserver::NetworkThreadFunc() {
 	m_Running = true;
 
 	SteamDatagramErrMsg errMsg;
+
 	if (!GameNetworkingSockets_Init(nullptr, errMsg)) {
 		OnFatalError("GameNetworkingSockets_Init failed");
 		return;
@@ -43,7 +44,7 @@ void netserver::NetworkThreadFunc() {
 
 	SteamNetworkingConfigValue_t options;
 	options.SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged,
-	               (void *)netserver::ConnectionStatusChangedCallback);
+	               (void*)netserver::ConnectionStatusChangedCallback);
 
 	m_ListenSocket = m_Interface->CreateListenSocketIP(serverLocalAddress, 1, &options);
 
@@ -53,6 +54,7 @@ void netserver::NetworkThreadFunc() {
 	}
 
 	m_PollGroup = m_Interface->CreatePollGroup();
+
 	if (m_PollGroup == k_HSteamNetPollGroup_Invalid) {
 		OnFatalError("Fatal error: Failed to listen on port {}" + std::to_string(m_Port));
 		return;
@@ -67,6 +69,7 @@ void netserver::NetworkThreadFunc() {
 	}
 
 	std::cout << "Closing connections..." << std::endl;
+
 	for (const auto &[clientID, clientInfo] : m_ConnectedClients) {
 		m_Interface->CloseConnection(clientID, 0, "Server Shutdown", true);
 	}
@@ -80,59 +83,59 @@ void netserver::NetworkThreadFunc() {
 	m_PollGroup = k_HSteamNetPollGroup_Invalid;
 }
 
-void netserver::ConnectionStatusChangedCallback(SteamNetConnectionStatusChangedCallback_t *info) {
+void netserver::ConnectionStatusChangedCallback(SteamNetConnectionStatusChangedCallback_t* info) {
 	s_Instance->OnConnectionStatusChanged(info);
 }
 
-void netserver::OnConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t *status) {
+void netserver::OnConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t* status) {
 	switch (status->m_info.m_eState) {
-	case k_ESteamNetworkingConnectionState_None:
-		break;
-
-	case k_ESteamNetworkingConnectionState_ClosedByPeer:
-	case k_ESteamNetworkingConnectionState_ProblemDetectedLocally: {
-		if (status->m_eOldState == k_ESteamNetworkingConnectionState_Connected) {
-			auto itClient = m_ConnectedClients.find(status->m_hConn);
-
-			m_ClientDisconnectedCallback(itClient->second);
-
-			m_ConnectedClients.erase(itClient);
-		}
-
-		m_Interface->CloseConnection(status->m_hConn, 0, nullptr, false);
-		break;
-	}
-
-	case k_ESteamNetworkingConnectionState_Connecting: {
-		if (m_Interface->AcceptConnection(status->m_hConn) != k_EResultOK) {
-			m_Interface->CloseConnection(status->m_hConn, 0, nullptr, false);
-			std::cout << "Couldn't accept connection (it was already closed?)" << std::endl;
+		case k_ESteamNetworkingConnectionState_None:
 			break;
-		}
 
-		if (!m_Interface->SetConnectionPollGroup(status->m_hConn, m_PollGroup)) {
-			m_Interface->CloseConnection(status->m_hConn, 0, nullptr, false);
-			std::cout << "Failed to set poll group" << std::endl;
+		case k_ESteamNetworkingConnectionState_ClosedByPeer:
+		case k_ESteamNetworkingConnectionState_ProblemDetectedLocally: {
+				if (status->m_eOldState == k_ESteamNetworkingConnectionState_Connected) {
+					auto itClient = m_ConnectedClients.find(status->m_hConn);
+
+					m_ClientDisconnectedCallback(itClient->second);
+
+					m_ConnectedClients.erase(itClient);
+				}
+
+				m_Interface->CloseConnection(status->m_hConn, 0, nullptr, false);
+				break;
+			}
+
+		case k_ESteamNetworkingConnectionState_Connecting: {
+				if (m_Interface->AcceptConnection(status->m_hConn) != k_EResultOK) {
+					m_Interface->CloseConnection(status->m_hConn, 0, nullptr, false);
+					std::cout << "Couldn't accept connection (it was already closed?)" << std::endl;
+					break;
+				}
+
+				if (!m_Interface->SetConnectionPollGroup(status->m_hConn, m_PollGroup)) {
+					m_Interface->CloseConnection(status->m_hConn, 0, nullptr, false);
+					std::cout << "Failed to set poll group" << std::endl;
+					break;
+				}
+
+				SteamNetConnectionInfo_t connectionInfo;
+				m_Interface->GetConnectionInfo(status->m_hConn, &connectionInfo);
+
+				auto &client = m_ConnectedClients[status->m_hConn];
+				client.ID = (ClientID)status->m_hConn;
+				client.ConnectionDesc = connectionInfo.m_szConnectionDescription;
+
+				m_ClientConnectedCallback(client);
+
+				break;
+			}
+
+		case k_ESteamNetworkingConnectionState_Connected:
 			break;
-		}
 
-		SteamNetConnectionInfo_t connectionInfo;
-		m_Interface->GetConnectionInfo(status->m_hConn, &connectionInfo);
-
-		auto &client = m_ConnectedClients[status->m_hConn];
-		client.ID = (ClientID)status->m_hConn;
-		client.ConnectionDesc = connectionInfo.m_szConnectionDescription;
-
-		m_ClientConnectedCallback(client);
-
-		break;
-	}
-
-	case k_ESteamNetworkingConnectionState_Connected:
-		break;
-
-	default:
-		break;
+		default:
+			break;
 	}
 }
 
@@ -144,6 +147,7 @@ void netserver::PollIncomingMessages() {
 	while (m_Running) {
 		ISteamNetworkingMessage *incomingMessage = nullptr;
 		int messageCount = m_Interface->ReceiveMessagesOnPollGroup(m_PollGroup, &incomingMessage, 1);
+
 		if (messageCount == 0)
 			break;
 
@@ -153,6 +157,7 @@ void netserver::PollIncomingMessages() {
 		}
 
 		auto itClient = m_ConnectedClients.find(incomingMessage->m_conn);
+
 		if (itClient == m_ConnectedClients.end()) {
 			std::cout << "ERROR: Received data from unregistered client\n";
 			continue;
@@ -165,7 +170,7 @@ void netserver::PollIncomingMessages() {
 	}
 }
 
-void netserver::SetClientNick(HSteamNetConnection hConn, const char *nick) {
+void netserver::SetClientNick(HSteamNetConnection hConn, const char* nick) {
 	m_Interface->SetConnectionName(hConn, nick);
 }
 
@@ -216,12 +221,14 @@ void netserver::sendgamepos(const ClientID clientID, ClientID clientID2, const g
 	SendBufferToClient(clientID, netbuffer(newpos.data(), newpos.size()), reliable);
 }
 
-void netserver::sendconnections(const ClientID clientID, const std::vector<ClientID> &clientIDs, bool reliable) {
+void netserver::sendconnections(const ClientID clientID, const std::vector<ClientID>& clientIDs, bool reliable) {
 	std::string newpos{"8"};
+
 	for (size_t i{0}; i < clientIDs.size(); i++) {
 		newpos.append("0000");
 		std::memcpy(&newpos.at(1 + (4 * i)), clientIDs.data() + i, 4);
 	}
+
 	SendBufferToClient(clientID, netbuffer(newpos.data(), newpos.size()), reliable);
 }
 

@@ -9,20 +9,24 @@ void vkclip::addchan(const fastgltf::Asset &model, const fastgltf::Animation &an
 void vkclip::setFrame(std::vector<std::shared_ptr<vknode>> nodes, std::vector<bool> additivemask, float time) {
 	for (auto &chann : animchannels) {
 		int tnode = chann->getTargetNode();
+
 		if (additivemask.at(tnode)) {
 			switch (chann->getAnimType()) {
-			case animType::ROTATION:
-				nodes.at(tnode)->setrotation(chann->getRotate(time));
-				break;
-			case animType::SCALE:
-				nodes.at(tnode)->setscale(chann->getScale(time));
-				break;
-			case animType::TRANSLATION:
-				nodes.at(tnode)->settranslation(chann->getTranslate(time));
-				break;
+				case animType::ROTATION:
+					nodes.at(tnode)->setrotation(chann->getRotate(time));
+					break;
+
+				case animType::SCALE:
+					nodes.at(tnode)->setscale(chann->getScale(time));
+					break;
+
+				case animType::TRANSLATION:
+					nodes.at(tnode)->settranslation(chann->getTranslate(time));
+					break;
 			}
 		}
 	}
+
 	for (auto &node0 : nodes) {
 		if (node0) {
 			node0->calculatelocalmat();
@@ -34,20 +38,24 @@ void vkclip::blendFrame(std::vector<std::shared_ptr<vknode>> nodes, std::vector<
                         float blendfactor) {
 	for (auto &chann : animchannels) {
 		int tnode = chann->getTargetNode();
+
 		if (additivemask.at(tnode)) {
 			switch (chann->getAnimType()) {
-			case animType::ROTATION:
-				nodes.at(tnode)->blendrot(chann->getRotate(time), blendfactor);
-				break;
-			case animType::SCALE:
-				nodes.at(tnode)->blendscale(chann->getScale(time), blendfactor);
-				break;
-			case animType::TRANSLATION:
-				nodes.at(tnode)->blendtrans(chann->getTranslate(time), blendfactor);
-				break;
+				case animType::ROTATION:
+					nodes.at(tnode)->blendrot(chann->getRotate(time), blendfactor);
+					break;
+
+				case animType::SCALE:
+					nodes.at(tnode)->blendscale(chann->getScale(time), blendfactor);
+					break;
+
+				case animType::TRANSLATION:
+					nodes.at(tnode)->blendtrans(chann->getTranslate(time), blendfactor);
+					break;
 			}
 		}
 	}
+
 	for (auto &node0 : nodes) {
 		if (node0) {
 			node0->calculatelocalmat();

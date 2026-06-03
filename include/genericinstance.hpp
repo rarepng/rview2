@@ -66,7 +66,7 @@ public:
 	void updateanimation();
 
 	void setinstancesettings(modelsettings &settings);
-	modelsettings &getinstancesettings();
+	modelsettings& getinstancesettings();
 	void checkforupdates();
 
 	glm::vec3 getwpos();
@@ -76,7 +76,7 @@ public:
 	void setinversekindematicsnode(int effectornodenum, int ikchainrootnodenum);
 	void setnumikiterations(int iterations);
 
-	glm::vec3 *getinstpos();
+	glm::vec3* getinstpos();
 
 	glm::mat4 calcstaticmat() {
 		glm::mat4 x = glm::scale(glm::mat4{1.0f}, mmodelsettings.msworldscale);

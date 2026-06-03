@@ -17,14 +17,14 @@ bool vksyncobjects::init(rvkbucket &rdata) {
 	},
 	std::tuple{
 		[&] {
-			return std::ranges::all_of(rdata.semaphorez, [&](auto& sem_row) {
-				return std::ranges::all_of(sem_row, [&](VkSemaphore& sem) {
+			return std::ranges::all_of(rdata.semaphorez, [&](auto & sem_row) {
+				return std::ranges::all_of(sem_row, [&](VkSemaphore & sem) {
 					return vkCreateSemaphore(rdata.vkdevice.device, &semaphoreinfo, nullptr, &sem) == VK_SUCCESS;
 				});
 			});
 		},
 		[&] {
-			return std::ranges::all_of(rdata.fencez, [&](VkFence& fence) {
+			return std::ranges::all_of(rdata.fencez, [&](VkFence & fence) {
 				return vkCreateFence(rdata.vkdevice.device, &fenceinfo, nullptr, &fence) == VK_SUCCESS;
 			});
 		}
@@ -32,12 +32,13 @@ bool vksyncobjects::init(rvkbucket &rdata) {
 	                 );
 }
 void vksyncobjects::cleanup(rvkbucket &rdata) {
-	for(const auto& x:rdata.semaphorez) {
-		for(const auto& y:x) {
+	for (const auto& x : rdata.semaphorez) {
+		for (const auto& y : x) {
 			vkDestroySemaphore(rdata.vkdevice.device, y, nullptr);
 		}
 	}
-	for(const auto& x:rdata.fencez) {
+
+	for (const auto& x : rdata.fencez) {
 		vkDestroyFence(rdata.vkdevice.device, x, nullptr);
 	}
 }

@@ -8,16 +8,18 @@
 #include "vktex.hpp"
 #include <iostream>
 
-bool playoutgeneric::setup(rvkbucket &objs, std::string fname, size_t count, std::string vfile, std::string ffile) {
-		m_modelID = rvkbucket::globalModelCounter.fetch_add(1, std::memory_order_relaxed);
-		static const bool _ = [&] {
+bool playoutgeneric::setup(rvkbucket &objs, std::string_view fname, size_t count, std::string_view vfile, std::string_view ffile) {
+	m_modelID = rvkbucket::globalModelCounter.fetch_add(1, std::memory_order_relaxed);
+	static const bool _ = [&] {
 		if (!createpline(objs, vfile, ffile))
 			return false;
+
 		return true;
 	}();
 
 	if (!loadmodel(objs, fname))
 		return false;
+
 	if (!createinstances(objs, count, false))
 		return false;
 
@@ -25,63 +27,74 @@ bool playoutgeneric::setup(rvkbucket &objs, std::string fname, size_t count, std
 		if (!createssbomat(objs))
 			return false;
 	} else {
-		if(!createssbostatic(objs))
+		if (!createssbostatic(objs))
 			return false;
 	}
 
 	ready = true;
 	return _;
 }
-bool playoutgeneric::loadmodel(rvkbucket &objs, std::string fname) {
+bool playoutgeneric::loadmodel(rvkbucket &objs, std::string_view fname) {
 	mgltf = std::make_shared<genericmodel>();
+
 	if (!mgltf->loadmodel(objs, fname))
 		return false;
+
 	return true;
 }
-size_t playoutgeneric::instcount(){
+size_t playoutgeneric::instcount() {
 	return numinstancess;
 }
 bool playoutgeneric::createinstances(rvkbucket &objs, size_t count, bool rand) {
 	size_t numTriangles{};
+
 	for (size_t i{0}; i < count; ++i) {
 		minstances.emplace_back(std::make_shared<genericinstance>(mgltf, glm::vec3{0.0f, 0.0f, 0.0f}, rand));
 		numTriangles += mgltf->gettricount(0, 0);
 	}
+
 	totaltricount = numTriangles;
 	numinstancess = count;
 
 	if (!minstances.size())
 		return false;
+
 	return true;
 }
 
 bool playoutgeneric::createssbomat(rvkbucket &objs) {
-    size_t size = numinstancess * SDL_clamp(minstances[0]->getjointmatrixsize(), 1, minstances[0]->getjointmatrixsize()) * sizeof(glm::mat4);
-    if (!ssbo::init_bindless(objs, rdjointmatrixssbo, size, m_modelID))
-        return false;
-    return true;
+	size_t size = numinstancess * SDL_clamp(minstances[0]->getjointmatrixsize(), 1, minstances[0]->getjointmatrixsize()) * sizeof(glm::mat4);
+
+	if (!ssbo::init_bindless(objs, rdjointmatrixssbo, size, m_modelID))
+		return false;
+
+	return true;
 }
 
 bool playoutgeneric::createssbostatic(rvkbucket &objs) {
-    size_t size = numinstancess * sizeof(glm::mat4);
-    if (!ssbo::init_bindless(objs, rdjointmatrixssbo, size, m_modelID))
-        return false;
-    return true;
+	size_t size = numinstancess * sizeof(glm::mat4);
+
+	if (!ssbo::init_bindless(objs, rdjointmatrixssbo, size, m_modelID))
+		return false;
+
+	return true;
 }
-bool playoutgeneric::createpline(rvkbucket &objs, std::string vfile, std::string ffile) {
+bool playoutgeneric::createpline(rvkbucket &objs, std::string_view vfile, std::string_view ffile) {
 	if (!pline::init(objs, rvkbucket::globalPipelineLayout, skinnedpline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-	                 std::vector<std::string> {vfile, ffile},objs.schain.image_format,objs.rddepthformat))
+	                 std::vector<std::string_view> {vfile, ffile}, objs.schain.image_format, objs.rddepthformat))
 		return false;
+
 	if (!pline::init(objs, rvkbucket::globalPipelineLayout, skinnedplineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-	                 std::vector<std::string> {vfile, ffile},objs.schain.image_format,objs.rddepthformat))
+	                 std::vector<std::string_view> {vfile, ffile}, objs.schain.image_format, objs.rddepthformat))
 		return false;
-	if(!pline::initcompute(objs,rvkbucket::globalPipelineLayout,rvkbucket::globalcullpline,std::vector<std::string> {"shaders/cx.spv"}))
+
+	if (!pline::initcompute(objs, rvkbucket::globalPipelineLayout, rvkbucket::globalcullpline, std::vector<std::string_view> {"shaders/cx.spv"}))
 		return false;
 	return true;
 }
 
 void playoutgeneric::updateanims() {
-	if(mgltf->skinned)
+	if (mgltf->skinned)
 		for (auto &i : minstances) {
 			i->updateanimation();
 			i->solveik();
@@ -95,13 +108,14 @@ void playoutgeneric::uploadvboebo(rvkbucket &objs, VkCommandBuffer &cbuffer) {
 	}
 }
 
-void playoutgeneric::uploadubossbo(rvkbucket &objs, std::vector<glm::mat4> &cammats,const glm::vec3& campos) {
+void playoutgeneric::uploadubossbo(rvkbucket &objs, std::vector<glm::mat4>& cammats, const glm::vec3& campos) {
 	if (mgltf->skinned) {
-        ssbo::upload(objs, rdjointmatrixssbo, jointmats.data(), jointmats.size());
-    } else {
-        glm::mat4 identity(1.0f);
-        ssbo::upload(objs, rdjointmatrixssbo, &identity, 1);
-    }
+		ssbo::upload(objs, rdjointmatrixssbo, jointmats.data(), jointmats.size());
+	} else {
+		glm::mat4 identity(1.0f);
+		ssbo::upload(objs, rdjointmatrixssbo, &identity, 1);
+	}
+
 	ssbo::upload(objs, rdjointmatrixssbo, jointmats);
 
 }
@@ -119,12 +133,15 @@ void playoutgeneric::updatemats() {
 
 	numdqs = 0;
 	nummats = 0;
-	if(mgltf->skinned) {
+
+	if (mgltf->skinned) {
 
 		for (const auto &i : minstances) {
 			modelsettings &settings = i->getinstancesettings();
+
 			if (!settings.msdrawmodel)
 				continue;
+
 			if (settings.mvertexskinningmode == skinningmode::dualquat) {
 				std::vector<glm::mat2x4> quats = i->getjointdualquats();
 				jointdqs.insert(jointdqs.end(), quats.begin(), quats.end());
@@ -139,8 +156,10 @@ void playoutgeneric::updatemats() {
 		//todo dual quats
 		for (const auto &i : minstances) {
 			modelsettings &settings = i->getinstancesettings();
+
 			if (!settings.msdrawmodel)
 				continue;
+
 			jointmats.push_back(i->calcstaticmat());
 			nummats++;
 		}
@@ -170,10 +189,10 @@ void playoutgeneric::cleanupmodels(rvkbucket &objs) {
 }
 
 void playoutgeneric::draw(rvkbucket &objs, uint32_t indirectoffset) {
-    if (minstances[0]->getinstancesettings().msdrawmodel) {
-        
-        stride = mgltf->skinned ? minstances.at(0)->getjointmatrixsize() : 1;
-        
-        mgltf->drawinstanced(objs, rvkbucket::globalPipelineLayout, skinnedpline, skinnedplineuint, numinstancess, stride, m_modelID, indirectoffset);
-    }
+	if (minstances[0]->getinstancesettings().msdrawmodel) {
+
+		stride = mgltf->skinned ? minstances.at(0)->getjointmatrixsize() : 1;
+
+		mgltf->drawinstanced(objs, rvkbucket::globalPipelineLayout, skinnedpline, skinnedplineuint, numinstancess, stride, m_modelID, indirectoffset);
+	}
 }

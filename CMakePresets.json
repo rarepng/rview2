@@ -68,6 +68,72 @@
       }
     },
     {
+      "name": "realclang",
+      "inherits": "base",
+      "displayName": "clang++",
+      "description": "clang :(",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "realclangREL",
+      "inherits": "base",
+      "displayName": "clang++rel",
+      "description": "clang release",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "realclangRELDBGINFO",
+      "inherits": "base",
+      "displayName": "clang++reldbginfo",
+      "description": "clang release with debug symbols",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "realclangDIST",
+      "inherits": "base",
+      "displayName": "clang++dist",
+      "description": "clang distribution",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_BUILD_TYPE": "Distribution"
+      }
+    },
+    {
+      "name": "realclang512",
+      "inherits": "base",
+      "displayName": "clang++512",
+      "description": "clang AVX512",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_BUILD_TYPE": "BleedingEdge"
+      }
+    },
+    {
+      "name": "realclangsanitize",
+      "inherits": "base",
+      "displayName": "clang++san",
+      "description": "clang sanitize",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_BUILD_TYPE": "sanitize"
+      }
+    },
+    {
       "name": "mermaid",
       "inherits": "base",
       "displayName": "mermaid",
@@ -108,6 +174,26 @@
     {
       "name": "clanged",
       "configurePreset": "clanged"
+    },
+    {
+      "name": "realclang",
+      "configurePreset": "realclang"
+    },
+    {
+      "name": "realclangREL",
+      "configurePreset": "realclangREL"
+    },
+    {
+      "name": "realclangRELDBGINFO",
+      "configurePreset": "realclangRELDBGINFO"
+    },
+    {
+      "name": "realclang512",
+      "configurePreset": "realclang512"
+    },
+    {
+      "name": "realclangsanitize",
+      "configurePreset": "realclangsanitize"
     },
     {
       "name": "mermaid",

@@ -18,20 +18,26 @@
 #include <tracy/Tracy.hpp>
 
 // all this &$#! for a stupid ugly diagram
-#ifndef __cpp_lib_move_only_function
-namespace std {
-    template<typename Signature>
-    struct move_only_function;
+// #ifndef __cpp_lib_move_only_function
+// #ifdef __clang__
+// #pragma clang diagnostic push
+// #pragma clang diagnostic ignored "-Wcert-dcl58-cpp"
+// #endif
+// namespace std {
+//     template<typename Signature>
+//     struct move_only_function;
 
-    template<typename Ret, typename... Args>
-    struct move_only_function<Ret(Args...)> {
-        move_only_function() = default;
-        template<typename F> move_only_function(F&&) {}
-        Ret operator()(Args...) const { return Ret(); }
-    };
-}
-#endif
-
+//     template<typename Ret, typename... Args>
+//     struct move_only_function<Ret(Args...)> {
+//         move_only_function() = default;
+//         template<typename F> move_only_function(F&&) {}
+//         Ret operator()(Args...) const { return Ret(); }
+//     };
+// }
+// #ifdef __clang__
+// #pragma clang diagnostic pop
+// #endif
+// #endif
 struct rctx {
 
 	//function pointer (hopefully)
@@ -81,7 +87,8 @@ struct StagingBelt {
 		auto x = vmaCreateBuffer(allocator, &bci, &aci, &buffer, &allocation, &info);
 		mappedData = static_cast<uint8_t*>(info.pMappedData);
 		currentOffset = 0;
-		if(x == VK_SUCCESS)return true;
+
+		if (x == VK_SUCCESS)return true;
 		else return false;
 	}
 
@@ -93,10 +100,12 @@ struct StagingBelt {
 	// rethink this
 	VkDeviceSize reserve(VkDeviceSize size) {
 		VkDeviceSize alignedOffset = (currentOffset + 15) & ~15;
+
 		if (alignedOffset + size > capacity) {
 			std::cout << "OOM Staging Buffer!\n";
 			return 0;
 		}
+
 		currentOffset = alignedOffset + size;
 		return alignedOffset;
 	}
@@ -110,26 +119,26 @@ struct alignas(16) MaterialData {
 	uint32_t normalIdx;
 	uint32_t ormIdx;
 	uint32_t emissiveIdx;
-	
+
 	uint32_t transmissionIdx;
 	uint32_t sheenIdx;
 	uint32_t clearcoatIdx;
 	uint32_t thicknessIdx;
-	
+
 	glm::vec4 baseColorFactor;
 	glm::vec3 emissiveFactor;
 	float normalScale;
-	
+
 	float roughnessFactor;
 	float metallicFactor;
 	float transmissionFactor;
 	float ior;
-	
+
 	glm::vec3 sheenColorFactor;
 	float sheenRoughnessFactor;
 	float clearcoatFactor;
 	float clearcoatRoughnessFactor;
-	
+
 	float thicknessFactor;
 	float envMapMaxLod;
 };
@@ -148,6 +157,13 @@ struct GpuBuffer {
 	VkDeviceAddress address = 0;
 	VkDeviceSize size = 0;
 	uint32_t bindless_idx = 0;
+};
+
+struct cam {
+	glm::vec3 mforward{0.0f};
+	glm::vec3 mright{0.0f};
+	glm::vec3 mup{0.0f};
+	glm::vec3 wup{0.0f, 1.0f, 0.0f};
 };
 
 struct alignas(16) GPUInstanceData {
@@ -175,28 +191,28 @@ struct vkpushconstants {
 	uint32_t frameIndex;
 
 	uint32_t posIdx;
-    uint32_t normIdx;
-    uint32_t uvIdx;
-    uint32_t jointIdx;
-    uint32_t weightIdx;
+	uint32_t normIdx;
+	uint32_t uvIdx;
+	uint32_t jointIdx;
+	uint32_t weightIdx;
 	// coloridx
 	uint32_t jointFmt;
-    uint32_t weightFmt;
+	uint32_t weightFmt;
 };
 
 struct GlobalMaterialHeap {
-		VkBuffer buffer = VK_NULL_HANDLE;
-		VmaAllocation alloc = VK_NULL_HANDLE;
-		VkDescriptorSet dset = VK_NULL_HANDLE;
-		VkDescriptorPool dedicated_pool = VK_NULL_HANDLE;
-		
-		std::mutex mtx;
-		std::queue<uint32_t> free_slots;
-		void* mapped_data = nullptr;
-	};
+	VkBuffer buffer = VK_NULL_HANDLE;
+	VmaAllocation alloc = VK_NULL_HANDLE;
+	VkDescriptorSet dset = VK_NULL_HANDLE;
+	VkDescriptorPool dedicated_pool = VK_NULL_HANDLE;
+
+	std::mutex mtx;
+	std::queue<uint32_t> free_slots;
+	void* mapped_data = nullptr;
+};
 struct GlobalBufferHeap {
-    std::mutex mtx;
-    std::queue<uint32_t> free_slots;
+	std::mutex mtx;
+	std::queue<uint32_t> free_slots;
 };
 
 // starting segmentation
@@ -221,13 +237,13 @@ struct alignas(64) rdev {
 	DeletionQueue cleanupQ{};
 	StagingBelt sbelt{};
 
-	std::array<VkDescriptorPool,1> dpools = {VK_NULL_HANDLE};
-	std::array<VkSampler,4> samplerz{};
+	std::array<VkDescriptorPool, 1> dpools = {VK_NULL_HANDLE};
+	std::array<VkSampler, 4> samplerz{};
 };
 
 struct alignas(64) rwind {
-	SDL_Window *wind = nullptr;
-	const SDL_DisplayMode *rdmode = nullptr;
+	SDL_Window* wind = nullptr;
+	const SDL_DisplayMode* rdmode = nullptr;
 	SDL_Event e{};
 	VkSurfaceKHR surface{};
 	vkb::Swapchain schain{};
@@ -243,7 +259,7 @@ struct alignas(64) rwind {
 	VkImageView rddepthimageview = VK_NULL_HANDLE;
 	VmaAllocation rddepthimagealloc = VK_NULL_HANDLE;
 	VkFormat rddepthformat{};
-	
+
 	VkImage rddepthimageref = VK_NULL_HANDLE;
 	VkImageView rddepthimageviewref = VK_NULL_HANDLE;
 	VmaAllocation rddepthimageallocref = VK_NULL_HANDLE;
@@ -251,29 +267,29 @@ struct alignas(64) rwind {
 };
 
 struct alignas(64) rframe {
-	std::array<VkCommandPool,3> cpools_graphics = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-	std::array<VkCommandPool,3> cpools_compute = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-	std::array<VkCommandPool,3> cpools_transfer = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-	std::array<VkCommandPool,3> cpools_present = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::array<VkCommandPool, 3> cpools_graphics = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::array<VkCommandPool, 3> cpools_compute = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::array<VkCommandPool, 3> cpools_transfer = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::array<VkCommandPool, 3> cpools_present = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
 
-	std::array<std::array<VkCommandBuffer,3>,3> cbuffers_graphics = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
-	std::array<std::array<VkCommandBuffer,3>,3> cbuffers_compute = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
-	std::array<std::array<VkCommandBuffer,3>,3> cbuffers_transfer = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
+	std::array<std::array<VkCommandBuffer, 3>, 3> cbuffers_graphics = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
+	std::array<std::array<VkCommandBuffer, 3>, 3> cbuffers_compute = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
+	std::array<std::array<VkCommandBuffer, 3>, 3> cbuffers_transfer = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
 
-	std::array<std::array<VkSemaphore, 3>, 3> semaphorez {{
-			{{ VK_NULL_HANDLE,VK_NULL_HANDLE, VK_NULL_HANDLE }},
-			{{ VK_NULL_HANDLE,VK_NULL_HANDLE, VK_NULL_HANDLE }},
-			{{ VK_NULL_HANDLE,VK_NULL_HANDLE, VK_NULL_HANDLE }}
+	std::array<std::array<VkSemaphore, 8>, 3> semaphorez {{
+			{{ VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE }},
+			{{ VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE }},
+			{{ VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE }}
 		}};
-	std::array<VkFence,3> fencez{VK_NULL_HANDLE,VK_NULL_HANDLE,VK_NULL_HANDLE};
+	std::array<VkFence, 3> fencez{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
 
-	std::array<DeletionQueue,3> framedeletionQ{};
+	std::array<DeletionQueue, 3> framedeletionQ{};
 };
 
 // idk
 // static_assert(sizeof(vkpushconstants) == 128, "Struct size mismatch!");
 struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
-	
+
 	inline static constexpr uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!! different devices might not serve 3 swapchain images
 	inline static uint32_t currentFrame{0};
 	inline static uint32_t hdrmiplod{0};
@@ -290,15 +306,15 @@ struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
 	inline static std::atomic<uint32_t> globalTextureCounter{4};
 	inline static std::atomic<uint32_t> globalModelCounter{0};
 
-	
+
 	inline static ssbodata globalCameraUBO{};
 
 	inline static VkPipelineLayout globalPipelineLayout = VK_NULL_HANDLE;
 
 
-	std::array<texdata,1> exrtex{};
+	std::array<texdata, 1> exrtex{};
 
-	
+
 	struct DummyTexture {
 		VkImage image = VK_NULL_HANDLE;
 		VkDeviceMemory memory = VK_NULL_HANDLE;
@@ -311,24 +327,24 @@ struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
 		DummyTexture black;
 	} defaults;
 
-	
+
 	inline static GlobalMaterialHeap global_materials{};
 	static constexpr size_t MAX_GLOBAL_MATERIALS = 10000;
 
 	std::array<GpuBuffer, rvkbucket::MAX_FRAMES_IN_FLIGHT> globalInstanceBuffers{};
 	std::array<GpuBuffer, rvkbucket::MAX_FRAMES_IN_FLIGHT> globalIndirectBuffers{};
 
-	
+
 	std::vector<GPUInstanceData> frameInstances;
 
-	
+
 	inline static VkPipeline globalcullpline = VK_NULL_HANDLE;
 
 
-    glm::vec3 camwpos{0.0f, 6.0f, 12.0f};
-    float cam_pad0; // explicit padding
-    glm::vec3 raymarchpos{0.0f};
-    float cam_pad1; // me too
+	glm::vec3 camwpos{0.0f, 6.0f, 12.0f};
+	float cam_pad0; // explicit padding
+	glm::vec3 raymarchpos{0.0f};
+	float cam_pad1; // me too
 
 	float fov = 1.0472f;
 	float azimuth{15.0f};
@@ -338,10 +354,12 @@ struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
 	int camright{0};
 	int camup{0};
 
+	cam mvkcam{};
+
 	unsigned int tricount{0};
 	unsigned int gltftricount{0};
 
-	
+
 	double tickdiff{0.0f};
 	float frametime{0.0f};
 	float updateanimtime{0.0f};
@@ -372,7 +390,7 @@ struct vkgltfobjs {
 	std::vector<texdata> texs{};
 };
 namespace rpool {
-static inline bool create(const std::span<VkDescriptorPoolSize>& pools,const VkDevice& dev,VkDescriptorPool* dpool) {
+static inline bool create(const std::span<VkDescriptorPoolSize>& pools, const VkDevice& dev, VkDescriptorPool* dpool) {
 	VkDescriptorPoolCreateInfo descriptorPool{};
 	descriptorPool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	descriptorPool.poolSizeCount = pools.size();
@@ -381,18 +399,20 @@ static inline bool create(const std::span<VkDescriptorPoolSize>& pools,const VkD
 
 	return vkCreateDescriptorPool(dev, &descriptorPool, nullptr, dpool) == VK_SUCCESS;
 }
-static inline void destroy(const VkDevice& dev,VkDescriptorPool dpool) {
+static inline void destroy(const VkDevice& dev, VkDescriptorPool dpool) {
 	vkDestroyDescriptorPool(dev, dpool, nullptr);
 }
 };
 inline void safe_cleanup(rvkbucket& objs, GpuBuffer& bufferData) {
 	VkBuffer buf = bufferData.buffer;
 	VmaAllocation alloc = bufferData.alloc;
+
 	if (buf != VK_NULL_HANDLE) {
-		objs.deletionQ.push_function([=, &objs]() {
+		objs.deletionQ.push_function([ =, &objs]() {
 			vmaDestroyBuffer(objs.alloc, buf, alloc);
 		});
 	}
+
 	bufferData.buffer = VK_NULL_HANDLE;
 	bufferData.alloc = nullptr;
 }

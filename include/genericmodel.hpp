@@ -12,6 +12,7 @@
 #include <vulkan/vulkan.h>
 #include "anim/flatskelly.hpp"
 #include "anim/baker2.hpp"
+#include <unordered_map>
 
 struct gltfnodedata {
 	std::shared_ptr<vknode> rootnode;
@@ -24,23 +25,27 @@ struct DODAnimationClip {
 	float sampleRate{60.0f};
 	uint32_t frameCount{0};
 	uint32_t nodeCount{0};
-	
-	std::vector<glm::mat4> localTransforms; 
+
+	std::vector<glm::mat4> localTransforms;
 
 	inline const glm::mat4* GetFrame(float time, bool loop) const {
 		if (duration <= 0.0f || frameCount == 0) return nullptr;
+
 		float t = loop ? std::fmod(time, duration) : std::clamp(time, 0.0f, duration);
-		if (t < 0.0f) t += duration; 
-		
+
+		if (t < 0.0f) t += duration;
+
 		uint32_t frameIdx = static_cast<uint32_t>(t * sampleRate);
+
 		if (frameIdx >= frameCount) frameIdx = frameCount - 1;
+
 		return &localTransforms[frameIdx * nodeCount];
 	}
 };
 
 class genericmodel {
 public:
-	bool loadmodel(rvkbucket &objs, std::string fname);
+	bool loadmodel(rvkbucket &objs, std::string_view fname);
 	void draw(rvkbucket &objs);
 	void drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout, VkPipeline &vkpline, VkPipeline &vkplineuint,
 	                   int instancecount, int stride, uint32_t modelID, uint32_t indirectoffset);
@@ -61,9 +66,9 @@ public:
 	bool skinned{true};
 	FlatSkeleton flatskelly{};
 	std::vector<DODAnimationClip> bakedClips;
-	
+
 	//temp
-	inline VkBuffer get_ebo_buffer(size_t i,size_t j){
+	inline VkBuffer get_ebo_buffer(size_t i, size_t j) {
 		return mgltfobjs.ebos[i][j].buffer;
 	}
 
@@ -81,16 +86,16 @@ private:
 	void getnodes(std::shared_ptr<vknode> treenode);
 	void getnodedata(std::shared_ptr<vknode> treenode);
 
-	std::vector<std::shared_ptr<vknode>> getnodelist(std::vector<std::shared_ptr<vknode>> &nlist, int nodenum);
+	std::vector<std::shared_ptr<vknode>> getnodelist(std::vector<std::shared_ptr<vknode>>& nlist, int nodenum);
 
 	int mjnodecount{0};
 
 	std::vector<uint32_t> mskinJointOffsets{};
 	std::vector<uint32_t> mmeshToSkinOffset{};
-	
+
 	void extractmaterials(rvkbucket &objs);
 
-	std::vector<uint32_t> m_global_material_indices; 
+	std::vector<uint32_t> m_global_material_indices;
 
 
 	fastgltf::Asset mmodel2;

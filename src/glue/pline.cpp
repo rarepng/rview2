@@ -7,9 +7,10 @@
 #include <glm/glm.hpp>
 
 bool pline::init(rvkbucket &mvkobjs, VkPipelineLayout &playout, VkPipeline &pipeline, VkPrimitiveTopology topology,
-                 std::vector<std::string> sfiles, VkFormat cformat, VkFormat dformat) {
+                 std::vector<std::string_view> sfiles, VkFormat cformat, VkFormat dformat) {
 	if (sfiles.size() < 2)
 		return false;
+
 	std::vector<VkShaderModule> shaders;
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfo;
 	shaders.reserve(sfiles.size());
@@ -23,6 +24,7 @@ bool pline::init(rvkbucket &mvkobjs, VkPipelineLayout &playout, VkPipeline &pipe
 		shaderStageInfo[i].module = shaders[i];
 		shaderStageInfo[i].pName = "main";
 	}
+
 	shaderStageInfo.front().stage = VK_SHADER_STAGE_VERTEX_BIT;
 	shaderStageInfo.back().stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 
@@ -108,9 +110,10 @@ bool pline::init(rvkbucket &mvkobjs, VkPipelineLayout &playout, VkPipeline &pipe
 
 	return true;
 }
-bool pline::initcompute(rvkbucket &mvkobjs, VkPipelineLayout &playout, VkPipeline &pipeline, std::vector<std::string> sfiles){
+bool pline::initcompute(rvkbucket &mvkobjs, VkPipelineLayout &playout, VkPipeline &pipeline, std::vector<std::string_view> sfiles) {
 	if (sfiles.size() < 1)
 		return false;
+
 	std::vector<VkShaderModule> shaders;
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfo;
 	std::vector<VkComputePipelineCreateInfo> computePipelineCreateInfo;
@@ -135,16 +138,16 @@ bool pline::initcompute(rvkbucket &mvkobjs, VkPipelineLayout &playout, VkPipelin
 	}
 
 	if (vkCreateComputePipelines(
-			mvkobjs.vkdevice.device, 
-			VK_NULL_HANDLE, 
-			shaderStageInfo.size(),
-			computePipelineCreateInfo.data(),
-			nullptr,
-			&pipeline) != VK_SUCCESS) {
-				return false;
+	            mvkobjs.vkdevice.device,
+	            VK_NULL_HANDLE,
+	            shaderStageInfo.size(),
+	            computePipelineCreateInfo.data(),
+	            nullptr,
+	            &pipeline) != VK_SUCCESS) {
+		return false;
 	}
 
-	for(size_t i{0};i<shaders.size();i++)
+	for (size_t i{0}; i < shaders.size(); i++)
 		vkDestroyShaderModule(mvkobjs.vkdevice.device, shaders[i], nullptr);
 
 	return true;

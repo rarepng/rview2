@@ -5,9 +5,11 @@
 
 namespace commandpool {
 
-static inline bool createsametype(rvkbucket &rdata,const std::span<VkCommandPool> &vkpools,const vkb::QueueType& qtype) {
+static inline bool createsametype(rvkbucket &rdata, const std::span<VkCommandPool>& vkpools, const vkb::QueueType& qtype) {
 	const auto q_idx_opt = rdata.vkdevice.get_queue_index(qtype);
+
 	if (!q_idx_opt.has_value()) [[unlikely]] return false;
+
 	const VkDevice device = rdata.vkdevice.device;
 	const VkCommandPoolCreateInfo pool_info = {
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -24,6 +26,7 @@ static inline bool createsametype(rvkbucket &rdata,const std::span<VkCommandPool
 			vkDestroyCommandPool(device, pool, nullptr);
 		});
 	}
+
 	return true;
 }
 };

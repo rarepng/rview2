@@ -25,6 +25,20 @@ set(submodules_path
         ${PROJECT_SOURCE_DIR}/sub
 )
 
+find_program(ASTYLE_EXECUTABLE astyle)
+if(ASTYLE_EXECUTABLE)
+    file(GLOB_RECURSE ALL_SOURCE_FILES 
+        "src/*.cpp" 
+        "include/*.hpp" 
+        "mods/*.cxxm"
+    )
+    add_custom_target(format
+        COMMAND ${ASTYLE_EXECUTABLE} --options=${CMAKE_SOURCE_DIR}/.astylerc ${ALL_SOURCE_FILES}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "astyling..."
+    )
+endif()
+
 if(UNIX)
 set(SHELL_CMD bash)
 set(SEP ":")
@@ -234,10 +248,12 @@ CPMAddPackage(
 set(CMAKE_SKIP_INSTALL_RULES ON)
 add_subdirectory(${submodules_path}/fastgltf EXCLUDE_FROM_ALL)
 add_subdirectory(${submodules_path}/vk_boot EXCLUDE_FROM_ALL)
-# rip
-target_compile_options(vk-bootstrap PRIVATE -mno-avx512f -mno-avx2 -mno-avx)
 add_subdirectory(${submodules_path}/vma EXCLUDE_FROM_ALL)
 set(CMAKE_SKIP_INSTALL_RULES OFF)
+
+# rip
+target_compile_options(vk-bootstrap PRIVATE -mno-avx512f -mno-avx2 -mno-avx)
+target_compile_definitions(simdjson PUBLIC SIMDJSON_IMPLEMENTATION_ICELAKE=0 SIMDJSON_IMPLEMENTATION_HASWELL=0)
 
 
 file(GLOB_RECURSE PROJECT_HEADERS "include/*.hpp")
@@ -253,7 +269,7 @@ set(OTHER_SOURCES
     ${imgui_SOURCE_DIR}/imgui_demo.cpp
 )
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-if(CMAKE_BUILD_TYPE STREQUAL "clanged")
+if(CMAKE_BUILD_TYPE STREQUAL "x") # clangd
 
     add_library(rview2 ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_HEADERS})
 
@@ -446,6 +462,8 @@ target_include_directories(rview2
         "${PROJECT_SOURCE_DIR}/cmake_more_cache/gns/include/GameNetworkingSockets"
         "${stb_SOURCE_DIR}"
         "${imgui_SOURCE_DIR}"
+        "${simdjson_SOURCE_DIR}/include"
+        "${tracy_SOURCE_DIR}/public"
         "${submodules_path}/vma/include"
         "${submodules_path}/jolt"
         "${submodules_path}/meshoptimizer/src"
@@ -547,16 +565,19 @@ add_custom_target(shaders_tar ALL DEPENDS ${ALL_SHADER_SPV_FILES})
 add_dependencies(rview2 shaders_tar)
 
 
-file(GLOB_RECURSE RESOURCE_FILES "${PROJECT_SOURCE_DIR}/resources/*")
 add_custom_command(
-    OUTPUT "${PROJECT_BINARY_DIR}/resources.stamp"
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/resources"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/resources" "${PROJECT_BINARY_DIR}/resources"
-    COMMAND ${CMAKE_COMMAND} -E touch "${PROJECT_BINARY_DIR}/resources.stamp"
-    DEPENDS ${RESOURCE_FILES}
+    TARGET rview2 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${PROJECT_SOURCE_DIR}/boot.json"
+        "$<TARGET_FILE_DIR:rview2>/boot.json"
+        
+    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+        "${PROJECT_SOURCE_DIR}/resources"
+        "$<TARGET_FILE_DIR:rview2>/resources"
+        
+    COMMENT "copying resources and configs"
 )
-add_custom_target(resources_tar ALL DEPENDS "${PROJECT_BINARY_DIR}/resources.stamp")
-add_dependencies(rview2 resources_tar)
+
 
 
 
@@ -568,6 +589,7 @@ set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINA
 install(TARGETS rview2 RUNTIME DESTINATION . CONFIGURATIONS Release Distribution BleedingEdge MinSizeRel)
 install(FILES ${ALL_SHADER_SPV_FILES} DESTINATION shaders)
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/resources/" DESTINATION resources)
+install(FILES "${PROJECT_SOURCE_DIR}/boot.json" DESTINATION .)
 
 if(WIN32)
     get_filename_component(RVIEW2_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)

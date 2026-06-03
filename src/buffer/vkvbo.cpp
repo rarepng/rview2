@@ -27,8 +27,7 @@ VkBufferMemoryBarrier2 vkvbo::record_upload(rvkbucket &mvkobjs,
         const fastgltf::Accessor &acc,
         void* mappedStagingStart,
         VkBuffer stagingBufferHandle,
-        VkDeviceSize stagingOffset)
-{
+        VkDeviceSize stagingOffset) {
 	size_t elementSize = fastgltf::getElementByteSize(acc.type, acc.componentType);
 	size_t copySize = acc.count * elementSize;
 
@@ -37,8 +36,8 @@ VkBufferMemoryBarrier2 vkvbo::record_upload(rvkbucket &mvkobjs,
 	}
 
 	// todo: add stupid byteview
-	std::visit(fastgltf::visitor{[](auto &arg) {},
-	[&](const fastgltf::sources::Array &vector) {
+	std::visit(fastgltf::visitor{[](auto & arg) {},
+	[&](const fastgltf::sources::Array & vector) {
 		const std::byte* src = vector.bytes.data() + bufferview.byteOffset + acc.byteOffset;
 
 		std::byte* dst = static_cast<std::byte*>(mappedStagingStart) + stagingOffset;

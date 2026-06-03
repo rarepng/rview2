@@ -6,16 +6,19 @@
 #include <memory>
 #include <string>
 #include <vulkan/vulkan.h>
+#include <cstdlib>
+#include "dbg/trace.hpp"
 
 // idk mayble ill drop windows completely instead of having to do this lol
 __attribute__((force_align_arg_pointer))
-int main(int c, char **v) {
+int main(int c, char** v) {
 
-	rvkbucket mvk{};
-	tracy::SetThreadName("main");
-	if (vkwind::init("RViewer",mvk)) {
-		vkwind::frameupdate(mvk);
-		vkwind::cleanup(mvk);
+	std::unique_ptr<rvkbucket> mvk = std::make_unique<rvkbucket>();
+	vkdebug::set_thread_name("main");
+
+	if (vkwind::init("RViewer", *mvk)) {
+		vkwind::frameupdate(*mvk);
+		vkwind::cleanup(*mvk);
 	} else {
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Critical Failure",
 		                         "Could not find an appropriate device.", nullptr);
@@ -24,5 +27,5 @@ int main(int c, char **v) {
 		return -1;
 	}
 
-	return 0;
+	std::_Exit(0);
 }

@@ -50,7 +50,7 @@ public:
 	ConnectionStatus GetConnectionStatus() const {
 		return m_ConnectionStatus;
 	}
-	const std::string &GetConnectionDebugMessage() const {
+	const std::string& GetConnectionDebugMessage() const {
 		return m_ConnectionDebugMessage;
 	}
 
@@ -59,8 +59,8 @@ private:
 	void Shutdown();
 
 private:
-	static void ConnectionStatusChangedCallback(SteamNetConnectionStatusChangedCallback_t *info);
-	void OnConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t *info);
+	static void ConnectionStatusChangedCallback(SteamNetConnectionStatusChangedCallback_t* info);
+	void OnConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t* info);
 
 	void PollIncomingMessages();
 	void PollConnectionStateChanges();
@@ -79,6 +79,6 @@ private:
 	std::string m_ServerAddress;
 	bool m_Running = false;
 
-	ISteamNetworkingSockets *m_Interface = nullptr;
+	ISteamNetworkingSockets* m_Interface = nullptr;
 	HSteamNetConnection m_Connection = 0;
 };

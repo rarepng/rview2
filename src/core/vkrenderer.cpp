@@ -81,16 +81,16 @@ void vkrenderer::immediate_submit(rvkbucket& mvkobjs,
 	vkFreeCommandBuffers(mvkobjs.vkdevice.device, mvkobjs.cpools_graphics.at(0),
 	                     1, &cbuffer);
 }
-std::function<void(rvkbucket::DummyTexture&,rvkbucket& mvkobjs)> destroyDummy =
-[](rvkbucket::DummyTexture& tex,rvkbucket& mvkobjs) {
+constexpr auto destroyDummy =
+[](rvkbucket::DummyTexture& tex, rvkbucket& mvkobjs) {
 	vkDestroyImageView(mvkobjs.vkdevice.device, tex.view, nullptr);
 	vkDestroyImage(mvkobjs.vkdevice.device, tex.image, nullptr);
 	vkFreeMemory(mvkobjs.vkdevice.device, tex.memory, nullptr);
 };
 // temp
-void UpdateAllInstances(std::vector<genericinstance *> &instances) {
+void UpdateAllInstances(std::vector<genericinstance*>& instances) {
 	std::ranges::for_each(instances,
-	[](genericinstance *inst) {
+	[](genericinstance * inst) {
 		inst->checkforupdates();
 	});
 }
@@ -137,11 +137,12 @@ bool init_dummy_textures(rvkbucket &objs, VkCommandPool &cmdPool) {
 				return i;
 			}
 		}
+
 		return 0;
 	};
 	auto create_buffer = [&](VkDeviceSize size, VkBufferUsageFlags usage,
-	                         VkMemoryPropertyFlags properties, VkBuffer &buffer,
-	VkDeviceMemory &bufferMemory) {
+	                         VkMemoryPropertyFlags properties, VkBuffer & buffer,
+	VkDeviceMemory & bufferMemory) {
 		VkBufferCreateInfo bufferInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
 		bufferInfo.size = size;
 		bufferInfo.usage = usage;
@@ -235,12 +236,12 @@ bool init_dummy_textures(rvkbucket &objs, VkCommandPool &cmdPool) {
 		              stagingBuf, stagingMem);
 
 		// Map & Copy Data
-		void *data;
+		void* data;
 		vkMapMemory(objs.vkdevice.device, stagingMem, 0, imageSize, 0, &data);
 		memcpy(data, &pixelData, (size_t)imageSize);
 		vkUnmapMemory(objs.vkdevice.device, stagingMem);
 
-		vkrenderer::immediate_submit(objs,[&](VkCommandBuffer cmd) {
+		vkrenderer::immediate_submit(objs, [&](VkCommandBuffer cmd) {
 			record_barrier(
 			    cmd, tex.image, VK_IMAGE_LAYOUT_UNDEFINED,
 			    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -314,8 +315,10 @@ float map2(glm::vec3 x) {
 
 bool vkrenderer::init(rvkbucket& mvkobjs) {
 	std::srand(static_cast<int>(time(NULL)));
+
 	if (!mvkobjs.wind)
 		return false;
+
 	// if (!std::apply(
 	// [](auto &&...f) {
 	// return (... && f());
@@ -338,29 +341,40 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 	// 	return false;
 
 	if (!initvma(mvkobjs)) return false;
-    if (!getqueue(mvkobjs)) return false;
-    if (!createswapchain(mvkobjs)) return false;
-    if (!createdepthbuffer(mvkobjs)) return false;
-    if (!createcommandpool(mvkobjs)) return false;
-    if (!createcommandbuffer(mvkobjs)) return false;
-    if (!createsyncobjects(mvkobjs)) return false;
-    if (!initcpuQs(mvkobjs)) return false;
 
-    if (!playout::init_bindless(mvkobjs)) return false;
+	if (!getqueue(mvkobjs)) return false;
+
+	if (!createswapchain(mvkobjs)) return false;
+
+	if (!createdepthbuffer(mvkobjs)) return false;
+
+	if (!createcommandpool(mvkobjs)) return false;
+
+	if (!createcommandbuffer(mvkobjs)) return false;
+
+	if (!createsyncobjects(mvkobjs)) return false;
+
+	if (!initcpuQs(mvkobjs)) return false;
+
+	if (!playout::init_bindless(mvkobjs)) return false;
+
 	if (!init_global_samplers(mvkobjs)) return false;
-	if (!init_dummy_textures(mvkobjs, mvkobjs.cpools_graphics.at(0))) return false;
-	if (!rview::rvk::tex::load_env_map(mvkobjs, mvkobjs.exrtex.at(0))) return false;
-    
-    vkDeviceWaitIdle(mvkobjs.vkdevice.device); 
 
-    if (!ubo::init_global(mvkobjs)) return false;
-    if (!initglobalmats(mvkobjs)) return false;
+	if (!init_dummy_textures(mvkobjs, mvkobjs.cpools_graphics.at(0))) return false;
+
+	if (!rview::rvk::tex::load_env_map(mvkobjs, mvkobjs.exrtex.at(0))) return false;
+
+	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
+
+	if (!ubo::init_global(mvkobjs)) return false;
+
+	if (!initglobalmats(mvkobjs)) return false;
 
 	if (!initglobalinstances(mvkobjs))return false;
 
 	if (!initglobalindirect(mvkobjs))return false;
 
-    vkDeviceWaitIdle(mvkobjs.vkdevice.device);
+	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
 
 
 
@@ -382,37 +396,49 @@ bool vkrenderer::initcpuQs(rvkbucket& mvkobjs) {
 	return mvkobjs.sbelt.init(mvkobjs.alloc, 256 * 1024 * 1024);
 }
 bool vkrenderer::initscene(rvkbucket& mvkobjs) {
-	mplayer.reserve(playerfname.size());
-	mplayer.resize(playerfname.size());
+	simdjson::ondemand::parser p;
+	simdjson::padded_string j;
 
-	selectiondata.instancesettings.reserve(playercount.size());
-	selectiondata.instancesettings.resize(playercount.size());
-
-	size_t idx{0};
-
-	for (auto &i : mplayer) {
-		selectiondata.instancesettings.at(idx).reserve(playercount[idx]);
-		selectiondata.instancesettings.at(idx).resize(playercount[idx]);
-		i = std::make_shared<playoutgeneric>();
-		if (!i->setup(mvkobjs, playerfname[idx], playercount[idx],
-		              playershaders[idx][0], playershaders[idx][1]))
-			return false;
-		for (size_t j{0}; j < playercount[idx]; j++)
-			selectiondata.instancesettings.at(idx).at(j) =
-			                                  &i->getinst(j)->getinstancesettings();
-		idx++;
-	}
-	playerfname.clear();
-	playerfname.shrink_to_fit();
-	playercount.clear();
-	playercount.shrink_to_fit();
-
-	if (!particle::createeverything(mvkobjs))
+	if (auto error = simdjson::padded_string::load("boot.json").get(j); error) {
+		std::cerr << "X_X " << error << std::endl;
 		return false;
+	}
+
+	simdjson::ondemand::document d;
+
+	if (auto error = p.iterate(j).get(d); error) return false;
+
+	simdjson::ondemand::array models;
+
+	if (d["models"].get(models)) return false;
+
+	for (simdjson::ondemand::object x : models) {
+		std::string_view f = x["file"].get_string();
+		uint64_t c = x["count"].get_uint64();
+
+		simdjson::ondemand::object shaders = x["shaders"].get_object();
+		std::string_view vx = shaders["vx"].get_string();
+		std::string_view px = shaders["px"].get_string();
+
+		mplayer.emplace_back(std::make_shared<playoutgeneric>());
+		selectiondata.instancesettings.emplace_back();
+		selectiondata.instancesettings.back().resize(c);
+
+		if (!mplayer.back()->setup(mvkobjs, f, c, vx, px)) {
+			return false;
+		}
+
+		for (size_t i{0}; i < c; i++) {
+			selectiondata.instancesettings.back().at(i) = &mplayer.back()->getinst(i)->getinstancesettings();
+		}
+
+	}
+
+	if (!particle::createeverything(mvkobjs)) return false;
 
 	return true;
 }
-bool vkrenderer::initglobalmats(rvkbucket &mvkobjs){
+bool vkrenderer::initglobalmats(rvkbucket &mvkobjs) {
 	size_t bufferSize = rvkbucket::MAX_GLOBAL_MATERIALS * sizeof(MaterialData);
 	VkBufferCreateInfo binfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
 	binfo.size = bufferSize;
@@ -423,11 +449,13 @@ bool vkrenderer::initglobalmats(rvkbucket &mvkobjs){
 	vmaallocinfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
 	VmaAllocationInfo allocResult;
-	if (vmaCreateBuffer(mvkobjs.alloc, &binfo, &vmaallocinfo, 
-		&rvkbucket::global_materials.buffer, 
-		&rvkbucket::global_materials.alloc, &allocResult) != VK_SUCCESS) {
+
+	if (vmaCreateBuffer(mvkobjs.alloc, &binfo, &vmaallocinfo,
+	                    &rvkbucket::global_materials.buffer,
+	                    &rvkbucket::global_materials.alloc, &allocResult) != VK_SUCCESS) {
 		return false;
 	}
+
 	rvkbucket::global_materials.mapped_data = allocResult.pMappedData;
 
 	for (uint32_t i = 0; i < rvkbucket::MAX_GLOBAL_MATERIALS; ++i) {
@@ -446,8 +474,9 @@ bool vkrenderer::initglobalmats(rvkbucket &mvkobjs){
 	vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &write, 0, nullptr);
 	return true;
 }
-bool vkrenderer::initglobalinstances(rvkbucket& mvkobjs){
+bool vkrenderer::initglobalinstances(rvkbucket& mvkobjs) {
 	mvkobjs.frameInstances.reserve(SceneData::MAX_ENTITIES);
+
 	for (uint32_t i = 0; i < rvkbucket::MAX_FRAMES_IN_FLIGHT; ++i) {
 		VkBufferCreateInfo ibinfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
 		ibinfo.size = sizeof(GPUInstanceData) * SceneData::MAX_ENTITIES;
@@ -474,9 +503,10 @@ bool vkrenderer::initglobalinstances(rvkbucket& mvkobjs){
 
 		vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &iwrite, 0, nullptr);
 	}
+
 	return true;
 }
-bool vkrenderer::initglobalindirect(rvkbucket& mvkobjs){
+bool vkrenderer::initglobalindirect(rvkbucket& mvkobjs) {
 	for (uint32_t i = 0; i < rvkbucket::MAX_FRAMES_IN_FLIGHT; ++i) {
 		VkBufferCreateInfo ibinfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
 		ibinfo.size = sizeof(VkDrawIndexedIndirectCommand) * SceneData::MAX_ENTITIES;
@@ -503,6 +533,7 @@ bool vkrenderer::initglobalindirect(rvkbucket& mvkobjs){
 
 		vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &iwrite, 0, nullptr);
 	}
+
 	return true;
 }
 bool vkrenderer::initvma(rvkbucket& mvkobjs) {
@@ -515,11 +546,13 @@ bool vkrenderer::initvma(rvkbucket& mvkobjs) {
 	vma_functions.vkGetInstanceProcAddr = mvkobjs.inst.fp_vkGetInstanceProcAddr;
 	vma_functions.vkGetDeviceProcAddr = mvkobjs.inst.fp_vkGetDeviceProcAddr;
 	allocinfo.pVulkanFunctions = &vma_functions;
+
 	//dbg only require VK_EXT_MEMORY_BUDGET_EXTENSION_NAME
 	// allocinfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
 	if (vmaCreateAllocator(&allocinfo, &mvkobjs.alloc) != VK_SUCCESS) {
 		return false;
 	}
+
 	return true;
 }
 bool vkrenderer::getqueue(rvkbucket& mvkobjs) {
@@ -596,9 +629,11 @@ bool vkrenderer::createswapchain(rvkbucket& mvkobjs) {
 	    swapchainbuild.set_old_swapchain(mvkobjs.schain)
 	    .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
 	    .build();
+
 	if (!swapchainbuilret) {
 		return false;
 	}
+
 	vkb::destroy_swapchain(mvkobjs.schain);
 	mvkobjs.schain = swapchainbuilret.value();
 	mvkobjs.schainimgs = mvkobjs.schain.get_images().value();
@@ -623,19 +658,21 @@ bool vkrenderer::recreateswapchain(rvkbucket& mvkobjs) {
 	if (!createswapchain(mvkobjs)) {
 		return false;
 	}
+
 	if (!createdepthbuffer(mvkobjs)) {
 		return false;
 	}
+
 	return true;
 }
 bool vkrenderer::createcommandpool(rvkbucket& mvkobjs) {
-	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_graphics,vkb::QueueType::graphics)) [[unlikely]] {
+	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_graphics, vkb::QueueType::graphics)) [[unlikely]] {
 		return false;
 	}
-	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_compute,vkb::QueueType::compute)) [[unlikely]] {
+	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_compute, vkb::QueueType::compute)) [[unlikely]] {
 		return false;
 	}
-	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_transfer,vkb::QueueType::transfer)) [[unlikely]] {
+	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_transfer, vkb::QueueType::transfer)) [[unlikely]] {
 		return false;
 	}
 	return true;
@@ -646,37 +683,44 @@ bool vkrenderer::createcommandbuffer(rvkbucket& mvkobjs) {
 			return false;
 		}
 	}
+
 	for (auto [cpool, cbuffers] : std::views::zip(mvkobjs.cpools_compute, mvkobjs.cbuffers_compute)) {
 		if (!commandbuffer::create(mvkobjs, cpool, cbuffers)) [[unlikely]] {
 			return false;
 		}
 	}
+
 	for (auto [cpool, cbuffers] : std::views::zip(mvkobjs.cpools_transfer, mvkobjs.cbuffers_transfer)) {
 		if (!commandbuffer::create(mvkobjs, cpool, cbuffers)) [[unlikely]] {
 			return false;
 		}
 	}
+
 	return true;
 }
 bool vkrenderer::createsyncobjects(rvkbucket& mvkobjs) {
 	if (!vksyncobjects::init(mvkobjs))
 		return false;
+
 	return true;
 }
 bool vkrenderer::initui(rvkbucket& mvkobjs) {
 	if (!ui::init(mvkobjs))
 		return false;
+
 	return true;
 }
 void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
 
-	particle::destroyeveryting(mvkobjs);
-
 	ui::cleanup(mvkobjs);
 
+	particle::destroyeveryting(mvkobjs);
+
+
 	vksyncobjects::cleanup(mvkobjs);
+
 	for (auto &x : mvkobjs.dpools)
 		rpool::destroy(mvkobjs.vkdevice.device, x);
 
@@ -688,6 +732,14 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 
 	for (const auto &i : mplayer)
 		i->cleanupmodels(mvkobjs);
+
+	mplayer.clear();
+	selectiondata.instancesettings.clear();
+
+	// must
+	std::shared_ptr<playoutgeneric> temp;
+
+	while (pending_models.pop(temp)) {}
 
 	//temp
 	mvkobjs.cleanupQ.flush();
@@ -717,9 +769,11 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	vkDestroyDescriptorPool(mvkobjs.vkdevice.device, rvkbucket::globalBindlessPool, nullptr);
 	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, rvkbucket::globalBindlessLayout, nullptr);
 	vmaDestroyBuffer(mvkobjs.alloc, rvkbucket::globalCameraUBO.buffer, rvkbucket::globalCameraUBO.alloc);
-	for(auto&& x: mvkobjs.globalInstanceBuffers)
+
+	for (auto&& x : mvkobjs.globalInstanceBuffers)
 		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
-	for(auto&& x: mvkobjs.globalIndirectBuffers)
+
+	for (auto&& x : mvkobjs.globalIndirectBuffers)
 		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
 
 	//dbg only block
@@ -734,10 +788,10 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 
 	vmaDestroyAllocator(mvkobjs.alloc);
 
-	destroyDummy(mvkobjs.defaults.purple,mvkobjs);
-	destroyDummy(mvkobjs.defaults.white,mvkobjs);
-	destroyDummy(mvkobjs.defaults.normal,mvkobjs);
-	destroyDummy(mvkobjs.defaults.black,mvkobjs);
+	destroyDummy(mvkobjs.defaults.purple, mvkobjs);
+	destroyDummy(mvkobjs.defaults.white, mvkobjs);
+	destroyDummy(mvkobjs.defaults.normal, mvkobjs);
+	destroyDummy(mvkobjs.defaults.black, mvkobjs);
 
 	for (const auto &i : mvkobjs.samplerz)
 		vkDestroySampler(mvkobjs.vkdevice, i, nullptr);
@@ -750,9 +804,10 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	vkb::destroy_instance(mvkobjs.inst);
 }
 
-void vkrenderer::setsize(rvkbucket& mvkobjs,unsigned int w, unsigned int h) {
+void vkrenderer::setsize(rvkbucket& mvkobjs, unsigned int w, unsigned int h) {
 	mvkobjs.width = w;
 	mvkobjs.height = h;
+
 	if (!w || !h)
 		persviewproj.at(1) = glm::perspective(
 		                         glm::radians(static_cast<float>(mvkobjs.schain.extent.width)),
@@ -766,15 +821,16 @@ void vkrenderer::setsize(rvkbucket& mvkobjs,unsigned int w, unsigned int h) {
 		                         0.002f, 2000.0f);
 }
 
-bool vkrenderer::uploadfordraw(rvkbucket& mvkobjs,VkCommandBuffer cbuffer) {
+bool vkrenderer::uploadfordraw(rvkbucket& mvkobjs, VkCommandBuffer cbuffer) {
 	manimupdatetimer.start();
 
 	for (const auto &i : mplayer)
 		i->uploadvboebo(mvkobjs, cbuffer);
+
 	return true;
 }
 
-bool vkrenderer::uploadfordraw(rvkbucket& mvkobjs,std::shared_ptr<playoutgeneric> &x) {
+bool vkrenderer::uploadfordraw(rvkbucket& mvkobjs, std::shared_ptr<playoutgeneric>& x) {
 	ZoneScoped;
 	manimupdatetimer.start();
 
@@ -786,92 +842,107 @@ bool vkrenderer::uploadfordraw(rvkbucket& mvkobjs,std::shared_ptr<playoutgeneric
 	return true;
 }
 
-void vkrenderer::sdlevent(rvkbucket& mvkobjs,const SDL_Event& e) {
+void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 	switch (e.type) {
-	case SDL_EVENT_KEY_DOWN:
-		[[likely]]
-	case SDL_EVENT_KEY_UP:
-		[[likely]]
-		{
-			bool is_down = (e.type == SDL_EVENT_KEY_DOWN);
-			switch (e.key.key) {
-			case SDLK_W:
-				input_state[Key_W] = is_down;
-				break;
-			case SDLK_S:
-				input_state[Key_S] = is_down;
-				break;
-			case SDLK_A:
-				input_state[Key_A] = is_down;
-				break;
-			case SDLK_D:
-				input_state[Key_D] = is_down;
-				break;
-			case SDLK_Q:
-				input_state[Key_Q] = is_down;
-				break;
-			case SDLK_E:
-				input_state[Key_E] = is_down;
-				break;
+		case SDL_EVENT_KEY_DOWN:
+			[[likely]]
+		case SDL_EVENT_KEY_UP:
+			[[likely]] {
+				bool is_down = (e.type == SDL_EVENT_KEY_DOWN);
 
-			case SDLK_F4:
-				if (is_down) {
-					mvkobjs.fullscreen = !mvkobjs.fullscreen;
-					SDL_SetWindowFullscreen(mvkobjs.wind, mvkobjs.fullscreen);
+				switch (e.key.key) {
+					case SDLK_W:
+						input_state[Key_W] = is_down;
+						break;
+
+					case SDLK_S:
+						input_state[Key_S] = is_down;
+						break;
+
+					case SDLK_A:
+						input_state[Key_A] = is_down;
+						break;
+
+					case SDLK_D:
+						input_state[Key_D] = is_down;
+						break;
+
+					case SDLK_Q:
+						input_state[Key_Q] = is_down;
+						break;
+
+					case SDLK_E:
+						input_state[Key_E] = is_down;
+						break;
+
+					case SDLK_F4:
+						if (is_down) {
+							mvkobjs.fullscreen = !mvkobjs.fullscreen;
+							SDL_SetWindowFullscreen(mvkobjs.wind, mvkobjs.fullscreen);
+						}
+
+						break;
+
+					case SDLK_ESCAPE:
+						if (is_down) mvkobjs.mshutdown = true;
+
+						break;
 				}
-				break;
-			case SDLK_ESCAPE:
-				if (is_down) mvkobjs.mshutdown = true;
+
 				break;
 			}
-			break;
-		}
 
-	case SDL_EVENT_MOUSE_BUTTON_DOWN:
-		if (e.button.button == SDL_BUTTON_RIGHT) input_state[Key_RightClick] = true;
-		break;
-	case SDL_EVENT_MOUSE_BUTTON_UP:
-		if (e.button.button == SDL_BUTTON_RIGHT) input_state[Key_RightClick] = false;
-		break;
-	case SDL_EVENT_WINDOW_MINIMIZED:
-		[[unlikely]]
-		{
-			SDL_Event min_event;
-			while (SDL_WaitEvent(&min_event)) {
-				if (min_event.type == SDL_EVENT_WINDOW_RESTORED) break;
-				if (min_event.type == SDL_EVENT_QUIT) {
-					mvkobjs.mshutdown = true;
-					break;
+		case SDL_EVENT_MOUSE_BUTTON_DOWN:
+			if (e.button.button == SDL_BUTTON_RIGHT) input_state[Key_RightClick] = true;
+
+			break;
+
+		case SDL_EVENT_MOUSE_BUTTON_UP:
+			if (e.button.button == SDL_BUTTON_RIGHT) input_state[Key_RightClick] = false;
+
+			break;
+
+		case SDL_EVENT_WINDOW_MINIMIZED:
+			[[unlikely]] {
+				SDL_Event min_event;
+
+				while (SDL_WaitEvent(&min_event)) {
+					if (min_event.type == SDL_EVENT_WINDOW_RESTORED) break;
+
+					if (min_event.type == SDL_EVENT_QUIT) {
+						mvkobjs.mshutdown = true;
+						break;
+					}
 				}
+
+				break;
 			}
+
+		case SDL_EVENT_DROP_FILE:
+			[[unlikely]] {
+				std::string fname = e.drop.data;
+
+				g_jobs.enqueue([&mvkobjs, fname]() {
+					auto newp = std::make_shared<playoutgeneric>();
+
+					//hardcoded shaders
+					bool success = newp->setup(mvkobjs, fname.c_str(), 1,
+					                           "shaders/vx.spv", "shaders/px.spv");
+
+					if (success) {
+						if (!pending_models.push(std::move(newp))) {
+							std::cout << "Engine queue full! Dropped model: " << fname << "\n";
+						}
+					} else {
+						std::cout << "model not added, probably wrong format. \n"
+						          << "only binary gltf files (.glb) are accepted. Provided was: "
+						          << fname << std::endl;
+					}
+				});
+				break;
+			}
+		case SDL_EVENT_DROP_COMPLETE:
 			break;
-		}
-
-	case SDL_EVENT_DROP_FILE:
-    [[unlikely]]
-    {
-        std::string fname = e.drop.data;
-        
-        g_jobs.enqueue([&mvkobjs, fname]() {
-            auto newp = std::make_shared<playoutgeneric>();
-
-            bool success = newp->setup(mvkobjs, fname.c_str(), 1,
-                                       playershaders[0][0], playershaders[0][1]);
-
-            if (success) {
-                if (!pending_models.push(std::move(newp))) {
-                    std::cout << "Engine queue full! Dropped model: " << fname << "\n";
-                }
-            } else {
-                std::cout << "model not added, probably wrong format. \n"
-                          << "only binary gltf files (.glb) are accepted. Provided was: " 
-                          << fname << std::endl;
-            }
-        });
-        break;
-    }
-	case SDL_EVENT_DROP_COMPLETE:
-		break;
 	}
 }
 void vkrenderer::moveplayer() {
@@ -903,12 +974,12 @@ void vkrenderer::movecam(rvkbucket& mvkobjs) {
 
 			float ignoreX, ignoreY;
 			SDL_GetRelativeMouseState(&ignoreX, &ignoreY);
-		}
-		else {
+		} else {
 			SDL_SetWindowRelativeMouseMode(win, false);
 
-			SDL_WarpMouseInWindow(win, static_cast<float>(mousex), static_cast<float>(mousey));
+			SDL_WarpMouseInWindow(win, static_cast<float>(vkrenderer::mousex), static_cast<float>(vkrenderer::mousey));
 		}
+
 		wasLooking = isRightClick;
 	}
 
@@ -918,12 +989,12 @@ void vkrenderer::movecam(rvkbucket& mvkobjs) {
 		mvkobjs.azimuth   += rx * 0.1f;
 		mvkobjs.elevation -= ry * 0.1f;
 		mvkobjs.elevation = std::clamp(mvkobjs.elevation, -89.0f, 89.0f);
+	} else {
+		vkrenderer::mousex = static_cast<int>(mx);
+		vkrenderer::mousey = static_cast<int>(my);
 	}
-	else {
-		mousex = static_cast<int>(mx);
-		mousey = static_cast<int>(my);
-	}
-	persviewproj.at(0) = mcam.getview(mvkobjs);
+
+	persviewproj.at(0) = vkcam::getview(mvkobjs);
 
 	if (!io->WantCaptureMouse && isLeftClick && !isRightClick) {
 		glm::vec4 viewport(0.0f, 0.0f, (float)mvkobjs.width, (float)mvkobjs.height);
@@ -937,6 +1008,7 @@ void vkrenderer::movecam(rvkbucket& mvkobjs) {
 
 		if (glm::abs(d.y) > 0.01f) {
 			float t = (0.0f - nearPt.y) / d.y;
+
 			if (t >= 0.0f) {
 				glm::vec3 h = nearPt + t * d;
 				h.y = navmesh(h.x, h.z);
@@ -946,6 +1018,7 @@ void vkrenderer::movecam(rvkbucket& mvkobjs) {
 				                   ->getinstancesettings();
 				s.msworldpos = h;
 				playerlookto = glm::normalize(h - s.msworldpos);
+
 				if (glm::abs(h.x - s.msworldpos.x) > 2.1f || glm::abs(h.z - s.msworldpos.z) > 2.1f) {
 					s.msworldrot.y = glm::degrees(glm::atan(playerlookto.x, playerlookto.z));
 				}
@@ -971,6 +1044,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	                    UINT64_MAX) != VK_SUCCESS) {
 		return false;
 	}
+
 	if (vkResetFences(mvkobjs.vkdevice.device, 1,
 	                  &mvkobjs.fencez.at(rvkbucket::currentFrame)) != VK_SUCCESS)
 		return false;
@@ -987,7 +1061,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 	VkCommandBuffer c = mvkobjs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame);
 
-	
+
 
 	if (vkResetCommandBuffer(c, 0) != VK_SUCCESS)
 		return false;
@@ -1004,7 +1078,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 
 	double tick = static_cast<double>(SDL_GetTicks()) / 1000.0;
-	mvkobjs.tickdiff = tick - mlasttick;
+	mvkobjs.tickdiff = tick - vkrenderer::mlasttick;
 	mvkobjs.frametime = mframetimer.stop();
 	mframetimer.start();
 
@@ -1012,6 +1086,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	VkResult res = vkAcquireNextImageKHR(
 	                   mvkobjs.vkdevice.device, mvkobjs.schain.swapchain, UINT64_MAX,
 	                   mvkobjs.semaphorez[0][rvkbucket::currentFrame], VK_NULL_HANDLE, &imgidx);
+
 	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
 		return recreateswapchain(mvkobjs);
 	} else {
@@ -1026,30 +1101,33 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 
 	SDL_Event e;
+
 	while (SDL_PollEvent(&e)) {
 		ImGui_ImplSDL3_ProcessEvent(&e);
-		sdlevent(mvkobjs,e);
+		sdlevent(mvkobjs, e);
 	}
 
 	movecam(mvkobjs);
 
-	
+
 	// isdfk
 	std::shared_ptr<playoutgeneric> newly_loaded_model;
 
 	while (pending_models.pop(newly_loaded_model)) {
 		uploadfordraw(mvkobjs, newly_loaded_model);
 		mplayer.push_back(newly_loaded_model);
-		
+
 		selectiondata.instancesettings.emplace_back();
 		selectiondata.instancesettings.back().emplace_back(
-			&mplayer.back()->getinst(0)->getinstancesettings()
-		);
+		                                  &mplayer.back()->getinst(0)->getinstancesettings()
+		                              );
 	}
+
 	// joint anims
 	// if (dummytick / 2) {
 	for (const auto &i : mplayer)
 		i->updateanims();
+
 	// 	dummytick = 0;
 	// }
 
@@ -1064,48 +1142,49 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 
 	// for (const auto &player : mplayer) {
-    //     uint32_t modelID = player->get_modelID();
-    //     bool isSkinned = player->is_skinned();
-    //     uint32_t stride = isSkinned ? player->getinst(0)->getjointmatrixsize() : 1;
+	//     uint32_t modelID = player->get_modelID();
+	//     bool isSkinned = player->is_skinned();
+	//     uint32_t stride = isSkinned ? player->getinst(0)->getjointmatrixsize() : 1;
 
-    //     for (size_t i = 0; i < player->instcount(); ++i) {
-    //         auto inst = player->getinst(i);
-    //         if (!inst->getinstancesettings().msdrawmodel) continue;
+	//     for (size_t i = 0; i < player->instcount(); ++i) {
+	//         auto inst = player->getinst(i);
+	//         if (!inst->getinstancesettings().msdrawmodel) continue;
 
-    //         GPUInstanceData idata{};
-    //         idata.worldTransform = inst->calcstaticmat();
-    //         idata.modelID = modelID;
-    //         idata.jointOffset = i * stride;
-    //         idata.isSkinned = isSkinned ? 1 : 0;
-    //         idata.indexCount = player->getindexcount(); 
-    //         idata.firstIndex = player->getfirstindex();
-    //         idata.vertexOffset = player->getvertexoffset();
-    //         idata.padding = 0;
+	//         GPUInstanceData idata{};
+	//         idata.worldTransform = inst->calcstaticmat();
+	//         idata.modelID = modelID;
+	//         idata.jointOffset = i * stride;
+	//         idata.isSkinned = isSkinned ? 1 : 0;
+	//         idata.indexCount = player->getindexcount();
+	//         idata.firstIndex = player->getfirstindex();
+	//         idata.vertexOffset = player->getvertexoffset();
+	//         idata.padding = 0;
 
-    //         mvkobjs.frameInstances.push_back(idata);
-    //     }
-    // }
+	//         mvkobjs.frameInstances.push_back(idata);
+	//     }
+	// }
 
 	// if (!mvkobjs.frameInstances.empty()) {
-    //     void* data;
-    //     vmaMapMemory(mvkobjs.alloc, mvkobjs.globalInstanceBuffers[rvkbucket::currentFrame].alloc, &data);
-    //     std::memcpy(data, mvkobjs.frameInstances.data(), mvkobjs.frameInstances.size() * sizeof(GPUInstanceData));
-    //     vmaUnmapMemory(mvkobjs.alloc, mvkobjs.globalInstanceBuffers[rvkbucket::currentFrame].alloc);
-    // }
+	//     void* data;
+	//     vmaMapMemory(mvkobjs.alloc, mvkobjs.globalInstanceBuffers[rvkbucket::currentFrame].alloc, &data);
+	//     std::memcpy(data, mvkobjs.frameInstances.data(), mvkobjs.frameInstances.size() * sizeof(GPUInstanceData));
+	//     vmaUnmapMemory(mvkobjs.alloc, mvkobjs.globalInstanceBuffers[rvkbucket::currentFrame].alloc);
+	// }
 
 
 	// joint check
 	// if (dummytick % 2) {
 	for (const auto &i : mplayer)
-		for(size_t j{0};j<i->instcount();j++)
+		for (size_t j{0}; j < i->instcount(); j++)
 			i->getinst(j)->checkforupdates();
+
 	// }
 
 	// dummytick++;
 
 	moveplayer();
 
-	
+
 	muploadubossbotimer.start();
 
 	{
@@ -1126,27 +1205,27 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 
 
-	currentgraph.add_pass([&]{
+	currentgraph.add_pass([&] {
 		particle::record_compute(c);
 	});
 
 
 
 	// currentgraph.add_pass([&mvkobjs, c] {
-    //     uint32_t num_instances = mvkobjs.frameInstances.size();
-    //     if (num_instances == 0) return;
-    //     vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_COMPUTE, rvkbucket::globalcullpline);
-    //     vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_COMPUTE,
-    //                             rvkbucket::globalPipelineLayout, 0, 1,
-    //                             &rvkbucket::globalBindlessSet, 0, nullptr);
+	//     uint32_t num_instances = mvkobjs.frameInstances.size();
+	//     if (num_instances == 0) return;
+	//     vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_COMPUTE, rvkbucket::globalcullpline);
+	//     vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_COMPUTE,
+	//                             rvkbucket::globalPipelineLayout, 0, 1,
+	//                             &rvkbucket::globalBindlessSet, 0, nullptr);
 
-    //     vkpushconstants push{};
-    //     push.frameIndex = rvkbucket::currentFrame;
-    //     vkCmdPushConstants(c, rvkbucket::globalPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(vkpushconstants), &push);
+	//     vkpushconstants push{};
+	//     push.frameIndex = rvkbucket::currentFrame;
+	//     vkCmdPushConstants(c, rvkbucket::globalPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(vkpushconstants), &push);
 
-    //     uint32_t groupCount = (static_cast<uint32_t>(num_instances) + 63) / 64;
-    //     vkCmdDispatch(c, groupCount, 1, 1);
-    // });
+	//     uint32_t groupCount = (static_cast<uint32_t>(num_instances) + 63) / 64;
+	//     vkCmdDispatch(c, groupCount, 1, 1);
+	// });
 
 
 	// let that sync in
@@ -1203,7 +1282,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		vkCmdPipelineBarrier2(c, &dep);
 	});
 
-	currentgraph.add_pass([&mvkobjs, c, imgidx]{
+	currentgraph.add_pass([&mvkobjs, c, imgidx] {
 
 
 		VkViewport viewport{};
@@ -1218,7 +1297,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		scissor.offset = {0, 0};
 		scissor.extent = mvkobjs.schain.extent;
 
-		
+
 		VkRenderingAttachmentInfo color_attach{};
 		color_attach.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 		color_attach.imageView = mvkobjs.schainimgviews.at(imgidx);
@@ -1243,51 +1322,52 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		render_info.pDepthAttachment = &depth_attach;
 
 
-		
+
 
 		vkCmdBeginRendering(c, &render_info);
 
 
 
 		vkCmdSetViewport(c, 0, 1,
-						&viewport);
+		                 &viewport);
 		vkCmdSetScissor(c, 0, 1,
-						&scissor);
+		                &scissor);
 
 
 		vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_GRAPHICS, particle::gpline);
 
 		vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_GRAPHICS, rvkbucket::globalPipelineLayout, 0, 1, &rvkbucket::globalBindlessSet, 0, nullptr);
-        
-
-        vkpushconstants push{};
-        push.posIdx = particle::bindless_idx;
-        vkCmdPushConstants(c, rvkbucket::globalPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(vkpushconstants), &push);
-
-        vkCmdDraw(c, 8192, 1, 0, 0);
 
 
+		vkpushconstants push{};
+		push.posIdx = particle::bindless_idx;
+		vkCmdPushConstants(c, rvkbucket::globalPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(vkpushconstants), &push);
 
-		
+		vkCmdDraw(c, 8192, 1, 0, 0);
+
+
+
+
 		// if (!mvkobjs.frameInstances.empty()) {
-            uint32_t indirect_offset = 0;
-            for (const auto &player : mplayer) {
-                if (player->instcount() > 0) {
-                    player->draw(mvkobjs, indirect_offset);
-                    indirect_offset += player->instcount();
-                }
-            }
-        // }
+		uint32_t indirect_offset = 0;
 
-        ui::createdbgframe(mvkobjs, selectiondata);
-        ui::render(mvkobjs, c);
+		for (const auto &player : mplayer) {
+			if (player->instcount() > 0) {
+				player->draw(mvkobjs, indirect_offset);
+				indirect_offset += player->instcount();
+			}
+		}
+		// }
 
-        vkCmdEndRendering(c);
+		ui::createdbgframe(mvkobjs, selectiondata);
+		ui::render(mvkobjs, c);
+
+		vkCmdEndRendering(c);
 
 	});
 
-	
-	currentgraph.add_pass([&mvkobjs,c,imgidx]{
+
+	currentgraph.add_pass([&mvkobjs, c, imgidx] {
 
 		VkImageMemoryBarrier2 barrier{};
 		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -1313,10 +1393,10 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 	});
 
-	
+
 	currentgraph.execute();
 
-	
+
 
 	if (vkEndCommandBuffer(c) != VK_SUCCESS)
 		return false;
@@ -1326,7 +1406,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	// for (const auto &player : mplayer) {
 	// 	uint32_t modelID = player->get_modelID();
 	// 	bool isSkinned = player->is_skinned();
-		
+
 	// 	uint32_t stride = isSkinned ? player->getinst(0)->getjointmatrixsize() : 1;
 
 	// 	for (size_t i = 0; i < player->instcount(); ++i) {
@@ -1338,7 +1418,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	// 		idata.modelID = modelID;
 	// 		idata.jointOffset = i * stride;
 	// 		idata.isSkinned = isSkinned ? 1 : 0;
-	// 		idata.indexCount = player->getindexcount(); 
+	// 		idata.indexCount = player->getindexcount();
 	// 		idata.firstIndex = player->getfirstindex();
 	// 		idata.vertexOffset = player->getvertexoffset();
 	// 		idata.padding = 0;
@@ -1365,8 +1445,8 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	submitinfo.pWaitDstStageMask = waitstage.data();
 	std::array<VkSemaphore, 1> waitsemas{
 		mvkobjs.semaphorez.at(0).at(rvkbucket::currentFrame)
-		                //   ,mvkobjs.semaphorez.at(2).at(rvkbucket::currentFrame)
-						};
+		                  //   ,mvkobjs.semaphorez.at(2).at(rvkbucket::currentFrame)
+	};
 	submitinfo.waitSemaphoreCount = waitsemas.size();
 	submitinfo.pWaitSemaphores = waitsemas.data();
 
@@ -1376,18 +1456,19 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	submitinfo.commandBufferCount = 1;
 	submitinfo.pCommandBuffers = &c;
 
-		vkResetFences(mvkobjs.vkdevice.device, 1, &mvkobjs.fencez.at(rvkbucket::currentFrame));
+	vkResetFences(mvkobjs.vkdevice.device, 1, &mvkobjs.fencez.at(rvkbucket::currentFrame));
 
 	{
 		std::lock_guard<std::shared_mutex> lock(*mvkobjs.mtx2);
 		auto res  = vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo,
-		                  mvkobjs.fencez.at(rvkbucket::currentFrame));
-						//   vkQueueWaitIdle(mvkobjs.graphicsQ);
-						  if(res != VK_SUCCESS){
-							std::cout << "QUEUE ERROR : " << res << std::endl; 
-							return false;
-						  }
-						  
+		                          mvkobjs.fencez.at(rvkbucket::currentFrame));
+
+		//   vkQueueWaitIdle(mvkobjs.graphicsQ);
+		if (res != VK_SUCCESS) {
+			std::cout << "QUEUE ERROR : " << res << std::endl;
+			return false;
+		}
+
 	}
 
 	VkPresentInfoKHR presentinfo{};
@@ -1412,7 +1493,8 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 			return false;
 		}
 	}
-	mlasttick = tick;
+
+	vkrenderer::mlasttick = tick;
 	rvkbucket::currentFrame =
 	    (rvkbucket::currentFrame + 1) % rvkbucket::MAX_FRAMES_IN_FLIGHT;
 

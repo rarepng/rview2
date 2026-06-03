@@ -43,17 +43,19 @@ BatchResult load_batch(
 	if (model.images.empty()) return {0, true};
 
 	out_textures.clear();
+
 	out_textures.resize(model.images.size());
 
 	uint32_t graphicsQIndex = rdata.vkdevice.get_queue_index(vkb::QueueType::graphics).value();
-	
+
 	VkCommandPoolCreateInfo poolInfo = {
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
 		.queueFamilyIndex = graphicsQIndex
 	};
-	
+
 	VkCommandPool threadLocalPool;
+
 	if (vkCreateCommandPool(rdata.vkdevice.device, &poolInfo, nullptr, &threadLocalPool) != VK_SUCCESS) {
 		return {0, false};
 	}
@@ -66,6 +68,7 @@ BatchResult load_batch(
 	};
 
 	VkCommandBuffer cmd;
+
 	if (vkAllocateCommandBuffers(rdata.vkdevice.device, &allocInfo, &cmd) != VK_SUCCESS) {
 		vkDestroyCommandPool(rdata.vkdevice.device, threadLocalPool, nullptr);
 		return {0, false};
@@ -97,18 +100,18 @@ BatchResult load_batch(
 
 		std::visit(fastgltf::visitor{
 			[](auto&) {},
-			[&](fastgltf::sources::BufferView& view) {
+			[&](fastgltf::sources::BufferView & view) {
 				auto& bv = model.bufferViews[view.bufferViewIndex];
 				auto& buf = model.buffers[bv.bufferIndex];
 				std::visit(fastgltf::visitor{
 					[](auto&) {},
-					[&](fastgltf::sources::Array& vec) {
+					[&](fastgltf::sources::Array & vec) {
 						auto* data_ptr = reinterpret_cast<const stbi_uc*>(vec.bytes.data() + bv.byteOffset);
 						pixels = stbi_load_from_memory(data_ptr, static_cast<int>(bv.byteLength), &w, &h, &c, 4);
 					}
 				}, buf.data);
 			},
-			[&](fastgltf::sources::Array& vec) {
+			[&](fastgltf::sources::Array & vec) {
 				auto* data_ptr = reinterpret_cast<const stbi_uc*>(vec.bytes.data());
 				pixels = stbi_load_from_memory(data_ptr, static_cast<int>(vec.bytes.size()), &w, &h, &c, 4);
 			}
@@ -117,6 +120,7 @@ BatchResult load_batch(
 		//todo:reconsider this, maybe the whole module
 		if (!pixels) {
 			if (on_error) on_error("Failed decode index " + std::to_string(i));
+
 			all_good = false;
 			continue;
 		}
@@ -205,6 +209,7 @@ BatchResult load_batch(
 	vkDestroyCommandPool(rdata.vkdevice.device, threadLocalPool, nullptr);
 
 	for (auto& t : trash_bin) vmaDestroyBuffer(rdata.alloc, t.b, t.a);
+
 	return BatchResult{ (uint32_t)model.images.size(), all_good };
 }
 
@@ -212,31 +217,31 @@ bool update_descriptor_set(rvkbucket& rdata, std::vector<texdata>& textures) {
 
 	if (textures.empty()) return true;
 
-    std::vector<VkDescriptorImageInfo> infos(textures.size());
-    std::vector<VkWriteDescriptorSet> writes(textures.size());
+	std::vector<VkDescriptorImageInfo> infos(textures.size());
+	std::vector<VkWriteDescriptorSet> writes(textures.size());
 
-    for(size_t i = 0; i < textures.size(); ++i) {
-        // 1. Claim a unique index in the global 10,000 element array securely
-        textures[i].bindless_idx = rvkbucket::globalTextureCounter.fetch_add(1, std::memory_order_relaxed);
+	for (size_t i = 0; i < textures.size(); ++i) {
+		// 1. Claim a unique index in the global 10,000 element array securely
+		textures[i].bindless_idx = rvkbucket::globalTextureCounter.fetch_add(1, std::memory_order_relaxed);
 
-        // 2. Setup Image Info
-        infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        infos[i].imageView = textures[i].imgview ? textures[i].imgview : rdata.defaults.purple.view;
-        infos[i].sampler = textures[i].imgsampler ? textures[i].imgsampler : rdata.samplerz[0];
+		// 2. Setup Image Info
+		infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		infos[i].imageView = textures[i].imgview ? textures[i].imgview : rdata.defaults.purple.view;
+		infos[i].sampler = textures[i].imgsampler ? textures[i].imgsampler : rdata.samplerz[0];
 
-        // 3. Setup Write Descriptor targeting Set 0, Binding 0
-        writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[i].dstSet = rvkbucket::globalBindlessSet;
-        writes[i].dstBinding = 0;
-        writes[i].dstArrayElement = textures[i].bindless_idx;
-        writes[i].descriptorCount = 1;
-        writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        writes[i].pImageInfo = &infos[i];
-    }
+		// 3. Setup Write Descriptor targeting Set 0, Binding 0
+		writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writes[i].dstSet = rvkbucket::globalBindlessSet;
+		writes[i].dstBinding = 0;
+		writes[i].dstArrayElement = textures[i].bindless_idx;
+		writes[i].descriptorCount = 1;
+		writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		writes[i].pImageInfo = &infos[i];
+	}
 
-    // 4. Update the global set concurrently
-    vkUpdateDescriptorSets(rdata.vkdevice.device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
-    return true;
+	// 4. Update the global set concurrently
+	vkUpdateDescriptorSets(rdata.vkdevice.device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+	return true;
 
 	// VkDevice device = rdata.vkdevice.device;
 
@@ -358,11 +363,12 @@ bool update_descriptor_set(rvkbucket& rdata, std::vector<texdata>& textures) {
 bool load_env_map(
     rvkbucket& rdata,
     texdata& out_env_map
-	// ,VkDescriptorSet& target_set,
+    // ,VkDescriptorSet& target_set,
     // VkDescriptorSetLayout& target_lay
 ) {
 
 	int w, h, channels;
+	//hardcoded
 	std::filesystem::path targetPath = "resources/bg.hdr";
 
 	std::cout << "[Debug] Current Working Directory: " << std::filesystem::current_path() << std::endl;
@@ -465,7 +471,8 @@ bool load_env_map(
 			.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, i, 0, 1 },
 			.dstOffsets = { {0, 0, 0}, { mipW > 1 ? mipW / 2 : 1, mipH > 1 ? mipH / 2 : 1, 1 } }
 		};
-		vkCmdBlitImage(cmd, out_env_map.img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, out_env_map.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+		vkCmdBlitImage(cmd, out_env_map.img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, out_env_map.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit,
+		               VK_FILTER_LINEAR);
 
 		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -474,6 +481,7 @@ bool load_env_map(
 		vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
 		if (mipW > 1) mipW /= 2;
+
 		if (mipH > 1) mipH /= 2;
 	}
 
@@ -548,12 +556,14 @@ bool load_env_map(
 
 void cleanup(rvkbucket& rdata, texdata& tex) {
 	if (tex.imgsampler) vkDestroySampler(rdata.vkdevice.device, tex.imgsampler, nullptr);
+
 	if (tex.imgview)    vkDestroyImageView(rdata.vkdevice.device, tex.imgview, nullptr);
+
 	if (tex.img)        vmaDestroyImage(rdata.alloc, tex.img, tex.alloc);
 }
 
 //useless
-void cleanuptpl(rvkbucket& rdata,    VkDescriptorSetLayout& layout,VkDescriptorPool& pool) {
+void cleanuptpl(rvkbucket& rdata,    VkDescriptorSetLayout& layout, VkDescriptorPool& pool) {
 	vkDestroyDescriptorPool(rdata.vkdevice.device, pool, nullptr);
 }
 }

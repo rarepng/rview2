@@ -1,0 +1,21 @@
+indent=tab
+suffix=none
+
+style=attach
+
+indent-switches
+indent-cases
+
+# Indent multi-line preprocessor #defines
+indent-preproc-define
+
+break-blocks
+pad-oper
+pad-header
+
+align-pointer=type
+align-reference=type
+
+max-code-length=150
+
+break-after-logical

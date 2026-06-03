@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-static netclient *s_Instance = nullptr;
+static netclient* s_Instance = nullptr;
 
 netclient::~netclient() {
 	if (m_NetworkThread.joinable())
@@ -47,6 +47,7 @@ void netclient::NetworkThreadFunc() {
 	m_ConnectionStatus = ConnectionStatus::Connecting;
 
 	SteamDatagramErrMsg errMsg;
+
 	if (!GameNetworkingSockets_Init(nullptr, errMsg)) {
 		m_ConnectionDebugMessage = "Could not initialize GameNetworkingSockets";
 		m_ConnectionStatus = ConnectionStatus::FailedToConnect;
@@ -56,6 +57,7 @@ void netclient::NetworkThreadFunc() {
 	m_Interface = SteamNetworkingSockets();
 
 	SteamNetworkingIPAddr address;
+
 	if (!address.ParseString(m_ServerAddress.c_str())) {
 		OnFatalError("Invalid IP address - could not parse {" + m_ServerAddress + "}");
 		m_ConnectionDebugMessage = "Invalid IP address";
@@ -64,8 +66,9 @@ void netclient::NetworkThreadFunc() {
 	}
 
 	SteamNetworkingConfigValue_t options;
-	options.SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged, (void *)ConnectionStatusChangedCallback);
+	options.SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged, (void*)ConnectionStatusChangedCallback);
 	m_Connection = m_Interface->ConnectByIPAddress(address, 1, &options);
+
 	if (m_Connection == k_HSteamNetConnection_Invalid) {
 		m_ConnectionDebugMessage = "Failed to create connection";
 		m_ConnectionStatus = ConnectionStatus::FailedToConnect;
@@ -73,6 +76,7 @@ void netclient::NetworkThreadFunc() {
 	}
 
 	m_Running = true;
+
 	while (m_Running) {
 		PollIncomingMessages();
 		PollConnectionStateChanges();
@@ -115,6 +119,7 @@ void netclient::PollIncomingMessages() {
 	while (m_Running) {
 		ISteamNetworkingMessage *incomingMessage = nullptr;
 		int messageCount = m_Interface->ReceiveMessagesOnConnection(m_Connection, &incomingMessage, 1);
+
 		if (messageCount == 0)
 			break;
 
@@ -133,46 +138,46 @@ void netclient::PollConnectionStateChanges() {
 	m_Interface->RunCallbacks();
 }
 
-void netclient::ConnectionStatusChangedCallback(SteamNetConnectionStatusChangedCallback_t *info) {
+void netclient::ConnectionStatusChangedCallback(SteamNetConnectionStatusChangedCallback_t* info) {
 	s_Instance->OnConnectionStatusChanged(info);
 }
 
-void netclient::OnConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t *info) {
+void netclient::OnConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t* info) {
 
 	switch (info->m_info.m_eState) {
-	case k_ESteamNetworkingConnectionState_None:
-		break;
+		case k_ESteamNetworkingConnectionState_None:
+			break;
 
-	case k_ESteamNetworkingConnectionState_ClosedByPeer:
-	case k_ESteamNetworkingConnectionState_ProblemDetectedLocally: {
-		m_Running = false;
-		m_ConnectionStatus = ConnectionStatus::FailedToConnect;
-		m_ConnectionDebugMessage = info->m_info.m_szEndDebug;
+		case k_ESteamNetworkingConnectionState_ClosedByPeer:
+		case k_ESteamNetworkingConnectionState_ProblemDetectedLocally: {
+				m_Running = false;
+				m_ConnectionStatus = ConnectionStatus::FailedToConnect;
+				m_ConnectionDebugMessage = info->m_info.m_szEndDebug;
 
-		if (info->m_eOldState == k_ESteamNetworkingConnectionState_Connecting) {
-			std::cout << "Could not connect to remote host. " << info->m_info.m_szEndDebug << std::endl;
-		} else if (info->m_info.m_eState == k_ESteamNetworkingConnectionState_ProblemDetectedLocally) {
-			std::cout << "Lost connection with remote host. " << info->m_info.m_szEndDebug << std::endl;
-		} else {
-			std::cout << "Disconnected from host. " << info->m_info.m_szEndDebug << std::endl;
-		}
+				if (info->m_eOldState == k_ESteamNetworkingConnectionState_Connecting) {
+					std::cout << "Could not connect to remote host. " << info->m_info.m_szEndDebug << std::endl;
+				} else if (info->m_info.m_eState == k_ESteamNetworkingConnectionState_ProblemDetectedLocally) {
+					std::cout << "Lost connection with remote host. " << info->m_info.m_szEndDebug << std::endl;
+				} else {
+					std::cout << "Disconnected from host. " << info->m_info.m_szEndDebug << std::endl;
+				}
 
-		m_Interface->CloseConnection(info->m_hConn, 0, nullptr, false);
-		m_Connection = k_HSteamNetConnection_Invalid;
-		m_ConnectionStatus = ConnectionStatus::Disconnected;
-		break;
-	}
+				m_Interface->CloseConnection(info->m_hConn, 0, nullptr, false);
+				m_Connection = k_HSteamNetConnection_Invalid;
+				m_ConnectionStatus = ConnectionStatus::Disconnected;
+				break;
+			}
 
-	case k_ESteamNetworkingConnectionState_Connecting:
-		break;
+		case k_ESteamNetworkingConnectionState_Connecting:
+			break;
 
-	case k_ESteamNetworkingConnectionState_Connected:
-		m_ConnectionStatus = ConnectionStatus::Connected;
-		m_ServerConnectedCallback();
-		break;
+		case k_ESteamNetworkingConnectionState_Connected:
+			m_ConnectionStatus = ConnectionStatus::Connected;
+			m_ServerConnectedCallback();
+			break;
 
-	default:
-		break;
+		default:
+			break;
 	}
 }
 
