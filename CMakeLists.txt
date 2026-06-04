@@ -13,7 +13,6 @@ find_package(Vulkan REQUIRED)
 
 set(OPENSSL_USE_STATIC_LIBS ON)
 set(ZLIB_USE_STATIC_LIBS ON)
-find_package(ZLIB REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 file(DOWNLOAD

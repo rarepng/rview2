@@ -56,6 +56,7 @@ struct DeletionQueue {
 		for (auto it = deletors.rbegin(); it != deletors.rend(); ++it) {
 			(*it)();
 		}
+
 		deletors.clear();
 	}
 };

@@ -16,11 +16,12 @@
 #if defined(__cpp_reflection)
 template <typename T>
 void DrawAutoUI(const T& obj) {
-    ImGui::SeparatorText("reflection test dump");
-    template for (constexpr auto member : std::meta::nonstatic_data_members_of(^T)) {
-        constexpr std::string_view name = std::meta::identifier_of(member);
-        ImGui::BulletText("%s", name.data());
-    }
+	ImGui::SeparatorText("reflection test dump");
+
+	template for (constexpr auto member : std::meta::nonstatic_data_members_of(^T)) {
+		constexpr std::string_view name = std::meta::identifier_of(member);
+		ImGui::BulletText("%s", name.data());
+	}
 }
 #endif
 
