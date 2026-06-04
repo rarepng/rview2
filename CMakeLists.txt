@@ -134,14 +134,9 @@ set_property(DIRECTORY ${PROJECT_SOURCE_DIR}/sub/protobuf APPEND PROPERTY COMPIL
 set(CMAKE_SKIP_INSTALL_RULES OFF)
 
 set(FASTGLTF_COMPILE_AS_CPP20 ON CACHE BOOL "set" FORCE)
-
-
+# will be removed.. eventually (hopefully)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "set" FORCE)
 
-
-# will have to add the rest later..
-set(FASTGLTF_INSTALL OFF CACHE BOOL "no install for fastgltf" FORCE)
-set(VkBootstrap_INSTALL OFF CACHE BOOL "no vkb install either" FORCE)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS OFF)
 
@@ -387,7 +382,8 @@ target_link_options(rview2 PRIVATE
     # "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>,$<CONFIG:sanitize>>:-static>"
 
     "$<$<AND:$<PLATFORM_ID:Windows>,$<OR:$<CONFIG:Distribution>,$<CONFIG:Release>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>>:-mwindows>"
-    "-static" "-static-libgcc" "-static-libstdc++"
+    # "-static"
+    "-static-libgcc" "-static-libstdc++"
 )
 
 
