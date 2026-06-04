@@ -1,12 +1,9 @@
 cmake_minimum_required(VERSION 4.0)
-project(rview2 LANGUAGES CXX)
-
-include(ExternalProject)
+project(rview2 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
 
 find_package(Vulkan REQUIRED)
@@ -40,135 +37,101 @@ if(ASTYLE_EXECUTABLE)
     )
 endif()
 
-if(UNIX)
-set(SHELL_CMD bash)
-set(SEP ":")
-set(STATIC_LIB_EXT a)
-else()
-set(SHELL_CMD pwsh)  #powershell 7
-#set(SHELL_CMD powershell) #default for windows 
-set(EXT ".exe")
-set(SEP ";")
-set(STATIC_LIB_EXT lib)
-endif()
-
-add_definitions(-DSTEAMNETWORKINGSOCKETS_STATIC_LINK=1)
-add_definitions(-DABSL_OPTION_USE_STD_ORDERING=0)
-
-if(UNIX)
-    set(GNS_LINKER_FLAGS "-static -lstdc++ -lz -lpthread -ldl")
-else()
-    set(GNS_LINKER_FLAGS "-static -lws2_32 -lcrypt32 -lstdc++")
-endif()
-
-if(NOT CMAKE_BUILD_TYPE STREQUAL "clanged")
-ExternalProject_Add(abslEX
-    SOURCE_DIR ${submodules_path}/absl
-    CMAKE_ARGS
-        ${GLOBAL_DEFAULT_ARGS}
-        -G Ninja
-        -DBUILD_TESTING=OFF
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-        -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/cmake_more_cache/absl
-        -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
-        -DCMAKE_CXX_STANDARD_REQUIRED=ON
-        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-        -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
-        -DBUILD_SHARED_LIB=OFF
-        -DBUILD_SHARED_LIBS=OFF
-        -DABSL_OPTION_USE_STD_ORDERING=0
-        -DCMAKE_CXX_FLAGS='-D\ ABSL_OPTION_USE_STD_ORDERING=0\ -D\ ABSL_USES_STD_ORDERING=0'
-        -DCMAKE_C_FLAGS='-D\ ABSL_OPTION_USE_STD_ORDERING=0\ -D\ ABSL_USES_STD_ORDERING=0'
-        -DCMAKE_CXX_FLAGS_DEBUG="-g"
-        # -DCMAKE_EXE_LINKER_FLAGS='-static'
-        -B ${PROJECT_SOURCE_DIR}/cmake_more_cache/absl_build
-    BUILD_COMMAND ninja
-    INSTALL_COMMAND ninja install
-)
-
-
-ExternalProject_Add(protoEX
-    SOURCE_DIR ${submodules_path}/protobuf
-    CMAKE_ARGS
-        ${GLOBAL_DEFAULT_ARGS}
-        -G Ninja
-        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-        -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-        -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
-        -DCMAKE_CXX_STANDARD_REQUIRED=ON
-        -Dprotobuf_BUILD_TESTS=OFF
-        -Dprotobuf_BUILD_SHARED_LIBS=OFF
-        -DBUILD_SHARED_LIBS=OFF
-        -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto
-        -DABSL_OPTION_USE_STD_ORDERING=0
-        -DCMAKE_CXX_FLAGS='-I${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include'
-        -DCMAKE_C_FLAGS='-I${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include'
-        # -DCMAKE_EXE_LINKER_FLAGS='-static'
-        -DCMAKE_CXX_FLAGS_DEBUG="-g"
-        -Dprotobuf_WITH_ZLIB=OFF
-        -Dprotobuf_ABSL_PROVIDER=package
-        -DCMAKE_PREFIX_PATH=${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/lib/cmake/absl
-        -DABSL_ROOT_DIR=${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/lib/cmake/absl
-        -DINSTALL_GTEST=OFF
-        -Dprotobuf_BUILD_EXAMPLES=OFF
-        -B ${PROJECT_SOURCE_DIR}/cmake_more_cache/proto_build
-    BUILD_COMMAND ninja
-    INSTALL_COMMAND ninja install
-)
-
-
-ExternalProject_Add(gnsEX
-    SOURCE_DIR ${submodules_path}/gns
-    CMAKE_ARGS
-        ${GLOBAL_DEFAULT_ARGS}
-        -G Ninja
-        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-        -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-        -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
-        -DCMAKE_CXX_STANDARD_REQUIRED=ON
-        -DProtobuf_USE_STATIC_LIBS=ON
-        -Dprotobuf_BUILD_TESTS=OFF
-        -Dprotobuf_BUILD_SHARED_LIBS=OFF
-        -DOPENSSL_USE_STATIC_LIBS=ON
-        -DZLIB_USE_STATIC_LIBS=ON
-        -DOPENSSL_INCLUDE_DIR=${OPENSSL_INCLUDE_DIR}
-        -DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_CRYPTO_LIBRARY}
-        -DOPENSSL_SSL_LIBRARY=${OPENSSL_SSL_LIBRARY}
+set(CMAKE_SKIP_INSTALL_RULES ON)
+# ----------------------------------------------------------------------#
+# Polyfill for legacy protobuf_generate_cpp curtousy of LLMs be careful #
+# ----------------------------------------------------------------------#
+function(protobuf_generate_cpp SRCS HDRS)
+    set(out_srcs "")
+    set(out_hdrs "")
+    
+    foreach(proto_file ${ARGN})
+        get_filename_component(abs_file ${proto_file} ABSOLUTE)
+        get_filename_component(basename ${proto_file} NAME_WE)
         
-        # 2. Bypass the failing OpenSSL version check:
-        -DHAVE_EVP_MD_CTX_FREE=1
+        get_filename_component(proto_dir ${abs_file} DIRECTORY)
         
-        # 3. Provide dependencies for any other internal static link checks GNS might run:
-        -DCMAKE_REQUIRED_LIBRARIES=dl;pthread
-        -DProtobuf_LIBRARIES=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib/libprotobuf.a
-        -DProtobuf_INCLUDE_DIR=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include
-        -DBUILD_SHARED_LIB=OFF
-        -DBUILD_STATIC_LIB=ON
-        -DBUILD_SHARED_LIBS=OFF
-        -DBUILD_STATIC_LIBS=ON
-        -DProtobuf_PROTOC_EXECUTABLE=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin/protoc${EXT}
-        -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/cmake_more_cache/gns
-        -DCMAKE_PREFIX_PATH=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/bin
-        -DProtobuf_DIR=${PROJECT_SOURCE_DIR}/cmake_more_cache/proto
-        -DSTEAMNETWORKINGSOCKETS_STATIC_LINK=1
-        "-DCMAKE_EXE_LINKER_FLAGS=${GNS_LINKER_FLAGS}"
-        # "-DCMAKE_EXE_LINKER_FLAGS=-static\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/absl\ -lprotobuf\ -lprotoc\ -lutf8_range\ -labsl_synchronization\ -labsl_symbolize\ -labsl_strings\ -labsl_str_format_internal\ -labsl_strings_internal\ -labsl_log_initialize\ -labsl_log_entry\ -labsl_log_flags\ -labsl_log_severity\ -labsl_log_internal_check_op\ -labsl_log_internal_conditions\ -labsl_log_internal_message\ -labsl_log_internal_nullguard\ -labsl_log_internal_proto\ -labsl_log_internal_format\ -labsl_log_internal_globals\ -labsl_log_internal_log_sink_set\ -labsl_log_sink\ -labsl_raw_logging_internal\ -labsl_log_globals\ -labsl_cord\ -labsl_cordz_info\ -labsl_cordz_handle\ -labsl_cordz_functions\ -labsl_cord_internal\ -labsl_crc_cord_state\ -labsl_crc32c\ -labsl_crc_internal\ -labsl_exponential_biased\ -labsl_synchronization\ -labsl_time\ -labsl_time_zone\ -labsl_int128\ -labsl_examine_stack\ -labsl_stacktrace\ -labsl_symbolize\ -labsl_demangle_internal\ -labsl_debugging_internal\ -labsl_malloc_internal\ -labsl_throw_delegate\ -labsl_strerror\ -labsl_raw_hash_set\ -labsl_hash\ -labsl_city\ -labsl_low_level_hash\ -labsl_base\ -labsl_spinlock_wait\ -labsl_status\ -std=c++20\ -lstdc++"
-        #-DCMAKE_CXX_FLAGS='-D\ STEAMNETWORKINGSOCKETS_STATIC_LINK=1\ --static\ -static\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/absl\ -lprotobuf\ -lprotoc\ -lutf8_range\ -labsl_synchronization\ -labsl_symbolize\ -labsl_strings\ -labsl_str_format_internal\ -labsl_strings_internal\ -labsl_log_initialize\ -labsl_log_entry\ -labsl_log_flags\ -labsl_log_severity\ -labsl_log_internal_check_op\ -labsl_log_internal_conditions\ -labsl_log_internal_message\ -labsl_log_internal_nullguard\ -labsl_log_internal_proto\ -labsl_log_internal_format\ -labsl_log_internal_globals\ -labsl_log_internal_log_sink_set\ -labsl_log_sink\ -labsl_raw_logging_internal\ -labsl_log_globals\ -labsl_cord\ -labsl_cordz_info\ -labsl_cordz_handle\ -labsl_cordz_functions\ -labsl_cord_internal\ -labsl_crc_cord_state\ -labsl_crc32c\ -labsl_crc_internal\ -labsl_exponential_biased\ -labsl_synchronization\ -labsl_time\ -labsl_time_zone\ -labsl_int128\ -labsl_examine_stack\ -labsl_stacktrace\ -labsl_symbolize\ -labsl_demangle_internal\ -labsl_debugging_internal\ -labsl_malloc_internal\ -labsl_throw_delegate\ -labsl_strerror\ -labsl_raw_hash_set\ -labsl_hash\ -labsl_city\ -labsl_low_level_hash\ -labsl_base\ -labsl_spinlock_wait\ -labsl_status\ -std=c++20\ -lstdc++'
-        "-DCMAKE_CXX_FLAGS=-L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/absl\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/include\ -I${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/include"
-        # \ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/lib\ -L${PROJECT_SOURCE_DIR}/cmake_more_cache/proto/absl\ -lprotobuf-lite\ -lprotobuf\ -lprotoc\ -lutf8_range\ -std=c++20\ -lstdc++\ -lpthread\ -lupb\ -lutf8_validity'
-        -B "${PROJECT_SOURCE_DIR}/cmake_more_cache/gns_build"
-    BUILD_COMMAND ninja
-    INSTALL_COMMAND ninja install
-    DEPENDS protoEX
+        set(src_out "${CMAKE_CURRENT_BINARY_DIR}/${basename}.pb.cc")
+        set(hdr_out "${CMAKE_CURRENT_BINARY_DIR}/${basename}.pb.h")
+        
+        list(APPEND out_srcs "${src_out}")
+        list(APPEND out_hdrs "${hdr_out}")
+
+        add_custom_command(
+            OUTPUT "${src_out}" "${hdr_out}"
+            COMMAND protobuf::protoc
+            ARGS --cpp_out "${CMAKE_CURRENT_BINARY_DIR}" 
+                 -I "${proto_dir}"
+                 -I "${CMAKE_CURRENT_SOURCE_DIR}"
+                 -I "${CMAKE_SOURCE_DIR}/sub/protobuf/src"
+                 "${abs_file}"
+            DEPENDS "${abs_file}" protobuf::protoc
+            COMMENT "Compiling protocol buffer ${basename}"
+            VERBATIM
+        )
+    endforeach()
+    
+    set(${SRCS} "${out_srcs}" PARENT_SCOPE)
+    set(${HDRS} "${out_hdrs}" PARENT_SCOPE)
+endfunction()
+
+CPMAddPackage(
+    NAME absl
+    SOURCE_DIR ${PROJECT_SOURCE_DIR}/sub/absl
+    EXCLUDE_FROM_ALL YES
+    OPTIONS
+        "ABSL_PROPAGATE_CXX_STD ON"
+        "BUILD_TESTING OFF"
+        "ABSL_ENABLE_INSTALL OFF"
 )
 
-endif()
+CPMAddPackage(
+    NAME protobuf
+    SOURCE_DIR ${PROJECT_SOURCE_DIR}/sub/protobuf
+    EXCLUDE_FROM_ALL YES
+    OPTIONS
+        "protobuf_BUILD_TESTS OFF"
+        "protobuf_BUILD_SHARED_LIBS OFF"
+        "protobuf_BUILD_EXAMPLES OFF"
+        "protobuf_WITH_ZLIB OFF"
+        "protobuf_ABSL_PROVIDER package"
+        "protobuf_INSTALL OFF"
+)
 
+CPMAddPackage(
+    NAME GameNetworkingSockets
+    SOURCE_DIR ${PROJECT_SOURCE_DIR}/sub/gns
+    EXCLUDE_FROM_ALL YES
+    OPTIONS
+        "GameNetworkingSockets_BUILD_SHARED OFF"
+        "GameNetworkingSockets_BUILD_TESTS OFF"
+        "GameNetworkingSockets_BUILD_EXAMPLES OFF"
+        "Protobuf_USE_STATIC_LIBS ON"
+)
+if(TARGET GameNetworkingSockets_s)
+    target_compile_definitions(GameNetworkingSockets_s PRIVATE HAVE_EVP_MD_CTX_FREE=1)
+    get_target_property(_gns_links GameNetworkingSockets_s LINK_LIBRARIES)
+    if(_gns_links)
+        list(REMOVE_ITEM _gns_links "protobuf" "-lprotobuf")
+        set_target_properties(GameNetworkingSockets_s PROPERTIES LINK_LIBRARIES "${_gns_links}")
+    endif()
+
+    get_target_property(_gns_interface GameNetworkingSockets_s INTERFACE_LINK_LIBRARIES)
+    if(_gns_interface)
+        list(REMOVE_ITEM _gns_interface "protobuf" "-lprotobuf")
+        set_target_properties(GameNetworkingSockets_s PROPERTIES INTERFACE_LINK_LIBRARIES "${_gns_interface}")
+    endif()
+    target_link_libraries(GameNetworkingSockets_s PRIVATE 
+        OpenSSL::SSL 
+        OpenSSL::Crypto
+        protobuf::libprotobuf
+        utf8_range
+        utf8_validity
+    )
+endif()
+set_property(DIRECTORY ${PROJECT_SOURCE_DIR}/sub/absl APPEND PROPERTY COMPILE_DEFINITIONS ABSL_OPTION_USE_STD_ORDERING=0 ABSL_USES_STD_ORDERING=0)
+set_property(DIRECTORY ${PROJECT_SOURCE_DIR}/sub/protobuf APPEND PROPERTY COMPILE_DEFINITIONS ABSL_OPTION_USE_STD_ORDERING=0 ABSL_USES_STD_ORDERING=0)
+set(CMAKE_SKIP_INSTALL_RULES OFF)
 
 set(FASTGLTF_COMPILE_AS_CPP20 ON CACHE BOOL "set" FORCE)
 
@@ -189,10 +152,8 @@ CPMAddPackage(
     DOWNLOAD_ONLY YES
     EXCLUDE_FROM_ALL YES
 )
-# if(glm_ADDED)
-    add_library(glm INTERFACE)
-    target_include_directories(glm SYSTEM INTERFACE ${glm_SOURCE_DIR})
-# endif()
+add_library(glm INTERFACE)
+target_include_directories(glm SYSTEM INTERFACE ${glm_SOURCE_DIR})
 
 CPMAddPackage(
     NAME simdjson
@@ -326,9 +287,11 @@ ${PROJECT_SOURCE_DIR}/cmake_more_cache/absl/lib
 #${OPENSSL_ROOT}/lib64
 )
 
-add_dependencies(protoEX abslEX)
-add_dependencies(gnsEX protoEX)
-add_dependencies(rview2 gnsEX)
+target_compile_definitions(rview2 PRIVATE
+    STEAMNETWORKINGSOCKETS_STATIC_LINK=1
+    ABSL_OPTION_USE_STD_ORDERING=0
+    ABSL_USES_STD_ORDERING=0
+)
 
 
 target_link_libraries(rview2
@@ -344,104 +307,6 @@ target_link_libraries(rview2
         GameNetworkingSockets_s
         OpenSSL::SSL
         OpenSSL::Crypto
-        "$<$<CONFIG:Debug>:protobufd>"
-        "$<$<NOT:$<CONFIG:Debug>>:protobuf>"
-        "$<$<CONFIG:Debug>:protocd>"
-        "$<$<NOT:$<CONFIG:Debug>>:protoc>"
-        "$<$<CONFIG:Debug>:upbd>"
-        "$<$<NOT:$<CONFIG:Debug>>:upb>"
-        "$<$<CONFIG:Debug>:protobuf-lited>"
-        "$<$<NOT:$<CONFIG:Debug>>:protobuf-lite>"
-        utf8_range
-        utf8_validity
-
-        absl_base
-        absl_city
-        absl_civil_time
-        absl_cord
-        absl_cord_internal
-        absl_cordz_functions
-        absl_cordz_handle
-        absl_cordz_info
-        absl_cordz_sample_token
-        absl_crc_cord_state
-        absl_crc_cpu_detect
-        absl_crc_internal
-        absl_crc32c
-        absl_examine_stack                    ################################################
-        absl_symbolize                        ##                                            ##
-        absl_demangle_internal                ##            DO NOT CHANGE ORDER             ##
-        absl_demangle_rust                    ##                    !!!                     ##
-        absl_debugging_internal               ##                                            ##
-        absl_decode_rust_punycode             ################################################
-        absl_die_if_null
-        absl_exponential_biased
-        absl_failure_signal_handler
-        absl_flags_commandlineflag
-        absl_flags_commandlineflag_internal
-        absl_flags_config
-        absl_flags_internal
-        absl_flags_marshalling
-        absl_flags_parse
-        absl_flags_private_handle_accessor
-        absl_flags_program_name
-        absl_flags_reflection
-        absl_flags_usage
-        absl_flags_usage_internal
-        absl_graphcycles_internal
-        absl_hash
-        absl_hashtablez_sampler
-        absl_int128
-        absl_kernel_timeout_internal
-        absl_leak_check
-        # absl_log_entry
-        absl_log_flags
-        absl_log_globals
-        absl_log_initialize
-        absl_log_internal_check_op
-        absl_log_internal_conditions
-        absl_log_internal_fnmatch
-        absl_log_internal_format
-        absl_log_internal_globals
-        absl_log_internal_log_sink_set
-        absl_log_internal_message
-        absl_log_internal_nullguard
-        absl_log_internal_proto
-        absl_log_internal_structured_proto
-        absl_log_severity
-        absl_log_sink
-        absl_malloc_internal
-        absl_periodic_sampler
-        absl_poison
-        absl_random_distributions
-        absl_random_internal_distribution_test_util
-        absl_random_internal_platform
-        # absl_random_internal_pool_urbg
-        absl_random_internal_randen
-        absl_random_internal_randen_hwaes
-        absl_random_internal_randen_hwaes_impl
-        absl_random_internal_randen_slow
-        absl_random_internal_seed_material
-        absl_random_seed_gen_exception
-        absl_random_seed_sequences
-        absl_raw_hash_set
-        absl_raw_logging_internal
-        absl_scoped_set_env
-        absl_spinlock_wait
-        absl_stacktrace
-        absl_status
-        absl_statusor
-        absl_str_format_internal
-        absl_strerror
-        absl_string_view
-        absl_strings
-        absl_strings_internal
-        absl_synchronization
-        absl_throw_delegate
-        absl_time
-        absl_time_zone
-        absl_utf8_for_code_point
-        absl_vlog_config_internal
         "-Wl,--end-group"
 )
 if(UNIX)
@@ -453,8 +318,8 @@ target_link_libraries(rview2
 else()
 target_link_libraries(rview2
     PRIVATE
-        #pthread
-        #ws2_32                               #windows
+        pthread                               #windows
+        # ws2_32                              #windows
         DbgHelp                               #windows
         winmm                                 #windows
         iphlpapi                              #windows
@@ -514,6 +379,17 @@ target_link_options(rview2 PUBLIC
     "$<$<CONFIG:sanitize>:-static-libasan>"
     "$<$<CONFIG:sanitize>:-fsanitize=address>"
 )
+target_link_options(rview2 PRIVATE
+    # "$<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>:-static>"
+    # "$<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>:-static-libstdc++>"
+    # "$<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>:-static-libgcc>"
+    # no idea here..
+    # "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>,$<CONFIG:sanitize>>:-static>"
+
+    "$<$<AND:$<PLATFORM_ID:Windows>,$<OR:$<CONFIG:Distribution>,$<CONFIG:Release>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>>:-mwindows>"
+    "-static" "-static-libgcc" "-static-libstdc++"
+)
+
 
 
 set(SLANG_COMMON_FLAGS
@@ -523,16 +399,6 @@ set(SLANG_COMMON_FLAGS
     $<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>:-O3>
 )
 
-
-# consider only statically -static-libgcc -static-libstdc++ idk
-target_link_options(rview2 PRIVATE
-    # "$<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>:-static>"
-    # "$<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>:-static-libstdc++>"
-    # "$<$<OR:$<CONFIG:Release>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>:-static-libgcc>"
-    # no idea here..
-    # "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>,$<CONFIG:sanitize>>:-static>"
-    "$<$<AND:$<PLATFORM_ID:Windows>,$<OR:$<CONFIG:Distribution>,$<CONFIG:Release>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>>:-mwindows>"
-)
 
 # wip wip
 # manually adding shaders for now
