@@ -55,7 +55,7 @@ bool ui::init(rvkbucket &renderData) {
 	imguiPoolInfo.pPoolSizes = imguiPoolSizes.data();
 
 	if (vkCreateDescriptorPool(renderData.vkdevice.device, &imguiPoolInfo, nullptr,
-	                           &renderData.dpools[rvkbucket::idximguipool])) {
+	                           &renderData.dpools[rview::core::idximguipool])) {
 		return false;
 	}
 
@@ -76,7 +76,7 @@ bool ui::init(rvkbucket &renderData) {
 	imguiIinitInfo.PhysicalDevice = renderData.vkdevice.physical_device;
 	imguiIinitInfo.Device = renderData.vkdevice.device;
 	imguiIinitInfo.Queue = renderData.graphicsQ;
-	imguiIinitInfo.DescriptorPool = renderData.dpools[rvkbucket::idximguipool];
+	imguiIinitInfo.DescriptorPool = renderData.dpools[rview::core::idximguipool];
 	imguiIinitInfo.MinImageCount = 2;
 	imguiIinitInfo.ImageCount = renderData.schainimgs.size();
 	imguiIinitInfo.UseDynamicRendering = true;
@@ -111,8 +111,8 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 		static float newFps = 0.0f;
 
 		/* avoid inf values (division by zero) */
-		if (renderData.frametime > 0.0) {
-			newFps = 1.0f / renderData.frametime * 1000.f;
+		if (rview::core::frametime > 0.0) {
+			newFps = 1.0f / rview::core::frametime * 1000.f;
 		}
 
 		/* make an averge value to avoid jumps */
@@ -141,26 +141,26 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 
 		if (updateTime < ImGui::GetTime()) {
 			fps_graph.push(mfps);
-			frametime_graph.push(renderData.frametime);
-			vbo_graph.push(renderData.uploadubossbotime);
-			matgen_graph.push(renderData.updateanimtime);
-			ik_graph.push(renderData.updatemattime);
-			ubo_graph.push(renderData.iksolvetime);
-			uigen_graph.push(renderData.rduigeneratetime);
-			uidraw_graph.push(renderData.rduidrawtime);
+			frametime_graph.push(rview::core::frametime);
+			vbo_graph.push(rview::core::uploadubossbotime);
+			matgen_graph.push(rview::core::updateanimtime);
+			ik_graph.push(rview::core::updatemattime);
+			ubo_graph.push(rview::core::iksolvetime);
+			uigen_graph.push(rview::core::rduigeneratetime);
+			uidraw_graph.push(rview::core::rduidrawtime);
 			updateTime += 1.0 / 30.0;
 		}
 
 		ImGui::BeginGroup();
 		ImGui::Text("FPS:");
 		ImGui::SameLine();
-		ImGui::Text("%s", std::to_string(1.0f / renderData.frametime).c_str());
+		ImGui::Text("%s", std::to_string(1.0f / rview::core::frametime).c_str());
 		ImGui::EndGroup();
 
 		if (ImGui::CollapsingHeader("General")) {
-			ImGui::Text("Triangles:");
-			ImGui::SameLine();
-			ImGui::Text("%s", std::to_string(renderData.tricount + renderData.gltftricount).c_str());
+			// ImGui::Text("Triangles:");
+			// ImGui::SameLine();
+			// ImGui::Text("%s", std::to_string(renderData.tricount + renderData.gltftricount).c_str());
 
 			std::string windowDims = std::to_string(renderData.width) + "x" + std::to_string(renderData.height);
 			ImGui::Text("Window Dimensions:");
@@ -347,19 +347,19 @@ void ui::createdbgframe(rvkbucket &renderData, selection &settings) {
 		if (ImGui::CollapsingHeader("Camera")) {
 			ImGui::Text("Camera Position:");
 			ImGui::SameLine();
-			ImGui::Text("%s", glm::to_string(renderData.camwpos).c_str());
+			ImGui::Text("%s", glm::to_string(rview::core::camwpos).c_str());
 
 			ImGui::Text("View Azimuth:");
 			ImGui::SameLine();
-			ImGui::Text("%s", std::to_string(renderData.azimuth).c_str());
+			ImGui::Text("%s", std::to_string(rview::core::azimuth).c_str());
 
 			ImGui::Text("View Elevation:");
 			ImGui::SameLine();
-			ImGui::Text("%s", std::to_string(renderData.elevation).c_str());
+			ImGui::Text("%s", std::to_string(rview::core::elevation).c_str());
 
 			ImGui::Text("Field of View");
 			ImGui::SameLine();
-			ImGui::Text("%s", std::to_string(renderData.fov).c_str());
+			ImGui::Text("%s", std::to_string(rview::core::fov).c_str());
 			// ImGui::SliderFloat("##FOV", &renderData.rdfov, 40.0f, 150.0f, "%f", flags);
 		}
 
@@ -760,7 +760,7 @@ bool ui::createloadingscreen(rvkbucket &mvkobjs) {
 	ImGui::Begin("loading", nullptr, imguiWindowFlags);
 
 	// ImGui::ProgressBar(static_cast<float>(std::rand()%100)/100.0f, {600,100});
-	ImGui::ProgressBar(mvkobjs.loadingprog, {600, 100});
+	// ImGui::ProgressBar(mvkobjs.loadingprog, {600, 100});
 
 	ImGui::End();
 

@@ -221,12 +221,12 @@ struct GlobalBufferHeap {
 struct alignas(64) rdev {
 	vkb::Instance inst{};
 	vkb::Device vkdevice{};
-	VmaAllocator alloc = nullptr;
+	VmaAllocator alloc{nullptr};
 
-	VkQueue graphicsQ = VK_NULL_HANDLE;
-	VkQueue presentQ = VK_NULL_HANDLE;
-	VkQueue computeQ = VK_NULL_HANDLE;
-	VkQueue transferQ = VK_NULL_HANDLE;
+	VkQueue graphicsQ{VK_NULL_HANDLE};
+	VkQueue presentQ{VK_NULL_HANDLE};
+	VkQueue computeQ{VK_NULL_HANDLE};
+	VkQueue transferQ{VK_NULL_HANDLE};
 
 	uint32_t graphicsQidx{};
 	uint32_t presentQidx{};
@@ -287,41 +287,36 @@ struct alignas(64) rframe {
 	std::array<DeletionQueue, 3> framedeletionQ{};
 };
 
-// idk
-// static_assert(sizeof(vkpushconstants) == 128, "Struct size mismatch!");
-struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
-
-	inline static constexpr uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!! different devices might not serve 3 swapchain images
-	inline static uint32_t currentFrame{0};
-	inline static uint32_t hdrmiplod{0};
-
-
-	inline static std::atomic<uint32_t> globalBufferCounter{1};
-	inline static GlobalBufferHeap global_buffers{};
-	inline static constexpr uint32_t MAX_BINDLESS_BUFFERS = 1024;
-
-	inline static VkDescriptorSetLayout globalBindlessLayout = VK_NULL_HANDLE;
-	inline static VkDescriptorPool globalBindlessPool = VK_NULL_HANDLE;
-	inline static VkDescriptorSet globalBindlessSet = VK_NULL_HANDLE;
-
-	inline static std::atomic<uint32_t> globalTextureCounter{4};
-	inline static std::atomic<uint32_t> globalModelCounter{0};
-
-
-	inline static ssbodata globalCameraUBO{};
-
-	inline static VkPipelineLayout globalPipelineLayout = VK_NULL_HANDLE;
-
-
-	std::array<texdata, 1> exrtex{};
-
-
+namespace rview::core{
+	inline constexpr uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!! different devices might not serve 3 swapchain images
+	inline constexpr uint32_t MAX_BINDLESS_BUFFERS = 1024;
+	static constexpr size_t MAX_GLOBAL_MATERIALS = 10000;
+	inline constexpr size_t idximguipool{0};
+	inline uint32_t currentFrame{0};
+	inline uint32_t hdrmiplod{0};
+	inline std::atomic<uint32_t> globalBufferCounter{1};
+	inline GlobalBufferHeap global_buffers{};
+	inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> globalInstanceBuffers{};
+	inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> globalIndirectBuffers{};
+	inline std::array<RenderGraph, rview::core::MAX_FRAMES_IN_FLIGHT> frameGraphs{};
+	inline ssbodata globalCameraUBO{};
+	inline GlobalMaterialHeap global_materials{};
+	inline std::vector<GPUInstanceData> frameInstances;
+	inline VkPipelineLayout globalPipelineLayout = VK_NULL_HANDLE;
+	inline VkDescriptorSetLayout globalBindlessLayout = VK_NULL_HANDLE;
+	inline VkDescriptorPool globalBindlessPool = VK_NULL_HANDLE;
+	inline VkDescriptorSet globalBindlessSet = VK_NULL_HANDLE;
+	inline VkPipeline globalcullpline = VK_NULL_HANDLE;
+	inline std::atomic<uint32_t> globalTextureCounter{4};
+	inline std::atomic<uint32_t> globalModelCounter{0};
+	inline std::array<texdata, 1> exrtex{};
+	inline const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
 	struct DummyTexture {
 		VkImage image = VK_NULL_HANDLE;
 		VkDeviceMemory memory = VK_NULL_HANDLE;
 		VkImageView view = VK_NULL_HANDLE;
 	};
-	struct {
+	inline struct {
 		DummyTexture purple;
 		DummyTexture white;
 		DummyTexture normal;
@@ -329,59 +324,32 @@ struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
 	} defaults;
 
 
-	inline static GlobalMaterialHeap global_materials{};
-	static constexpr size_t MAX_GLOBAL_MATERIALS = 10000;
 
-	std::array<GpuBuffer, rvkbucket::MAX_FRAMES_IN_FLIGHT> globalInstanceBuffers{};
-	std::array<GpuBuffer, rvkbucket::MAX_FRAMES_IN_FLIGHT> globalIndirectBuffers{};
-
-
-	std::vector<GPUInstanceData> frameInstances;
-
-
-	inline static VkPipeline globalcullpline = VK_NULL_HANDLE;
-
-
-	glm::vec3 camwpos{0.0f, 6.0f, 12.0f};
-	float cam_pad0; // explicit padding
-	glm::vec3 raymarchpos{0.0f};
-	float cam_pad1; // me too
-
-	float fov = 1.0472f;
-	float azimuth{15.0f};
-	float elevation{-25.0f};
-
-	int camfor{0};
-	int camright{0};
-	int camup{0};
-
-	cam mvkcam{};
-
-	unsigned int tricount{0};
-	unsigned int gltftricount{0};
+	inline glm::vec3 camwpos{0.0f, 6.0f, 12.0f};
+	inline cam mvkcam{};
+	inline float fov = 1.0472f;
+	inline float azimuth{15.0f};
+	inline float elevation{-25.0f};
+	inline int camfor{0};
+	inline int camright{0};
+	inline int camup{0};
+	inline double tickdiff{0.0f};
+	inline float frametime{0.0f};
+	inline float updateanimtime{0.0f};
+	inline float updatemattime{0.0f};
+	inline float uploadubossbotime{0.0f};
+	inline float iksolvetime{0.0f};
+	inline float rduigeneratetime{0.0f};
+	inline float rduidrawtime{0.0f};
+	inline float loadingprog{0.0f};
 
 
-	double tickdiff{0.0f};
-	float frametime{0.0f};
-	float updateanimtime{0.0f};
-	float updatemattime{0.0f};
-	float uploadubossbotime{0.0f};
-	float iksolvetime{0.0f};
-	float rduigeneratetime{0.0f};
-	float rduidrawtime{0.0f};
-	float loadingprog{0.0f};
+};
 
-
-	inline static const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
-
-	std::array<RenderGraph, 3> frameGraphs{};
-
-
-	inline static constexpr size_t idximguipool{0};
-
-
-
-
+// idk
+// static_assert(sizeof(vkpushconstants) == 128, "Struct size mismatch!");
+struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
+	// no more bucket
 
 };
 

@@ -197,9 +197,9 @@ BatchResult load_batch(
 	vkCreateFence(rdata.vkdevice.device, &f_info, nullptr, &fence);
 
 	{
-		rdata.mtx2->lock();
+		rview::core::mtx2->lock();
 		vkQueueSubmit(rdata.graphicsQ, 1, &submit, fence);
-		rdata.mtx2->unlock();
+		rview::core::mtx2->unlock();
 	}
 
 	vkWaitForFences(rdata.vkdevice.device, 1, &fence, VK_TRUE, UINT64_MAX);
@@ -222,16 +222,16 @@ bool update_descriptor_set(rvkbucket& rdata, std::vector<texdata>& textures) {
 
 	for (size_t i = 0; i < textures.size(); ++i) {
 		// 1. Claim a unique index in the global 10,000 element array securely
-		textures[i].bindless_idx = rvkbucket::globalTextureCounter.fetch_add(1, std::memory_order_relaxed);
+		textures[i].bindless_idx = rview::core::globalTextureCounter.fetch_add(1, std::memory_order_relaxed);
 
 		// 2. Setup Image Info
 		infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		infos[i].imageView = textures[i].imgview ? textures[i].imgview : rdata.defaults.purple.view;
+		infos[i].imageView = textures[i].imgview ? textures[i].imgview : rview::core::defaults.purple.view;
 		infos[i].sampler = textures[i].imgsampler ? textures[i].imgsampler : rdata.samplerz[0];
 
 		// 3. Setup Write Descriptor targeting Set 0, Binding 0
 		writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		writes[i].dstSet = rvkbucket::globalBindlessSet;
+		writes[i].dstSet = rview::core::globalBindlessSet;
 		writes[i].dstBinding = 0;
 		writes[i].dstArrayElement = textures[i].bindless_idx;
 		writes[i].descriptorCount = 1;
@@ -390,7 +390,7 @@ bool load_env_map(
 	std::cout << "[Success] Loaded EXR: " << w << "x" << h << std::endl;
 
 	uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(w, h)))) + 1;
-	rvkbucket::hdrmiplod = mipLevels;
+	rview::core::hdrmiplod = mipLevels;
 	VkDeviceSize imageSize = w * h * 4 * sizeof(float);
 
 	VkImageCreateInfo imageInfo {
@@ -429,7 +429,7 @@ bool load_env_map(
 	stbi_image_free(pixels);
 
 
-	VkCommandBuffer cmd = rdata.cbuffers_graphics.at(1).at(rvkbucket::currentFrame);
+	VkCommandBuffer cmd = rdata.cbuffers_graphics.at(1).at(rview::core::currentFrame);
 	VkCommandBufferBeginInfo begin_info = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT };
 	vkBeginCommandBuffer(cmd, &begin_info);
 
@@ -504,9 +504,9 @@ bool load_env_map(
 	vkCreateFence(rdata.vkdevice.device, &f_info, nullptr, &fence);
 
 	{
-		rdata.mtx2->lock();
+		rview::core::mtx2->lock();
 		vkQueueSubmit(rdata.graphicsQ, 1, &submit, fence);
-		rdata.mtx2->unlock();
+		rview::core::mtx2->unlock();
 	}
 	vkWaitForFences(rdata.vkdevice.device, 1, &fence, VK_TRUE, UINT64_MAX);
 	vkDestroyFence(rdata.vkdevice.device, fence, nullptr);
@@ -543,7 +543,7 @@ bool load_env_map(
 
 	VkWriteDescriptorSet descriptorWrite{};
 	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	descriptorWrite.dstSet = rvkbucket::globalBindlessSet;
+	descriptorWrite.dstSet = rview::core::globalBindlessSet;
 	descriptorWrite.dstBinding = 3;
 	descriptorWrite.dstArrayElement = 0;
 	descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;

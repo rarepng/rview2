@@ -9,7 +9,7 @@
 #include <iostream>
 
 bool playoutgeneric::setup(rvkbucket &objs, std::string_view fname, size_t count, std::string_view vfile, std::string_view ffile) {
-	m_modelID = rvkbucket::globalModelCounter.fetch_add(1, std::memory_order_relaxed);
+	m_modelID = rview::core::globalModelCounter.fetch_add(1, std::memory_order_relaxed);
 	static const bool _ = [&] {
 		if (!createpline(objs, vfile, ffile))
 			return false;
@@ -80,15 +80,15 @@ bool playoutgeneric::createssbostatic(rvkbucket &objs) {
 	return true;
 }
 bool playoutgeneric::createpline(rvkbucket &objs, std::string_view vfile, std::string_view ffile) {
-	if (!pline::init(objs, rvkbucket::globalPipelineLayout, skinnedpline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+	if (!pline::init(objs, rview::core::globalPipelineLayout, skinnedpline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
 	                 std::vector<std::string_view> {vfile, ffile}, objs.schain.image_format, objs.rddepthformat))
 		return false;
 
-	if (!pline::init(objs, rvkbucket::globalPipelineLayout, skinnedplineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+	if (!pline::init(objs, rview::core::globalPipelineLayout, skinnedplineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
 	                 std::vector<std::string_view> {vfile, ffile}, objs.schain.image_format, objs.rddepthformat))
 		return false;
 
-	if (!pline::initcompute(objs, rvkbucket::globalPipelineLayout, rvkbucket::globalcullpline, std::vector<std::string_view> {"shaders/cx.spv"}))
+	if (!pline::initcompute(objs, rview::core::globalPipelineLayout, rview::core::globalcullpline, std::vector<std::string_view> {"shaders/cx.spv"}))
 		return false;
 	return true;
 }
@@ -170,7 +170,7 @@ void playoutgeneric::cleanuplines(rvkbucket &objs) {
 	static const bool _ = [&] {
 		pline::cleanup(objs, skinnedpline);
 		pline::cleanup(objs, skinnedplineuint);
-		pline::cleanup(objs, rvkbucket::globalcullpline);
+		pline::cleanup(objs, rview::core::globalcullpline);
 		return true;
 	}();
 }
@@ -193,6 +193,6 @@ void playoutgeneric::draw(rvkbucket &objs, uint32_t indirectoffset) {
 
 		stride = mgltf->skinned ? minstances.at(0)->getjointmatrixsize() : 1;
 
-		mgltf->drawinstanced(objs, rvkbucket::globalPipelineLayout, skinnedpline, skinnedplineuint, numinstancess, stride, m_modelID, indirectoffset);
+		mgltf->drawinstanced(objs, rview::core::globalPipelineLayout, skinnedpline, skinnedplineuint, numinstancess, stride, m_modelID, indirectoffset);
 	}
 }

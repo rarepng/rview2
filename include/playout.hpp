@@ -8,8 +8,8 @@ namespace playout {
 inline bool init_bindless(rvkbucket& objs) {
 	constexpr uint32_t MAX_BINDLESS = 1024;
 
-	for (uint32_t i = 1; i < rvkbucket::MAX_BINDLESS_BUFFERS; ++i) {
-		objs.global_buffers.free_slots.push(i);
+	for (uint32_t i = 1; i < rview::core::MAX_BINDLESS_BUFFERS; ++i) {
+		rview::core::global_buffers.free_slots.push(i);
 	}
 
 	std::array<VkDescriptorSetLayoutBinding, 12> bindings{};
@@ -59,19 +59,19 @@ inline bool init_bindless(rvkbucket& objs) {
 	// instances [[culling]]
 	bindings[7].binding = 7;
 	bindings[7].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	bindings[7].descriptorCount = rvkbucket::MAX_FRAMES_IN_FLIGHT;
+	bindings[7].descriptorCount = rview::core::MAX_FRAMES_IN_FLIGHT;
 	bindings[7].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
 
 	// indirect drawing
 	bindings[8].binding = 8;
 	bindings[8].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	bindings[8].descriptorCount = rvkbucket::MAX_FRAMES_IN_FLIGHT;
+	bindings[8].descriptorCount = rview::core::MAX_FRAMES_IN_FLIGHT;
 	bindings[8].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
 	// visibility buffer?
 	bindings[9].binding = 9;
 	bindings[9].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	bindings[9].descriptorCount = rvkbucket::MAX_FRAMES_IN_FLIGHT;
+	bindings[9].descriptorCount = rview::core::MAX_FRAMES_IN_FLIGHT;
 	bindings[9].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
 	// particle system(s)
@@ -83,7 +83,7 @@ inline bool init_bindless(rvkbucket& objs) {
 	// 12th [[deferred]]
 	bindings[11].binding = 11;
 	bindings[11].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	bindings[11].descriptorCount = rvkbucket::MAX_FRAMES_IN_FLIGHT;
+	bindings[11].descriptorCount = rview::core::MAX_FRAMES_IN_FLIGHT;
 	bindings[11].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
 
@@ -115,7 +115,7 @@ inline bool init_bindless(rvkbucket& objs) {
 	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
 	layoutInfo.pBindings = bindings.data();
 
-	if (vkCreateDescriptorSetLayout(objs.vkdevice.device, &layoutInfo, nullptr, &rvkbucket::globalBindlessLayout) != VK_SUCCESS)
+	if (vkCreateDescriptorSetLayout(objs.vkdevice.device, &layoutInfo, nullptr, &rview::core::globalBindlessLayout) != VK_SUCCESS)
 		return false;
 
 	std::array<VkDescriptorPoolSize, 3> poolSizes{};
@@ -124,7 +124,7 @@ inline bool init_bindless(rvkbucket& objs) {
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[1].descriptorCount = 1;
 	poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	poolSizes[2].descriptorCount = (MAX_BINDLESS * 4) + 2 + (rvkbucket::MAX_FRAMES_IN_FLIGHT * 5); // total descriptor counts
+	poolSizes[2].descriptorCount = (MAX_BINDLESS * 4) + 2 + (rview::core::MAX_FRAMES_IN_FLIGHT * 5); // total descriptor counts
 
 	VkDescriptorPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
 	poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
@@ -132,15 +132,15 @@ inline bool init_bindless(rvkbucket& objs) {
 	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 	poolInfo.pPoolSizes = poolSizes.data();
 
-	if (vkCreateDescriptorPool(objs.vkdevice.device, &poolInfo, nullptr, &rvkbucket::globalBindlessPool) != VK_SUCCESS)
+	if (vkCreateDescriptorPool(objs.vkdevice.device, &poolInfo, nullptr, &rview::core::globalBindlessPool) != VK_SUCCESS)
 		return false;
 
 	VkDescriptorSetAllocateInfo allocInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-	allocInfo.descriptorPool = rvkbucket::globalBindlessPool;
+	allocInfo.descriptorPool = rview::core::globalBindlessPool;
 	allocInfo.descriptorSetCount = 1;
-	allocInfo.pSetLayouts = &rvkbucket::globalBindlessLayout;
+	allocInfo.pSetLayouts = &rview::core::globalBindlessLayout;
 
-	if (vkAllocateDescriptorSets(objs.vkdevice.device, &allocInfo, &rvkbucket::globalBindlessSet) != VK_SUCCESS)
+	if (vkAllocateDescriptorSets(objs.vkdevice.device, &allocInfo, &rview::core::globalBindlessSet) != VK_SUCCESS)
 		return false;
 
 	VkPushConstantRange pCs{};
@@ -150,11 +150,11 @@ inline bool init_bindless(rvkbucket& objs) {
 
 	VkPipelineLayoutCreateInfo plinfo{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
 	plinfo.setLayoutCount = 1;
-	plinfo.pSetLayouts = &rvkbucket::globalBindlessLayout;
+	plinfo.pSetLayouts = &rview::core::globalBindlessLayout;
 	plinfo.pushConstantRangeCount = 1;
 	plinfo.pPushConstantRanges = &pCs;
 
-	if (vkCreatePipelineLayout(objs.vkdevice.device, &plinfo, nullptr, &rvkbucket::globalPipelineLayout) != VK_SUCCESS) {
+	if (vkCreatePipelineLayout(objs.vkdevice.device, &plinfo, nullptr, &rview::core::globalPipelineLayout) != VK_SUCCESS) {
 		return false;
 	}
 

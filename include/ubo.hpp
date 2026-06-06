@@ -4,24 +4,24 @@
 #include <vulkan/vulkan.h>
 namespace ubo {
 inline bool init_global(rvkbucket &mvkobjs) {
-	rvkbucket::globalCameraUBO.size = (2 * sizeof(glm::mat4)) + sizeof(glm::vec4);
+	rview::core::globalCameraUBO.size = (2 * sizeof(glm::mat4)) + sizeof(glm::vec4);
 
 	VkBufferCreateInfo binfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-	binfo.size = rvkbucket::globalCameraUBO.size;
+	binfo.size = rview::core::globalCameraUBO.size;
 	binfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
 	VmaAllocationCreateInfo vmaallocinfo{};
 	vmaallocinfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
 	if (vmaCreateBuffer(mvkobjs.alloc, &binfo, &vmaallocinfo,
-	                    &rvkbucket::globalCameraUBO.buffer,
-	                    &rvkbucket::globalCameraUBO.alloc, nullptr) != VK_SUCCESS)
+	                    &rview::core::globalCameraUBO.buffer,
+	                    &rview::core::globalCameraUBO.alloc, nullptr) != VK_SUCCESS)
 		return false;
 
-	VkDescriptorBufferInfo uinfo{rvkbucket::globalCameraUBO.buffer, 0, rvkbucket::globalCameraUBO.size};
+	VkDescriptorBufferInfo uinfo{rview::core::globalCameraUBO.buffer, 0, rview::core::globalCameraUBO.size};
 
 	VkWriteDescriptorSet writedset{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-	writedset.dstSet = rvkbucket::globalBindlessSet;
+	writedset.dstSet = rview::core::globalBindlessSet;
 	writedset.dstBinding = 1;
 	writedset.dstArrayElement = 0;
 	writedset.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;

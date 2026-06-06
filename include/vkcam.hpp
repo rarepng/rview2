@@ -10,20 +10,20 @@
 #include <glm/glm.hpp>
 
 namespace vkcam {
-inline glm::mat4 getview(rvkbucket &mvkobjs) {
-	mvkobjs.mvkcam.mforward = glm::normalize(
-	                              glm::vec3{glm::sin(glm::radians(mvkobjs.azimuth)) * glm::cos(glm::radians(mvkobjs.elevation)),
-	                                        glm::sin(glm::radians(mvkobjs.elevation)),
-	                                        -glm::cos(glm::radians(mvkobjs.azimuth)) * glm::cos(glm::radians(mvkobjs.elevation))});
+inline glm::mat4 getview() {
+	rview::core::mvkcam.mforward = glm::normalize(
+	                              glm::vec3{glm::sin(glm::radians(rview::core::azimuth)) * glm::cos(glm::radians(rview::core::elevation)),
+	                                        glm::sin(glm::radians(rview::core::elevation)),
+	                                        -glm::cos(glm::radians(rview::core::azimuth)) * glm::cos(glm::radians(rview::core::elevation))});
 
-	mvkobjs.mvkcam.mright = glm::normalize(glm::cross(mvkobjs.mvkcam.mforward, mvkobjs.mvkcam.wup));
+	rview::core::mvkcam.mright = glm::normalize(glm::cross(rview::core::mvkcam.mforward, rview::core::mvkcam.wup));
 
-	mvkobjs.mvkcam.mup = glm::normalize(glm::cross(mvkobjs.mvkcam.mright, mvkobjs.mvkcam.mforward));
+	rview::core::mvkcam.mup = glm::normalize(glm::cross(rview::core::mvkcam.mright, rview::core::mvkcam.mforward));
 
-	mvkobjs.camwpos += mvkobjs.camfor * static_cast<float>(mvkobjs.tickdiff) * mvkobjs.mvkcam.mforward +
-	                   mvkobjs.camright * static_cast<float>(mvkobjs.tickdiff) * mvkobjs.mvkcam.mright +
-	                   mvkobjs.camup * static_cast<float>(mvkobjs.tickdiff) * mvkobjs.mvkcam.mup;
+	rview::core::camwpos += rview::core::camfor * static_cast<float>(rview::core::tickdiff) * rview::core::mvkcam.mforward +
+	                   rview::core::camright * static_cast<float>(rview::core::tickdiff) * rview::core::mvkcam.mright +
+	                   rview::core::camup * static_cast<float>(rview::core::tickdiff) * rview::core::mvkcam.mup;
 
-	return glm::lookAt(mvkobjs.camwpos, mvkobjs.camwpos + mvkobjs.mvkcam.mforward, mvkobjs.mvkcam.mup);
+	return glm::lookAt(rview::core::camwpos, rview::core::camwpos + rview::core::mvkcam.mforward, rview::core::mvkcam.mup);
 }
 };

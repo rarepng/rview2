@@ -66,7 +66,7 @@ static inline bool init_bindless(rvkbucket &objs, ssbodata &ssboData, size_t buf
 	VkDescriptorBufferInfo ssboInfo{ssboData.buffer, 0, buffersize};
 
 	VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-	write.dstSet = rvkbucket::globalBindlessSet;
+	write.dstSet = rview::core::globalBindlessSet;
 	write.dstBinding = 2;
 	write.dstArrayElement = modelID;
 	write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;

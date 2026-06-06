@@ -116,14 +116,14 @@ inline bool createeverything(rvkbucket &objs) {
 			return false;
 		}
 
-		objs.mtx2->lock();
+		rview::core::mtx2->lock();
 
 		if (vkQueueSubmit(objs.graphicsQ, 1, &submitInfo, tempFence) != VK_SUCCESS) {
-			objs.mtx2->unlock();
+			rview::core::mtx2->unlock();
 			return false;
 		}
 
-		objs.mtx2->unlock();
+		rview::core::mtx2->unlock();
 
 		vkWaitForFences(objs.vkdevice.device, 1, &tempFence, VK_TRUE, UINT64_MAX);
 		vkDestroyFence(objs.vkdevice.device, tempFence, nullptr);
@@ -136,11 +136,11 @@ inline bool createeverything(rvkbucket &objs) {
 	VkShaderModule c = vkshader::loadshader(objs.vkdevice.device, "shaders/pcx.spv");
 	VkShaderModule v = vkshader::loadshader(objs.vkdevice.device, "shaders/pvx.spv");
 
-	bindless_idx = rvkbucket::globalBufferCounter.fetch_add(1, std::memory_order_relaxed);
+	bindless_idx = rview::core::globalBufferCounter.fetch_add(1, std::memory_order_relaxed);
 
 	VkDescriptorBufferInfo binfo{ ssbobuffsnallocs.at(0).first, 0, VK_WHOLE_SIZE };
 	VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-	write.dstSet = rvkbucket::globalBindlessSet;
+	write.dstSet = rview::core::globalBindlessSet;
 	write.dstBinding = 10;
 	write.dstArrayElement = bindless_idx;
 	write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -148,7 +148,7 @@ inline bool createeverything(rvkbucket &objs) {
 	write.pBufferInfo = &binfo;
 
 	{
-		std::lock_guard<std::shared_mutex> lock(*objs.mtx2);
+		std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
 		vkUpdateDescriptorSets(objs.vkdevice.device, 1, &write, 0, nullptr);
 	}
 
@@ -160,7 +160,7 @@ inline bool createeverything(rvkbucket &objs) {
 
 	VkComputePipelineCreateInfo cplineinfo{};
 	cplineinfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-	cplineinfo.layout = rvkbucket::globalPipelineLayout;
+	cplineinfo.layout = rview::core::globalPipelineLayout;
 	cplineinfo.stage = cshaderinfo;
 
 	if (vkCreateComputePipelines(objs.vkdevice.device, VK_NULL_HANDLE, 1, &cplineinfo, VK_NULL_HANDLE, &cpline) != VK_SUCCESS) {
@@ -263,7 +263,7 @@ inline bool createeverything(rvkbucket &objs) {
 	plineinfo.pColorBlendState = &colorinfo;
 	plineinfo.pDepthStencilState = &depthStencilInfo;
 	plineinfo.pDynamicState = &dyninfo;
-	plineinfo.layout = rvkbucket::globalPipelineLayout;
+	plineinfo.layout = rview::core::globalPipelineLayout;
 	plineinfo.renderPass = VK_NULL_HANDLE;
 	plineinfo.subpass = 0;
 	plineinfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -282,49 +282,49 @@ inline bool createeverything(rvkbucket &objs) {
 
 static inline bool drawcomp(rvkbucket &objs) {
 
-	if (vkResetCommandBuffer(objs.cbuffers_compute.at(0).at(rvkbucket::currentFrame), 0) != VK_SUCCESS)
+	if (vkResetCommandBuffer(objs.cbuffers_compute.at(0).at(rview::core::currentFrame), 0) != VK_SUCCESS)
 		return false;
 
 	VkCommandBufferBeginInfo cmdbgninfo{};
 	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-	if (vkBeginCommandBuffer(objs.cbuffers_compute.at(0).at(rvkbucket::currentFrame), &cmdbgninfo) != VK_SUCCESS)
+	if (vkBeginCommandBuffer(objs.cbuffers_compute.at(0).at(rview::core::currentFrame), &cmdbgninfo) != VK_SUCCESS)
 		return false;
 
-	vkCmdBindPipeline(objs.cbuffers_compute.at(0).at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_COMPUTE, cpline);
+	vkCmdBindPipeline(objs.cbuffers_compute.at(0).at(rview::core::currentFrame), VK_PIPELINE_BIND_POINT_COMPUTE, cpline);
 
-	vkCmdBindDescriptorSets(objs.cbuffers_compute.at(0).at(rvkbucket::currentFrame),
+	vkCmdBindDescriptorSets(objs.cbuffers_compute.at(0).at(rview::core::currentFrame),
 	                        VK_PIPELINE_BIND_POINT_COMPUTE,
-	                        rvkbucket::globalPipelineLayout,
-	                        0, 1, &rvkbucket::globalBindlessSet, 0, nullptr);
+	                        rview::core::globalPipelineLayout,
+	                        0, 1, &rview::core::globalBindlessSet, 0, nullptr);
 
 	vkpushconstants pc{};
 	pc.posIdx = bindless_idx;
-	vkCmdPushConstants(objs.cbuffers_compute.at(0).at(rvkbucket::currentFrame),
-	                   rvkbucket::globalPipelineLayout,
+	vkCmdPushConstants(objs.cbuffers_compute.at(0).at(rview::core::currentFrame),
+	                   rview::core::globalPipelineLayout,
 	                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT,
 	                   0, sizeof(vkpushconstants), &pc);
 
-	vkCmdDispatch(objs.cbuffers_compute.at(0).at(rvkbucket::currentFrame), Ps.size() / 256, 1, 1);
+	vkCmdDispatch(objs.cbuffers_compute.at(0).at(rview::core::currentFrame), Ps.size() / 256, 1, 1);
 
-	if (vkEndCommandBuffer(objs.cbuffers_compute.at(0).at(rvkbucket::currentFrame)) != VK_SUCCESS)
+	if (vkEndCommandBuffer(objs.cbuffers_compute.at(0).at(rview::core::currentFrame)) != VK_SUCCESS)
 		return false;
 
 	VkSubmitInfo submitinfo{};
 	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitinfo.commandBufferCount = 1;
-	submitinfo.pCommandBuffers = &objs.cbuffers_compute.at(0).at(rvkbucket::currentFrame);
+	submitinfo.pCommandBuffers = &objs.cbuffers_compute.at(0).at(rview::core::currentFrame);
 	submitinfo.signalSemaphoreCount = 1;
-	submitinfo.pSignalSemaphores = &objs.semaphorez.at(2).at(rvkbucket::currentFrame);
+	submitinfo.pSignalSemaphores = &objs.semaphorez.at(2).at(rview::core::currentFrame);
 
-	objs.mtx2->lock();
+	rview::core::mtx2->lock();
 
 	if (vkQueueSubmit(objs.computeQ, 1, &submitinfo, VK_NULL_HANDLE) != VK_SUCCESS) {
-		objs.mtx2->unlock();
+		rview::core::mtx2->unlock();
 		return false;
 	}
 
-	objs.mtx2->unlock();
+	rview::core::mtx2->unlock();
 
 	return true;
 }
@@ -333,12 +333,12 @@ static inline void record_compute(VkCommandBuffer c) {
 	vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_COMPUTE, cpline);
 
 	vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_COMPUTE,
-	                        rvkbucket::globalPipelineLayout,
-	                        0, 1, &rvkbucket::globalBindlessSet, 0, VK_NULL_HANDLE);
+	                        rview::core::globalPipelineLayout,
+	                        0, 1, &rview::core::globalBindlessSet, 0, VK_NULL_HANDLE);
 
 	vkpushconstants pc{};
 	pc.posIdx = bindless_idx;
-	vkCmdPushConstants(c, rvkbucket::globalPipelineLayout,
+	vkCmdPushConstants(c, rview::core::globalPipelineLayout,
 	                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT,
 	                   0, sizeof(vkpushconstants), &pc);
 

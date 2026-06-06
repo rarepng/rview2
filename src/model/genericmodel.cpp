@@ -42,7 +42,7 @@ bool genericmodel::loadmodel(rvkbucket &objs, std::string_view fname) {
 
 	// if (!vktexture::loadtexture(objs, mgltfobjs.texs, mmodel2))
 	// 	return false;
-	// if (!vktexture::loadtexset(objs, mgltfobjs.texs, *rvkbucket::texlayout,
+	// if (!vktexture::loadtexset(objs, mgltfobjs.texs, *rview::core::texlayout,
 	//                            mgltfobjs.dset, mmodel2))
 	// 	return false;
 
@@ -73,7 +73,7 @@ void genericmodel::extractmaterials(rvkbucket &objs) {
 
 	for (const auto &mat : mmodel2.materials) {
 		MaterialData md{};
-		md.envMapMaxLod = rvkbucket::hdrmiplod - 1;
+		md.envMapMaxLod = rview::core::hdrmiplod - 1;
 		md.baseColorFactor = glm::make_vec4(mat.pbrData.baseColorFactor.data());
 		md.roughnessFactor = mat.pbrData.roughnessFactor;
 		md.metallicFactor = mat.pbrData.metallicFactor;
@@ -128,22 +128,22 @@ void genericmodel::extractmaterials(rvkbucket &objs) {
 	defaultMat.sheenIdx = 3;
 	defaultMat.clearcoatIdx = 3;
 	defaultMat.thicknessIdx = 1;
-	defaultMat.envMapMaxLod = rvkbucket::hdrmiplod - 1;
+	defaultMat.envMapMaxLod = rview::core::hdrmiplod - 1;
 	matBuffer.push_back(defaultMat);
 
-	std::lock_guard<std::mutex> lock(rvkbucket::global_materials.mtx);
+	std::lock_guard<std::mutex> lock(rview::core::global_materials.mtx);
 
-	if (rvkbucket::global_materials.free_slots.size() < matBuffer.size()) {
+	if (rview::core::global_materials.free_slots.size() < matBuffer.size()) {
 		std::cerr << "VULKAN ERROR: Global Material Heap Exhausted!" << std::endl;
 		return;
 	}
 
 	MaterialData *global_array =
-	    static_cast<MaterialData*>(rvkbucket::global_materials.mapped_data);
+	    static_cast<MaterialData*>(rview::core::global_materials.mapped_data);
 
 	for (size_t i = 0; i < matBuffer.size(); i++) {
-		uint32_t global_slot = rvkbucket::global_materials.free_slots.front();
-		rvkbucket::global_materials.free_slots.pop();
+		uint32_t global_slot = rview::core::global_materials.free_slots.front();
+		rview::core::global_materials.free_slots.pop();
 
 		m_global_material_indices.push_back(global_slot);
 
@@ -455,20 +455,20 @@ void genericmodel::createvboebo(rvkbucket &objs) {
 				vkvbo::init(objs, (GpuBuffer&)mgltfobjs.vbos[i][j][slot], size,
 				            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
-				uint32_t bIdx = rvkbucket::globalBufferCounter.fetch_add(1, std::memory_order_relaxed);
+				uint32_t bIdx = rview::core::globalBufferCounter.fetch_add(1, std::memory_order_relaxed);
 				mgltfobjs.vbos[i][j][slot].bindless_idx = bIdx;
 
 				if (bIdx != 0) {
 					VkDescriptorBufferInfo ssboInfo{mgltfobjs.vbos[i][j][slot].buffer, 0, VK_WHOLE_SIZE};
 					VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-					write.dstSet = rvkbucket::globalBindlessSet;
+					write.dstSet = rview::core::globalBindlessSet;
 					write.dstBinding = 5;
 					write.dstArrayElement = bIdx;
 					write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 					write.descriptorCount = 1;
 					write.pBufferInfo = &ssboInfo;
 
-					std::lock_guard<std::shared_mutex> lock(*objs.mtx2);
+					std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
 					vkUpdateDescriptorSets(objs.vkdevice.device, 1, &write, 0, nullptr);
 				}
 			};
@@ -792,19 +792,19 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
 	VkDeviceSize offset = 0;
 
 //   vkCmdBindDescriptorSets(
-//       objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
+//       objs.cbuffers_graphics.at(0).at(rview::core::currentFrame),
 //       VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 0, 1, &mgltfobjs.dset, 0,
 //       nullptr);
 
 //   vkCmdBindDescriptorSets(
-//       objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
+//       objs.cbuffers_graphics.at(0).at(rview::core::currentFrame),
 //       VK_PIPELINE_BIND_POINT_GRAPHICS, vkplayout, 4, 1,
-//       &rvkbucket::global_materials.dset, 0, nullptr);
+//       &rview::core::global_materials.dset, 0, nullptr);
 
 	for (size_t i = 0; i < mgltfobjs.vbos.size(); i++) {
 		for (size_t j = 0; j < mgltfobjs.vbos.at(i).size(); j++) {
 			VkPipeline pipeline = meshjointtype[i][j] ? vkplineuint : vkpline;
-			vkCmdBindPipeline(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+			vkCmdBindPipeline(objs.cbuffers_graphics.at(0).at(rview::core::currentFrame), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
 			vkpushconstants push{};
 			auto &buffers2 = mgltfobjs.vbos[i][j];
@@ -812,7 +812,7 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
 			push.t = static_cast<float>(SDL_GetTicks()) / 1000.0f;
 			push.modelID = modelID;
 
-			push.frameIndex = rvkbucket::currentFrame;
+			push.frameIndex = rview::core::currentFrame;
 
 			uint32_t local_idx = mmodel2.meshes.at(i).primitives.at(j).materialIndex.has_value()
 			                     ? mmodel2.meshes.at(i).primitives.at(j).materialIndex.value()
@@ -854,7 +854,7 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
 				}
 			}
 
-			vkCmdPushConstants(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), vkplayout,
+			vkCmdPushConstants(objs.cbuffers_graphics.at(0).at(rview::core::currentFrame), vkplayout,
 			                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT, 0,
 			                   sizeof(vkpushconstants), &push);
 
@@ -882,22 +882,22 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
 						break;
 				}
 
-				vkCmdBindIndexBuffer(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
+				vkCmdBindIndexBuffer(objs.cbuffers_graphics.at(0).at(rview::core::currentFrame),
 				                     mgltfobjs.ebos.at(i).at(j).buffer, 0, vkIndexType);
 
 				// vkCmdDrawIndexedIndirect(
-				//     objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame),
-				//     objs.globalIndirectBuffers[rvkbucket::currentFrame].buffer,
+				//     objs.cbuffers_graphics.at(0).at(rview::core::currentFrame),
+				//     objs.globalIndirectBuffers[rview::core::currentFrame].buffer,
 				//     indirectoffset * sizeof(VkDrawIndexedIndirectCommand),
 				//     instancecount,
 				//     sizeof(VkDrawIndexedIndirectCommand)
 				// );
 
-				vkCmdDrawIndexed(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), drawCount,
+				vkCmdDrawIndexed(objs.cbuffers_graphics.at(0).at(rview::core::currentFrame), drawCount,
 				                 instancecount, 0, 0, 0);
 
 			} else {
-				vkCmdDraw(objs.cbuffers_graphics.at(0).at(rvkbucket::currentFrame), drawCount, instancecount, 0, 0);
+				vkCmdDraw(objs.cbuffers_graphics.at(0).at(rview::core::currentFrame), drawCount, instancecount, 0, 0);
 			}
 		}
 	}
@@ -905,7 +905,7 @@ void genericmodel::drawinstanced(rvkbucket &objs, VkPipelineLayout &vkplayout,
 
 void genericmodel::cleanup(rvkbucket &objs) {
 
-	std::lock_guard<std::mutex> lk(rvkbucket::global_buffers.mtx);
+	std::lock_guard<std::mutex> lk(rview::core::global_buffers.mtx);
 
 	for (size_t i{0}; i < mgltfobjs.vbos.size(); i++) {
 		for (size_t j{0}; j < mgltfobjs.vbos.at(i).size(); j++) {
@@ -913,7 +913,7 @@ void genericmodel::cleanup(rvkbucket &objs) {
 				uint32_t idx = mgltfobjs.vbos.at(i).at(j).at(k).bindless_idx;
 
 				if (idx != 0) {
-					rvkbucket::global_buffers.free_slots.push(idx);
+					rview::core::global_buffers.free_slots.push(idx);
 					mgltfobjs.vbos.at(i).at(j).at(k).bindless_idx = 0; // Nullify
 				}
 
@@ -932,15 +932,15 @@ void genericmodel::cleanup(rvkbucket &objs) {
 		rview::rvk::tex::cleanup(objs, mgltfobjs.texs[i]);
 	}
 
-	std::lock_guard<std::mutex> lock(rvkbucket::global_materials.mtx);
+	std::lock_guard<std::mutex> lock(rview::core::global_materials.mtx);
 
 	for (uint32_t slot : m_global_material_indices) {
-		rvkbucket::global_materials.free_slots.push(slot);
+		rview::core::global_materials.free_slots.push(slot);
 	}
 
 	m_global_material_indices.clear();
 	// temp
-//   rview::rvk::tex::cleanuptpl(objs, *rvkbucket::texlayout, mgltfobjs.texpool);
+//   rview::rvk::tex::cleanuptpl(objs, *rview::core::texlayout, mgltfobjs.texpool);
 }
 std::vector<texdata> genericmodel::gettexdata() {
 	return mgltfobjs.texs;
