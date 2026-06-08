@@ -17,6 +17,143 @@
 
 #include "vktex.hpp"
 
+void genericmodel::init_globalidx() {
+
+	uint32_t totalPrimitives = 0;
+	uint32_t totalRequiredBytes = 0;
+
+	for (const auto& mesh : mmodel2.meshes) {
+		for (const auto& prim : mesh.primitives) {
+			totalPrimitives++;
+
+			if (prim.indicesAccessor.has_value()) {
+				const auto& accessor = mmodel2.accessors[prim.indicesAccessor.value()];
+				uint32_t byteSize = accessor.count * fastgltf::getElementByteSize(accessor.type, accessor.componentType);
+
+				totalRequiredBytes += align_up_4(byteSize);
+			}
+		}
+	}
+
+	std::vector<uint8_t> localRawIndices;
+	localRawIndices.reserve(totalRequiredBytes);
+
+	std::vector<PrimitiveMetadata> localMetadata;
+	localMetadata.reserve(totalPrimitives);
+
+	for (size_t i = 0; i < mmodel2.meshes.size(); ++i) {
+		const auto& mesh = mmodel2.meshes[i];
+
+		for (size_t j = 0; j < mesh.primitives.size(); ++j) {
+			const auto& prim = mesh.primitives[j];
+			PrimitiveMetadata meta{};
+
+			meta.indexByteOffset = static_cast<uint32_t>(localRawIndices.size());
+
+			if (prim.indicesAccessor.has_value()) {
+				const auto& accessor = mmodel2.accessors[prim.indicesAccessor.value()];
+				meta.indexCount = static_cast<uint32_t>(accessor.count);
+
+				if (accessor.componentType == fastgltf::ComponentType::UnsignedByte) {
+					meta.indexType = 0;
+					uint32_t byteSize = accessor.count * 1;
+					localRawIndices.resize(meta.indexByteOffset + align_up_4(byteSize), 0);
+					fastgltf::copyFromAccessor<uint8_t>(mmodel2, accessor, localRawIndices.data() + meta.indexByteOffset);
+
+				} else if (accessor.componentType == fastgltf::ComponentType::UnsignedShort) {
+					meta.indexType = 1;
+					uint32_t byteSize = accessor.count * 2;
+					localRawIndices.resize(meta.indexByteOffset + align_up_4(byteSize), 0);
+					fastgltf::copyFromAccessor<uint16_t>(mmodel2, accessor, reinterpret_cast<uint16_t*>(localRawIndices.data() + meta.indexByteOffset));
+
+				} else {
+					meta.indexType = 2;
+					uint32_t byteSize = accessor.count * 4;
+					localRawIndices.resize(meta.indexByteOffset + align_up_4(byteSize), 0);
+					fastgltf::copyFromAccessor<uint32_t>(mmodel2, accessor, reinterpret_cast<uint32_t*>(localRawIndices.data() + meta.indexByteOffset));
+				}
+			} else {
+				const auto* posAttr = prim.findAttribute("POSITION");
+
+				if (posAttr) {
+					meta.indexCount = static_cast<uint32_t>(mmodel2.accessors[posAttr->accessorIndex].count);
+				}
+
+				meta.indexType = 3; // unindexed
+			}
+
+			const auto& vboSlots = mgltfobjs.vbos[i][j];
+
+			auto getBindless = [&](int slot) -> uint32_t {
+				if (slot < vboSlots.size() && vboSlots[slot].buffer != VK_NULL_HANDLE) {
+					return vboSlots[slot].bindless_idx;
+				}
+
+				return 0xFFFFFFFF;
+			};
+
+			meta.posIdx = getBindless(0);
+			meta.norIdx = getBindless(1);
+			meta.tanIdx = getBindless(2);
+			meta.texIdx = getBindless(3);
+			meta.joiIdx = getBindless(4);
+			meta.weiIdx = getBindless(5);
+			meta.jointFmt = 0;
+			meta.weightFmt = 2;
+
+			// meta.materialID = prim.materialIndex.value_or(0);
+			uint32_t local_idx = prim.materialIndex.has_value() ? prim.materialIndex.value() : mmodel2.materials.size();
+			meta.materialID = this->m_global_material_indices[local_idx];
+
+
+			if (meta.joiIdx != 0xFFFFFFFF) {
+				const auto *jAttr = prim.findAttribute("JOINTS_0");
+
+				if (jAttr) {
+					auto &jAcc = mmodel2.accessors[jAttr->accessorIndex];
+					meta.jointFmt = (jAcc.componentType == fastgltf::ComponentType::UnsignedShort) ? 1 : 0;
+				}
+			}
+
+			if (meta.weiIdx != 0xFFFFFFFF) {
+				const auto *wAttr = prim.findAttribute("WEIGHTS_0");
+
+				if (wAttr) {
+					auto &wAcc = mmodel2.accessors[wAttr->accessorIndex];
+
+					if (wAcc.componentType == fastgltf::ComponentType::Float) meta.weightFmt = 2;
+					else if (wAcc.componentType == fastgltf::ComponentType::UnsignedShort) meta.weightFmt = 1;
+					else meta.weightFmt = 0;
+				}
+			}
+
+			localMetadata.push_back(meta);
+		}
+	}
+
+	{
+		std::lock_guard<std::mutex> lock(g_assets.registryMutex);
+
+		uint32_t currentModelID = static_cast<uint32_t>(g_assets.models.size());
+		g_assets.models.push_back({ static_cast<uint32_t>(g_assets.primitives.size()), totalPrimitives });
+
+		uint32_t globalByteOffset = static_cast<uint32_t>(g_assets.globalRawIndices.size());
+
+		g_assets.globalRawIndices.insert(
+		    g_assets.globalRawIndices.end(),
+		    localRawIndices.begin(),
+		    localRawIndices.end()
+		);
+
+		for (auto& meta : localMetadata) {
+			meta.indexByteOffset += globalByteOffset;
+			g_assets.primitives.push_back(meta);
+		}
+	}
+
+	g_assets.requiresUpload.store(true, std::memory_order_release);
+}
+
 bool genericmodel::loadmodel(rvkbucket &objs, std::string_view fname) {
 
 	fastgltf::Parser fastparser{};
@@ -63,6 +200,8 @@ bool genericmodel::loadmodel(rvkbucket &objs, std::string_view fname) {
 	getanims();
 
 	extractmaterials(objs);
+
+	init_globalidx();
 
 	return true;
 }
@@ -474,22 +613,6 @@ void genericmodel::createvboebo(rvkbucket &objs) {
 			};
 
 			std::ranges::for_each(prim.attributes, init_attr);
-
-			// if (vertexCount > 0) {
-			//   if (!hasJoints) {
-			//     size_t size = vertexCount * sizeof(uint8_t) * 4;
-			//     vkvbo::init(objs, (GpuBuffer &)mgltfobjs.vbos[i][j][4], size,
-			//                 VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-			//                     VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-			//   }
-
-			//   if (!hasWeights) {
-			//     size_t size = vertexCount * sizeof(float) * 4;
-			//     vkvbo::init(objs, (GpuBuffer &)mgltfobjs.vbos[i][j][5], size,
-			//                 VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-			//                     VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-			//   }
-			// }
 		}
 	}
 }

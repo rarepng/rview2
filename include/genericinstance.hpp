@@ -14,6 +14,7 @@
 #include <functional>
 #include <tuple>
 #include "anim/flatskelly.hpp"
+#include <core/scene.hpp>
 
 template <typename T, typename MemberType, typename Func>
 struct Reaction {
@@ -84,9 +85,17 @@ public:
 		x = glm::translate(glm::mat4{ 1.0f }, mmodelsettings.msworldpos) * x;
 		return x;
 	}
-
+	uint32_t get_entity_id() const {
+		return m_entity_id;
+	}
+	void sync_to_scene(uint32_t modelID);
+	void set_joint_offset(uint32_t offset) {
+		m_current_joint_offset = offset;
+	}
 
 private:
+	uint32_t m_entity_id;
+	uint32_t m_current_joint_offset = 0;
 	InstanceState mLastState;
 	void playanimation(int animnum, float speeddivider, float blendfactor, replaydirection direction);
 	void playanimation(int srcanimnum, int dstanimnum, float speeddivider, float blendfactor, replaydirection direction);

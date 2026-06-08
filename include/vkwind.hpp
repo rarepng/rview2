@@ -67,6 +67,7 @@ inline void configure_selector(vkb::PhysicalDeviceSelector& selector) {
 	f12.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
 	f12.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
 	f12.descriptorBindingVariableDescriptorCount = VK_TRUE;
+	f12.drawIndirectCount = VK_TRUE;
 	// f12.shaderFloat16 = VK_TRUE;
 	VkPhysicalDeviceVulkan11Features f11{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
 	f11.shaderDrawParameters = VK_TRUE;
@@ -75,6 +76,8 @@ inline void configure_selector(vkb::PhysicalDeviceSelector& selector) {
 	features.samplerAnisotropy = VK_TRUE;
 	features.multiDrawIndirect = VK_TRUE;
 	features.vertexPipelineStoresAndAtomics = VK_TRUE;
+	features.shaderInt16 = VK_TRUE;
+	features.drawIndirectFirstInstance = VK_TRUE;
 	VkPhysicalDeviceMeshShaderFeaturesEXT f_mesh{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT};
 	f_mesh.meshShader = VK_TRUE;
 	f_mesh.taskShader = VK_TRUE;

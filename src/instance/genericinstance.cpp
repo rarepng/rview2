@@ -84,6 +84,18 @@ genericinstance::genericinstance(std::shared_ptr<genericmodel> model, glm::vec3 
 		mmodelsettings.msiktargetworldpos =
 		    getwrot() * mmodelsettings.msiktargetpos + glm::vec3(worldpos.x, 0.0f, worldpos.y);
 	}
+
+	m_entity_id = g_scene.create_entity();
+}
+
+void genericinstance::sync_to_scene(uint32_t modelID) {
+	g_scene.worldPositions[m_entity_id] = mmodelsettings.msworldpos;
+	g_scene.rotations[m_entity_id]      = getwrot();
+	g_scene.scales[m_entity_id]         = mmodelsettings.msworldscale;
+	g_scene.modelIDs[m_entity_id]       = modelID;
+	g_scene.animTimePositions[m_entity_id] = mmodelsettings.msanimtimepos;
+	g_scene.jointOffsets[m_entity_id]   = m_current_joint_offset;
+	g_scene.isSkinned[m_entity_id]      = mgltfmodel->skinned ? 1 : 0;
 }
 
 void genericinstance::resetnodedata() {
@@ -291,7 +303,7 @@ void genericinstance::checkforupdates() {
 // }
 
 void genericinstance::updateanimation() {
-	if (manimclips.size() > 0)
+	if (manimclips.size() > 0) {
 		if (mmodelsettings.msplayanimation) {
 			mmodelsettings.msanimendtime = getanimendtime(mmodelsettings.msanimclip);
 
@@ -312,6 +324,7 @@ void genericinstance::updateanimation() {
 				blendanimationframe(mmodelsettings.msanimclip, mmodelsettings.msanimtimepos, mmodelsettings.msanimblendfactor);
 			}
 		}
+	}
 }
 
 void genericinstance::solveik() {

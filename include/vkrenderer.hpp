@@ -22,6 +22,7 @@
 #include "core/rvk.hpp"
 #include "core/jobs.hpp"
 #include "core/scene.hpp"
+#include <vkvbo.hpp>
 
 enum InputKey : uint8_t {
 	Key_W = 0, Key_S, Key_A, Key_D, Key_Q, Key_E,
@@ -55,12 +56,25 @@ inline timer muigentimer{};
 inline timer muidrawtimer{};
 inline std::vector<glm::mat4> persviewproj{glm::mat4{1.0f}, glm::mat4{1.0f}};
 
+// TODOOOOOOO
+inline VkBuffer m_rawIndexSSBO = VK_NULL_HANDLE;
+inline VmaAllocation m_rawIndexAlloc = VK_NULL_HANDLE;
+inline uint32_t m_rawIndexCapacity = 0;
+inline uint32_t m_rawIndexOffset = 0;
+inline VkBuffer m_primitiveRegistrySSBO = VK_NULL_HANDLE;
+inline VmaAllocation m_primitiveRegistryAlloc = VK_NULL_HANDLE;
+inline VkBuffer m_modelRegistrySSBO = VK_NULL_HANDLE;
+inline VmaAllocation m_modelRegistryAlloc = VK_NULL_HANDLE;
+inline std::atomic<bool> m_requiresUpload{false};
 
+void sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs);
 bool ges();
 bool initcpuQs(rvkbucket& mvkobjs);
 bool initglobalmats(rvkbucket& mvkobjs);
 bool initglobalinstances(rvkbucket& mvkobjs);
 bool initglobalindirect(rvkbucket& mvkobjs);
+bool initglobalidrectUNINDEXED(rvkbucket& mvkobjs);
+void update_dynamic_instances(rvkbucket& mvkobjs);
 
 void immediate_submit(rvkbucket& mvkobjs, std::function<void(VkCommandBuffer cbuffer)>&& fn);
 bool init(rvkbucket& mvkobjs);

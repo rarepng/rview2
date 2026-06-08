@@ -13,6 +13,7 @@
 #include "anim/flatskelly.hpp"
 #include "anim/baker2.hpp"
 #include <unordered_map>
+#include <core/scene.hpp>
 
 struct gltfnodedata {
 	std::shared_ptr<vknode> rootnode;
@@ -72,6 +73,7 @@ public:
 		return mgltfobjs.ebos[i][j].buffer;
 	}
 
+	bool m_requiresUpload{false};
 
 private:
 	std::vector<std::vector<bool>> meshjointtype{};
@@ -85,6 +87,7 @@ private:
 	void getanims();
 	void getnodes(std::shared_ptr<vknode> treenode);
 	void getnodedata(std::shared_ptr<vknode> treenode);
+	void init_globalidx();
 
 	std::vector<std::shared_ptr<vknode>> getnodelist(std::vector<std::shared_ptr<vknode>>& nlist, int nodenum);
 

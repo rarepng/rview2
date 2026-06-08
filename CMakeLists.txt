@@ -26,8 +26,8 @@ set(submodules_path
 find_program(ASTYLE_EXECUTABLE astyle)
 if(ASTYLE_EXECUTABLE)
     file(GLOB_RECURSE ALL_SOURCE_FILES 
-        "src/*.cpp" 
-        "include/*.hpp" 
+        "src/*.cpp"
+        "include/*.hpp"
         "mods/*.cxxm"
     )
     add_custom_target(format

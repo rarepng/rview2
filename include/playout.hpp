@@ -6,13 +6,13 @@
 
 namespace playout {
 inline bool init_bindless(rvkbucket& objs) {
-	constexpr uint32_t MAX_BINDLESS = 1024;
+	constexpr uint32_t MAX_BINDLESS = 32768;
 
 	for (uint32_t i = 1; i < rview::core::MAX_BINDLESS_BUFFERS; ++i) {
 		rview::core::global_buffers.free_slots.push(i);
 	}
 
-	std::array<VkDescriptorSetLayoutBinding, 12> bindings{};
+	std::array<VkDescriptorSetLayoutBinding, 17> bindings{};
 
 	// tex
 	bindings[0].binding = 0;
@@ -86,8 +86,37 @@ inline bool init_bindless(rvkbucket& objs) {
 	bindings[11].descriptorCount = rview::core::MAX_FRAMES_IN_FLIGHT;
 	bindings[11].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
+	// raw byte index
+	bindings[12].binding = 12;
+	bindings[12].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	bindings[12].descriptorCount = 1;
+	bindings[12].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
 
-	std::array<VkDescriptorBindingFlags, 12> flags{};
+	// Binding 13: Primitive Registry
+	bindings[13].binding = 13;
+	bindings[13].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	bindings[13].descriptorCount = 1;
+	bindings[13].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+
+	// Binding 14: Model Registry
+	bindings[14].binding = 14;
+	bindings[14].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	bindings[14].descriptorCount = 1;
+	bindings[14].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+	// indirect UNindexed commands
+	bindings[15].binding = 15;
+	bindings[15].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	bindings[15].descriptorCount = rview::core::MAX_FRAMES_IN_FLIGHT;
+	bindings[15].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+	// indirect count
+	bindings[16].binding = 16;
+	bindings[16].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	bindings[16].descriptorCount = rview::core::MAX_FRAMES_IN_FLIGHT;
+	bindings[16].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+	std::array<VkDescriptorBindingFlags, 17> flags{};
 	VkDescriptorBindingFlags bindlessFlags =
 	    VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
 	    VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
@@ -104,6 +133,11 @@ inline bool init_bindless(rvkbucket& objs) {
 	flags[9] = bindlessFlags;
 	flags[10] = bindlessFlags;
 	flags[11] = bindlessFlags;
+	flags[12] = bindlessFlags;
+	flags[13] = bindlessFlags;
+	flags[14] = bindlessFlags;
+	flags[15] = bindlessFlags;
+	flags[16] = bindlessFlags;
 
 	VkDescriptorSetLayoutBindingFlagsCreateInfo flagsInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO};
 	flagsInfo.bindingCount = static_cast<uint32_t>(flags.size());
@@ -124,7 +158,7 @@ inline bool init_bindless(rvkbucket& objs) {
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[1].descriptorCount = 1;
 	poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	poolSizes[2].descriptorCount = (MAX_BINDLESS * 4) + 2 + (rview::core::MAX_FRAMES_IN_FLIGHT * 5); // total descriptor counts
+	poolSizes[2].descriptorCount = (MAX_BINDLESS * 4) + (rview::core::MAX_FRAMES_IN_FLIGHT * 7) + 5; // total descriptor counts
 
 	VkDescriptorPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
 	poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
@@ -159,6 +193,42 @@ inline bool init_bindless(rvkbucket& objs) {
 	}
 
 	return true;
+}
+inline void update_asset_descriptors(rvkbucket& mvkobjs) {
+	std::array<VkWriteDescriptorSet, 3> writes{};
+	std::array<VkDescriptorBufferInfo, 3> bInfos{};
+
+	bInfos[0].buffer = rview::core::g_rawIndexSSBO.buffer;
+	bInfos[0].offset = 0;
+	bInfos[0].range = VK_WHOLE_SIZE;
+	writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writes[0].dstSet = rview::core::globalBindlessSet;
+	writes[0].dstBinding = 12;
+	writes[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	writes[0].descriptorCount = 1;
+	writes[0].pBufferInfo = &bInfos[0];
+
+	bInfos[1].buffer = rview::core::g_primitiveRegistrySSBO.buffer;
+	bInfos[1].offset = 0;
+	bInfos[1].range = VK_WHOLE_SIZE;
+	writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writes[1].dstSet = rview::core::globalBindlessSet;
+	writes[1].dstBinding = 13;
+	writes[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	writes[1].descriptorCount = 1;
+	writes[1].pBufferInfo = &bInfos[1];
+
+	bInfos[2].buffer = rview::core::g_modelRegistrySSBO.buffer;
+	bInfos[2].offset = 0;
+	bInfos[2].range = VK_WHOLE_SIZE;
+	writes[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writes[2].dstSet = rview::core::globalBindlessSet;
+	writes[2].dstBinding = 14;
+	writes[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	writes[2].descriptorCount = 1;
+	writes[2].pBufferInfo = &bInfos[2];
+
+	vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 3, writes.data(), 0, nullptr);
 }
 
 inline void cleanup(rvkbucket &mvkobjs, VkPipelineLayout &vkplayout) {

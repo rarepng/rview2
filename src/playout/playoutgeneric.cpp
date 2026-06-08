@@ -34,6 +34,13 @@ bool playoutgeneric::setup(rvkbucket &objs, std::string_view fname, size_t count
 	ready = true;
 	return _;
 }
+void playoutgeneric::sync_scene_data() {
+	for (const auto& inst : minstances) {
+		if (inst->getinstancesettings().msdrawmodel) {
+			inst->sync_to_scene(m_modelID);
+		}
+	}
+}
 bool playoutgeneric::loadmodel(rvkbucket &objs, std::string_view fname) {
 	mgltf = std::make_shared<genericmodel>();
 
@@ -125,22 +132,20 @@ std::shared_ptr<genericinstance> playoutgeneric::getinst(int i) {
 }
 
 void playoutgeneric::updatemats() {
-
-	//might have to put if skinned here
-
 	jointmats.clear();
 	jointdqs.clear();
-
 	numdqs = 0;
 	nummats = 0;
 
 	if (mgltf->skinned) {
+		uint32_t currentOffset = 0;
 
 		for (const auto &i : minstances) {
 			modelsettings &settings = i->getinstancesettings();
 
-			if (!settings.msdrawmodel)
-				continue;
+			if (!settings.msdrawmodel) continue;
+
+			i->set_joint_offset(currentOffset);
 
 			if (settings.mvertexskinningmode == skinningmode::dualquat) {
 				std::vector<glm::mat2x4> quats = i->getjointdualquats();
@@ -149,17 +154,17 @@ void playoutgeneric::updatemats() {
 			} else {
 				std::vector<glm::mat4> mats = i->getjointmats();
 				jointmats.insert(jointmats.end(), mats.begin(), mats.end());
+				currentOffset += mats.size();
 				nummats++;
 			}
 		}
 	} else {
-		//todo dual quats
 		for (const auto &i : minstances) {
 			modelsettings &settings = i->getinstancesettings();
 
-			if (!settings.msdrawmodel)
-				continue;
+			if (!settings.msdrawmodel) continue;
 
+			i->set_joint_offset(0);
 			jointmats.push_back(i->calcstaticmat());
 			nummats++;
 		}

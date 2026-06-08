@@ -287,61 +287,72 @@ struct alignas(64) rframe {
 	std::array<DeletionQueue, 3> framedeletionQ{};
 };
 
-namespace rview::core{
-	inline constexpr uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!! different devices might not serve 3 swapchain images
-	inline constexpr uint32_t MAX_BINDLESS_BUFFERS = 1024;
-	static constexpr size_t MAX_GLOBAL_MATERIALS = 10000;
-	inline constexpr size_t idximguipool{0};
-	inline uint32_t currentFrame{0};
-	inline uint32_t hdrmiplod{0};
-	inline std::atomic<uint32_t> globalBufferCounter{1};
-	inline GlobalBufferHeap global_buffers{};
-	inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> globalInstanceBuffers{};
-	inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> globalIndirectBuffers{};
-	inline std::array<RenderGraph, rview::core::MAX_FRAMES_IN_FLIGHT> frameGraphs{};
-	inline ssbodata globalCameraUBO{};
-	inline GlobalMaterialHeap global_materials{};
-	inline std::vector<GPUInstanceData> frameInstances;
-	inline VkPipelineLayout globalPipelineLayout = VK_NULL_HANDLE;
-	inline VkDescriptorSetLayout globalBindlessLayout = VK_NULL_HANDLE;
-	inline VkDescriptorPool globalBindlessPool = VK_NULL_HANDLE;
-	inline VkDescriptorSet globalBindlessSet = VK_NULL_HANDLE;
-	inline VkPipeline globalcullpline = VK_NULL_HANDLE;
-	inline std::atomic<uint32_t> globalTextureCounter{4};
-	inline std::atomic<uint32_t> globalModelCounter{0};
-	inline std::array<texdata, 1> exrtex{};
-	inline const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
-	struct DummyTexture {
-		VkImage image = VK_NULL_HANDLE;
-		VkDeviceMemory memory = VK_NULL_HANDLE;
-		VkImageView view = VK_NULL_HANDLE;
-	};
-	inline struct {
-		DummyTexture purple;
-		DummyTexture white;
-		DummyTexture normal;
-		DummyTexture black;
-	} defaults;
+namespace rview::core {
+inline constexpr uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!! different devices might not serve 3 swapchain images
+inline constexpr uint32_t MAX_BINDLESS_BUFFERS = 1024;
+static constexpr size_t MAX_GLOBAL_MATERIALS = 10000;
+inline constexpr size_t idximguipool{0};
+inline uint32_t currentFrame{0};
+inline uint32_t hdrmiplod{0};
+inline std::atomic<uint32_t> globalBufferCounter{1};
+inline GlobalBufferHeap global_buffers{};
+inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> globalInstanceBuffers{};
+inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> globalIndirectBuffers{};
+inline std::array<RenderGraph, rview::core::MAX_FRAMES_IN_FLIGHT> frameGraphs{};
+inline GpuBuffer g_rawIndexSSBO{};
+inline uint32_t g_rawIndexCapacity = 0;
+inline uint32_t g_rawIndexOffset = 0;
+inline GpuBuffer g_primitiveRegistrySSBO{};
+inline uint32_t g_primCapacity = 0;
+inline uint32_t g_primOffset = 0;
+inline GpuBuffer g_modelRegistrySSBO{};
+inline uint32_t g_modelCapacity = 0;
+inline uint32_t g_modelOffset = 0;
+inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> g_indirectCommandBuffers;
+inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> g_indirectCountBuffers;
+inline ssbodata globalCameraUBO{};
+inline GlobalMaterialHeap global_materials{};
+inline std::vector<GPUInstanceData> frameInstances;
+inline VkPipelineLayout globalPipelineLayout = VK_NULL_HANDLE;
+inline VkDescriptorSetLayout globalBindlessLayout = VK_NULL_HANDLE;
+inline VkDescriptorPool globalBindlessPool = VK_NULL_HANDLE;
+inline VkDescriptorSet globalBindlessSet = VK_NULL_HANDLE;
+inline VkPipeline globalcullpline = VK_NULL_HANDLE;
+inline std::atomic<uint32_t> globalTextureCounter{4};
+inline std::atomic<uint32_t> globalModelCounter{0};
+inline std::array<texdata, 1> exrtex{};
+inline const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
+struct DummyTexture {
+	VkImage image = VK_NULL_HANDLE;
+	VkDeviceMemory memory = VK_NULL_HANDLE;
+	VkImageView view = VK_NULL_HANDLE;
+};
+inline struct {
+	DummyTexture purple;
+	DummyTexture white;
+	DummyTexture normal;
+	DummyTexture black;
+} defaults;
 
 
 
-	inline glm::vec3 camwpos{0.0f, 6.0f, 12.0f};
-	inline cam mvkcam{};
-	inline float fov = 1.0472f;
-	inline float azimuth{15.0f};
-	inline float elevation{-25.0f};
-	inline int camfor{0};
-	inline int camright{0};
-	inline int camup{0};
-	inline double tickdiff{0.0f};
-	inline float frametime{0.0f};
-	inline float updateanimtime{0.0f};
-	inline float updatemattime{0.0f};
-	inline float uploadubossbotime{0.0f};
-	inline float iksolvetime{0.0f};
-	inline float rduigeneratetime{0.0f};
-	inline float rduidrawtime{0.0f};
-	inline float loadingprog{0.0f};
+inline glm::vec3 camwpos{0.0f, 6.0f, 12.0f};
+inline cam mvkcam{};
+inline float fov = 1.0472f;
+inline float azimuth{15.0f};
+inline float elevation{-25.0f};
+inline int camfor{0};
+inline int camright{0};
+inline int camup{0};
+inline double tickdiff{0.0f};
+inline float frametime{0.0f};
+inline float updateanimtime{0.0f};
+inline float updatemattime{0.0f};
+inline float uploadubossbotime{0.0f};
+inline float iksolvetime{0.0f};
+inline float rduigeneratetime{0.0f};
+inline float rduidrawtime{0.0f};
+inline float loadingprog{0.0f};
 
 
 };

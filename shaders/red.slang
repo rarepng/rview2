@@ -7,12 +7,18 @@ static const float MIN_ROUGHNESS = 0.04;
 
 [[vk::binding(0, 0)]] Sampler2D tex[];
 [[vk::binding(1, 0)]] ConstantBuffer<cams> cammats;
-[[vk::binding(2, 0)]] StructuredBuffer<jmats> globalJoints[];
+[[vk::binding(2, 0)]] StructuredBuffer<float4x4> globalJoints[];
 [[vk::binding(3, 0)]] Sampler2D envMap;
 [[vk::binding(4, 0)]] StructuredBuffer<MaterialData> materials;
 [[vk::binding(5, 0)]] ByteAddressBuffer vertexBuffers[];
 [[vk::binding(7, 0)]] StructuredBuffer<GPUInstanceData> instanceData[];
-[[vk::binding(8, 0)]] RWStructuredBuffer<VkDrawIndexedIndirectCommand> indirectCommands[];
+[[vk::binding(8, 0)]] RWStructuredBuffer<VkDrawIndexedIndirectCommand> indirectIDXCommands[];
+
+[[vk::binding(12, 0)]] ByteAddressBuffer rawIndexBuffer;
+[[vk::binding(13, 0)]] StructuredBuffer<PrimitiveMetadata> primitiveRegistry;
+[[vk::binding(14, 0)]] StructuredBuffer<ModelMetadata> modelRegistry;
+[[vk::binding(15, 0)]] RWStructuredBuffer<VkDrawIndirectCommand> indirectCommands[];
+[[vk::binding(16, 0)]] RWStructuredBuffer<uint> indirectDrawCount[];
 
 struct PXin {
     float4 sv_pos : SV_Position;
@@ -22,6 +28,7 @@ struct PXin {
     float3 bitangent;
     float2 uv;
     float4 vColor;
+    nointerpolation uint materialID;
 };
 
 struct MaterialData {
@@ -59,10 +66,6 @@ struct cams {
     float _pad;
 }
 
-struct jmats {
-    float4x4 jointmats;
-}
-
 [vk_push_constant] ConstantBuffer<consts> pc;
 
 
@@ -79,6 +82,32 @@ struct PBRInfo {
     float alphaRoughness;
     float3 diffuseColor;
     float3 specularColor;
+};
+struct PrimitiveMetadata {
+  uint indexCount;
+  uint indexByteOffset;
+  uint indexType;
+  uint posIdx;
+  uint normIdx;
+  uint tanIdx;
+  uint uvIdx;
+  uint jointIdx;
+  uint weightIdx;
+  uint materialID;
+  uint jointFmt;
+  uint weightFmt;
+};
+
+struct ModelMetadata {
+  uint firstPrimitiveIndex;
+  uint primitiveCount;
+};
+
+struct VkDrawIndirectCommand {
+  uint vertexCount;
+  uint instanceCount;
+  uint firstVertex;
+  uint firstInstance;
 };
 
 float3 getNormalFromMap(float3 worldPos, float3 normal, float2 uv, uint normalIdx, float normalScale)
@@ -243,93 +272,116 @@ struct VkDrawIndexedIndirectCommand {
 
 [shader("vertex")]
 PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
-    PXin out;
-    out.sv_pos = float4(0, 0, 0, 0);
-    out.worldPos = float3(0);
-    out.uv = float2(0);
-    out.normal = float3(0, 1, 0);
-    out.tangent = float3(0);
-    out.bitangent = float3(0);
-    out.vColor = float4(1);
+  PXin out;
+  out.sv_pos = float4(0, 0, 0, 0);
+  out.worldPos = float3(0);
+  out.uv = float2(0);
+  out.normal = float3(0, 1, 0);
+  out.tangent = float3(0);
+  out.bitangent = float3(0);
+  out.vColor = float4(1);
 
-    uint posSize = 0;
-    vertexBuffers[pc.posIdx].GetDimensions(posSize);
-    if (pc.posIdx == 0 || (vertexID * 12) + 12 > posSize) return out;
+  uint16_t2 unpacked = bit_cast<uint16_t2>(id);
+  uint globalPrimID = (uint)unpacked.x;
+  uint instanceID = (uint)unpacked.y;
 
-    float3 inPos = vertexBuffers[pc.posIdx].Load<float3>(vertexID * 12);
+  GPUInstanceData inst = instanceData[pc.frameIndex][instanceID];
+  PrimitiveMetadata prim = primitiveRegistry[globalPrimID];
 
-    float3 inNormal = float3(0, 1, 0);
-    if (pc.normIdx != 0) {
-        inNormal = vertexBuffers[pc.normIdx].Load<float3>(vertexID * 12);
+  if (prim.posIdx == 0xFFFFFFFF) return out;
+
+  uint vertexIndex = vertexID;
+
+  if (prim.indexType < 3) {
+    uint byteOffset = prim.indexByteOffset;
+    if (prim.indexType == 0) {
+      uint offset = byteOffset + vertexID;
+      uint word = rawIndexBuffer.Load(offset & ~3);
+      vertexIndex = (word >> ((offset & 3) * 8)) & 0xFF;
+    } else if (prim.indexType == 1) {
+      uint offset = byteOffset + (vertexID * 2);
+      uint word = rawIndexBuffer.Load(offset & ~3);
+      vertexIndex = (word >> ((offset & 2) * 8)) & 0xFFFF;
+    } else if (prim.indexType == 2) {
+      vertexIndex = rawIndexBuffer.Load(byteOffset + (vertexID * 4));
     }
+  }
 
-    float2 inUv = float2(0, 0);
-    if (pc.uvIdx != 0) {
-        inUv = vertexBuffers[pc.uvIdx].Load<float2>(vertexID * 8);
+  uint posSize = 0;
+  vertexBuffers[prim.posIdx].GetDimensions(posSize);
+  if (prim.posIdx == 0 || (vertexIndex * 12) + 12 > posSize) return out;
+
+  float3 inPos = vertexBuffers[prim.posIdx].Load<float3>(vertexIndex * 12);
+
+  float3 inNormal = float3(0, 1, 0);
+  if (prim.normIdx < 0xFFFFFFFF) {
+    inNormal = vertexBuffers[prim.normIdx].Load<float3>(vertexIndex * 12);
+  }
+
+  float2 inUv = float2(0, 0);
+  if (prim.uvIdx < 0xFFFFFFFF) {
+    inUv = vertexBuffers[prim.uvIdx].Load<float2>(vertexIndex * 8);
+  }
+
+  uint4 inJoint = uint4(0);
+  float4 inWeight = float4(0.0);
+
+  if (prim.jointIdx != 0xFFFFFFFF) {
+    if (prim.jointFmt == 1) {
+      uint2 words = vertexBuffers[prim.jointIdx].Load2(vertexIndex * 8);
+      inJoint = uint4(words.x & 0xFFFF, words.x >> 16, words.y & 0xFFFF, words.y >> 16);
+    } else {
+      uint word = vertexBuffers[prim.jointIdx].Load(vertexIndex * 4);
+      inJoint = uint4(word & 0xFF, (word >> 8) & 0xFF, (word >> 16) & 0xFF, word >> 24);
     }
+  }
 
-    // uint frame = pc.frameIndex;
-    // GPUInstanceData inst = instanceData[frame][id];
-
-    float4x4 skinMat = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
-
-    // if (inst.isSkinned != 0 && pc.jointIdx != 0 && pc.weightIdx != 0) {
-    if (pc.stride > 1 && pc.jointIdx != 0 && pc.weightIdx != 0) {
-        uint4 inJoints = uint4(0);
-        float4 inWeights = float4(0);
-
-        if (pc.jointFmt == 0) {
-            uint packedJ = vertexBuffers[pc.jointIdx].Load<uint>(vertexID * 4);
-            inJoints = uint4(packedJ & 0xFF, (packedJ >> 8) & 0xFF, (packedJ >> 16) & 0xFF, packedJ >> 24);
-        } else {
-            uint2 packedJ = vertexBuffers[pc.jointIdx].Load<uint2>(vertexID * 8);
-            inJoints = uint4(packedJ.x & 0xFFFF, packedJ.x >> 16, packedJ.y & 0xFFFF, packedJ.y >> 16);
-        }
-
-        if (pc.weightFmt == 0) {
-            uint packedW = vertexBuffers[pc.weightIdx].Load<uint>(vertexID * 4);
-            inWeights = float4(packedW & 0xFF, (packedW >> 8) & 0xFF, (packedW >> 16) & 0xFF, packedW >> 24) / 255.0;
-        } else if (pc.weightFmt == 1) {
-            uint2 packedW = vertexBuffers[pc.weightIdx].Load<uint2>(vertexID * 8);
-            inWeights = float4(packedW.x & 0xFFFF, packedW.x >> 16, packedW.y & 0xFFFF, packedW.y >> 16) / 65535.0;
-        } else {
-            inWeights = vertexBuffers[pc.weightIdx].Load<float4>(vertexID * 16);
-        }
-
-        // uint offset = inst.jointOffset;
-        uint offset = pc.stride * id;
-        // skinMat =
-        //     globalJoints[inst.modelID][inJoints.x + offset].jointmats * inWeights.x +
-        //     globalJoints[inst.modelID][inJoints.y + offset].jointmats * inWeights.y +
-        //     globalJoints[inst.modelID][inJoints.z + offset].jointmats * inWeights.z +
-        //     globalJoints[inst.modelID][inJoints.w + offset].jointmats * inWeights.w;
-        // } else if (inst.isSkinned == 0) {
-        //     skinMat = globalJoints[inst.modelID][inst.jointOffset].jointmats;
-        // }
-        skinMat =
-            globalJoints[pc.modelID][inJoints.x + offset].jointmats * inWeights.x +
-            globalJoints[pc.modelID][inJoints.y + offset].jointmats * inWeights.y +
-            globalJoints[pc.modelID][inJoints.z + offset].jointmats * inWeights.z +
-            globalJoints[pc.modelID][inJoints.w + offset].jointmats * inWeights.w;
-    } else if (pc.stride == 1) {
-        skinMat = globalJoints[pc.modelID][id].jointmats;
+  if (prim.weightIdx != 0xFFFFFFFF) {
+    if (prim.weightFmt == 2) {
+      inWeight = vertexBuffers[prim.weightIdx].Load<float4>(vertexIndex * 16);
+    } else if (prim.weightFmt == 1) {
+      uint2 words = vertexBuffers[prim.weightIdx].Load2(vertexIndex * 8);
+      inWeight = float4(words.x & 0xFFFF, words.x >> 16, words.y & 0xFFFF, words.y >> 16) / 65535.0;
+    } else {
+      uint word = vertexBuffers[prim.weightIdx].Load(vertexIndex * 4);
+      inWeight = float4(word & 0xFF, (word >> 8) & 0xFF, (word >> 16) & 0xFF, word >> 24) / 255.0;
     }
+  }
 
-    float4 locPos = mul(skinMat, float4(inPos, 1.0));
-    out.worldPos = locPos.xyz;
-    out.sv_pos = mul(mul(cammats.projection, cammats.view), locPos);
-    out.uv = inUv;
+  float4 locPos = float4(inPos, 1.0);
+  float4 worldPos;
+  float3x3 normalMat;
 
-    float3x3 normalMat = (float3x3)skinMat;
-    out.normal = normalize(mul(normalMat, inNormal));
+  if (inst.isSkinned == 1) {
+    float4x4 m0 = globalJoints[inst.modelID][inst.jointOffset + inJoint.x];
+    float4x4 m1 = globalJoints[inst.modelID][inst.jointOffset + inJoint.y];
+    float4x4 m2 = globalJoints[inst.modelID][inst.jointOffset + inJoint.z];
+    float4x4 m3 = globalJoints[inst.modelID][inst.jointOffset + inJoint.w];
 
-    return out;
+    float4x4 skinMat = (m0 * inWeight.x) + (m1 * inWeight.y) + (m2 * inWeight.z) + (m3 * inWeight.w);
+
+    worldPos = mul(skinMat, locPos);
+    normalMat = (float3x3)skinMat;
+  } else {
+    worldPos = mul(inst.worldTransform, locPos);
+    normalMat = (float3x3)inst.worldTransform;
+  }
+
+  out.worldPos = worldPos.xyz;
+  out.sv_pos = mul(mul(cammats.projection, cammats.view), worldPos);
+  out.uv = inUv;
+
+  out.materialID = prim.materialID;
+  out.normal = normalize(mul(normalMat, inNormal));
+
+  return out;
 }
 
 [shader("pixel")]
 float4 pxmain(PXin in) : SV_Target {
 
-    MaterialData mat = materials[pc.materialID];
+    uint matID = in.materialID;
+    MaterialData mat = materials[matID];
 
     float3 N;
     if (mat.normalIdx < 0xAAAAAAAA) {
@@ -421,19 +473,36 @@ float4 pxmain(PXin in) : SV_Target {
 
 [shader("compute")]
 [numthreads(64, 1, 1)]
-void cxmain(uint3 globalID: SV_DispatchThreadID) {
-    uint idx = globalID.x;
-    uint frame = pc.frameIndex;
+void cxmain(uint3 threadID: SV_DispatchThreadID) {
+  uint instanceID = threadID.x;
 
-    if (instanceData[frame][idx].indexCount == 0) {
-        indirectCommands[frame][idx].instanceCount = 0;
-        return;
-    }
+  if (instanceID >= pc.stride) return;
 
-    bool isVisible = true;
-    indirectCommands[frame][idx].indexCount = instanceData[frame][idx].indexCount;
-    indirectCommands[frame][idx].instanceCount = isVisible ? 1 : 0;
-    indirectCommands[frame][idx].firstIndex = instanceData[frame][idx].firstIndex;
-    indirectCommands[frame][idx].vertexOffset = instanceData[frame][idx].vertexOffset;
-    indirectCommands[frame][idx].firstInstance = idx;
+  GPUInstanceData inst = instanceData[pc.frameIndex][instanceID];
+
+  // frustum culling will go here (HOPEFULLY)
+
+  ModelMetadata model = modelRegistry[inst.modelID];
+
+  for (uint i = 0; i < model.primitiveCount; i++) {
+    if (i > 100) break;
+
+    uint cmdIndex;
+    InterlockedAdd(indirectDrawCount[pc.frameIndex][0], 1, cmdIndex);
+
+    if (cmdIndex >= 100000) return;
+
+    uint globalPrimID = model.firstPrimitiveIndex + i;
+    PrimitiveMetadata prim = primitiveRegistry[globalPrimID];
+
+    uint packedID = (instanceID << 16) | (globalPrimID & 0xFFFF);
+
+    VkDrawIndirectCommand cmd;
+    cmd.vertexCount = prim.indexCount;
+    cmd.instanceCount = 1;
+    cmd.firstVertex = 0;
+    cmd.firstInstance = packedID;
+
+    indirectCommands[pc.frameIndex][cmdIndex] = cmd;
+  }
 }

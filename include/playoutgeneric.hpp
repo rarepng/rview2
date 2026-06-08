@@ -60,6 +60,7 @@ public:
 	inline VkBuffer get_ebo() const {
 		return mgltf->get_ebo_buffer(0, 0);
 	}
+	void sync_scene_data();
 
 private:
 
