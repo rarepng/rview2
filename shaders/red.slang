@@ -479,6 +479,8 @@ void cxmain(uint3 threadID: SV_DispatchThreadID) {
   if (instanceID >= pc.stride) return;
 
   GPUInstanceData inst = instanceData[pc.frameIndex][instanceID];
+  
+  if (inst.modelID == 0xFFFFFFFF) return;
 
   // frustum culling will go here (HOPEFULLY)
 

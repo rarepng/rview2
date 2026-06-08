@@ -221,15 +221,12 @@ bool update_descriptor_set(rvkbucket& rdata, std::vector<texdata>& textures) {
 	std::vector<VkWriteDescriptorSet> writes(textures.size());
 
 	for (size_t i = 0; i < textures.size(); ++i) {
-		// 1. Claim a unique index in the global 10,000 element array securely
 		textures[i].bindless_idx = rview::core::globalTextureCounter.fetch_add(1, std::memory_order_relaxed);
 
-		// 2. Setup Image Info
 		infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		infos[i].imageView = textures[i].imgview ? textures[i].imgview : rview::core::defaults.purple.view;
 		infos[i].sampler = textures[i].imgsampler ? textures[i].imgsampler : rdata.samplerz[0];
 
-		// 3. Setup Write Descriptor targeting Set 0, Binding 0
 		writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writes[i].dstSet = rview::core::globalBindlessSet;
 		writes[i].dstBinding = 0;
@@ -238,9 +235,10 @@ bool update_descriptor_set(rvkbucket& rdata, std::vector<texdata>& textures) {
 		writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		writes[i].pImageInfo = &infos[i];
 	}
-
-	// 4. Update the global set concurrently
-	vkUpdateDescriptorSets(rdata.vkdevice.device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+	{
+        std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
+        vkUpdateDescriptorSets(rdata.vkdevice.device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+    }
 	return true;
 
 	// VkDevice device = rdata.vkdevice.device;

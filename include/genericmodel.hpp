@@ -74,6 +74,7 @@ public:
 	}
 
 	bool m_requiresUpload{false};
+	uint32_t assigned_model_id = 0; // local
 
 private:
 	std::vector<std::vector<bool>> meshjointtype{};

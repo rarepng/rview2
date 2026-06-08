@@ -319,7 +319,6 @@ inline VkDescriptorPool globalBindlessPool = VK_NULL_HANDLE;
 inline VkDescriptorSet globalBindlessSet = VK_NULL_HANDLE;
 inline VkPipeline globalcullpline = VK_NULL_HANDLE;
 inline std::atomic<uint32_t> globalTextureCounter{4};
-inline std::atomic<uint32_t> globalModelCounter{0};
 inline std::array<texdata, 1> exrtex{};
 inline const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
 struct DummyTexture {

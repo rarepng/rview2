@@ -134,7 +134,7 @@ void genericmodel::init_globalidx() {
 	{
 		std::lock_guard<std::mutex> lock(g_assets.registryMutex);
 
-		uint32_t currentModelID = static_cast<uint32_t>(g_assets.models.size());
+		assigned_model_id = static_cast<uint32_t>(g_assets.models.size());
 		g_assets.models.push_back({ static_cast<uint32_t>(g_assets.primitives.size()), totalPrimitives });
 
 		uint32_t globalByteOffset = static_cast<uint32_t>(g_assets.globalRawIndices.size());

@@ -33,7 +33,7 @@ struct alignas(64) SceneData {
 		scales[id] = glm::vec3(1.0f);
 		rotations[id] = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 		animTimePositions[id] = 0.0f;
-		modelIDs[id] = 0;
+		modelIDs[id] = 0xFFFFFFFF;
 		return id;
 	}
 };

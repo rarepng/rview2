@@ -73,7 +73,10 @@ inline bool init_bindless(rvkbucket &objs, ssbodata &ssboData, size_t buffersize
 	write.descriptorCount = 1;
 	write.pBufferInfo = &ssboInfo;
 
-	vkUpdateDescriptorSets(objs.vkdevice.device, 1, &write, 0, nullptr);
+	{
+        std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
+        vkUpdateDescriptorSets(objs.vkdevice.device, 1, &write, 0, nullptr);
+    }
 
 	return true;
 }

@@ -9,7 +9,6 @@
 #include <iostream>
 
 bool playoutgeneric::setup(rvkbucket &objs, std::string_view fname, size_t count, std::string_view vfile, std::string_view ffile) {
-	m_modelID = rview::core::globalModelCounter.fetch_add(1, std::memory_order_relaxed);
 	static const bool _ = [&] {
 		if (!createpline(objs, vfile, ffile))
 			return false;
@@ -19,6 +18,7 @@ bool playoutgeneric::setup(rvkbucket &objs, std::string_view fname, size_t count
 
 	if (!loadmodel(objs, fname))
 		return false;
+	m_modelID = mgltf->assigned_model_id;
 
 	if (!createinstances(objs, count, false))
 		return false;
