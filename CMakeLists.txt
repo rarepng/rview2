@@ -12,11 +12,22 @@ set(OPENSSL_USE_STATIC_LIBS ON)
 set(ZLIB_USE_STATIC_LIBS ON)
 find_package(OpenSSL REQUIRED)
 
-file(DOWNLOAD
-     https://github.com/cpm-cmake/CPM.cmake/releases/latest/download/get_cpm.cmake
-     ${CMAKE_CURRENT_BINARY_DIR}/cpm.cmake
-)
-include(${CMAKE_CURRENT_BINARY_DIR}/cpm.cmake)
+set(CPM_PATH "${CMAKE_BINARY_DIR}/_deps/CPM.cmake")
+if(NOT EXISTS ${CPM_PATH})
+    file(DOWNLOAD
+        https://github.com/cpm-cmake/CPM.cmake/releases/latest/download/CPM.cmake
+        ${CPM_PATH}
+        STATUS status
+    )
+    list(GET status 0 code)
+    if(NOT code EQUAL 0)
+        message(FATAL_ERROR "CPM download failed")
+    endif()
+endif()
+include(${CPM_PATH})
+if(NOT COMMAND CPMAddPackage)
+    message(FATAL_ERROR "CPM broke again :(")
+endif()
 
 
 set(submodules_path
