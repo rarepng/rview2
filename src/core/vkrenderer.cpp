@@ -23,6 +23,7 @@
 #include "vktex.hpp"
 #include "playout.hpp"
 #include "ubo.hpp"
+#include "obs_bridge.hpp"
 
 void vkrenderer::immediate_submit(rvkbucket& mvkobjs,
                                   std::function<void(VkCommandBuffer cbuffer)> &&fn) {
@@ -356,6 +357,8 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 	if (!initglobalindirect(mvkobjs))return false;
 
 	if (!initglobalidrectUNINDEXED(mvkobjs))return false;
+
+	if (!create_obs_target(mvkobjs)) return false;
 
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
 
@@ -763,6 +766,39 @@ bool vkrenderer::initui(rvkbucket& mvkobjs) {
 
 	return true;
 }
+void vkrenderer::write_obs(rvkbucket& mvkobjs) {
+	VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.image = mvkobjs.obs_target.img;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+	vkCmdPipelineBarrier(mvkobjs.cbuffers_graphics.at(0).at(rview::core::currentFrame),
+	                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                     0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+	VkClearColorValue clearColor = {{1.0f, 0.0f, 1.0f, 1.0f}};
+	VkImageSubresourceRange range = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+	vkCmdClearColorImage(mvkobjs.cbuffers_graphics.at(0).at(rview::core::currentFrame), mvkobjs.obs_target.img,
+	                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &range);
+
+	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+
+	vkCmdPipelineBarrier(mvkobjs.cbuffers_graphics.at(0).at(rview::core::currentFrame),
+	                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+	                     0, 0, nullptr, 0, nullptr, 1, &barrier);
+}
 void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
@@ -802,6 +838,17 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	                   nullptr);
 	vmaDestroyImage(mvkobjs.alloc, mvkobjs.rddepthimage,
 	                mvkobjs.rddepthimagealloc);
+
+	// NO VMA!!!! (idk if it's better or not but i couldnt figure out how to make it work without creating a dedicated separate device and pool)
+	if (mvkobjs.obs_target.img) {
+		vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.obs_target.view, nullptr);
+		vkDestroyImage(mvkobjs.vkdevice.device, mvkobjs.obs_target.img, nullptr);
+		vkFreeMemory(mvkobjs.vkdevice.device, mvkobjs.obs_target.memory, nullptr);
+	}
+
+	if constexpr (rview::core::platform::is_windows) {
+		// cleanup_obs_bridge();
+	}
 
 	if (rview::core::exrtex.at(0).img) {
 		vkDestroyImageView(mvkobjs.vkdevice.device, rview::core::exrtex.at(0).imgview,
@@ -882,7 +929,230 @@ void vkrenderer::setsize(rvkbucket& mvkobjs, unsigned int w, unsigned int h) {
 		                         static_cast<float>(mvkobjs.width) / static_cast<float>(mvkobjs.height),
 		                         0.002f, 2000.0f);
 }
+bool vkrenderer::create_obs_target(rvkbucket& mvkobjs) {
+	VkPhysicalDeviceIDProperties idProps{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES};
+	VkPhysicalDeviceProperties2 props2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+	props2.pNext = &idProps;
+	vkGetPhysicalDeviceProperties2(mvkobjs.vkdevice.physical_device, &props2);
 
+	if (!idProps.deviceLUIDValid) {
+		std::cerr << "Vulkan side: Device lacks valid LUID." << std::endl;
+		return false;
+	}
+
+	mvkobjs.obs_target.shared_handle = obs_bridge::create_d3d_shared_texture(
+	                                       mvkobjs.obs_target.width,
+	                                       mvkobjs.obs_target.height,
+	                                       idProps.deviceLUID
+	                                   );
+
+	if (!mvkobjs.obs_target.shared_handle) return false;
+
+	VkExternalMemoryHandleTypeFlagBitsKHR handleType = obs_bridge::use_d3d12 ?
+	    VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT_KHR :
+	    VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT;
+
+	VkExternalMemoryImageCreateInfo extMemInfo{VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO};
+	extMemInfo.handleTypes = handleType;
+
+	VkImageCreateInfo imageInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+	imageInfo.pNext = &extMemInfo;
+	imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageInfo.format = VK_FORMAT_B8G8R8A8_SRGB;
+	imageInfo.extent = { mvkobjs.obs_target.width, mvkobjs.obs_target.height, 1 };
+	imageInfo.mipLevels = 1;
+	imageInfo.arrayLayers = 1;
+	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+	                  VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
+	if (vkCreateImage(mvkobjs.vkdevice.device, &imageInfo, nullptr, &mvkobjs.obs_target.img) != VK_SUCCESS) {
+		return false;
+	}
+
+	VkMemoryRequirements memReqs;
+	vkGetImageMemoryRequirements(mvkobjs.vkdevice.device, mvkobjs.obs_target.img, &memReqs);
+
+	void* os_import_info = obs_bridge::get_vulkan_import_info(mvkobjs.obs_target.shared_handle);
+
+	VkMemoryDedicatedAllocateInfo dedicatedAllocInfo{VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO};
+	dedicatedAllocInfo.pNext = os_import_info;
+	dedicatedAllocInfo.image = mvkobjs.obs_target.img;
+	dedicatedAllocInfo.buffer = VK_NULL_HANDLE;
+
+	auto find_memory_type = [&](uint32_t typeFilter, VkMemoryPropertyFlags properties) -> uint32_t {
+		VkPhysicalDeviceMemoryProperties memProperties;
+		vkGetPhysicalDeviceMemoryProperties(mvkobjs.vkdevice.physical_device, &memProperties);
+
+		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+			if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+				return i;
+			}
+		}
+
+		return 0;
+	};
+
+	VkMemoryAllocateInfo allocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+	allocInfo.pNext = &dedicatedAllocInfo;
+	allocInfo.allocationSize = memReqs.size;
+	allocInfo.memoryTypeIndex = find_memory_type(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	if (vkAllocateMemory(mvkobjs.vkdevice.device, &allocInfo, nullptr, &mvkobjs.obs_target.memory) != VK_SUCCESS) {
+		return false;
+	}
+
+	vkBindImageMemory(mvkobjs.vkdevice.device, mvkobjs.obs_target.img, mvkobjs.obs_target.memory, 0);
+
+	VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+	viewInfo.image = mvkobjs.obs_target.img;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = VK_FORMAT_B8G8R8A8_SRGB;
+	viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	viewInfo.subresourceRange.baseMipLevel = 0;
+	viewInfo.subresourceRange.levelCount = 1;
+	viewInfo.subresourceRange.baseArrayLayer = 0;
+	viewInfo.subresourceRange.layerCount = 1;
+
+	if (vkCreateImageView(mvkobjs.vkdevice.device, &viewInfo, nullptr, &mvkobjs.obs_target.view) != VK_SUCCESS) {
+		return false;
+	}
+
+	return true;
+}
+void vkrenderer::copy_engine_to_obs(VkCommandBuffer cmdBuffer, rvkbucket& mvkobjs, VkImage engine_source_img, VkImage obs_target_img, uint32_t width,
+                                    uint32_t height) {
+
+	VkImageMemoryBarrier srcBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+	srcBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	srcBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	srcBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	srcBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	srcBarrier.image = engine_source_img;
+	srcBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+	srcBarrier.srcAccessMask = 0;
+	srcBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+	VkImageMemoryBarrier dstBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+	dstBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	dstBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	dstBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	dstBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	dstBarrier.image = obs_target_img;
+	dstBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+	dstBarrier.srcAccessMask = 0;
+	dstBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+	VkImageMemoryBarrier barriers[] = {srcBarrier, dstBarrier};
+	vkCmdPipelineBarrier(cmdBuffer,
+	                     VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+	                     0, 0, nullptr, 0, nullptr, 2, barriers);
+
+	VkImageBlit blit{};
+	blit.srcOffsets[0] = {0, 0, 0};
+	blit.srcOffsets[1] = {(int32_t)mvkobjs.schain.extent.width, (int32_t)mvkobjs.schain.extent.height, 1};
+	blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	blit.srcSubresource.layerCount = 1;
+	blit.dstOffsets[0] = {0, 0, 0};
+	blit.dstOffsets[1] = {(int32_t)width, (int32_t)height, 1}; // streeeeeeetch
+	blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	blit.dstSubresource.layerCount = 1;
+
+	vkCmdBlitImage(cmdBuffer,
+	               engine_source_img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+	               obs_target_img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	               1, &blit, VK_FILTER_LINEAR);
+
+	srcBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	srcBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	srcBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	srcBarrier.dstAccessMask = 0;
+	dstBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	dstBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	dstBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	dstBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+
+	VkImageMemoryBarrier postBarriers[] = {srcBarrier, dstBarrier};
+	vkCmdPipelineBarrier(cmdBuffer,
+	                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+	                     0, 0, nullptr, 0, nullptr, 2, postBarriers);
+}
+// Vulkan to DX (MASSIVE FAILURE)
+// bool vkrenderer::create_obs_target(rvkbucket& mvkobjs) {
+//     VkExternalMemoryImageCreateInfo extMemInfo{VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO};
+//     extMemInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT_KHR;
+//     VkImageCreateInfo imageInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+//     imageInfo.pNext = &extMemInfo;
+//     imageInfo.imageType = VK_IMAGE_TYPE_2D;
+//     imageInfo.format = VK_FORMAT_B8G8R8A8_UNORM;
+//     imageInfo.extent = { mvkobjs.obs_target.width, mvkobjs.obs_target.height, 1 };
+//     imageInfo.mipLevels = 1;
+//     imageInfo.arrayLayers = 1;
+//     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+//     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+//     imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+//     if (vkCreateImage(mvkobjs.vkdevice.device, &imageInfo, nullptr, &mvkobjs.obs_target.img) != VK_SUCCESS) {
+//         return false;
+//     }
+//     auto find_memory_type = [&](uint32_t typeFilter, VkMemoryPropertyFlags properties) -> uint32_t {
+//         VkPhysicalDeviceMemoryProperties memProperties;
+//         vkGetPhysicalDeviceMemoryProperties(mvkobjs.vkdevice.physical_device, &memProperties);
+//         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+//             if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+//                 return i;
+//             }
+//         }
+//         return 0;
+//     };
+// 	VkMemoryRequirements memReqs;
+// 	vkGetImageMemoryRequirements(mvkobjs.vkdevice.device, mvkobjs.obs_target.img, &memReqs);
+// 	VkMemoryDedicatedAllocateInfo dedicatedAllocInfo{VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO};
+// 	dedicatedAllocInfo.image = mvkobjs.obs_target.img;
+// 	dedicatedAllocInfo.buffer = VK_NULL_HANDLE;
+// 	void* os_export_info = vkrenderer::get_os_export_memory_info();
+// 	VkExportMemoryAllocateInfo exportAllocInfo{VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO};
+// 	exportAllocInfo.pNext = os_export_info;
+// 	exportAllocInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT_KHR;
+// 	dedicatedAllocInfo.pNext = &exportAllocInfo;
+// 	VkMemoryAllocateInfo allocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+// 	allocInfo.pNext = &dedicatedAllocInfo;
+// 	allocInfo.allocationSize = memReqs.size;
+// 	allocInfo.memoryTypeIndex = find_memory_type(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+// 	if (vkAllocateMemory(mvkobjs.vkdevice.device, &allocInfo, nullptr, &mvkobjs.obs_target.memory) != VK_SUCCESS) {
+// 		return false;
+// 	}
+// 	vkBindImageMemory(mvkobjs.vkdevice.device, mvkobjs.obs_target.img, mvkobjs.obs_target.memory, 0);
+//     VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+//     viewInfo.image = mvkobjs.obs_target.img;
+//     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+//     viewInfo.format = VK_FORMAT_B8G8R8A8_UNORM;
+//     viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+//     viewInfo.subresourceRange.baseMipLevel = 0;
+//     viewInfo.subresourceRange.levelCount = 1;
+//     viewInfo.subresourceRange.baseArrayLayer = 0;
+//     viewInfo.subresourceRange.layerCount = 1;
+//     if (vkCreateImageView(mvkobjs.vkdevice.device, &viewInfo, nullptr, &mvkobjs.obs_target.view) != VK_SUCCESS) {
+//         return false;
+//     }
+// 	mvkobjs.obs_target.shared_handle = vkrenderer::extract_vulkan_win32_handle(mvkobjs.vkdevice.device, mvkobjs.obs_target.memory);
+//     if (!mvkobjs.obs_target.shared_handle) {
+//         std::cerr << "[Fatal] Vulkan side: Failed to extract NT handle." << std::endl;
+//         return false;
+//     }
+//     VkPhysicalDeviceIDProperties idProps{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES};
+//     VkPhysicalDeviceProperties2 props2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+//     props2.pNext = &idProps;
+//     vkGetPhysicalDeviceProperties2(mvkobjs.vkdevice.physical_device, &props2);
+//     if (!idProps.deviceLUIDValid) {
+//         std::cerr << "[Fatal] Vulkan side: Device lacks valid LUID." << std::endl;
+//         return false;
+//     }
+//     if (!init_obs_bridge(mvkobjs.obs_target.shared_handle, mvkobjs.obs_target.width, mvkobjs.obs_target.height, idProps.deviceLUID)) {
+//         return false;
+//     }
+//     return true;
+// }
 bool vkrenderer::uploadfordraw(rvkbucket& mvkobjs, VkCommandBuffer cbuffer) {
 	manimupdatetimer.start();
 
@@ -1407,6 +1677,11 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	});
 
 
+	std::call_once(obswrite, [&]() {
+		vkrenderer::write_obs(mvkobjs);
+	});
+
+
 
 	// currentgraph.add_pass([&mvkobjs, c] {
 	//     uint32_t num_instances = mvkobjs.frameInstances.size();
@@ -1479,7 +1754,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		vkCmdPipelineBarrier2(c, &dep);
 	});
 
-	currentgraph.add_pass([&mvkobjs, c] {
+	currentgraph.add_pass([c] {
 		uint32_t active_instances = g_scene.entity_count.load(std::memory_order_relaxed);
 
 		if (active_instances == 0) return;
@@ -1554,7 +1829,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		color_attach.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
 		color_attach.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		color_attach.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		color_attach.clearValue = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+		color_attach.clearValue = {{{0.0f, 0.0f, 0.0f, 0.0f}}};
 		VkRenderingAttachmentInfo depth_attach{};
 		depth_attach.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 		depth_attach.imageView = mvkobjs.rddepthimageview;
@@ -1648,36 +1923,13 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 	currentgraph.execute();
 
+	vkrenderer::copy_engine_to_obs(c, mvkobjs, mvkobjs.schainimgs.at(imgidx), mvkobjs.obs_target.img, mvkobjs.obs_target.width,
+	                               mvkobjs.obs_target.height);
 
 
 	if (vkEndCommandBuffer(c) != VK_SUCCESS)
 		return false;
 
-
-
-	// for (const auto &player : mplayer) {
-	// 	uint32_t modelID = player->get_modelID();
-	// 	bool isSkinned = player->is_skinned();
-
-	// 	uint32_t stride = isSkinned ? player->getinst(0)->getjointmatrixsize() : 1;
-
-	// 	for (size_t i = 0; i < player->instcount(); ++i) {
-	// 		auto inst = player->getinst(i);
-	// 		if (!inst->getinstancesettings().msdrawmodel) continue;
-
-	// 		GPUInstanceData idata{};
-	// 		idata.worldTransform = inst->calcstaticmat();
-	// 		idata.modelID = modelID;
-	// 		idata.jointOffset = i * stride;
-	// 		idata.isSkinned = isSkinned ? 1 : 0;
-	// 		idata.indexCount = player->getindexcount();
-	// 		idata.firstIndex = player->getfirstindex();
-	// 		idata.vertexOffset = player->getvertexoffset();
-	// 		idata.padding = 0;
-
-	// 		mvkobjs.frameInstances.push_back(idata);
-	// 	}
-	// }
 
 	// wtf
 	muigentimer.start();
@@ -1745,6 +1997,8 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 			return false;
 		}
 	}
+
+	obs_bridge::send_spout();
 
 	vkrenderer::mlasttick = tick;
 	rview::core::currentFrame =

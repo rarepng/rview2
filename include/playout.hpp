@@ -229,9 +229,9 @@ inline void update_asset_descriptors(rvkbucket& mvkobjs) {
 	writes[2].pBufferInfo = &bInfos[2];
 
 	{
-        std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
-        vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 3, writes.data(), 0, nullptr);
-    }
+		std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
+		vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 3, writes.data(), 0, nullptr);
+	}
 }
 
 inline void cleanup(rvkbucket &mvkobjs, VkPipelineLayout &vkplayout) {

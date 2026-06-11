@@ -235,134 +235,18 @@ bool update_descriptor_set(rvkbucket& rdata, std::vector<texdata>& textures) {
 		writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		writes[i].pImageInfo = &infos[i];
 	}
+
 	{
-        std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
-        vkUpdateDescriptorSets(rdata.vkdevice.device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
-    }
+		std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
+		vkUpdateDescriptorSets(rdata.vkdevice.device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+	}
+
 	return true;
-
-	// VkDevice device = rdata.vkdevice.device;
-
-	// //what is this called? lazy inits? todo:find out and reconsider
-	// if (layout == VK_NULL_HANDLE) {
-	// 	VkDescriptorSetLayoutBinding binding{};
-	// 	binding.binding = 0;
-	// 	binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	// 	binding.descriptorCount = 1024;//idk
-	// 	binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-	// 	VkDescriptorBindingFlags bindFlag = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
-	// 	VkDescriptorSetLayoutBindingFlagsCreateInfo flagsInfo{};
-	// 	flagsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-	// 	flagsInfo.bindingCount = 1;
-	// 	flagsInfo.pBindingFlags = &bindFlag;
-
-	// 	VkDescriptorSetLayoutCreateInfo layoutInfo{};
-	// 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	// 	layoutInfo.pNext = &flagsInfo;
-	// 	layoutInfo.bindingCount = 1;
-	// 	layoutInfo.pBindings = &binding;
-
-	// 	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &layout) != VK_SUCCESS) {
-	// 		std::cout << "[Error] Failed to create Texture Layout!" << std::endl;
-	// 		return false;
-	// 	}
-	// }
-	// if (pool == VK_NULL_HANDLE) {
-	// 	VkDescriptorPoolSize poolSize{};
-	// 	poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	// 	poolSize.descriptorCount = 1024;
-
-	// 	VkDescriptorPoolCreateInfo poolInfo{};
-	// 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	// 	poolInfo.poolSizeCount = 1;
-	// 	poolInfo.pPoolSizes = &poolSize;
-	// 	poolInfo.maxSets = 1;
-
-	// 	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
-	// 		std::cout << "[Error] Failed to create Texture Pool!" << std::endl;
-	// 		return false;
-	// 	}
-	// }
-	// if (target_set == VK_NULL_HANDLE) {
-	// 	VkDescriptorSetAllocateInfo allocInfo{};
-	// 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	// 	allocInfo.descriptorPool = pool;
-	// 	allocInfo.descriptorSetCount = 1;
-	// 	allocInfo.pSetLayouts = &layout;
-
-	// 	if (vkAllocateDescriptorSets(device, &allocInfo, &target_set) != VK_SUCCESS) {
-	// 		std::cout << "[Error] Failed to allocate Texture Set!" << std::endl;
-	// 		return false;
-	// 	}
-	// }
-
-
-
-	// std::vector<VkWriteDescriptorSet> writes;
-	// VkDescriptorImageInfo dummy0{ .sampler = rdata.samplerz[0], .imageView = rdata.defaults.purple.view, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-	// VkDescriptorImageInfo dummy1{ .sampler = rdata.samplerz[0], .imageView = rdata.defaults.white.view,  .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-	// VkDescriptorImageInfo dummy2{ .sampler = rdata.samplerz[0], .imageView = rdata.defaults.normal.view, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-	// VkDescriptorImageInfo dummy3{ .sampler = rdata.samplerz[0], .imageView = rdata.defaults.black.view,  .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-
-	// auto add_write = [&](uint32_t index, VkDescriptorImageInfo* info) {
-	// 	writes.push_back(VkWriteDescriptorSet{
-	// 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-	// 		.dstSet = target_set,
-	// 		.dstBinding = 0,
-	// 		.dstArrayElement = index,
-	// 		.descriptorCount = 1,
-	// 		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-	// 		.pImageInfo = info
-	// 	});
-	// };
-
-	// add_write(0, &dummy0);
-	// add_write(1, &dummy1);
-	// add_write(2, &dummy2);
-	// add_write(3, &dummy3);
-
-	// std::vector<VkDescriptorImageInfo> modelInfos;
-	// modelInfos.reserve(textures.size());
-
-	// for (const auto& tex : textures) {
-	// 	VkDescriptorImageInfo info{};
-	// 	info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-	// 	if (tex.imgview != VK_NULL_HANDLE && tex.imgsampler != VK_NULL_HANDLE) {
-	// 		info.imageView = tex.imgview;
-	// 		info.sampler = tex.imgsampler;
-	// 	} else {
-	// 		info.imageView = rdata.defaults.purple.view;
-	// 		info.sampler = rdata.samplerz[0];
-	// 	}
-	// 	modelInfos.push_back(info);
-	// }
-
-	// if (!modelInfos.empty()) {
-	// 	writes.push_back(VkWriteDescriptorSet{
-	// 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-	// 		.dstSet = target_set,
-	// 		.dstBinding = 0,
-	// 		.dstArrayElement = 4,
-	// 		.descriptorCount = static_cast<uint32_t>(modelInfos.size()),
-	// 		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-	// 		.pImageInfo = modelInfos.data()
-	// 	});
-	// }
-
-	// if (!writes.empty()) {
-	// 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
-	// }
-
-	// return true;
 }
 
 bool load_env_map(
     rvkbucket& rdata,
     texdata& out_env_map
-    // ,VkDescriptorSet& target_set,
-    // VkDescriptorSetLayout& target_lay
 ) {
 
 	int w, h, channels;
@@ -438,7 +322,7 @@ bool load_env_map(
 		.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 		.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		.image = out_env_map.img,
-		.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, mipLevels, 0, 1 } // Transition ALL mips first
+		.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, mipLevels, 0, 1 }
 	};
 	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier0);
 

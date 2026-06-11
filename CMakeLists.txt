@@ -213,6 +213,33 @@ CPMAddPackage(
     EXCLUDE_FROM_ALL YES
     DOWNLOAD_ONLY YES
 )
+CPMAddPackage(
+    NAME Spout2
+    GITHUB_REPOSITORY leadedge/Spout2
+    GIT_TAG master
+    EXCLUDE_FROM_ALL YES
+    DOWNLOAD_ONLY YES
+)
+
+if(WIN32)
+    add_library(spout_dx STATIC EXCLUDE_FROM_ALL
+        ${Spout2_SOURCE_DIR}/SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX.cpp
+        ${Spout2_SOURCE_DIR}/SPOUTSDK/SpoutGL/SpoutDirectX.cpp
+        ${Spout2_SOURCE_DIR}/SPOUTSDK/SpoutGL/SpoutSenderNames.cpp
+        ${Spout2_SOURCE_DIR}/SPOUTSDK/SpoutGL/SpoutSharedMemory.cpp
+        ${Spout2_SOURCE_DIR}/SPOUTSDK/SpoutGL/SpoutUtils.cpp
+        ${Spout2_SOURCE_DIR}/SPOUTSDK/SpoutGL/SpoutFrameCount.cpp
+        ${Spout2_SOURCE_DIR}/SPOUTSDK/SpoutGL/SpoutCopy.cpp
+    )
+    
+    target_compile_options(spout_dx PRIVATE -mssse3) # idk about this one..
+    target_include_directories(spout_dx PUBLIC 
+        ${Spout2_SOURCE_DIR}/SPOUTSDK/SpoutDirectX/SpoutDX
+        ${Spout2_SOURCE_DIR}/SPOUTSDK/SpoutGL
+    )
+    
+    target_link_libraries(spout_dx PUBLIC d3d12 d3d11 dxgi)
+endif()
 
 CPMAddPackage(
     NAME tracy
@@ -314,6 +341,10 @@ target_link_libraries(rview2
         OpenSSL::SSL
         OpenSSL::Crypto
         "-Wl,--end-group"
+        "$<$<PLATFORM_ID:Windows>:d3d12>"
+        "$<$<PLATFORM_ID:Windows>:d3d11>"
+        "$<$<PLATFORM_ID:Windows>:dxgi>"
+        "$<$<PLATFORM_ID:Windows>:spout_dx>"
 )
 if(UNIX)
 target_link_libraries(rview2

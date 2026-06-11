@@ -67,6 +67,9 @@ inline VkBuffer m_modelRegistrySSBO = VK_NULL_HANDLE;
 inline VmaAllocation m_modelRegistryAlloc = VK_NULL_HANDLE;
 inline std::atomic<bool> m_requiresUpload{false};
 
+inline std::once_flag obswrite{};
+inline std::once_flag spoutsend{};
+
 void sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs);
 bool ges();
 bool initcpuQs(rvkbucket& mvkobjs);
@@ -75,6 +78,12 @@ bool initglobalinstances(rvkbucket& mvkobjs);
 bool initglobalindirect(rvkbucket& mvkobjs);
 bool initglobalidrectUNINDEXED(rvkbucket& mvkobjs);
 void update_dynamic_instances(rvkbucket& mvkobjs);
+bool create_obs_target(rvkbucket& mvkobjs);
+bool init_obs_bridge(void* shared_handle, uint32_t width, uint32_t height, const uint8_t* device_luid);
+// void cleanup_obs_bridge();
+void write_obs(rvkbucket& mvkobjs);
+void copy_engine_to_obs(VkCommandBuffer cmdBuffer, rvkbucket& mvkobjs, VkImage engine_source_img, VkImage obs_target_img, uint32_t width,
+                        uint32_t height);
 
 void immediate_submit(rvkbucket& mvkobjs, std::function<void(VkCommandBuffer cbuffer)>&& fn);
 bool init(rvkbucket& mvkobjs);

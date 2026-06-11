@@ -265,6 +265,15 @@ struct alignas(64) rwind {
 	VkImageView rddepthimageviewref = VK_NULL_HANDLE;
 	VmaAllocation rddepthimageallocref = VK_NULL_HANDLE;
 	VkFormat rddepthformatref{};
+
+	struct obs_rendertarget {
+		VkImage img = VK_NULL_HANDLE;
+		VkImageView view = VK_NULL_HANDLE;
+		VkDeviceMemory memory = VK_NULL_HANDLE;
+		void* shared_handle = nullptr;
+		uint32_t width = 1920;
+		uint32_t height = 1080;
+	} obs_target;
 };
 
 struct alignas(64) rframe {
@@ -352,6 +361,15 @@ inline float iksolvetime{0.0f};
 inline float rduigeneratetime{0.0f};
 inline float rduidrawtime{0.0f};
 inline float loadingprog{0.0f};
+
+namespace platform {
+#ifdef _WIN32
+constexpr bool is_windows = true;
+#else
+constexpr bool is_windows = false;
+#endif
+// constexpr const char* ext_memory_win32 = "VK_KHR_external_memory_win32";
+}
 
 
 };

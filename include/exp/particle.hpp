@@ -214,8 +214,8 @@ inline bool createeverything(rvkbucket &objs) {
 	colorattach.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
 	colorattach.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 	colorattach.alphaBlendOp = VK_BLEND_OP_ADD;
-	colorattach.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-	colorattach.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorattach.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorattach.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 
 	VkPipelineColorBlendStateCreateInfo colorinfo{};
 	colorinfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;

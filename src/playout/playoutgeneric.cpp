@@ -18,6 +18,7 @@ bool playoutgeneric::setup(rvkbucket &objs, std::string_view fname, size_t count
 
 	if (!loadmodel(objs, fname))
 		return false;
+
 	m_modelID = mgltf->assigned_model_id;
 
 	if (!createinstances(objs, count, false))

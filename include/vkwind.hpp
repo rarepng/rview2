@@ -108,7 +108,13 @@ inline void configure_selector(vkb::PhysicalDeviceSelector& selector) {
 	// .add_required_extension_features(as_feats)
 	// .add_required_extension_features(f_mesh)
 	// .add_required_extension_features(dynamicVertexFeats)
-	.require_present(false);
+	;
+
+	if constexpr (rview::core::platform::is_windows) {
+		selector.add_required_extension("VK_KHR_external_memory_win32");
+	}
+
+	selector.require_present(false);
 }
 
 [[nodiscard]]
@@ -138,6 +144,14 @@ find_capable_gpu(rvkbucket& mvkobjs) noexcept {
 	auto phys_ret = selector
 	                .require_present(false)
 	                .select();
+
+	if (vkdebug::is_active) {
+		if (!phys_ret) {
+			std::cerr << "[Debug] find_capable_gpu FAILED: " << phys_ret.error().message() << std::endl;
+		} else {
+			std::cout << "[Debug] find_capable_gpu SELECTED: " << phys_ret.value().name << std::endl;
+		}
+	}
 
 	if (!phys_ret) return std::unexpected(phys_ret.error().message());
 
