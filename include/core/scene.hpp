@@ -50,6 +50,10 @@ struct PrimitiveMetadata {
 	uint32_t materialID = 0;
 	uint32_t jointFmt = 0;
 	uint32_t weightFmt = 2;
+	uint32_t targetCount = 0;
+	uint32_t morphDeltaIdx = 0xFFFFFFFF;
+	uint32_t morphFormat = 0;
+	uint32_t vertexCount = 0;
 };
 
 struct ModelMetadata {
@@ -62,6 +66,7 @@ struct AssetRegistry {
 	std::vector<uint8_t> globalRawIndices;
 	std::vector<PrimitiveMetadata> primitives;
 	std::vector<ModelMetadata> models;
+	std::vector<uint8_t> globalMorphBytes;
 	std::mutex registryMutex;
 	std::atomic<bool> requiresUpload{false};
 

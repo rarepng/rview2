@@ -351,8 +351,9 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 
 	if (!ubo::init_global(mvkobjs)) return false;
 
-
 	if (!initglobalinstances(mvkobjs))return false;
+
+	if (!initglobalmorphs(mvkobjs)) return false;
 
 	if (!initglobalindirect(mvkobjs))return false;
 
@@ -589,6 +590,11 @@ void vkrenderer::update_dynamic_instances(rvkbucket& mvkobjs) {
 	vmaMapMemory(mvkobjs.alloc, rview::core::globalInstanceBuffers[rview::core::currentFrame].alloc, &mappedData);
 	GPUInstanceData* gpuInsts = static_cast<GPUInstanceData*>(mappedData);
 
+	void* weightData;
+	vmaMapMemory(mvkobjs.alloc, g_morphWeightBuffers[rview::core::currentFrame].alloc, &weightData);
+	float* mappedWeights = static_cast<float*>(weightData);
+	uint32_t globalWeightOffset = 0;
+
 	for (uint32_t i = 0; i < safe_instances; ++i) {
 		if (!model_manager::g_registry.is_visible[i] || g_scene.modelIDs[i] == 0xFFFFFFFF) {
 			gpuInsts[i].modelID = 0xFFFFFFFF;
@@ -605,13 +611,23 @@ void vkrenderer::update_dynamic_instances(rvkbucket& mvkobjs) {
 		gpuInsts[i].jointOffset    = g_scene.jointOffsets[i];
 		gpuInsts[i].isSkinned      = g_scene.isSkinned[i];
 
-		gpuInsts[i].indexCount     = 0;
-		gpuInsts[i].firstIndex     = 0;
-		gpuInsts[i].vertexOffset   = 0;
+		gpuInsts[i].indexCount     		= 0;
+		gpuInsts[i].firstIndex     		= 0;
+		gpuInsts[i].vertexOffset   		= 0;
+		uint32_t wCount = static_cast<uint32_t>(model_manager::g_registry.morph_weights[i].size());
+		gpuInsts[i].morphWeightOffset = globalWeightOffset;
+
+		if (wCount > 0) {
+			std::memcpy(mappedWeights + globalWeightOffset, model_manager::g_registry.morph_weights[i].data(), wCount * sizeof(float));
+			globalWeightOffset += wCount;
+		}
 	}
 
 	vmaFlushAllocation(mvkobjs.alloc, rview::core::globalInstanceBuffers[rview::core::currentFrame].alloc, 0, safe_instances * sizeof(GPUInstanceData));
 	vmaUnmapMemory(mvkobjs.alloc, rview::core::globalInstanceBuffers[rview::core::currentFrame].alloc);
+
+	vmaFlushAllocation(mvkobjs.alloc, g_morphWeightBuffers[rview::core::currentFrame].alloc, 0, globalWeightOffset * sizeof(float));
+	vmaUnmapMemory(mvkobjs.alloc, g_morphWeightBuffers[rview::core::currentFrame].alloc);
 }
 bool vkrenderer::initvma(rvkbucket& mvkobjs) {
 	VmaAllocatorCreateInfo allocinfo{};
@@ -787,6 +803,38 @@ bool vkrenderer::initui(rvkbucket& mvkobjs) {
 
 	return true;
 }
+bool vkrenderer::initglobalmorphs(rvkbucket& mvkobjs) {
+	size_t bufferSize = 250000 * sizeof(float);
+
+	for (uint32_t i = 0; i < rview::core::MAX_FRAMES_IN_FLIGHT; ++i) {
+		VkBufferCreateInfo binfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+		binfo.size = bufferSize;
+		binfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+		VmaAllocationCreateInfo vmaallocinfo{};
+		vmaallocinfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+		vmaallocinfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+		if (vmaCreateBuffer(mvkobjs.alloc, &binfo, &vmaallocinfo,
+		                    &g_morphWeightBuffers[i].buffer,
+		                    &g_morphWeightBuffers[i].alloc, nullptr) != VK_SUCCESS) {
+			return false;
+		}
+
+		VkDescriptorBufferInfo ssboInfo{g_morphWeightBuffers[i].buffer, 0, VK_WHOLE_SIZE};
+		VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+		write.dstSet = rview::core::globalBindlessSet;
+		write.dstBinding = 18;
+		write.dstArrayElement = i;
+		write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		write.descriptorCount = 1;
+		write.pBufferInfo = &ssboInfo;
+
+		vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &write, 0, nullptr);
+	}
+
+	return true;
+}
 void vkrenderer::write_obs(rvkbucket& mvkobjs) {
 	VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
 	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -822,7 +870,10 @@ void vkrenderer::write_obs(rvkbucket& mvkobjs) {
 }
 void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 
+	rview::io::save_state_to_json();
+
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
+
 
 	ui::cleanup(mvkobjs);
 
@@ -882,6 +933,7 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::g_rawIndexSSBO.buffer, rview::core::g_rawIndexSSBO.alloc);
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::g_primitiveRegistrySSBO.buffer, rview::core::g_primitiveRegistrySSBO.alloc);
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::g_modelRegistrySSBO.buffer, rview::core::g_modelRegistrySSBO.alloc);
+	vmaDestroyBuffer(mvkobjs.alloc, g_morphDeltaSSBO.buffer, g_morphDeltaSSBO.alloc);
 
 	for (auto&& x : rview::core::g_indirectCommandBuffers)
 		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
@@ -896,6 +948,10 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
 
 	for (auto&& x : model_manager::g_gpu_joint_buffers) {
+		if (x.buffer) vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
+	}
+
+	for (auto&& x : g_morphWeightBuffers) {
 		if (x.buffer) vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
 	}
 
@@ -1268,18 +1324,23 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 			}
 		case SDL_EVENT_DROP_FILE:
 			[[unlikely]] {
-				std::string fname = e.drop.data;
-				g_jobs.enqueue([fname]() {
-					model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
+				std::string_view fname_view(e.drop.data);
 
-					if (!staging.meshes.empty()) {
-						if (!vkrenderer::pending_staging_models.push(std::move(staging))) {
-							std::cerr << "Engine queue full! Dropped model: " << fname << "\n";
+				if (fname_view.ends_with(".glb") || fname_view.ends_with(".vrm") ||
+				        fname_view.ends_with(".GLB") || fname_view.ends_with(".VRM")) {
+
+					std::string fname(fname_view);
+					g_jobs.enqueue([fname]() {
+						model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
+
+						if (!staging.meshes.empty()) {
+							if (!vkrenderer::pending_staging_models.push(std::move(staging))) {
+								std::cerr << "Engine queue full! Dropped model: " << fname << '\n';
+							}
 						}
-					} else {
-						std::cerr << "Failed to parse or empty model: " << fname << "\n";
-					}
-				});
+					});
+				}
+
 				break;
 			}
 		case SDL_EVENT_DROP_COMPLETE:
@@ -1439,6 +1500,46 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 
 		rview::core::g_rawIndexOffset = currentByteSize;
 		add_barrier(rview::core::g_rawIndexSSBO.buffer);
+	}
+
+	uint32_t currentMorphByteSize = static_cast<uint32_t>(g_assets.globalMorphBytes.size());
+	uint32_t newMorphBytesToUpload = currentMorphByteSize - g_morphDeltaOffset;
+
+	if (newMorphBytesToUpload > 0) {
+		if (currentMorphByteSize > g_morphDeltaCapacity) {
+			uint32_t newCapacity = std::max(g_morphDeltaCapacity * 2, currentMorphByteSize + (1024 * 1024 * 8));
+
+			GpuBuffer newBuffer;
+			vkvbo::init(mvkobjs, newBuffer, newCapacity, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+			            VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+
+			if (g_morphDeltaSSBO.buffer != VK_NULL_HANDLE) {
+				VkBufferCopy copyRegion{0, 0, g_morphDeltaOffset};
+				vkCmdCopyBuffer(cmd, g_morphDeltaSSBO.buffer, newBuffer.buffer, 1, &copyRegion);
+			}
+
+			VkDeviceSize beltOffset = mvkobjs.sbelt.reserve(newMorphBytesToUpload);
+			std::memcpy(mvkobjs.sbelt.mappedData + beltOffset, g_assets.globalMorphBytes.data() + g_morphDeltaOffset, newMorphBytesToUpload);
+			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelt.allocation, beltOffset, newMorphBytesToUpload);
+
+			VkBufferCopy tailRegion{beltOffset, g_morphDeltaOffset, newMorphBytesToUpload};
+			vkCmdCopyBuffer(cmd, mvkobjs.sbelt.buffer, newBuffer.buffer, 1, &tailRegion);
+
+			safe_cleanup(mvkobjs, g_morphDeltaSSBO);
+
+			g_morphDeltaSSBO = newBuffer;
+			g_morphDeltaCapacity = newCapacity;
+			descriptors_need_update = true;
+		} else {
+			VkDeviceSize beltOffset = mvkobjs.sbelt.reserve(newMorphBytesToUpload);
+			std::memcpy(mvkobjs.sbelt.mappedData + beltOffset, g_assets.globalMorphBytes.data() + g_morphDeltaOffset, newMorphBytesToUpload);
+			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelt.allocation, beltOffset, newMorphBytesToUpload);
+
+			VkBufferCopy tailRegion{beltOffset, g_morphDeltaOffset, newMorphBytesToUpload};
+			vkCmdCopyBuffer(cmd, mvkobjs.sbelt.buffer, g_morphDeltaSSBO.buffer, 1, &tailRegion);
+		}
+		g_morphDeltaOffset = currentMorphByteSize;
+		add_barrier(g_morphDeltaSSBO.buffer);
 	}
 
 	uint32_t currentPrimCount = static_cast<uint32_t>(g_assets.primitives.size());

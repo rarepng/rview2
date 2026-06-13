@@ -29,6 +29,59 @@ enum InputKey : uint8_t {
 	Key_RightClick,
 	Input_Count
 };
+namespace rview {
+namespace io {
+inline void save_state_to_json() {
+	std::lock_guard<std::mutex> lock(model_manager::g_modelResourceMtx);
+	std::ofstream out("state.json");
+
+	if (!out.is_open()) {
+		std::cerr << "Failed to open state.json for writing.\n";
+		return;
+	}
+	out << "{\n  \"models\": [\n";
+	std::map<uint32_t, std::vector<glm::vec3>> model_instances;
+	uint32_t active_instances = g_scene.entity_count.load(std::memory_order_relaxed);
+	for (uint32_t i = 0; i < active_instances; ++i) {
+		uint32_t modelID = g_scene.modelIDs[i];
+
+		if (modelID == 0xFFFFFFFF) continue;
+
+		model_instances[modelID].push_back(g_scene.worldPositions[i]);
+	}
+	bool first_model = true;
+	for (auto const& [modelID, positions] : model_instances) {
+		if (model_manager::g_model_filepaths.find(modelID) == model_manager::g_model_filepaths.end()) continue;
+
+		if (!first_model) out << ",\n";
+
+		first_model = false;
+
+		const std::string& filepath = model_manager::g_model_filepaths[modelID];
+
+		out << "    {\n";
+		out << "      \"file\": \"" << filepath << "\",\n";
+		out << "      \"count\": " << positions.size() << ",\n";
+		out << "      \"positions\": [\n";
+		for (size_t p = 0; p < positions.size(); ++p) {
+			out << "        [" << positions[p].x << ", " << positions[p].y << ", " << positions[p].z << "]";
+
+			if (p < positions.size() - 1) out << ",";
+
+			out << "\n";
+		}
+		out << "      ],\n";
+		out << "      \"shaders\": {\n";
+		out << "        \"vx\": \"shaders/vx.spv\",\n";
+		out << "        \"px\": \"shaders/px.spv\",\n";
+		out << "        \"cx\": \"shaders/cx.spv\"\n";
+		out << "      }\n";
+		out << "    }";
+	}
+	out << "\n  ]\n}\n";
+}
+};
+};
 
 namespace vkrenderer {
 
@@ -67,6 +120,8 @@ inline std::atomic<bool> m_requiresUpload{false};
 
 inline std::once_flag obswrite{};
 inline std::once_flag spoutsend{};
+
+bool initglobalmorphs(rvkbucket& mvkobjs);
 
 void sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs);
 bool ges();

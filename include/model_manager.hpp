@@ -101,6 +101,8 @@ inline std::unordered_map<uint32_t, CPUModelAsset> g_cpuModels;
 
 inline std::vector<glm::mat4> g_frameJointMatrices;
 
+inline std::unordered_map<uint32_t, std::string> g_model_filepaths;
+
 struct alignas(16) MaterialData {
 	uint32_t albedoIdx;
 	uint32_t normalIdx;
@@ -153,6 +155,7 @@ struct StagingPrimitive {
 	std::vector<uint8_t> indexBytes;
 	// Slots: [0]=POS, [1]=NORM, [2]=TAN, [3]=UV, [4]=JOINTS, [5]=WEIGHTS // MISSING COLOR STILL
 	std::array<std::vector<uint8_t>, 6> vertexBytes;
+	std::vector<uint8_t> morphBytes;
 };
 
 struct StagingMesh {
@@ -233,6 +236,7 @@ public:
 	alignas(64) std::array<int, MAX_ENTITIES> target_anim_clip{};
 	alignas(64) std::array<float, MAX_ENTITIES> blend_duration{};
 	alignas(64) std::array<float, MAX_ENTITIES> current_blend_time{};
+	alignas(64) std::array<std::vector<float>, MAX_ENTITIES> morph_weights{};
 
 	alignas(64) std::array<uint32_t, MAX_ENTITIES> attach_parent_entity{};
 	alignas(64) std::array<int32_t, MAX_ENTITIES> attach_parent_bone{};
@@ -305,6 +309,7 @@ public:
 		bone_count[dense_idx]        = b_count;
 		joint_start_index[dense_idx] = j_start;
 		joint_count[dense_idx]       = j_count;
+		morph_weights[dense_idx].assign(64, 0.0f);
 
 		return ent;
 	}

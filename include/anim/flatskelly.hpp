@@ -48,7 +48,6 @@ struct alignas(64) FlatSkeleton {
 struct ParsedSkeleton {
 	uint32_t nodeCount{0};
 	uint32_t jointCount{0};
-	
 	// idk if pointers here are the best idea but i cant think of how else to do it without breaking bss/stack
 	std::unique_ptr<int32_t[]> parentIndices;
 	std::unique_ptr<glm::mat4[]> localTransforms;

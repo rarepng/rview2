@@ -17,6 +17,8 @@
 #include <queue>
 #include <rend/graph.hpp>
 #include <tracy/Tracy.hpp>
+#include <fstream>
+#include <map>
 // all this &$#! for a stupid ugly diagram
 // #ifndef __cpp_lib_move_only_function
 // #ifdef __clang__
@@ -175,7 +177,7 @@ struct alignas(16) GPUInstanceData {
 	uint32_t indexCount;
 	uint32_t firstIndex;
 	int32_t  vertexOffset;
-	uint32_t padding;
+	uint32_t morphWeightOffset;
 };
 
 struct ssbodata {
@@ -370,6 +372,9 @@ namespace anim {
 inline constexpr float samplerate{6.0f};
 static constexpr uint32_t MAX_IK_CHAINS = 2;
 };
+namespace io {
+
+};
 
 };
 
@@ -481,3 +486,9 @@ inline void safe_cleanup(rvkbucket& objs, GpuBuffer& bufferData) {
 	bufferData.buffer = VK_NULL_HANDLE;
 	bufferData.alloc = nullptr;
 }
+
+
+inline GpuBuffer g_morphDeltaSSBO{};
+inline uint32_t g_morphDeltaCapacity = 0;
+inline uint32_t g_morphDeltaOffset = 0;
+inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> g_morphWeightBuffers{};

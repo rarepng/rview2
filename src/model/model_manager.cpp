@@ -7,6 +7,15 @@
 #include <unordered_map>
 #include <iostream>
 #include "stb_image.h"
+#include <fastgltf/core.hpp>
+#include <fastgltf/tools.hpp>
+#include <fastgltf/glm_element_traits.hpp>
+
+namespace fastgltf {
+template <> struct ElementTraits<std::array<int8_t, 3>> : ElementTraitsBase<std::array<int8_t, 3>, AccessorType::Vec3, int8_t> {};
+template <> struct ElementTraits<std::array<int16_t, 3>> : ElementTraitsBase<std::array<int16_t, 3>, AccessorType::Vec3, int16_t> {};
+template <> struct ElementTraits<std::array<float, 3>> : ElementTraitsBase<std::array<float, 3>, AccessorType::Vec3, float> {};
+}
 
 namespace model_manager {
 
@@ -297,6 +306,77 @@ StagingModelData parse_model_to_staging(std::string_view filepath) {
 				}
 			}
 
+			outPrim.meta.targetCount = static_cast<uint32_t>(inPrim.targets.size());
+			outPrim.meta.morphDeltaIdx = 0xFFFFFFFF;
+			outPrim.meta.morphFormat = 0;
+
+			if (outPrim.meta.targetCount > 0) {
+				size_t vertexCount = 0;
+
+				if (auto* posAttr = inPrim.findAttribute("POSITION")) {
+					vertexCount = asset.accessors[posAttr->accessorIndex].count;
+					outPrim.meta.vertexCount = static_cast<uint32_t>(vertexCount);
+				}
+
+				if (vertexCount > 0) {
+					auto findTargetAttr = [](const auto & targetArray, std::string_view name) -> const fastgltf::Attribute* {
+						for (const auto& attr : targetArray) {
+							if (attr.name == name) return &attr;
+						}
+
+						return nullptr;
+					};
+
+					if (auto* firstPos = findTargetAttr(inPrim.targets[0], "POSITION")) {
+						const auto& acc = asset.accessors[firstPos->accessorIndex];
+
+						if (acc.componentType == fastgltf::ComponentType::Byte || acc.componentType == fastgltf::ComponentType::UnsignedByte) {
+							outPrim.meta.morphFormat = 2;
+						} else if (acc.componentType == fastgltf::ComponentType::Short || acc.componentType == fastgltf::ComponentType::UnsignedShort) {
+							outPrim.meta.morphFormat = 1;
+						}
+					}
+
+					size_t bytesPerComponent = (outPrim.meta.morphFormat == 2) ? 1 : ((outPrim.meta.morphFormat == 1) ? 2 : 4);
+					size_t targetByteSize = vertexCount * bytesPerComponent * 3;
+
+					outPrim.morphBytes.resize(outPrim.meta.targetCount * targetByteSize * 2, 0);
+					uint8_t* writePtr = outPrim.morphBytes.data();
+
+					for (uint32_t t = 0; t < outPrim.meta.targetCount; ++t) {
+						const auto& target = inPrim.targets[t];
+
+						if (auto* posTarget = findTargetAttr(target, "POSITION")) {
+							const auto& acc = asset.accessors[posTarget->accessorIndex];
+
+							if (outPrim.meta.morphFormat == 2) {
+								fastgltf::copyFromAccessor<std::array<int8_t, 3>>(asset, acc, writePtr);
+							} else if (outPrim.meta.morphFormat == 1) {
+								fastgltf::copyFromAccessor<std::array<int16_t, 3>>(asset, acc, writePtr);
+							} else {
+								fastgltf::copyFromAccessor<std::array<float, 3>>(asset, acc, writePtr);
+							}
+						}
+
+						writePtr += targetByteSize;
+
+						if (auto* normTarget = findTargetAttr(target, "NORMAL")) {
+							const auto& acc = asset.accessors[normTarget->accessorIndex];
+
+							if (outPrim.meta.morphFormat == 2) {
+								fastgltf::copyFromAccessor<std::array<int8_t, 3>>(asset, acc, writePtr);
+							} else if (outPrim.meta.morphFormat == 1) {
+								fastgltf::copyFromAccessor<std::array<int16_t, 3>>(asset, acc, writePtr);
+							} else {
+								fastgltf::copyFromAccessor<std::array<float, 3>>(asset, acc, writePtr);
+							}
+						}
+
+						writePtr += targetByteSize;
+					}
+				}
+			}
+
 			staging.meshes[i].primitives.push_back(std::move(outPrim));
 		}
 	}
@@ -501,6 +581,7 @@ uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, Stagi
 
 	std::vector<PrimitiveMetadata> finalPrimitives;
 	std::vector<uint8_t> localRawIndices;
+	std::vector<uint8_t> localMorphBytes;
 	uint32_t totalPrimitiveCount = 0;
 	VkDeviceSize currentBufferOffset = 0;
 
@@ -552,6 +633,13 @@ uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, Stagi
 				std::memcpy(localRawIndices.data() + oldSize, prim.indexBytes.data(), rawSize);
 			}
 
+			if (!prim.morphBytes.empty()) {
+				prim.meta.morphDeltaIdx = static_cast<uint32_t>(localMorphBytes.size());
+				localMorphBytes.insert(localMorphBytes.end(), prim.morphBytes.begin(), prim.morphBytes.end());
+			} else {
+				prim.meta.morphDeltaIdx = 0xFFFFFFFF;
+			}
+
 			finalPrimitives.push_back(prim.meta);
 		}
 	}
@@ -596,11 +684,11 @@ uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, Stagi
 	uint32_t assignedModelID = 0;
 	{
 		std::lock_guard<std::mutex> lock(g_assets.registryMutex);
-
 		assignedModelID = static_cast<uint32_t>(g_assets.models.size());
 		g_assets.models.push_back({ static_cast<uint32_t>(g_assets.primitives.size()), totalPrimitiveCount });
 
 		uint32_t globalByteOffset = static_cast<uint32_t>(g_assets.globalRawIndices.size());
+		uint32_t globalMorphOffset = static_cast<uint32_t>(g_assets.globalMorphBytes.size());
 
 		g_assets.globalRawIndices.insert(
 		    g_assets.globalRawIndices.end(),
@@ -608,8 +696,19 @@ uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, Stagi
 		    localRawIndices.end()
 		);
 
+		g_assets.globalMorphBytes.insert(
+		    g_assets.globalMorphBytes.end(),
+		    localMorphBytes.begin(),
+		    localMorphBytes.end()
+		);
+
 		for (auto& meta : finalPrimitives) {
 			meta.indexByteOffset += globalByteOffset;
+
+			if (meta.morphDeltaIdx != 0xFFFFFFFF) {
+				meta.morphDeltaIdx += globalMorphOffset;
+			}
+
 			g_assets.primitives.push_back(meta);
 		}
 	}
@@ -623,6 +722,7 @@ uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, Stagi
 		cpuAsset.bakedClips = std::move(staging.bakedClips);
 		cpuAsset.textures = std::move(model_textures);
 		g_cpuModels[assignedModelID] = std::move(cpuAsset);
+		g_model_filepaths[assignedModelID] = staging.name;
 	}
 
 	g_assets.requiresUpload.store(true, std::memory_order_release);

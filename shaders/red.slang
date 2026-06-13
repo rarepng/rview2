@@ -19,6 +19,8 @@ static const float MIN_ROUGHNESS = 0.04;
 [[vk::binding(14, 0)]] StructuredBuffer<ModelMetadata> modelRegistry;
 [[vk::binding(15, 0)]] RWStructuredBuffer<VkDrawIndirectCommand> indirectCommands[];
 [[vk::binding(16, 0)]] RWStructuredBuffer<uint> indirectDrawCount[];
+[[vk::binding(17, 0)]] ByteAddressBuffer morphDeltas;
+[[vk::binding(18, 0)]] StructuredBuffer<float> morphWeights[];
 
 struct PXin {
     float4 sv_pos : SV_Position;
@@ -102,6 +104,10 @@ struct PrimitiveMetadata {
   uint materialID;
   uint jointFmt;
   uint weightFmt;
+  uint targetCount;
+  uint morphDeltaIdx;
+  uint morphFormat;
+  uint vertexCount;
 };
 
 struct ModelMetadata {
@@ -264,7 +270,7 @@ struct GPUInstanceData {
     uint indexCount;
     uint firstIndex;
     int vertexOffset;
-    uint padding;
+    uint morphWeightOffset;
 };
 
 // [[EXPERIMENTAL]]
@@ -362,6 +368,36 @@ PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
       uint word = vertexBuffers[prim.weightIdx].Load(vertexIndex * 4);
       inWeight = float4(word & 0xFF, (word >> 8) & 0xFF, (word >> 16) & 0xFF, word >> 24) / 255.0;
     }
+  }
+  if (prim.targetCount > 0 && prim.morphDeltaIdx != 0xFFFFFFFF) {
+    uint bytesPerComponent = (prim.morphFormat == 2) ? 1 : ((prim.morphFormat == 1) ? 2 : 4);
+    uint targetByteSize = prim.vertexCount * bytesPerComponent * 3;
+
+    float3 morphPosDelta = float3(0.0);
+    float3 morphNormDelta = float3(0.0);
+
+    for (uint t = 0; t < prim.targetCount; t++) {
+      float weight = morphWeights[pc.frameIndex][inst.morphWeightOffset + t];
+
+      if (abs(weight) > 0.001) {
+        uint targetBaseOffset = prim.morphDeltaIdx + (t * targetByteSize * 2);
+        uint posOffset = targetBaseOffset + (vertexIndex * bytesPerComponent * 3);
+        uint normOffset = targetBaseOffset + targetByteSize + (vertexIndex * bytesPerComponent * 3);
+
+        if (prim.morphFormat == 2) {
+          morphPosDelta += LoadInt8Vec3(posOffset) * weight;
+          morphNormDelta += LoadInt8Vec3(normOffset) * weight;
+        } else if (prim.morphFormat == 1) {
+          morphPosDelta += LoadInt16Vec3(posOffset) * weight;
+          morphNormDelta += LoadInt16Vec3(normOffset) * weight;
+        } else {
+          morphPosDelta += LoadFloatVec3(posOffset) * weight;
+          morphNormDelta += LoadFloatVec3(normOffset) * weight;
+        }
+      }
+    }
+    inPos += morphPosDelta;
+    inNormal += morphNormDelta;
   }
 
   float4 locPos = float4(inPos, 1.0);
@@ -549,4 +585,62 @@ void cxmain(uint3 threadID: SV_DispatchThreadID) {
 
     indirectCommands[pc.frameIndex][cmdIndex] = cmd;
   }
+}
+
+// decoding helpers
+float3 LoadInt8Vec3(uint offset) {
+  uint aligned = offset & ~3;
+  uint shift = (offset & 3) * 8;
+  uint2 w = morphDeltas.Load2(aligned);
+
+  int x, y, z;
+  if (shift == 0) {
+    x = int(w.x << 24) >> 24; y = int((w.x >> 8) << 24) >> 24; z = int((w.x >> 16) << 24) >> 24;
+  } else if (shift == 8) {
+    x = int((w.x >> 8) << 24) >> 24; y = int((w.x >> 16) << 24) >> 24; z = int((w.x >> 24) << 24) >> 24;
+  } else if (shift == 16) {
+    x = int((w.x >> 16) << 24) >> 24; y = int((w.x >> 24) << 24) >> 24; z = int(w.y << 24) >> 24;
+  } else {
+    x = int((w.x >> 24) << 24) >> 24; y = int(w.y << 24) >> 24; z = int((w.y >> 8) << 24) >> 24;
+  }
+  return max(float3(x, y, z) / 127.0, -1.0);
+}
+int Read16(uint3 w, uint byteOffset) {
+  uint bitOffset = byteOffset * 8;
+  uint wordIdx = bitOffset / 32;
+  uint bitInWord = bitOffset % 32;
+
+  uint val = 0;
+  if (wordIdx == 0) {
+    val = (bitInWord <= 16) ? ((w.x >> bitInWord) & 0xFFFF) : (((w.x >> bitInWord) | (w.y << (32 - bitInWord))) & 0xFFFF);
+  } else if (wordIdx == 1) {
+    val = (bitInWord <= 16) ? ((w.y >> bitInWord) & 0xFFFF) : (((w.y >> bitInWord) | (w.z << (32 - bitInWord))) & 0xFFFF);
+  } else {
+    val = (w.z >> bitInWord) & 0xFFFF;
+  }
+  return (int(val) << 16) >> 16;
+}
+float3 LoadInt16Vec3(uint offset) {
+  uint aligned = offset & ~3;
+  uint3 w = morphDeltas.Load3(aligned);
+  uint localOffset = offset & 3;
+
+  int x = Read16(w, localOffset);
+  int y = Read16(w, localOffset + 2);
+  int z = Read16(w, localOffset + 4);
+
+  return max(float3(x, y, z) / 32767.0, -1.0);
+}
+float3 LoadFloatVec3(uint offset) {
+  uint aligned = offset & ~3;
+  uint localOffset = offset & 3;
+  if (localOffset == 0) return asfloat(morphDeltas.Load3(aligned));
+
+  uint4 w = morphDeltas.Load4(aligned);
+  uint shift = localOffset * 8;
+  uint invShift = 32 - shift;
+  uint xBits = (w.x >> shift) | (w.y << invShift);
+  uint yBits = (w.y >> shift) | (w.z << invShift);
+  uint zBits = (w.z >> shift) | (w.w << invShift);
+  return asfloat(uint3(xBits, yBits, zBits));
 }
