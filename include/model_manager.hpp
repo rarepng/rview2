@@ -214,8 +214,6 @@ private:
 	std::vector<uint32_t> free_indices;
 	std::mutex registry_mtx;
 
-	uint32_t current_joint_allocation_offset = 0;
-
 public:
 	alignas(64) std::array<int, MAX_ENTITIES> anim_clip{};
 	alignas(64) std::array<float, MAX_ENTITIES> anim_speed{};

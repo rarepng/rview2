@@ -307,7 +307,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "x") # clangd
     )
 
 else()
+
 add_executable(rview2 ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_HEADERS})
+
+include(CMakeLocal.txt OPTIONAL)
 
 target_compile_definitions(rview2 PRIVATE
 "RVIEW_DEBUG=$<IF:$<CONFIG:Debug>,1,0>"
@@ -480,8 +483,7 @@ add_custom_target(shaders_tar ALL DEPENDS ${ALL_SHADER_SPV_FILES})
 add_dependencies(rview2 shaders_tar)
 
 
-add_custom_command(
-    TARGET rview2 POST_BUILD
+add_custom_target(assets ALL
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${PROJECT_SOURCE_DIR}/boot.json"
         "$<TARGET_FILE_DIR:rview2>/boot.json"
@@ -490,11 +492,18 @@ add_custom_command(
         "${PROJECT_SOURCE_DIR}/resources"
         "$<TARGET_FILE_DIR:rview2>/resources"
         
-    COMMENT "copying resources and configs"
+    COMMENT "syncing resources and configs..."
 )
 
+add_dependencies(rview2 assets)
 
-
+add_custom_target(state
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "$<TARGET_FILE_DIR:rview2>/state.json"
+        "${PROJECT_SOURCE_DIR}/state.json"
+        
+    COMMENT "reverse syncing state.json"
+)
 
 
 set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/resources)
