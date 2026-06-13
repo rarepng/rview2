@@ -1,4 +1,4 @@
-#include "vkwind.hpp"
+#include <vkwind.hpp>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <expected>
@@ -7,7 +7,7 @@
 #include <string>
 #include <vulkan/vulkan.h>
 #include <cstdlib>
-#include "dbg/trace.hpp"
+#include <dbg/trace.hpp>
 
 // idk mayble ill drop windows completely instead of having to do this lol
 __attribute__((force_align_arg_pointer))

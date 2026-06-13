@@ -1,4 +1,4 @@
-#include "vkchannel.hpp"
+#include <anim/vkchannel.hpp>
 
 namespace fastgltf {
 template <> struct ElementTraits<glm::quat> : ElementTraitsBase<glm::quat, AccessorType::Vec4, float> {};

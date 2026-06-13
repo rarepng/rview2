@@ -1,9 +1,9 @@
 #pragma once
 #define GLM_ENABLE_EXPERIMENTAL
-#include "core/rvk.hpp"
-#include "core/scene.hpp"
-#include "anim/flatskelly.hpp"
-#include "anim/baker2.hpp"
+#include <core/rvk.hpp>
+#include <core/scene.hpp>
+#include <anim/flatskelly.hpp>
+#include <anim/baker2.hpp>
 #include <fastgltf/core.hpp>
 #include <fastgltf/tools.hpp>
 #include <fastgltf/types.hpp>
@@ -18,8 +18,8 @@
 #include <map>
 #include <memory>
 #include <unordered_map>
-#include "vkclip.hpp"
-#include "vknode.hpp"
+#include <anim/vkclip.hpp>
+#include <anim/vknode.hpp>
 #include <vulkan/vulkan.h>
 #include <core/scene.hpp>
 #include <vktex.hpp>

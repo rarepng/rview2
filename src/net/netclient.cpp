@@ -1,4 +1,4 @@
-#include "netclient.hpp"
+#include <net/netclient.hpp>
 
 #include <iostream>
 

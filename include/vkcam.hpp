@@ -1,12 +1,9 @@
 #pragma once
 #define GLM_ENABLE_EXPERIMENTAL
 #define _USE_MATH_DEFINES
-// #include <cmath>
-
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/string_cast.hpp>
-
-#include "core/rvk.hpp"
+#include <core/rvk.hpp>
 #include <glm/glm.hpp>
 
 namespace vkcam {

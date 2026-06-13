@@ -1,8 +1,6 @@
 #pragma once
-
 //animation baker ((hopefully))
-
-#include "core/rvk.hpp"
+#include <core/rvk.hpp>
 #include <glm/glm.hpp>
 #include <string>
 #include <unordered_map>

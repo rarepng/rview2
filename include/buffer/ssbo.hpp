@@ -2,8 +2,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <vulkan/vulkan.h>
-
-#include "core/rvk.hpp"
+#include <core/rvk.hpp>
 
 namespace ssbo {
 inline bool createmateriallayout(rvkbucket &core, VkDescriptorSetLayout& dlayout) {

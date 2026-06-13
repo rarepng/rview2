@@ -1,5 +1,5 @@
 #pragma once
-#include "anim/flatskelly.hpp"
+#include <anim/flatskelly.hpp>
 #include <fastgltf/core.hpp>
 #include <fastgltf/types.hpp>
 #include <fastgltf/tools.hpp>

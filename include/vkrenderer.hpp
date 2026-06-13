@@ -15,14 +15,14 @@
 #include <future>
 #include <numeric>
 #include <simdjson.h>
-#include "timer.hpp"
-#include "ui.hpp"
-#include "vkcam.hpp"
-#include "core/rvk.hpp"
-#include "core/jobs.hpp"
-#include "core/scene.hpp"
+#include <timer.hpp>
+#include <ui.hpp>
+#include <vkcam.hpp>
+#include <core/rvk.hpp>
+#include <core/jobs.hpp>
+#include <core/scene.hpp>
 #include <vkvbo.hpp>
-#include "model_manager.hpp"
+#include <model_manager.hpp>
 
 enum InputKey : uint8_t {
 	Key_W = 0, Key_S, Key_A, Key_D, Key_Q, Key_E,

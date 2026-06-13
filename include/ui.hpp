@@ -1,7 +1,6 @@
 #pragma once
 #include <vector>
-
-#include "core/rvk.hpp"
+#include <core/rvk.hpp>
 #include <meta>
 
 template<size_t Size = 90>

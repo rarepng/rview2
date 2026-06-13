@@ -1,10 +1,10 @@
-#include "backends/imgui_impl_sdl3.h"
-#include "core/rvk.hpp"
+#include <backends/imgui_impl_sdl3.h>
+#include <core/rvk.hpp>
 #include <cstdint>
 #define GLM_ENABLE_EXPERIMENTAL
 #define VMA_IMPLEMENTATION
-#include "exp/particle.hpp"
-#include "vkrenderer.hpp"
+#include <exp/particle.hpp>
+#include <vkrenderer.hpp>
 #include <backends/imgui_impl_glfw.h>
 #include <imgui.h>
 #include <vk_mem_alloc.h>
@@ -16,14 +16,14 @@
 #include <glm/gtx/spline.hpp>
 #include <iostream>
 #include <ranges>
-#include "vk/commandbuffer.hpp"
-#include "vk/commandpool.hpp"
-#include "vksyncobjects.hpp"
+#include <vk/commandbuffer.hpp>
+#include <vk/commandpool.hpp>
+#include <vksyncobjects.hpp>
 #include <SDL3/SDL_vulkan.h>
-#include "vktex.hpp"
-#include "playout.hpp"
-#include "ubo.hpp"
-#include "obs_bridge.hpp"
+#include <vktex.hpp>
+#include <playout.hpp>
+#include <ubo.hpp>
+#include <obs_bridge.hpp>
 
 void vkrenderer::immediate_submit(rvkbucket& mvkobjs,
                                   std::function<void(VkCommandBuffer cbuffer)> &&fn) {

@@ -11,10 +11,8 @@
 #include <filesystem>
 #include <string>
 #include <string_view>
-
-#include "core/rvk.hpp"
-
-#include "vktex.hpp"
+#include <core/rvk.hpp>
+#include <vktex.hpp>
 
 
 //todo: use the proper pools, descriptors, layouts and buffers

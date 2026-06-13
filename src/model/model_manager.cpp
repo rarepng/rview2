@@ -1,12 +1,12 @@
-#include "model_manager.hpp"
-#include "vkvbo.hpp"
-#include "vkclip.hpp"
-#include "vknode.hpp"
+#include <model_manager.hpp>
+#include <vkvbo.hpp>
+#include <anim/vkclip.hpp>
+#include <anim/vknode.hpp>
 #include <fstream>
 #include <simdjson.h>
 #include <unordered_map>
 #include <iostream>
-#include "stb_image.h"
+#include <stb_image.h>
 #include <fastgltf/core.hpp>
 #include <fastgltf/tools.hpp>
 #include <fastgltf/glm_element_traits.hpp>
