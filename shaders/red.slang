@@ -7,7 +7,7 @@ static const float MIN_ROUGHNESS = 0.04;
 
 [[vk::binding(0, 0)]] Sampler2D tex[];
 [[vk::binding(1, 0)]] ConstantBuffer<cams> cammats;
-[[vk::binding(2, 0)]] StructuredBuffer<float4x4> globalJoints[];
+[[vk::binding(2, 0)]] StructuredBuffer<DualQuatScale> globalJoints[];
 [[vk::binding(3, 0)]] Sampler2D envMap;
 [[vk::binding(4, 0)]] StructuredBuffer<MaterialData> materials;
 [[vk::binding(5, 0)]] ByteAddressBuffer vertexBuffers[];
@@ -29,6 +29,12 @@ struct PXin {
     float2 uv;
     float4 vColor;
     nointerpolation uint materialID;
+};
+
+struct DualQuatScale {
+  float4 real;
+  float4 dual;
+  float4 scale;
 };
 
 struct MaterialData {
@@ -62,9 +68,9 @@ struct consts {
 struct cams {
     float4x4 view;
     float4x4 projection;
-    float3 camPos; 
+    float3 camPos;
     float _pad;
-}
+};
 
 [vk_push_constant] ConstantBuffer<consts> pc;
 
@@ -303,13 +309,23 @@ PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
       uint word = rawIndexBuffer.Load(offset & ~3);
       vertexIndex = (word >> ((offset & 2) * 8)) & 0xFFFF;
     } else if (prim.indexType == 2) {
-      vertexIndex = rawIndexBuffer.Load(byteOffset + (vertexID * 4));
+      uint offset = byteOffset + (vertexID * 4);
+      uint alignedOffset = offset & ~3;
+      uint word0 = rawIndexBuffer.Load(alignedOffset);
+
+      if ((offset & 3) == 0) {
+        vertexIndex = word0;
+      } else {
+        uint word1 = rawIndexBuffer.Load(alignedOffset + 4);
+        uint shift = (offset & 3) * 8;
+        vertexIndex = (word0 >> shift) | (word1 << (32 - shift));
+      }
     }
   }
 
   uint posSize = 0;
   vertexBuffers[prim.posIdx].GetDimensions(posSize);
-  if (prim.posIdx == 0 || (vertexIndex * 12) + 12 > posSize) return out;
+  if ((vertexIndex * 12) + 12 > posSize) return out;
 
   float3 inPos = vertexBuffers[prim.posIdx].Load<float3>(vertexIndex * 12);
 
@@ -353,15 +369,41 @@ PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
   float3x3 normalMat;
 
   if (inst.isSkinned == 1) {
-    float4x4 m0 = globalJoints[inst.modelID][inst.jointOffset + inJoint.x];
-    float4x4 m1 = globalJoints[inst.modelID][inst.jointOffset + inJoint.y];
-    float4x4 m2 = globalJoints[inst.modelID][inst.jointOffset + inJoint.z];
-    float4x4 m3 = globalJoints[inst.modelID][inst.jointOffset + inJoint.w];
+    DualQuatScale dq0 = globalJoints[pc.frameIndex][inst.jointOffset + inJoint.x];
+    DualQuatScale dq1 = globalJoints[pc.frameIndex][inst.jointOffset + inJoint.y];
+    DualQuatScale dq2 = globalJoints[pc.frameIndex][inst.jointOffset + inJoint.z];
+    DualQuatScale dq3 = globalJoints[pc.frameIndex][inst.jointOffset + inJoint.w];
 
-    float4x4 skinMat = (m0 * inWeight.x) + (m1 * inWeight.y) + (m2 * inWeight.z) + (m3 * inWeight.w);
+    if (dot(dq0.real, dq1.real) < 0.0) { dq1.real *= -1.0; dq1.dual *= -1.0; }
+    if (dot(dq0.real, dq2.real) < 0.0) { dq2.real *= -1.0; dq2.dual *= -1.0; }
+    if (dot(dq0.real, dq3.real) < 0.0) { dq3.real *= -1.0; dq3.dual *= -1.0; }
 
-    worldPos = mul(skinMat, locPos);
-    normalMat = (float3x3)skinMat;
+    float4 blendReal = dq0.real * inWeight.x + dq1.real * inWeight.y + dq2.real * inWeight.z + dq3.real * inWeight.w;
+    float4 blendDual = dq0.dual * inWeight.x + dq1.dual * inWeight.y + dq2.dual * inWeight.z + dq3.dual * inWeight.w;
+    float3 blendScale = dq0.scale.xyz * inWeight.x + dq1.scale.xyz * inWeight.y + dq2.scale.xyz * inWeight.z + dq3.scale.xyz * inWeight.w;
+
+    float invLen = 1.0 / length(blendReal);
+    blendReal *= invLen;
+    blendDual *= invLen;
+
+    float3 scaledPos = inPos * blendScale;
+
+    float3 rCrossV = cross(blendReal.xyz, scaledPos) + blendReal.w * scaledPos;
+    float3 rotatedPos = scaledPos + 2.0 * cross(blendReal.xyz, rCrossV);
+
+    float3 translation = 2.0 * (blendReal.w * blendDual.xyz - blendDual.w * blendReal.xyz + cross(blendReal.xyz, blendDual.xyz));
+
+    worldPos = float4(rotatedPos + translation, 1.0);
+
+    float3 rCrossN = cross(blendReal.xyz, inNormal) + blendReal.w * inNormal;
+    float3 finalNormal = inNormal + 2.0 * cross(blendReal.xyz, rCrossN);
+
+    normalMat = float3x3(
+        1.0, 0.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 0.0, 1.0
+    ); // might be the cheapest hack
+    inNormal = finalNormal;
   } else {
     worldPos = mul(inst.worldTransform, locPos);
     normalMat = (float3x3)inst.worldTransform;

@@ -1,15 +1,8 @@
 #pragma once
 #include <vector>
 
-#include "modelsettings.hpp"
 #include "core/rvk.hpp"
 #include <meta>
-
-struct selection {
-	std::vector<std::vector<modelsettings*>> instancesettings{};
-	size_t midx{0};
-	size_t iidx{0};
-};
 
 template<size_t Size = 90>
 struct PerfGraph {
@@ -32,7 +25,7 @@ struct PerfGraph {
 namespace ui {
 inline PerfGraph<> fps_graph, frametime_graph, vbo_graph, matgen_graph, ik_graph, ubo_graph, uigen_graph, uidraw_graph;
 bool init(rvkbucket &mvkobjs);
-void createdbgframe(rvkbucket &mvkobjs, selection &settingsz);
+void createdbgframe(rvkbucket &mvkobjs);
 bool createloadingscreen(rvkbucket &mvkobjs);
 bool createpausebuttons(rvkbucket &mvkobjs);
 void addchat(std::string s);

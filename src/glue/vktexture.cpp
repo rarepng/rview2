@@ -20,6 +20,64 @@
 //todo: use the proper pools, descriptors, layouts and buffers
 //after fixing the intellisense problems caused by modules..
 namespace rview::rvk::tex {
+texdata upload_texture_async(rvkbucket& rdata, VkCommandBuffer cmd, const uint8_t* pixels, int w, int h) {
+	texdata out_tex{};
+	out_tex.img = VK_NULL_HANDLE;
+	out_tex.imgview = VK_NULL_HANDLE;
+	out_tex.imgsampler = VK_NULL_HANDLE;
+
+	VkDeviceSize imgByteSize = w * h * 4;
+
+	VkImageCreateInfo imgInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+	imgInfo.imageType = VK_IMAGE_TYPE_2D;
+	imgInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+	imgInfo.extent = {static_cast<uint32_t>(w), static_cast<uint32_t>(h), 1};
+	imgInfo.mipLevels = 1;
+	imgInfo.arrayLayers = 1;
+	imgInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imgInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	imgInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+	VmaAllocationCreateInfo vmaAllocInfo{ .usage = VMA_MEMORY_USAGE_GPU_ONLY };
+	vmaCreateImage(rdata.alloc, &imgInfo, &vmaAllocInfo, &out_tex.img, &out_tex.alloc, nullptr);
+
+	VkDeviceSize beltOffset = rdata.sbelt.reserve(imgByteSize);
+	std::memcpy(rdata.sbelt.mappedData + beltOffset, pixels, imgByteSize);
+	vmaFlushAllocation(rdata.alloc, rdata.sbelt.allocation, beltOffset, imgByteSize);
+
+	VkImageMemoryBarrier b1{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+	b1.srcAccessMask = 0;
+	b1.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	b1.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	b1.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	b1.image = out_tex.img;
+	b1.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &b1);
+
+	VkBufferImageCopy region{};
+	region.bufferOffset = beltOffset;
+	// region.bufferRowLength = 0;
+	// region.bufferImageHeight = 0;
+	region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+	region.imageExtent = {static_cast<uint32_t>(w), static_cast<uint32_t>(h), 1};
+	vkCmdCopyBufferToImage(cmd, rdata.sbelt.buffer, out_tex.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+	VkImageMemoryBarrier b2 = b1;
+	b2.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	b2.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	b2.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	b2.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &b2);
+
+	VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+	viewInfo.image = out_tex.img;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+	viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+	vkCreateImageView(rdata.vkdevice.device, &viewInfo, nullptr, &out_tex.imgview);
+
+	return out_tex;
+}
 [[nodiscard]] static VkImageCreateInfo make_image_info(uint32_t w, uint32_t h) noexcept {
 	return VkImageCreateInfo {
 		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,

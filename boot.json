@@ -2,7 +2,8 @@
     "models": [
         {
             "file": "resources/t0.glb",
-            "count": 2,
+            "count": 9,
+            "position": [0.0, 0.0, 0.0],
             "shaders": {
                 "vx": "shaders/vx.spv",
                 "px": "shaders/px.spv",

@@ -18,11 +18,11 @@
 #include "timer.hpp"
 #include "ui.hpp"
 #include "vkcam.hpp"
-#include "playoutgeneric.hpp"
 #include "core/rvk.hpp"
 #include "core/jobs.hpp"
 #include "core/scene.hpp"
 #include <vkvbo.hpp>
+#include "model_manager.hpp"
 
 enum InputKey : uint8_t {
 	Key_W = 0, Key_S, Key_A, Key_D, Key_Q, Key_E,
@@ -36,9 +36,7 @@ namespace vkrenderer {
 
 inline std::bitset<Input_Count> input_state;
 
-inline std::vector<std::shared_ptr<playoutgeneric>> mplayer;
-inline LockFreeMPMC<std::shared_ptr<playoutgeneric>, 32> pending_models;
-inline selection selectiondata{};
+inline LockFreeMPMC<model_manager::StagingModelData, 32> pending_staging_models;
 inline glm::vec3 playermoveto{0.0f};
 inline glm::vec3 playerlookto{0.0f};
 
@@ -89,7 +87,6 @@ void immediate_submit(rvkbucket& mvkobjs, std::function<void(VkCommandBuffer cbu
 bool init(rvkbucket& mvkobjs);
 void setsize(rvkbucket& mvkobjs, unsigned int w, unsigned int h);
 bool uploadfordraw(rvkbucket& mvkobjs, VkCommandBuffer cbuffer);
-bool uploadfordraw(rvkbucket& mvkobjs, std::shared_ptr<playoutgeneric>& x);
 bool draw(rvkbucket& mvkobjs);
 void cleanup(rvkbucket& mvkobjs);
 void handleclick();

@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 #include <VkBootstrap.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <memory>
 #include <shared_mutex>
 #include <vector>
@@ -16,7 +17,6 @@
 #include <queue>
 #include <rend/graph.hpp>
 #include <tracy/Tracy.hpp>
-
 // all this &$#! for a stupid ugly diagram
 // #ifndef __cpp_lib_move_only_function
 // #ifdef __clang__
@@ -216,6 +216,20 @@ struct GlobalBufferHeap {
 	std::queue<uint32_t> free_slots;
 };
 
+
+struct alignas(16) DualQuatScale {
+	glm::quat real{};
+	glm::quat dual{};
+	glm::vec4 scale{};
+};
+struct alignas(16) LocalTRS {
+	glm::quat R;
+	glm::vec3 T;
+	float pad0;
+	glm::vec3 S;
+	float pad1;
+};
+
 // starting segmentation
 
 struct alignas(64) rdev {
@@ -276,27 +290,8 @@ struct alignas(64) rwind {
 	} obs_target;
 };
 
-struct alignas(64) rframe {
-	std::array<VkCommandPool, 3> cpools_graphics = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-	std::array<VkCommandPool, 3> cpools_compute = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-	std::array<VkCommandPool, 3> cpools_transfer = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-	std::array<VkCommandPool, 3> cpools_present = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-
-	std::array<std::array<VkCommandBuffer, 3>, 3> cbuffers_graphics = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
-	std::array<std::array<VkCommandBuffer, 3>, 3> cbuffers_compute = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
-	std::array<std::array<VkCommandBuffer, 3>, 3> cbuffers_transfer = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
-
-	std::array<std::array<VkSemaphore, 8>, 3> semaphorez {{
-			{{ VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE }},
-			{{ VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE }},
-			{{ VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE }}
-		}};
-	std::array<VkFence, 3> fencez{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
-
-	std::array<DeletionQueue, 3> framedeletionQ{};
-};
-
-namespace rview::core {
+namespace rview {
+namespace core {
 inline constexpr uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!! different devices might not serve 3 swapchain images
 inline constexpr uint32_t MAX_BINDLESS_BUFFERS = 1024;
 static constexpr size_t MAX_GLOBAL_MATERIALS = 10000;
@@ -369,11 +364,84 @@ constexpr bool is_windows = true;
 constexpr bool is_windows = false;
 #endif
 // constexpr const char* ext_memory_win32 = "VK_KHR_external_memory_win32";
-}
-
+};
+};
+namespace anim {
+inline constexpr float samplerate{6.0f};
+static constexpr uint32_t MAX_IK_CHAINS = 2;
+};
 
 };
 
+struct DODAnimationClip {
+	std::string name;
+	float duration = 0.0f;
+	float sampleRate = rview::anim::samplerate;
+	uint32_t nodeCount = 0;
+	uint32_t jointCount = 0;
+	uint32_t frameCount = 0;
+
+	std::vector<glm::mat4> globalTransforms;
+
+	std::vector<glm::mat4> finalJointMatrices;
+	std::vector<DualQuatScale> finalJointDQs;
+
+	std::vector<LocalTRS> localTracks;
+
+	inline const DualQuatScale* GetFinalJointsFrame(float time, bool loop) const {
+		if (frameCount == 0 || jointCount == 0) return nullptr;
+
+		float adjustedTime = time;
+
+		if (loop) {
+			adjustedTime = std::fmod(time, duration);
+		} else {
+			adjustedTime = std::min(time, duration);
+		}
+
+		uint32_t frameIndex = static_cast<uint32_t>(adjustedTime * sampleRate);
+
+		if (frameIndex >= frameCount) frameIndex = frameCount - 1;
+
+		return &finalJointDQs[frameIndex * jointCount];
+		// return &finalJointMatrices[frameIndex * jointCount];
+	}
+	inline const LocalTRS* GetLocalTracksFrame(float time, bool loop) const {
+		if (frameCount == 0 || nodeCount == 0) return nullptr;
+
+		float adjustedTime = time;
+
+		if (loop) adjustedTime = std::fmod(time, duration);
+		else      adjustedTime = std::min(time, duration);
+
+		uint32_t frameIndex = static_cast<uint32_t>(adjustedTime * sampleRate);
+
+		if (frameIndex >= frameCount) frameIndex = frameCount - 1;
+
+		return &localTracks[frameIndex * nodeCount];
+	}
+};
+
+
+struct alignas(64) rframe {
+	std::array<VkCommandPool, 3> cpools_graphics = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::array<VkCommandPool, 3> cpools_compute = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::array<VkCommandPool, 3> cpools_transfer = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	std::array<VkCommandPool, 3> cpools_present = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+
+	std::array<std::array<VkCommandBuffer, 3>, 3> cbuffers_graphics = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
+	std::array<std::array<VkCommandBuffer, 3>, 3> cbuffers_compute = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
+	std::array<std::array<VkCommandBuffer, 3>, 3> cbuffers_transfer = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
+
+	std::array<std::array<VkSemaphore, 8>, 3> semaphorez {{
+			{{ VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE }},
+			{{ VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE }},
+			{{ VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE }}
+		}};
+	std::array<VkFence, 3> fencez{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+
+	std::array<DeletionQueue, 3> framedeletionQ{};
+};
 // idk
 // static_assert(sizeof(vkpushconstants) == 128, "Struct size mismatch!");
 struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {

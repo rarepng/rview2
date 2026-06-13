@@ -69,13 +69,6 @@ constexpr auto destroyDummy =
 	vkDestroyImage(mvkobjs.vkdevice.device, tex.image, nullptr);
 	vkFreeMemory(mvkobjs.vkdevice.device, tex.memory, nullptr);
 };
-// temp
-void UpdateAllInstances(std::vector<genericinstance*>& instances) {
-	std::ranges::for_each(instances,
-	[](genericinstance * inst) {
-		inst->checkforupdates();
-	});
-}
 
 // gotta move these somewhere more reasonable someday
 bool init_global_samplers(rvkbucket &objs) {
@@ -338,7 +331,15 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 
 	if (!initcpuQs(mvkobjs)) return false;
 
+	model_manager::reserve_mega_buffers(250000);
+
 	if (!playout::init_bindless(mvkobjs)) return false;
+
+	if (!initglobalmats(mvkobjs)) return false;
+
+	model_manager::init_gpu_joint_buffers(mvkobjs);
+
+	if (!playout::init_pipelines(mvkobjs)) return false;
 
 	if (!init_global_samplers(mvkobjs)) return false;
 
@@ -350,7 +351,6 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 
 	if (!ubo::init_global(mvkobjs)) return false;
 
-	if (!initglobalmats(mvkobjs)) return false;
 
 	if (!initglobalinstances(mvkobjs))return false;
 
@@ -401,23 +401,21 @@ bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 	for (simdjson::ondemand::object x : models) {
 		std::string_view f = x["file"].get_string();
 		uint64_t c = x["count"].get_uint64();
+		std::string fname(f);
+		uint32_t instance_count = static_cast<uint32_t>(c);
 
-		simdjson::ondemand::object shaders = x["shaders"].get_object();
-		std::string_view vx = shaders["vx"].get_string();
-		std::string_view px = shaders["px"].get_string();
+		g_jobs.enqueue([fname, instance_count]() {
+			model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
+			staging.requested_instances = instance_count;
 
-		mplayer.emplace_back(std::make_shared<playoutgeneric>());
-		selectiondata.instancesettings.emplace_back();
-		selectiondata.instancesettings.back().resize(c);
-
-		if (!mplayer.back()->setup(mvkobjs, f, c, vx, px)) {
-			return false;
-		}
-
-		for (size_t i{0}; i < c; i++) {
-			selectiondata.instancesettings.back().at(i) = &mplayer.back()->getinst(i)->getinstancesettings();
-		}
-
+			if (!staging.meshes.empty()) {
+				if (!vkrenderer::pending_staging_models.push(std::move(staging))) {
+					std::cerr << "Engine queue full! Dropped boot model: " << fname << "\n";
+				}
+			} else {
+				std::cerr << "Failed to parse boot model: " << fname << "\n";
+			}
+		});
 	}
 
 	if (!particle::createeverything(mvkobjs)) return false;
@@ -443,6 +441,24 @@ bool vkrenderer::initglobalmats(rvkbucket &mvkobjs) {
 	}
 
 	rview::core::global_materials.mapped_data = allocResult.pMappedData;
+	model_manager::MaterialData* mats = static_cast<model_manager::MaterialData*>(allocResult.pMappedData);
+
+	for (uint32_t i = 0; i < rview::core::MAX_GLOBAL_MATERIALS; ++i) {
+		mats[i].albedoIdx = 0xFFFFFFFF;
+		mats[i].normalIdx = 0xFFFFFFFF;
+		mats[i].ormIdx = 0xFFFFFFFF;
+		mats[i].emissiveIdx = 0xFFFFFFFF;
+		mats[i].transmissionIdx = 0xFFFFFFFF;
+		mats[i].sheenIdx = 0xFFFFFFFF;
+		mats[i].clearcoatIdx = 0xFFFFFFFF;
+		mats[i].thicknessIdx = 0xFFFFFFFF;
+
+		mats[i].baseColorFactor = glm::vec4(1.0f);
+		mats[i].emissiveFactor = glm::vec3(0.0f);
+		mats[i].normalScale = 1.0f;
+		mats[i].roughnessFactor = 1.0f;
+		mats[i].metallicFactor = 0.0f;
+	}
 
 	for (uint32_t i = 0; i < rview::core::MAX_GLOBAL_MATERIALS; ++i) {
 		rview::core::global_materials.free_slots.push(i);
@@ -574,6 +590,11 @@ void vkrenderer::update_dynamic_instances(rvkbucket& mvkobjs) {
 	GPUInstanceData* gpuInsts = static_cast<GPUInstanceData*>(mappedData);
 
 	for (uint32_t i = 0; i < safe_instances; ++i) {
+		if (!model_manager::g_registry.is_visible[i] || g_scene.modelIDs[i] == 0xFFFFFFFF) {
+			gpuInsts[i].modelID = 0xFFFFFFFF;
+			continue;
+		}
+
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f), g_scene.worldPositions[i]) *
 		                      glm::toMat4(g_scene.rotations[i]) *
 		                      glm::scale(glm::mat4(1.0f), g_scene.scales[i]);
@@ -813,22 +834,11 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	for (auto &x : mvkobjs.dpools)
 		rpool::destroy(mvkobjs.vkdevice.device, x);
 
-	for (const auto &i : mplayer)
-		i->cleanuplines(mvkobjs);
+	playout::cleanup_pipelines(mvkobjs);
 
-	for (const auto &i : mplayer)
-		i->cleanupbuffers(mvkobjs);
+	model_manager::StagingModelData temp;
 
-	for (const auto &i : mplayer)
-		i->cleanupmodels(mvkobjs);
-
-	mplayer.clear();
-	selectiondata.instancesettings.clear();
-
-	// must
-	std::shared_ptr<playoutgeneric> temp;
-
-	while (pending_models.pop(temp)) {}
+	while (pending_staging_models.pop(temp)) {}
 
 	//temp
 	mvkobjs.cleanupQ.flush();
@@ -885,14 +895,35 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	for (auto&& x : rview::core::globalIndirectBuffers)
 		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
 
-	//dbg only block
-	// char* statsString = nullptr;
-	// vmaBuildStatsString(mvkobjs.alloc, &statsString, true);
-	// if (statsString) {
-	// 	std::cout << "=== VMA REPORT !! ===" << std::endl;
-	// 	std::cout << statsString << std::endl;
-	// 	std::cout << "=======================" << std::endl;
-	// 	vmaFreeStatsString(mvkobjs.alloc, statsString);
+	for (auto&& x : model_manager::g_gpu_joint_buffers) {
+		if (x.buffer) vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
+	}
+
+	for (auto& [id, asset] : model_manager::g_cpuModels) {
+		if (asset.geometryVBO.buffer) {
+			vmaDestroyBuffer(mvkobjs.alloc, asset.geometryVBO.buffer, asset.geometryVBO.alloc);
+		}
+	}
+
+	for (const auto& i : model_manager::g_cpuModels) {
+		for (const auto& j : i.second.textures) {
+			vmaDestroyImage(mvkobjs.alloc, j.img, j.alloc);
+			vkDestroyImageView(mvkobjs.vkdevice.device, j.imgview, nullptr);
+		}
+	}
+
+	model_manager::g_cpuModels.clear();
+
+	// if constexpr (vkdebug::is_active) {
+	// 	char* statsString = nullptr;
+	// 	vmaBuildStatsString(mvkobjs.alloc, &statsString, true);
+
+	// 	if (statsString) {
+	// 		std::cout << "=== VMA REPORT !! ===" << std::endl;
+	// 		std::cout << statsString << std::endl;
+	// 		std::cout << "=======================" << std::endl;
+	// 		vmaFreeStatsString(mvkobjs.alloc, statsString);
+	// 	}
 	// }
 
 	vmaDestroyAllocator(mvkobjs.alloc);
@@ -1156,20 +1187,6 @@ void vkrenderer::copy_engine_to_obs(VkCommandBuffer cmdBuffer, rvkbucket& mvkobj
 bool vkrenderer::uploadfordraw(rvkbucket& mvkobjs, VkCommandBuffer cbuffer) {
 	manimupdatetimer.start();
 
-	for (const auto &i : mplayer)
-		i->uploadvboebo(mvkobjs, cbuffer);
-
-	return true;
-}
-
-bool vkrenderer::uploadfordraw(rvkbucket& mvkobjs, std::shared_ptr<playoutgeneric>& x) {
-	ZoneScoped;
-	manimupdatetimer.start();
-
-	x->uploadvboebo(mvkobjs,
-	                mvkobjs.cbuffers_graphics.at(0).at(rview::core::currentFrame));
-
-	rview::core::uploadubossbotime = manimupdatetimer.stop();
 
 	return true;
 }
@@ -1249,26 +1266,18 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 
 				break;
 			}
-
 		case SDL_EVENT_DROP_FILE:
 			[[unlikely]] {
 				std::string fname = e.drop.data;
+				g_jobs.enqueue([fname]() {
+					model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
 
-				g_jobs.enqueue([&mvkobjs, fname]() {
-					auto newp = std::make_shared<playoutgeneric>();
-
-					//hardcoded shaders
-					bool success = newp->setup(mvkobjs, fname.c_str(), 1,
-					                           "shaders/vx.spv", "shaders/px.spv");
-
-					if (success) {
-						if (!pending_models.push(std::move(newp))) {
-							std::cout << "Engine queue full! Dropped model: " << fname << "\n";
+					if (!staging.meshes.empty()) {
+						if (!vkrenderer::pending_staging_models.push(std::move(staging))) {
+							std::cerr << "Engine queue full! Dropped model: " << fname << "\n";
 						}
 					} else {
-						std::cout << "model not added, probably wrong format. \n"
-						          << "only binary gltf files (.glb) are accepted. Provided was: "
-						          << fname << std::endl;
+						std::cerr << "Failed to parse or empty model: " << fname << "\n";
 					}
 				});
 				break;
@@ -1345,15 +1354,16 @@ void vkrenderer::movecam(rvkbucket& mvkobjs) {
 				glm::vec3 h = nearPt + t * d;
 				h.y = navmesh(h.x, h.z);
 
-				modelsettings &s = mplayer[selectiondata.midx]
-				                   ->getinst(selectiondata.iidx)
-				                   ->getinstancesettings();
-				s.msworldpos = h;
-				playerlookto = glm::normalize(h - s.msworldpos);
+				// TODO
+				// modelsettings &s = mplayer[selectiondata.midx]
+				//                    ->getinst(selectiondata.iidx)
+				//                    ->getinstancesettings();
+				// s.msworldpos = h;
+				// playerlookto = glm::normalize(h - s.msworldpos);
 
-				if (glm::abs(h.x - s.msworldpos.x) > 2.1f || glm::abs(h.z - s.msworldpos.z) > 2.1f) {
-					s.msworldrot.y = glm::degrees(glm::atan(playerlookto.x, playerlookto.z));
-				}
+				// if (glm::abs(h.x - s.msworldpos.x) > 2.1f || glm::abs(h.z - s.msworldpos.z) > 2.1f) {
+				// 	s.msworldrot.y = glm::degrees(glm::atan(playerlookto.x, playerlookto.z));
+				// }
 			}
 		}
 	}
@@ -1566,7 +1576,6 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	        VK_SUCCESS)
 		return false;
 
-	sync_assets_to_gpu(c, mvkobjs);
 
 	double tick = static_cast<double>(SDL_GetTicks()) / 1000.0;
 	rview::core::tickdiff = tick - vkrenderer::mlasttick;
@@ -1599,60 +1608,69 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	}
 
 
-	// isdfk
-	std::shared_ptr<playoutgeneric> newly_loaded_model;
+	model_manager::StagingModelData staging;
 
-	while (pending_models.pop(newly_loaded_model)) {
-		uploadfordraw(mvkobjs, newly_loaded_model);
-		mplayer.push_back(newly_loaded_model);
+	while (pending_staging_models.pop(staging)) {
+		std::vector<uint32_t> uploadedTexIDs(staging.textures.size(), 0xFFFFFFFF);
+		uint32_t modelID = model_manager::commit_staging_to_vulkan(mvkobjs, c, staging, uploadedTexIDs);
 
-		selectiondata.instancesettings.emplace_back();
-		selectiondata.instancesettings.back().emplace_back(
-		                                  &mplayer.back()->getinst(0)->getinstancesettings()
-		                              );
+		for (uint32_t i = 0; i < staging.requested_instances; ++i) {
+			uint32_t b_count = staging.parsed_skel ? staging.parsed_skel->nodeCount : 0;
+			uint32_t j_count = staging.parsed_skel ? staging.parsed_skel->jointCount : 0;
+			uint32_t b_start = (b_count > 0) ? static_cast<uint32_t>(model_manager::g_bone_locals.size()) : 0;
+			uint32_t j_start = (j_count > 0) ? static_cast<uint32_t>(model_manager::g_joint_to_node.size()) : 0;
+
+			model_manager::Entity new_ent = model_manager::g_registry.create_entity(
+			                                    modelID, staging.isSkinned,
+			                                    b_start, b_count,
+			                                    j_start, j_count
+			                                );
+
+			if (!model_manager::g_registry.is_valid(new_ent)) continue;
+
+			uint32_t dense_idx = model_manager::g_registry.get_dense_index(new_ent);
+
+			if (b_count > 0) {
+				for (uint32_t b = 0; b < b_count; ++b) {
+					int32_t parent = staging.parsed_skel->parentIndices[b];
+					model_manager::g_bone_parents.push_back(parent >= 0 ? parent + b_start : -1);
+					model_manager::g_bone_entity_owner.push_back(dense_idx);
+				}
+
+				model_manager::g_bone_locals.insert(model_manager::g_bone_locals.end(),
+				                                    staging.parsed_skel->localTransforms.get(), staging.parsed_skel->localTransforms.get() + b_count);
+				model_manager::g_bone_globals.insert(model_manager::g_bone_globals.end(),
+				                                     staging.parsed_skel->globalTransforms.get(), staging.parsed_skel->globalTransforms.get() + b_count);
+
+				if (j_count > 0) {
+					for (uint32_t j = 0; j < j_count; ++j) {
+						model_manager::g_joint_to_node.push_back(staging.parsed_skel->jointToNodeMap[j] + b_start);
+					}
+
+					model_manager::g_joint_inverse_binds.insert(model_manager::g_joint_inverse_binds.end(),
+					                                    staging.parsed_skel->inverseBindMatrices.get(), staging.parsed_skel->inverseBindMatrices.get() + j_count);
+
+					for (uint32_t j = 0; j < j_count; ++j) {
+						model_manager::g_joint_final_matrices.push_back(
+						    Mat4ToDualQuatScale(staging.parsed_skel->finalJointMatrices[j])
+						);
+					}
+				}
+			}
+
+			model_manager::g_registry.position(new_ent) = glm::vec3(0.0f, 0.0f, 0.0f);
+		}
 	}
 
-	// joint anims
-	// if (dummytick / 2) {
-	for (const auto &i : mplayer)
-		i->updateanims();
-
-	// 	dummytick = 0;
-	// }
-
-	mmatupdatetimer.start();
-
-	// joint mats
-	for (const auto &i : mplayer)
-		i->updatemats();
-
-	rview::core::updatemattime = mmatupdatetimer.stop();
-
-
-	for (const auto& i : mplayer) {
-		i->sync_scene_data();
-	}
+	model_manager::update_logic_and_animations(rview::core::tickdiff);
 
 	update_dynamic_instances(mvkobjs);
 
+	sync_assets_to_gpu(c, mvkobjs);
 
 	movecam(mvkobjs);
 
-
-	// joint check
-	// if (dummytick % 2) {
-	for (const auto &i : mplayer)
-		for (size_t j{0}; j < i->instcount(); j++)
-			i->getinst(j)->checkforupdates();
-
-	// }
-
-	// dummytick++;
-
 	moveplayer();
-
-
-	muploadubossbotimer.start();
 
 	{
 		// invisible lock
@@ -1664,12 +1682,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		std::memcpy(dst + (2 * sizeof(glm::mat4)), &campos4, sizeof(glm::vec4));
 		vmaUnmapMemory(mvkobjs.alloc, rview::core::globalCameraUBO.alloc);
 	}
-
-	for (const auto &i : mplayer)
-		i->uploadubossbo(mvkobjs, persviewproj, rview::core::camwpos);
-
-	rview::core::uploadubossbotime = muploadubossbotimer.stop();
-
+	model_manager::upload_joint_matrices(mvkobjs);
 
 
 	currentgraph.add_pass([&] {
@@ -1872,7 +1885,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 
 
-		vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_GRAPHICS, playoutgeneric::skinnedpline);
+		vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_GRAPHICS, playout::skinnedpline);
 		vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_GRAPHICS, rview::core::globalPipelineLayout, 0, 1, &rview::core::globalBindlessSet, 0, nullptr);
 
 		vkpushconstants pc_mdi{};
@@ -1885,9 +1898,9 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		    rview::core::g_indirectCountBuffers[rview::core::currentFrame].buffer, 0,
 		    100000, sizeof(VkDrawIndirectCommand));
 
-
-		ui::createdbgframe(mvkobjs, selectiondata);
-		ui::render(mvkobjs, c);
+		// TODO
+		// ui::createdbgframe(mvkobjs);
+		// ui::render(mvkobjs, c);
 
 		vkCmdEndRendering(c);
 

@@ -2,9 +2,33 @@
 #include "core/rvk.hpp"
 #include <vulkan/vulkan.h>
 #include "VkBootstrap.h"
+#include <pline.hpp>
 
 
 namespace playout {
+inline VkPipeline skinnedpline = VK_NULL_HANDLE;
+inline VkPipeline skinnedplineuint = VK_NULL_HANDLE;
+
+inline bool init_pipelines(rvkbucket& objs) {
+	// hardcoded shaders
+	if (!pline::init(objs, rview::core::globalPipelineLayout, skinnedpline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+	                 std::vector<std::string_view> {"shaders/vx.spv", "shaders/px.spv"}, objs.schain.image_format, objs.rddepthformat))
+		return false;
+
+	if (!pline::init(objs, rview::core::globalPipelineLayout, skinnedplineuint, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+	                 std::vector<std::string_view> {"shaders/vx.spv", "shaders/px.spv"}, objs.schain.image_format, objs.rddepthformat))
+		return false;
+
+	if (!pline::initcompute(objs, rview::core::globalPipelineLayout, rview::core::globalcullpline, std::vector<std::string_view> {"shaders/cx.spv"}))
+		return false;
+
+	return true;
+}
+inline void cleanup_pipelines(rvkbucket& objs) {
+	pline::cleanup(objs, skinnedpline);
+	pline::cleanup(objs, skinnedplineuint);
+	pline::cleanup(objs, rview::core::globalcullpline);
+}
 inline bool init_bindless(rvkbucket& objs) {
 	constexpr uint32_t MAX_BINDLESS = 32768;
 
@@ -29,7 +53,7 @@ inline bool init_bindless(rvkbucket& objs) {
 	// ssbo (joints)
 	bindings[2].binding = 2;
 	bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	bindings[2].descriptorCount = MAX_BINDLESS;
+	bindings[2].descriptorCount = rview::core::MAX_FRAMES_IN_FLIGHT;
 	bindings[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
 	// env
@@ -158,7 +182,7 @@ inline bool init_bindless(rvkbucket& objs) {
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[1].descriptorCount = 1;
 	poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	poolSizes[2].descriptorCount = (MAX_BINDLESS * 4) + (rview::core::MAX_FRAMES_IN_FLIGHT * 7) + 5; // total descriptor counts
+	poolSizes[2].descriptorCount = (MAX_BINDLESS * 3) + (rview::core::MAX_FRAMES_IN_FLIGHT * 8) + 5; // total descriptor counts
 
 	VkDescriptorPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
 	poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
