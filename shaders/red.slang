@@ -122,6 +122,15 @@ struct VkDrawIndirectCommand {
   uint firstInstance;
 };
 
+float3x3 getNormalMatrix(float4x4 worldTransform) {
+  float3x3 M = (float3x3)worldTransform;
+  float3 c0 = cross(M[1], M[2]);
+  float3 c1 = cross(M[2], M[0]);
+  float3 c2 = cross(M[0], M[1]);
+  float det = dot(M[0], c0);
+  return float3x3(c0, c1, c2) / det;
+}
+
 float3 getNormalFromMap(float3 worldPos, float3 normal, float2 uv, uint normalIdx, float normalScale)
 {
     float3 tangentNormal = tex[normalIdx].Sample(uv).rgb * 2.0 - 1.0;
@@ -402,7 +411,7 @@ PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
 
   float4 locPos = float4(inPos, 1.0);
   float4 worldPos;
-  float3x3 normalMat;
+  float3x3 normalMat = getNormalMatrix(inst.worldTransform);
 
   if (inst.isSkinned == 1) {
     DualQuatScale dq0 = globalJoints[pc.frameIndex][inst.jointOffset + inJoint.x];
@@ -429,20 +438,15 @@ PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
 
     float3 translation = 2.0 * (blendReal.w * blendDual.xyz - blendDual.w * blendReal.xyz + cross(blendReal.xyz, blendDual.xyz));
 
-    worldPos = float4(rotatedPos + translation, 1.0);
+    float4 modelSpacePos = float4(rotatedPos + translation, 1.0);
+    worldPos = mul(inst.worldTransform, modelSpacePos);
 
     float3 rCrossN = cross(blendReal.xyz, inNormal) + blendReal.w * inNormal;
     float3 finalNormal = inNormal + 2.0 * cross(blendReal.xyz, rCrossN);
 
-    normalMat = float3x3(
-        1.0, 0.0, 0.0,
-        0.0, 1.0, 0.0,
-        0.0, 0.0, 1.0
-    ); // might be the cheapest hack
     inNormal = finalNormal;
   } else {
     worldPos = mul(inst.worldTransform, locPos);
-    normalMat = (float3x3)inst.worldTransform;
   }
 
   out.worldPos = worldPos.xyz;

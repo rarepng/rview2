@@ -341,11 +341,11 @@ inline struct {
 
 
 
-inline glm::vec3 camwpos{0.0f, 6.0f, 12.0f};
+inline glm::vec3 camwpos{0.0f, 1.6f, 2.9f};
 inline cam mvkcam{};
 inline float fov = 1.0472f;
-inline float azimuth{15.0f};
-inline float elevation{-25.0f};
+inline float azimuth{0.0f};
+inline float elevation{0.0f};
 inline int camfor{0};
 inline int camright{0};
 inline int camup{0};
@@ -364,6 +364,12 @@ namespace platform {
 constexpr bool is_windows = true;
 #else
 constexpr bool is_windows = false;
+#endif
+// TODO inject with cmake
+#ifdef HEADLESS
+constexpr bool headless = true;
+#else
+constexpr bool headless = false;
 #endif
 // constexpr const char* ext_memory_win32 = "VK_KHR_external_memory_win32";
 };

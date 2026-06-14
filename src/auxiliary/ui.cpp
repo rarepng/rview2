@@ -1,3 +1,6 @@
+#include "core/scene.hpp"
+#include "model_manager.hpp"
+#include "vkrenderer.hpp"
 #define GLM_ENABLE_EXPERIMENTAL
 #include <string>
 #include <backends/imgui_impl_sdl3.h>
@@ -5,13 +8,16 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
+#include <glm/gtx/euler_angles.hpp>
 #include <imgui.h>
+#include <ImGuizmo.h>
 #include <misc/cpp/imgui_stdlib.h>
 #include <vk/commandbuffer.hpp>
 #include <ui.hpp>
 
-// TEMPORARILY DECOMISSIONED
-// PLEASE HOLD
+// BIG BIG BIG BIG BIG BIG [[WIP]] 
+// A LOT OF HARDCODED AND MAGIC NUMBERS TEMPORARILY AND PANELS JUST FOR THE SAKE OF TESTING
 
 #if defined(__cpp_reflection)
 template <typename T>
@@ -88,653 +94,323 @@ bool ui::init(rvkbucket &renderData) {
 
 
 	ImGui::StyleColorsDark();
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.ScaleAllSizes(0.25f);
+	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Once, {0.8f, 0.2f});
 
 	ImGui_ImplSDL3_ProcessEvent(&renderData.e);
 
 	return true;
 }
 
+static uint32_t g_selected_entity = 0xFFFFFFFF;
+static int active_ik_gizmo_chain = 0;
+
 void ui::createdbgframe(rvkbucket &renderData) {
-	ImGui_ImplVulkan_NewFrame();
-	ImGui_ImplSDL3_NewFrame();
-	ImGui::NewFrame();
-
-	ImGui_ImplSDL3_ProcessEvent(&renderData.e);
-
-	{
-		ImGuiWindowFlags imguiWindowFlags = 0;
-
-		ImGui::SetNextWindowBgAlpha(0.8f);
-
-		ImGui::Begin("debug", nullptr, imguiWindowFlags);
-
-		static float newFps = 0.0f;
-
-		/* avoid inf values (division by zero) */
-		if (rview::core::frametime > 0.0) {
-			newFps = 1.0f / rview::core::frametime * 1000.f;
-		}
-
-		/* make an averge value to avoid jumps */
-		// mfps = (mavgalpha * mfps) + (1.0f - mavgalpha) * newFps;
-		mfps = newFps;
-
-		/* clamp manual input on all sliders to min/max */
-		// ImGuiSliderFlags flags = ImGuiSliderFlags_ClampOnInput;
-		ImGuiSliderFlags flags = ImGuiSliderFlags_None;
-
-		static double updateTime = 0.0;
-
-		/* avoid double compares */
-		if (updateTime < 0.000001) {
-			updateTime = ImGui::GetTime();
-		}
-
-		static int fpsOffset = 0;
-		static int frameTimeOffset = 0;
-		static int modelUploadOffset = 0;
-		static int matrixGenOffset = 0;
-		static int ikOffset = 0;
-		static int matrixUploadOffset = 0;
-		static int uiGenOffset = 0;
-		static int uiDrawOffset = 0;
-
-		if (updateTime < ImGui::GetTime()) {
-			fps_graph.push(mfps);
-			frametime_graph.push(rview::core::frametime);
-			vbo_graph.push(rview::core::uploadubossbotime);
-			matgen_graph.push(rview::core::updateanimtime);
-			ik_graph.push(rview::core::updatemattime);
-			ubo_graph.push(rview::core::iksolvetime);
-			uigen_graph.push(rview::core::rduigeneratetime);
-			uidraw_graph.push(rview::core::rduidrawtime);
-			updateTime += 1.0 / 30.0;
-		}
-
-		ImGui::BeginGroup();
-		ImGui::Text("FPS:");
-		ImGui::SameLine();
-		ImGui::Text("%s", std::to_string(1.0f / rview::core::frametime).c_str());
-		ImGui::EndGroup();
-
-		if (ImGui::CollapsingHeader("General")) {
-			// ImGui::Text("Triangles:");
-			// ImGui::SameLine();
-			// ImGui::Text("%s", std::to_string(renderData.tricount + renderData.gltftricount).c_str());
-
-			std::string windowDims = std::to_string(renderData.width) + "x" + std::to_string(renderData.height);
-			ImGui::Text("Window Dimensions:");
-			ImGui::SameLine();
-			ImGui::Text("%s", windowDims.c_str());
-
-			std::string imgWindowPos = std::to_string(static_cast<int>(ImGui::GetWindowPos().x)) + "/" +
-			                           std::to_string(static_cast<int>(ImGui::GetWindowPos().y));
-			ImGui::Text("ImGui Window Position:");
-			ImGui::SameLine();
-			ImGui::Text("%s", imgWindowPos.c_str());
-		}
-
-		// if (ImGui::CollapsingHeader("Timers")) {
-		// 	ImGui::BeginGroup();
-		// 	ImGui::Text("Frame Time:");
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("%s", std::to_string(renderData.frametime).c_str());
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("ms");
-		// 	ImGui::EndGroup();
-
-		// 	if (ImGui::IsItemHovered()) {
-		// 		ImGui::BeginTooltip();
-		// 		float averageFrameTime = 0.0f;
-		// 		for (const auto value : mframetimevalues) {
-		// 			averageFrameTime += value;
-		// 		}
-		// 		averageFrameTime /= static_cast<float>(mnummatrixgenvalues);
-		// 		std::string frameTimeOverlay = "now:     " + std::to_string(renderData.frametime) +
-		// 		                               " ms\n30s avg: " + std::to_string(averageFrameTime) + " ms";
-		// 		ImGui::Text("Frame Time       ");
-		// 		ImGui::SameLine();
-		// 		ImGui::PlotLines("##FrameTime", mframetimevalues.data(), mframetimevalues.size(), frameTimeOffset,
-		// 		                 frameTimeOverlay.c_str(), 0.0f, FLT_MAX, ImVec2(0, 80));
-		// 		ImGui::EndTooltip();
-		// 	}
-
-		// 	ImGui::BeginGroup();
-		// 	ImGui::Text("Upload Time:");
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("%s", std::to_string(renderData.uploadubossbotime).c_str());
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("ms");
-		// 	ImGui::EndGroup();
-
-		// 	if (ImGui::IsItemHovered()) {
-		// 		ImGui::BeginTooltip();
-		// 		float averageModelUpload = 0.0f;
-		// 		for (const auto value : mmodeluploadvalues) {
-		// 			averageModelUpload += value;
-		// 		}
-		// 		averageModelUpload /= static_cast<float>(mnummodeluploadvalues);
-		// 		std::string modelUploadOverlay = "now:     " + std::to_string(renderData.uploadubossbotime) +
-		// 		                                 " ms\n30s avg: " + std::to_string(averageModelUpload) + " ms";
-		// 		ImGui::Text("VBO Upload");
-		// 		ImGui::SameLine();
-		// 		ImGui::PlotLines("##ModelUploadTimes", mmodeluploadvalues.data(), mmodeluploadvalues.size(), modelUploadOffset,
-		// 		                 modelUploadOverlay.c_str(), 0.0f, FLT_MAX, ImVec2(0, 80));
-		// 		ImGui::EndTooltip();
-		// 	}
-
-		// 	ImGui::BeginGroup();
-		// 	ImGui::Text("Update Animations Time:");
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("%s", std::to_string(renderData.updateanimtime).c_str());
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("ms");
-		// 	ImGui::EndGroup();
-
-		// 	if (ImGui::IsItemHovered()) {
-		// 		ImGui::BeginTooltip();
-		// 		float averageMatGen = 0.0f;
-		// 		for (const auto value : mmatrixgenvalues) {
-		// 			averageMatGen += value;
-		// 		}
-		// 		averageMatGen /= static_cast<float>(mnummatrixgenvalues);
-		// 		std::string matrixGenOverlay = "now:     " + std::to_string(renderData.updateanimtime) +
-		// 		                               " ms\n30s avg: " + std::to_string(averageMatGen) + " ms";
-		// 		ImGui::Text("Matrix Generation");
-		// 		ImGui::SameLine();
-		// 		ImGui::PlotLines("##MatrixGenTimes", mmatrixgenvalues.data(), mmatrixgenvalues.size(), matrixGenOffset,
-		// 		                 matrixGenOverlay.c_str(), 0.0f, FLT_MAX, ImVec2(0, 80));
-		// 		ImGui::EndTooltip();
-		// 	}
-
-		// 	ImGui::BeginGroup();
-		// 	ImGui::Text("Update TRS Mats :");
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("%s", std::to_string(renderData.updatemattime).c_str());
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("ms");
-		// 	ImGui::EndGroup();
-
-		// 	if (ImGui::IsItemHovered()) {
-		// 		ImGui::BeginTooltip();
-		// 		float averageIKTime = 0.0f;
-		// 		for (const auto value : mikvalues) {
-		// 			averageIKTime += value;
-		// 		}
-		// 		averageIKTime /= static_cast<float>(mnumikvalues);
-		// 		std::string ikOverlay = "now:     " + std::to_string(renderData.updatemattime) +
-		// 		                        " ms\n30s avg: " + std::to_string(averageIKTime) + " ms";
-		// 		ImGui::Text("(IK Generation)");
-		// 		ImGui::SameLine();
-		// 		ImGui::PlotLines("##IKTimes", mikvalues.data(), mikvalues.size(), ikOffset, ikOverlay.c_str(), 0.0f, FLT_MAX,
-		// 		                 ImVec2(0, 80));
-		// 		ImGui::EndTooltip();
-		// 	}
-
-		// 	ImGui::BeginGroup();
-		// 	ImGui::Text("Matrix Upload Time:");
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("%s", std::to_string(renderData.iksolvetime).c_str());
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("ms");
-		// 	ImGui::EndGroup();
-
-		// 	if (ImGui::IsItemHovered()) {
-		// 		ImGui::BeginTooltip();
-		// 		float averageMatrixUpload = 0.0f;
-		// 		for (const auto value : mmatrixuploadvalues) {
-		// 			averageMatrixUpload += value;
-		// 		}
-		// 		averageMatrixUpload /= static_cast<float>(mnummatrixuploadvalues);
-		// 		std::string matrixUploadOverlay = "now:     " + std::to_string(renderData.uploadubossbotime) +
-		// 		                                  " ms\n30s avg: " + std::to_string(averageMatrixUpload) + " ms";
-		// 		ImGui::Text("UBO Upload");
-		// 		ImGui::SameLine();
-		// 		ImGui::PlotLines("##MatrixUploadTimes", mmatrixuploadvalues.data(), mmatrixuploadvalues.size(),
-		// 		                 matrixUploadOffset, matrixUploadOverlay.c_str(), 0.0f, FLT_MAX, ImVec2(0, 80));
-		// 		ImGui::EndTooltip();
-		// 	}
-
-		// 	ImGui::BeginGroup();
-		// 	ImGui::Text("UI Generation Time:");
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("%s", std::to_string(renderData.rduigeneratetime).c_str());
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("ms");
-		// 	ImGui::EndGroup();
-
-		// 	if (ImGui::IsItemHovered()) {
-		// 		ImGui::BeginTooltip();
-		// 		float averageUiGen = 0.0f;
-		// 		for (const auto value : muigenvalues) {
-		// 			averageUiGen += value;
-		// 		}
-		// 		averageUiGen /= static_cast<float>(mnumuigenvalues);
-		// 		std::string uiGenOverlay = "now:     " + std::to_string(renderData.rduigeneratetime) +
-		// 		                           " ms\n30s avg: " + std::to_string(averageUiGen) + " ms";
-		// 		ImGui::Text("UI Generation");
-		// 		ImGui::SameLine();
-		// 		ImGui::PlotLines("##ModelUpload", muigenvalues.data(), muigenvalues.size(), uiGenOffset, uiGenOverlay.c_str(),
-		// 		                 0.0f, FLT_MAX, ImVec2(0, 80));
-		// 		ImGui::EndTooltip();
-		// 	}
-
-		// 	ImGui::BeginGroup();
-		// 	ImGui::Text("UI Draw Time:");
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("%s", std::to_string(renderData.rduidrawtime).c_str());
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("ms");
-		// 	ImGui::EndGroup();
-
-		// 	if (ImGui::IsItemHovered()) {
-		// 		ImGui::BeginTooltip();
-		// 		float averageUiDraw = 0.0f;
-		// 		for (const auto value : mmuidrawvalues) {
-		// 			averageUiDraw += value;
-		// 		}
-		// 		averageUiDraw /= static_cast<float>(mnummuidrawvalues);
-		// 		std::string uiDrawOverlay = "now:     " + std::to_string(renderData.rduidrawtime) +
-		// 		                            " ms\n30s avg: " + std::to_string(averageUiDraw) + " ms";
-		// 		ImGui::Text("UI Draw");
-		// 		ImGui::SameLine();
-		// 		ImGui::PlotLines("##UIDrawTimes", mmuidrawvalues.data(), mmuidrawvalues.size(), uiGenOffset,
-		// 		                 uiDrawOverlay.c_str(), 0.0f, FLT_MAX, ImVec2(0, 80));
-		// 		ImGui::EndTooltip();
-		// 	}
-		// }
-
-		// if (ImGui::CollapsingHeader("Camera")) {
-		// 	ImGui::Text("Camera Position:");
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("%s", glm::to_string(rview::core::camwpos).c_str());
-
-		// 	ImGui::Text("View Azimuth:");
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("%s", std::to_string(rview::core::azimuth).c_str());
-
-		// 	ImGui::Text("View Elevation:");
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("%s", std::to_string(rview::core::elevation).c_str());
-
-		// 	ImGui::Text("Field of View");
-		// 	ImGui::SameLine();
-		// 	ImGui::Text("%s", std::to_string(rview::core::fov).c_str());
-		// 	// ImGui::SliderFloat("##FOV", &renderData.rdfov, 40.0f, 150.0f, "%f", flags);
-		// }
-
-		// if (ImGui::CollapsingHeader("models")) {
-		// 	ImGui::Text("model count  : %d", settings.instancesettings.size());
-
-		// 	ImGui::Text("selected model :");
-		// 	ImGui::SameLine();
-		// 	ImGui::PushButtonRepeat(true);
-
-		// 	if (ImGui::ArrowButton("##LEFTMOD", ImGuiDir_Left) && settings.midx > 0) {
-		// 		settings.midx--;
-		// 		settings.iidx = 0;
-		// 	}
-
-		// 	ImGui::SameLine();
-		// 	ImGui::PushItemWidth(30);
-		// 	ImGui::DragScalar("##SELMOD", ImGuiDataType_U64, &settings.midx, flags);
-		// 	ImGui::PopItemWidth();
-		// 	ImGui::SameLine();
-
-		// 	if (ImGui::ArrowButton("##RIGHTMOD", ImGuiDir_Right) && settings.midx < settings.instancesettings.size() - 1) {
-		// 		settings.midx++;
-		// 		settings.iidx = 0;
-		// 	}
-
-		// 	ImGui::PopButtonRepeat();
-
-		// 	ImGui::Text("instance count  : %d", settings.instancesettings.at(settings.midx).size());
-
-		// 	ImGui::Text("selected instance :");
-		// 	ImGui::SameLine();
-		// 	ImGui::PushButtonRepeat(true);
-
-		// 	if (ImGui::ArrowButton("##LEFTINST", ImGuiDir_Left) && settings.iidx > 0) {
-		// 		settings.iidx--;
-		// 	}
-
-		// 	ImGui::SameLine();
-		// 	ImGui::PushItemWidth(30);
-		// 	ImGui::DragScalar("##SELINST", ImGuiDataType_U64, &settings.iidx, flags);
-		// 	// ImGui::DragScalar("##SELINST", &settings.iidx, 1, 0,
-		// 	//     renderData.rdnumberofinstances - 1, "%3d", flags);
-		// 	ImGui::PopItemWidth();
-		// 	ImGui::SameLine();
-
-		// 	if (ImGui::ArrowButton("##RIGHTINST", ImGuiDir_Right) &&
-		// 	        settings.iidx < settings.instancesettings.at(settings.midx).size() - 1) {
-		// 		settings.iidx++;
-		// 	}
-
-		// 	ImGui::PopButtonRepeat();
-
-		// 	ImGui::Text("scale :");
-		// 	ImGui::SameLine();
-		// 	ImGui::SliderFloat3("##WORLDSCALE",
-		// 	                    glm::value_ptr(settings.instancesettings.at(settings.midx).at(settings.iidx)->msworldscale),
-		// 	                    0.0f, 1000.0f, "%.1f", flags);
-
-		// 	ImGui::Text("position (x,z)  :");
-		// 	ImGui::SameLine();
-		// 	ImGui::SliderFloat3("##WORLDPOS",
-		// 	                    glm::value_ptr(settings.instancesettings.at(settings.midx).at(settings.iidx)->msworldpos),
-		// 	                    -75.0f, 75.0f, "%.1f", flags);
-
-		// 	ImGui::Text("rotation - yaw   :");
-		// 	ImGui::SameLine();
-		// 	ImGui::SliderFloat("##WORLDROT", &settings.instancesettings.at(settings.midx).at(settings.iidx)->msworldrot.y,
-		// 	                   -180.0f, 180.0f, "%.0f", flags);
-		// }
-
-		// if (ImGui::CollapsingHeader("model")) {
-		// 	ImGui::Checkbox("draw", &settings.instancesettings.at(settings.midx).at(settings.iidx)->msdrawmodel);
-		// 	// ImGui::Checkbox("Draw Skeleton", &settings.msdrawskeleton);
-
-		// 	ImGui::Text("skinning:");
-		// 	ImGui::SameLine();
-
-		// 	if (ImGui::RadioButton("linear",
-		// 	                       settings.instancesettings.at(settings.midx).at(settings.iidx)->mvertexskinningmode ==
-		// 	                       skinningmode::linear)) {
-		// 		settings.instancesettings.at(settings.midx).at(settings.iidx)->mvertexskinningmode = skinningmode::linear;
-		// 	}
-
-		// 	// ImGui::SameLine();
-		// 	// if (ImGui::RadioButton("dual quats",
-		// 	//     settings.mvertexskinningmode == skinningmode::dualquat)) {
-		// 	//     settings.mvertexskinningmode = skinningmode::dualquat;
-		// 	// }
-		// 	// DrawAutoUI(*settings.instancesettings.at(settings.midx).at(settings.iidx));
-		// }
-
-		// if (ImGui::CollapsingHeader("animation")) {
-		// 	ImGui::Checkbox("play", &settings.instancesettings.at(settings.midx).at(settings.iidx)->msplayanimation);
-
-		// 	if (!settings.instancesettings.at(settings.midx).at(settings.iidx)->msplayanimation) {
-		// 		ImGui::BeginDisabled();
-		// 	}
-
-		// 	ImGui::Text("playback direction:");
-		// 	ImGui::SameLine();
-
-		// 	if (ImGui::RadioButton("forward",
-		// 	                       settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimationplaydirection ==
-		// 	                       replaydirection::forward)) {
-		// 		settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimationplaydirection =
-		// 		                             replaydirection::forward;
-		// 	}
-
-		// 	ImGui::SameLine();
-
-		// 	if (ImGui::RadioButton("backward",
-		// 	                       settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimationplaydirection ==
-		// 	                       replaydirection::backward)) {
-		// 		settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimationplaydirection =
-		// 		                             replaydirection::backward;
-		// 	}
-
-		// 	if (!settings.instancesettings.at(settings.midx).at(settings.iidx)->msplayanimation) {
-		// 		ImGui::EndDisabled();
-		// 	}
-
-		// 	ImGui::Text("clip   ");
-
-		// 	if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.size() > 0) {
-		// 		ImGui::SameLine();
-
-		// 		if (ImGui::BeginCombo(
-		// 		            "##ClipCombo",
-		// 		            settings.instancesettings.at(settings.midx)
-		// 		            .at(settings.iidx)
-		// 		            ->msclipnames.at(settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimclip)
-		// 		            .c_str())) {
-		// 			for (size_t i {0}; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.size(); ++i) {
-		// 				const bool isSelected = (settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimclip == i);
-
-		// 				if (ImGui::Selectable(
-		// 				            settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.at(i).c_str(),
-		// 				            isSelected)) {
-		// 					settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimclip = i;
-		// 				}
-
-		// 				if (isSelected) {
-		// 					ImGui::SetItemDefaultFocus();
-		// 				}
-		// 			}
-
-		// 			ImGui::EndCombo();
-		// 		}
-		// 	}
-
-		// 	if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msplayanimation) {
-		// 		ImGui::Text("speed  ");
-		// 		ImGui::SameLine();
-		// 		ImGui::SliderFloat("##ClipSpeed", &settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimspeed,
-		// 		                   0.0f, 2.0f, "%.3f", flags);
-		// 	} else {
-		// 		ImGui::Text("timepos");
-		// 		ImGui::SameLine();
-		// 		ImGui::SliderFloat("##ClipPos", &settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimtimepos,
-		// 		                   0.0f, settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimendtime, "%.3f",
-		// 		                   flags);
-		// 	}
-		// }
-
-		// if (ImGui::CollapsingHeader("blending")) {
-		// 	ImGui::Text("blend type:");
-		// 	ImGui::SameLine();
-
-		// 	if (ImGui::RadioButton("Fade In/Out",
-		// 	                       settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode ==
-		// 	                       blendmode::fadeinout)) {
-		// 		settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode = blendmode::fadeinout;
-		// 	}
-
-		// 	ImGui::SameLine();
-
-		// 	if (ImGui::RadioButton("crossfading",
-		// 	                       settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode ==
-		// 	                       blendmode::crossfade)) {
-		// 		settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode = blendmode::crossfade;
-		// 	}
-
-		// 	ImGui::SameLine();
-
-		// 	if (ImGui::RadioButton("additive",
-		// 	                       settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode ==
-		// 	                       blendmode::additive)) {
-		// 		settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode = blendmode::additive;
-		// 	}
-
-		// 	if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode == blendmode::fadeinout) {
-		// 		ImGui::Text("factor");
-		// 		ImGui::SameLine();
-		// 		ImGui::SliderFloat("##BlendFactor",
-		// 		                   &settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimblendfactor, 0.0f,
-		// 		                   1.0f, "%.3f", flags);
-		// 	}
-
-		// 	if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode == blendmode::crossfade ||
-		// 	        settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode == blendmode::additive) {
-		// 		ImGui::Text("Dest Clip   ");
-		// 		ImGui::SameLine();
-
-		// 		if (ImGui::BeginCombo(
-		// 		            "##DestClipCombo",
-		// 		            settings.instancesettings.at(settings.midx)
-		// 		            .at(settings.iidx)
-		// 		            ->msclipnames
-		// 		            .at(settings.instancesettings.at(settings.midx).at(settings.iidx)->mscrossblenddestanimclip)
-		// 		            .c_str())) {
-		// 			for (size_t i {0}; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.size(); ++i) {
-		// 				const bool isSelected =
-		// 				    (settings.instancesettings.at(settings.midx).at(settings.iidx)->mscrossblenddestanimclip == i);
-
-		// 				if (ImGui::Selectable(
-		// 				            settings.instancesettings.at(settings.midx).at(settings.iidx)->msclipnames.at(i).c_str(),
-		// 				            isSelected)) {
-		// 					settings.instancesettings.at(settings.midx).at(settings.iidx)->mscrossblenddestanimclip = i;
-		// 				}
-
-		// 				if (isSelected) {
-		// 					ImGui::SetItemDefaultFocus();
-		// 				}
-		// 			}
-
-		// 			ImGui::EndCombo();
-		// 		}
-
-		// 		ImGui::Text("Cross Blend ");
-		// 		ImGui::SameLine();
-		// 		ImGui::SliderFloat("##CrossBlendFactor",
-		// 		                   &settings.instancesettings.at(settings.midx).at(settings.iidx)->msanimcrossblendfactor, 0.0f,
-		// 		                   1.0f, "%.3f", flags);
-		// 	}
-
-		// 	if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msblendingmode == blendmode::additive) {
-		// 		ImGui::Text("Split Node  ");
-		// 		ImGui::SameLine();
-
-		// 		if (ImGui::BeginCombo(
-		// 		            "##SplitNodeCombo",
-		// 		            settings.instancesettings.at(settings.midx)
-		// 		            .at(settings.iidx)
-		// 		            ->msskelnodenames.at(settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelsplitnode)
-		// 		            .c_str())) {
-		// 			for (size_t i {0}; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.size();
-		// 			        ++i) {
-		// 				if (settings.instancesettings.at(settings.midx)
-		// 				        .at(settings.iidx)
-		// 				        ->msskelnodenames.at(i)
-		// 				        .compare("(invalid)") != 0) {
-		// 					const bool isSelected =
-		// 					    (settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelsplitnode == i);
-
-		// 					if (ImGui::Selectable(
-		// 					            settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.at(i).c_str(),
-		// 					            isSelected)) {
-		// 						settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelsplitnode = i;
-		// 					}
-
-		// 					if (isSelected) {
-		// 						ImGui::SetItemDefaultFocus();
-		// 					}
-		// 				}
-		// 			}
-
-		// 			ImGui::EndCombo();
-		// 		}
-		// 	}
-		// }
-
-		// if (ImGui::CollapsingHeader("inverse kinematics")) {
-		// 	if (ImGui::RadioButton("Off",
-		// 	                       settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode == ikmode::off)) {
-		// 		settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode = ikmode::off;
-		// 	}
-
-		// 	ImGui::SameLine();
-
-		// 	if (ImGui::RadioButton("CCD",
-		// 	                       settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode == ikmode::ccd)) {
-		// 		settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode = ikmode::ccd;
-		// 	}
-
-		// 	ImGui::SameLine();
-
-		// 	if (ImGui::RadioButton("FABRIK", settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode ==
-		// 	                       ikmode::fabrik)) {
-		// 		settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode = ikmode::fabrik;
-		// 	}
-
-		// 	if (settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode == ikmode::ccd ||
-		// 	        settings.instancesettings.at(settings.midx).at(settings.iidx)->msikmode == ikmode::fabrik) {
-		// 		ImGui::Text("IK Iterations  :");
-		// 		ImGui::SameLine();
-		// 		ImGui::SliderInt("##IKITER", &settings.instancesettings.at(settings.midx).at(settings.iidx)->msikiterations, 0,
-		// 		                 15, "%d", flags);
-
-		// 		ImGui::Text("Target Position:");
-		// 		ImGui::SameLine();
-		// 		ImGui::SliderFloat3(
-		// 		    "##IKTargetPOS",
-		// 		    glm::value_ptr(settings.instancesettings.at(settings.midx).at(settings.iidx)->msiktargetpos), -10.0f, 10.0f,
-		// 		    "%.3f", flags);
-		// 		ImGui::Text("Effector Node  :");
-		// 		ImGui::SameLine();
-
-		// 		if (ImGui::BeginCombo("##EffectorNodeCombo",
-		// 		                      settings.instancesettings.at(settings.midx)
-		// 		                      .at(settings.iidx)
-		// 		                      ->msskelnodenames
-		// 		                      .at(settings.instancesettings.at(settings.midx).at(settings.iidx)->msikeffectornode)
-		// 		                      .c_str())) {
-		// 			for (size_t i {0}; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.size();
-		// 			        ++i) {
-		// 				if (settings.instancesettings.at(settings.midx)
-		// 				        .at(settings.iidx)
-		// 				        ->msskelnodenames.at(i)
-		// 				        .compare("(invalid)") != 0) {
-		// 					const bool isSelected =
-		// 					    (settings.instancesettings.at(settings.midx).at(settings.iidx)->msikeffectornode == i);
-
-		// 					if (ImGui::Selectable(
-		// 					            settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.at(i).c_str(),
-		// 					            isSelected)) {
-		// 						settings.instancesettings.at(settings.midx).at(settings.iidx)->msikeffectornode = i;
-		// 					}
-
-		// 					if (isSelected) {
-		// 						ImGui::SetItemDefaultFocus();
-		// 					}
-		// 				}
-		// 			}
-
-		// 			ImGui::EndCombo();
-		// 		}
-
-		// 		ImGui::Text("IK Root Node   :");
-		// 		ImGui::SameLine();
-
-		// 		if (ImGui::BeginCombo(
-		// 		            "##RootNodeCombo",
-		// 		            settings.instancesettings.at(settings.midx)
-		// 		            .at(settings.iidx)
-		// 		            ->msskelnodenames.at(settings.instancesettings.at(settings.midx).at(settings.iidx)->msikrootnode)
-		// 		            .c_str())) {
-		// 			for (size_t i{0}; i < settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.size();
-		// 			        ++i) {
-		// 				if (settings.instancesettings.at(settings.midx)
-		// 				        .at(settings.iidx)
-		// 				        ->msskelnodenames.at(i)
-		// 				        .compare("(invalid)") != 0) {
-		// 					const bool isSelected =
-		// 					    (settings.instancesettings.at(settings.midx).at(settings.iidx)->msikrootnode == i);
-
-		// 					if (ImGui::Selectable(
-		// 					            settings.instancesettings.at(settings.midx).at(settings.iidx)->msskelnodenames.at(i).c_str(),
-		// 					            isSelected)) {
-		// 						settings.instancesettings.at(settings.midx).at(settings.iidx)->msikrootnode = i;
-		// 					}
-
-		// 					if (isSelected) {
-		// 						ImGui::SetItemDefaultFocus();
-		// 					}
-		// 				}
-		// 			}
-
-		// 			ImGui::EndCombo();
-		// 		}
-		// 	}
-		// }
-
-		ImGui::End();
-	}
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+    ImGui::NewFrame();
+    ImGuizmo::BeginFrame();
+
+    ImGui_ImplSDL3_ProcessEvent(&renderData.e);
+
+    ImGuiWindowFlags imguiWindowFlags = 0;
+    ImGui::Begin("Engine Inspector", nullptr, imguiWindowFlags);
+    static std::array<float, 60> fps_history{0};
+    static int fps_idx = 0;
+    static float fps_sum = 0.0f;
+
+    if (rview::core::frametime > 0.0f) {
+        float current_fps = 1000.0f / 1000.0f / rview::core::frametime;
+        fps_sum -= fps_history[fps_idx];
+        fps_history[fps_idx] = current_fps;
+        fps_sum += current_fps;
+        fps_idx = (fps_idx + 1) % 60;
+        mfps = fps_sum / 60.0f;
+    }
+
+    ImGui::Text("FPS: %.1f (%.2f ms)", mfps, rview::core::frametime);
+    ImGui::Separator();
+
+    uint32_t active_entities = g_scene.entity_count.load(std::memory_order_relaxed);
+    ImGui::Text("Active Entities: %u", active_entities);
+
+    ImGui::SeparatorText("Camera Controls");
+    
+    ImGui::DragFloat3("Cam Position", glm::value_ptr(rview::core::camwpos), 0.1f);
+    
+    ImGui::DragFloat("Azimuth (Yaw)", &rview::core::azimuth, 0.5f);
+    ImGui::SliderFloat("Elevation (Pitch)", &rview::core::elevation, -89.0f, 89.0f);
+    
+    float fov_degrees = glm::degrees(rview::core::fov);
+    if (ImGui::SliderFloat("Field of View", &fov_degrees, 1.0f, 359.0f, "%.1f deg")) {
+        rview::core::fov = glm::radians(fov_degrees);
+        vkrenderer::setsize(renderData, renderData.width, renderData.height);
+    }
+
+    ImGui::SeparatorText("VTuber / Procedural");
+
+    static float breath_speed = 2.0f;
+    static float breath_amp = 0.02f;
+    ImGui::SliderFloat("Breathing Speed", &breath_speed, 0.1f, 5.0f);
+    ImGui::SliderFloat("Breathing Depth", &breath_amp, 0.0f, 0.1f);
+
+    static bool debug_mouse_gaze = false;
+    static float gaze_depth = 5.0f;
+    ImGui::Checkbox("Shift + Mouse drives IK Target", &debug_mouse_gaze);
+    if (debug_mouse_gaze) {
+        ImGui::SliderFloat("Gaze Depth", &gaze_depth, 1.0f, 10.0f);
+    }
+    //TEMP!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // DOESNT WORK YET [[ PLEASE HOLD ]]
+    if (debug_mouse_gaze && g_selected_entity != 0xFFFFFFFF && g_scene.modelIDs[g_selected_entity] != 0xFFFFFFFF) {
+        const bool isShiftHeld = (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_LSHIFT] || 
+                                  SDL_GetKeyboardState(NULL)[SDL_SCANCODE_RSHIFT]);
+
+        if (isShiftHeld) {
+            float mouse_x, mouse_y;
+            SDL_GetMouseState(&mouse_x, &mouse_y);
+
+            float ndc_x = (2.0f * mouse_x) / renderData.width - 1.0f;
+            float ndc_y = (2.0f * mouse_y) / renderData.height - 1.0f;
+            
+            glm::mat4 invVP = glm::inverse(vkrenderer::persviewproj[1] * vkrenderer::persviewproj[0]);
+            
+            glm::vec4 screenPos = glm::vec4(ndc_x, ndc_y, 0.1f, 1.0f);
+            glm::vec4 worldPos = invVP * screenPos;
+            worldPos /= worldPos.w;
+
+            glm::vec3 rayDir = glm::normalize(glm::vec3(worldPos) - rview::core::camwpos);
+
+            glm::vec3 target_pos = rview::core::camwpos + (rayDir * gaze_depth);
+
+            model_manager::g_registry.ik_target_pos[g_selected_entity][0] = target_pos;
+            
+            if (model_manager::g_registry.ik_active_chains[g_selected_entity] == 0) {
+                model_manager::g_registry.ik_active_chains[g_selected_entity] = 1;
+            }
+        }
+    }
+    //TEMP!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    int sel_ent = (g_selected_entity == 0xFFFFFFFF) ? -1 : static_cast<int>(g_selected_entity);
+    int max_ent = (active_entities > 0) ? active_entities - 1 : -1;
+    if (ImGui::SliderInt("Selected Entity", &sel_ent, -1, max_ent)) {
+        g_selected_entity = (sel_ent == -1) ? 0xFFFFFFFF : static_cast<uint32_t>(sel_ent);
+    }
+
+    if (g_selected_entity < active_entities && g_scene.modelIDs[g_selected_entity] != 0xFFFFFFFF) {
+        ImGui::SeparatorText("Transform");
+        
+        ImGui::DragFloat3("Position", glm::value_ptr(g_scene.worldPositions[g_selected_entity]), 0.1f);
+        
+        glm::vec3 euler = glm::degrees(glm::eulerAngles(g_scene.rotations[g_selected_entity]));
+        if (ImGui::DragFloat3("Rotation", glm::value_ptr(euler), 1.0f)) {
+            g_scene.rotations[g_selected_entity] = glm::quat(glm::radians(euler));
+        }
+        
+        ImGui::DragFloat3("Scale", glm::value_ptr(g_scene.scales[g_selected_entity]), 0.1f);
+
+        ImGui::SeparatorText("Animation & IK");
+        
+        int anim_mode = static_cast<int>(model_manager::g_registry.anim_mode[g_selected_entity]);
+        const char* modes[] = { "Baked", "Hybrid", "Dynamic", "Hero" };
+        if (ImGui::Combo("Anim Mode", &anim_mode, modes, IM_ARRAYSIZE(modes))) {
+            model_manager::g_registry.anim_mode[g_selected_entity] = static_cast<AnimMode>(anim_mode);
+        }
+
+        if (ImGui::SliderInt("Clip ID", &model_manager::g_registry.anim_clip[g_selected_entity], -1, 10)) {
+            g_scene.animTimePositions[g_selected_entity] = 0.0f;
+        }
+        ImGui::SameLine();
+        if (model_manager::g_registry.anim_clip[g_selected_entity] == -1) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "[BIND POSE / FROZEN]");
+        } else {
+            ImGui::TextDisabled("(Playing Clip)");
+        }
+        ImGui::Checkbox("Visible", &model_manager::g_registry.is_visible[g_selected_entity]);
+
+        ImGui::SeparatorText("IK Controls");
+        ImGui::DragFloat3("IK Target", glm::value_ptr(model_manager::g_registry.ik_target_pos[g_selected_entity][0]), 0.05f);
+
+		ImGui::SeparatorText("Shape Keys / Morph Targets");
+
+        uint32_t modelID = g_scene.modelIDs[g_selected_entity];
+        
+        if (modelID < g_assets.models.size()) {
+            const ModelMetadata& modelMeta = g_assets.models[modelID];
+            
+            if (modelMeta.primitiveCount > 0) {
+                const PrimitiveMetadata& primMeta = g_assets.primitives[modelMeta.firstPrimitiveIndex];
+                uint32_t targetCount = primMeta.targetCount;
+
+                if (targetCount > 0) {
+                    ImGui::PushID("MorphTargets");
+                    
+                    uint32_t active_weights = static_cast<uint32_t>(model_manager::g_registry.morph_weights[g_selected_entity].size());
+                    uint32_t safeTargetCount = std::min(targetCount, active_weights);
+                    
+                    for (uint32_t i = 0; i < safeTargetCount; ++i) {
+                        std::string label = "Shape Key " + std::to_string(i);
+
+                        ImGui::SliderFloat(
+                            label.c_str(), 
+                            &model_manager::g_registry.morph_weights[g_selected_entity][i], 
+                            0.0f, 1.0f, "%.3f"
+                        );
+                    }
+                    ImGui::PopID();
+                } else {
+                    ImGui::TextDisabled("No shape keys on this model.");
+                }
+            }
+        }
+		ImGui::SeparatorText("Animation Blending & Playback");
+
+        ImGui::SliderFloat("Playback Speed", &model_manager::g_registry.anim_speed[g_selected_entity], 0.0f, 5.0f, "%.2fx");
+
+        auto it = model_manager::g_cpuModels.find(modelID);
+        if (it != model_manager::g_cpuModels.end() && !it->second.bakedClips.empty()) {
+            int numClips = static_cast<int>(it->second.bakedClips.size());
+
+            ImGui::TextDisabled("Crossfade to a new clip:");
+            ImGui::SliderInt("Target Clip", &model_manager::g_registry.target_anim_clip[g_selected_entity], -1, numClips - 1);
+            ImGui::SliderFloat("Blend Duration", &model_manager::g_registry.blend_duration[g_selected_entity], 0.1f, 3.0f, "%.2f sec");
+            
+            if (ImGui::Button("Trigger Crossfade", ImVec2(-1, 0))) {
+                model_manager::g_registry.current_blend_time[g_selected_entity] = 0.0f;
+            }
+
+            ImGui::Spacing();
+
+            ImGui::SliderFloat("Anim Magnitude", &model_manager::g_registry.anim_magnitude[g_selected_entity], 0.0f, 2.0f, "%.2f");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("0.0 = Rest Pose | 1.0 = Normal | >1.0 = Exaggerated");
+            }
+		ImGui::SeparatorText("N-Way Blending (Simultaneous)");
+		
+            for (uint32_t layer = 0; layer < model_manager::Registry::MAX_BLEND_LAYERS; ++layer) {
+                ImGui::PushID(layer);
+                
+                std::string layerLabel = "Layer " + std::to_string(layer);
+                ImGui::Text("%s", layerLabel.c_str());
+                
+                ImGui::SetNextItemWidth(120.0f);
+                ImGui::SliderInt("Clip", &model_manager::g_registry.blend_clips[g_selected_entity][layer], -1, numClips - 1);
+                
+                ImGui::SameLine();
+                
+                ImGui::SetNextItemWidth(150.0f);
+                ImGui::SliderFloat("Weight", &model_manager::g_registry.blend_weights[g_selected_entity][layer], 0.0f, 1.0f);
+                
+                ImGui::PopID();
+            }
+
+            ImGui::SeparatorText("State Crossfading (Temporal)");
+            ImGui::TextDisabled("Transition entire state over time");
+            ImGui::SliderInt("Target Master Clip", &model_manager::g_registry.target_anim_clip[g_selected_entity], -1, numClips - 1);
+            ImGui::SliderFloat("Fade Duration", &model_manager::g_registry.blend_duration[g_selected_entity], 0.1f, 3.0f, "%.2f sec");
+            
+            if (ImGui::Button("Trigger Fade", ImVec2(-1, 0))) {
+                model_manager::g_registry.current_blend_time[g_selected_entity] = 0.0f;
+            }
+        }
+		ImGui::SeparatorText("IK Chains (Hybrid / Hero)");
+        
+        AnimMode mode = model_manager::g_registry.anim_mode[g_selected_entity];
+        if (mode == AnimMode::Hybrid || mode == AnimMode::Hero) {
+            
+            int active_chains = static_cast<int>(model_manager::g_registry.ik_active_chains[g_selected_entity]);
+            
+            // hardcoded
+            if (ImGui::SliderInt("Active IK Chains", &active_chains, 0, 4)) {
+                model_manager::g_registry.ik_active_chains[g_selected_entity] = static_cast<uint32_t>(active_chains);
+            }
+
+            for (int i = 0; i < active_chains; ++i) {
+                ImGui::PushID(i);
+                
+                if (ImGui::TreeNode("IK Chain")) {
+                    
+                    ImGui::DragInt("Effector Bone ID", &model_manager::g_registry.ik_effector_node[g_selected_entity][i], 1, -1, 511);
+                    ImGui::DragInt("Root Bone ID", &model_manager::g_registry.ik_root_node[g_selected_entity][i], 1, -1, 511);
+                    
+                    ImGui::DragFloat3("Target Pos", glm::value_ptr(model_manager::g_registry.ik_target_pos[g_selected_entity][i]), 0.05f);
+
+                    if (ImGui::RadioButton("Control Target with 3D Gizmo", active_ik_gizmo_chain == i)) {
+                        active_ik_gizmo_chain = i;
+                    }
+                    
+                    ImGui::TreePop();
+                }
+                ImGui::PopID();
+            }
+        } else {
+            ImGui::TextDisabled("Switch to Hybrid or Hero mode to enable IK.");
+        }
+
+
+    }
+	
+    
+    ImGui::Separator();
+    if (ImGui::Button("Save State to JSON", ImVec2(-1, 30))) {
+        rview::io::save_state_to_json();
+    }
+
+    ImGui::End();
+
+    if (g_selected_entity < active_entities && g_scene.modelIDs[g_selected_entity] != 0xFFFFFFFF) {
+        ImGuiIO& io = ImGui::GetIO();
+        ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
+
+        glm::mat4 transform = glm::translate(glm::mat4(1.0f), g_scene.worldPositions[g_selected_entity]) *
+                              glm::mat4_cast(g_scene.rotations[g_selected_entity]) *
+                              glm::scale(glm::mat4(1.0f), g_scene.scales[g_selected_entity]);
+
+        ImGuizmo::Manipulate(
+            glm::value_ptr(vkrenderer::persviewproj[0]),
+            glm::value_ptr(vkrenderer::persviewproj[1]),
+            ImGuizmo::TRANSLATE | ImGuizmo::ROTATE | ImGuizmo::SCALE,
+            ImGuizmo::LOCAL,
+            glm::value_ptr(transform)
+        );
+
+        if (ImGuizmo::IsUsing()) {
+            glm::vec3 scale, translation, skew;
+            glm::quat rotation;
+            glm::vec4 perspective;
+            glm::decompose(transform, scale, rotation, translation, skew, perspective);
+
+            g_scene.worldPositions[g_selected_entity] = translation;
+            g_scene.rotations[g_selected_entity] = rotation;
+            g_scene.scales[g_selected_entity] = scale;
+        }
+
+        if ((model_manager::g_registry.anim_mode[g_selected_entity] == AnimMode::Hero || 
+             model_manager::g_registry.anim_mode[g_selected_entity] == AnimMode::Hybrid) &&
+             model_manager::g_registry.ik_active_chains[g_selected_entity] > 0) {
+            
+            int chain_idx = active_ik_gizmo_chain;
+            
+            if (chain_idx >= static_cast<int>(model_manager::g_registry.ik_active_chains[g_selected_entity])) {
+                chain_idx = 0; 
+                active_ik_gizmo_chain = 0;
+            }
+            
+            glm::mat4 ik_matrix = glm::translate(glm::mat4(1.0f), model_manager::g_registry.ik_target_pos[g_selected_entity][chain_idx]);
+            
+            ImGuizmo::Manipulate(
+                glm::value_ptr(vkrenderer::persviewproj[0]),
+                glm::value_ptr(vkrenderer::persviewproj[1]),
+                ImGuizmo::TRANSLATE, ImGuizmo::WORLD, glm::value_ptr(ik_matrix)
+            );
+            
+            if (ImGuizmo::IsUsing()) {
+                model_manager::g_registry.ik_target_pos[g_selected_entity][chain_idx] = glm::vec3(ik_matrix[3]);
+            }
+        }
+    }
 }
 
 bool ui::createloadingscreen(rvkbucket &mvkobjs) {
@@ -755,7 +431,7 @@ bool ui::createloadingscreen(rvkbucket &mvkobjs) {
 	imguiWindowFlags |= ImGuiWindowFlags_NoCollapse;
 	imguiWindowFlags |= ImGuiWindowFlags_NoTitleBar;
 
-	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), 1, {0.5f, 0.5f});
+	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Once, {0.8f, 0.2f});
 
 	ImGui::Begin("loading", nullptr, imguiWindowFlags);
 
@@ -787,7 +463,7 @@ bool ui::createpausebuttons(rvkbucket &mvkobjs) {
 	imguiWindowFlags |= ImGuiWindowFlags_NoTitleBar;
 	imguiWindowFlags |= ImGuiWindowFlags_AlwaysAutoResize;
 
-	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), 1, {0.5f, 0.5f});
+	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Once, {0.8f, 0.2f});
 
 	ImGui::Begin("pause", nullptr, imguiWindowFlags);
 

@@ -402,8 +402,9 @@ bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 	for (simdjson::ondemand::object x : models) {
 		std::string_view f = x["file"].get_string();
 		uint64_t c = x["count"].get_uint64();
-		std::string fname(f);
 		uint32_t instance_count = static_cast<uint32_t>(c);
+		const char* fname = g_job_strings.push_string(f);
+		active_io_jobs.fetch_add(1, std::memory_order_release);
 
 		g_jobs.enqueue([fname, instance_count]() {
 			model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
@@ -416,6 +417,7 @@ bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 			} else {
 				std::cerr << "Failed to parse boot model: " << fname << "\n";
 			}
+			active_io_jobs.fetch_sub(1, std::memory_order_release);
 		});
 	}
 
@@ -1328,16 +1330,19 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 
 				if (fname_view.ends_with(".glb") || fname_view.ends_with(".vrm") ||
 				        fname_view.ends_with(".GLB") || fname_view.ends_with(".VRM")) {
-
-					std::string fname(fname_view);
+					if (active_io_jobs.load(std::memory_order_acquire) == 0) {
+						g_job_strings.reset();
+					}
+					const char* fname = g_job_strings.push_string(fname_view);
 					g_jobs.enqueue([fname]() {
 						model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
-
+						active_io_jobs.fetch_add(1, std::memory_order_release);
 						if (!staging.meshes.empty()) {
 							if (!vkrenderer::pending_staging_models.push(std::move(staging))) {
 								std::cerr << "Engine queue full! Dropped model: " << fname << '\n';
 							}
 						}
+						active_io_jobs.fetch_sub(1, std::memory_order_release);
 					});
 				}
 
@@ -1998,10 +2003,10 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		    rview::core::g_indirectCommandBuffers[rview::core::currentFrame].buffer, 0,
 		    rview::core::g_indirectCountBuffers[rview::core::currentFrame].buffer, 0,
 		    100000, sizeof(VkDrawIndirectCommand));
-
+		
 		// TODO
-		// ui::createdbgframe(mvkobjs);
-		// ui::render(mvkobjs, c);
+		ui::createdbgframe(mvkobjs);
+		ui::render(mvkobjs, c);
 
 		vkCmdEndRendering(c);
 

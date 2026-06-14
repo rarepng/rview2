@@ -215,6 +215,8 @@ private:
 	std::mutex registry_mtx;
 
 public:
+	static constexpr uint32_t MAX_BLEND_LAYERS = 4;
+	
 	alignas(64) std::array<int, MAX_ENTITIES> anim_clip{};
 	alignas(64) std::array<float, MAX_ENTITIES> anim_speed{};
 	alignas(64) std::array<bool, MAX_ENTITIES> anim_loop{};
@@ -235,6 +237,9 @@ public:
 	alignas(64) std::array<float, MAX_ENTITIES> blend_duration{};
 	alignas(64) std::array<float, MAX_ENTITIES> current_blend_time{};
 	alignas(64) std::array<std::vector<float>, MAX_ENTITIES> morph_weights{};
+	alignas(64) std::array<float, MAX_ENTITIES> anim_magnitude{};
+    alignas(64) std::array<std::array<int, MAX_BLEND_LAYERS>, MAX_ENTITIES> blend_clips{};
+    alignas(64) std::array<std::array<float, MAX_BLEND_LAYERS>, MAX_ENTITIES> blend_weights{};
 
 	alignas(64) std::array<uint32_t, MAX_ENTITIES> attach_parent_entity{};
 	alignas(64) std::array<int32_t, MAX_ENTITIES> attach_parent_bone{};
@@ -260,6 +265,11 @@ public:
 		target_anim_clip.fill(-1);
 		blend_duration.fill(0.0f);
 		current_blend_time.fill(0.0f);
+		for(auto& x:blend_clips)
+			x.fill(-1);
+		for(auto& x:blend_weights)
+			x.fill(0.0f);
+		anim_magnitude.fill(1.0f);
 	}
 
 	Entity create_entity(uint32_t modelID, bool isSkinned, uint32_t b_start, uint32_t b_count, uint32_t j_start, uint32_t j_count) {
@@ -298,7 +308,7 @@ public:
 
 		g_scene.isSkinned[dense_idx] = isSkinned ? 1 : 0;
 
-		anim_clip[dense_idx] = 0;
+		anim_clip[dense_idx] = -1;
 		anim_speed[dense_idx] = 1.0f;
 		anim_loop[dense_idx] = true;
 		is_visible[dense_idx] = true;
@@ -307,7 +317,14 @@ public:
 		bone_count[dense_idx]        = b_count;
 		joint_start_index[dense_idx] = j_start;
 		joint_count[dense_idx]       = j_count;
-		morph_weights[dense_idx].assign(64, 0.0f);
+		uint32_t target_count = 0;
+        if (modelID != 0xFFFFFFFF && modelID < g_assets.models.size()) {
+            const ModelMetadata& meta = g_assets.models[modelID];
+            if (meta.primitiveCount > 0) {
+                target_count = g_assets.primitives[meta.firstPrimitiveIndex].targetCount;
+            }
+        }
+		morph_weights[dense_idx].assign(target_count, 0.0f);
 
 		return ent;
 	}

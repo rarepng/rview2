@@ -280,3 +280,37 @@ private:
 };
 
 inline teardown g_exitQ;
+struct ScopedJobGuard {
+    std::atomic<int>& counter;
+    
+    ScopedJobGuard(std::atomic<int>& c) : counter(c) {}
+    ~ScopedJobGuard() {
+        counter.fetch_sub(1, std::memory_order_release);
+    }
+    ScopedJobGuard(const ScopedJobGuard&) = delete;
+    ScopedJobGuard& operator=(const ScopedJobGuard&) = delete;
+};
+class JobStringArena {
+    std::vector<char> buffer;
+    std::atomic<size_t> offset{0};
+
+public:
+    JobStringArena(size_t size) { buffer.resize(size); }
+    const char* push_string(std::string_view str) {
+        size_t start = offset.fetch_add(str.size() + 1, std::memory_order_relaxed);
+        
+        // add user friendly ":) file path is too long" or some &$#@
+        assert(start + str.size() + 1 <= buffer.size() && "Arena out of memory!");
+
+        char* dest = &buffer[start];
+        memcpy(dest, str.data(), str.size());
+        dest[str.size()] = '\0';
+
+        return dest;
+    }
+
+    void reset() { offset.store(0, std::memory_order_relaxed); }
+};
+
+inline JobStringArena g_job_strings(1024 * 1024);
+inline std::atomic<int> active_io_jobs{0};

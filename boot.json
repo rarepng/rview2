@@ -1,8 +1,8 @@
 {
     "models": [
         {
-            "file": "resources/t0.glb",
-            "count": 9,
+            "file": "resources/v.vrm",
+            "count": 1,
             "position": [0.0, 0.0, 0.0],
             "shaders": {
                 "vx": "shaders/vx.spv",

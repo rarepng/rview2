@@ -13,15 +13,22 @@ set(ZLIB_USE_STATIC_LIBS ON)
 find_package(OpenSSL REQUIRED)
 
 set(CPM_PATH "${CMAKE_BINARY_DIR}/_deps/CPM.cmake")
-if(NOT EXISTS ${CPM_PATH})
+if(EXISTS "${CPM_PATH}")
+    file(SIZE "${CPM_PATH}" _cpm_size)
+    if(_cpm_size EQUAL 0)
+        file(REMOVE "${CPM_PATH}")
+    endif()
+endif()
+if(NOT EXISTS "${CPM_PATH}")
     file(DOWNLOAD
         https://github.com/cpm-cmake/CPM.cmake/releases/latest/download/CPM.cmake
-        ${CPM_PATH}
+        "${CPM_PATH}"
         STATUS status
     )
     list(GET status 0 code)
     if(NOT code EQUAL 0)
-        message(FATAL_ERROR "CPM download failed")
+        file(REMOVE "${CPM_PATH}")
+        message(FATAL_ERROR "CPM download failed. Cleaned up empty file.")
     endif()
 endif()
 include(${CPM_PATH})
@@ -29,6 +36,9 @@ if(NOT COMMAND CPMAddPackage)
     message(FATAL_ERROR "CPM broke again :(")
 endif()
 
+# brute force &#@! it we ball
+string(APPEND CMAKE_SHARED_LINKER_FLAGS " -static")
+string(APPEND CMAKE_EXE_LINKER_FLAGS " -static")
 
 set(submodules_path
         ${PROJECT_SOURCE_DIR}/sub
@@ -207,6 +217,14 @@ CPMAddPackage(
 )
 
 CPMAddPackage(
+    NAME imguizmo
+    GITHUB_REPOSITORY cedricguillemet/imguizmo
+    GIT_TAG master
+    EXCLUDE_FROM_ALL YES
+    DOWNLOAD_ONLY YES
+)
+
+CPMAddPackage(
     NAME stb
     GITHUB_REPOSITORY nothings/stb
     GIT_TAG master
@@ -272,9 +290,10 @@ set(OTHER_SOURCES
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_demo.cpp
+    ${imguizmo_SOURCE_DIR}/src/ImGuizmo.cpp
 )
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-if(CMAKE_BUILD_TYPE STREQUAL "x") # clangd
+if(CMAKE_BUILD_TYPE STREQUAL "x") # scrapped
 
     add_library(rview2 ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_HEADERS})
 
@@ -378,6 +397,7 @@ target_include_directories(rview2
         "${PROJECT_SOURCE_DIR}/cmake_more_cache/gns/include/GameNetworkingSockets"
         "${stb_SOURCE_DIR}"
         "${imgui_SOURCE_DIR}"
+        "${imguizmo_SOURCE_DIR}/src"
         "${simdjson_SOURCE_DIR}/include"
         "${tracy_SOURCE_DIR}/public"
         "${submodules_path}/vma/include"
