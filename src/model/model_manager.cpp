@@ -277,14 +277,17 @@ StagingModelData parse_model_to_staging(std::string_view filepath) {
 
 				if (slot == 0 || slot == 1) {
 					fastgltf::copyFromAccessor<glm::vec3>(asset, acc, outPrim.vertexBytes[slot].data());
+
 					if (slot == 0 && acc.count > 0) {
 						glm::vec3 pmin(std::numeric_limits<float>::max());
 						glm::vec3 pmax(std::numeric_limits<float>::lowest());
 						glm::vec3* posArray = reinterpret_cast<glm::vec3*>(outPrim.vertexBytes[slot].data());
+
 						for (size_t v = 0; v < acc.count; ++v) {
 							pmin = glm::min(pmin, posArray[v]);
 							pmax = glm::max(pmax, posArray[v]);
 						}
+
 						outPrim.meta.setAABB(pmin, pmax);
 					}
 				} else if (slot == 2) {
@@ -397,7 +400,7 @@ StagingModelData parse_model_to_staging(std::string_view filepath) {
 		AssetBaker::BakeSkeleton(asset, *staging.parsed_skel, 0);
 
 		std::vector<glm::mat4> savedRestPose(staging.parsed_skel->nodeCount);
-        std::memcpy(savedRestPose.data(), staging.parsed_skel->localTransforms.get(), staging.parsed_skel->nodeCount * sizeof(glm::mat4));
+		std::memcpy(savedRestPose.data(), staging.parsed_skel->localTransforms.get(), staging.parsed_skel->nodeCount * sizeof(glm::mat4));
 
 		gltfnodedata nodedata{};
 		int rootNodeNum = asset.scenes.at(0).nodeIndices.at(0);
@@ -507,8 +510,9 @@ StagingModelData parse_model_to_staging(std::string_view filepath) {
 
 			staging.bakedClips.push_back(std::move(baked));
 		}
+
 		std::memcpy(staging.parsed_skel->localTransforms.get(), savedRestPose.data(), staging.parsed_skel->nodeCount * sizeof(glm::mat4));
-        staging.parsed_skel->UpdateGlobalMatrices();
+		staging.parsed_skel->UpdateGlobalMatrices();
 	}
 
 	return staging;
@@ -706,26 +710,31 @@ uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, Stagi
 
 		glm::vec3 modelMin(std::numeric_limits<float>::max());
 		glm::vec3 modelMax(std::numeric_limits<float>::lowest());
+
 		for (auto& meta : finalPrimitives) {
 			glm::vec3 primMin(meta.aabbMinX, meta.aabbMinY, meta.aabbMinZ);
 			glm::vec3 primMax(meta.aabbMaxX, meta.aabbMaxY, meta.aabbMaxZ);
 			modelMin = glm::min(modelMin, primMin);
 			modelMax = glm::max(modelMax, primMax);
 			meta.indexByteOffset += globalByteOffset;
+
 			if (meta.morphDeltaIdx != 0xFFFFFFFF) {
 				meta.morphDeltaIdx += globalMorphOffset;
 			}
+
 			g_assets.primitives.push_back(meta);
 		}
+
 		if (totalPrimitiveCount == 0) {
 			modelMin = glm::vec3(0.0f);
 			modelMax = glm::vec3(0.0f);
 		}
+
 		ModelMetadata newModel{};
 		newModel.firstPrimitiveIndex = static_cast<uint32_t>(g_assets.primitives.size() - totalPrimitiveCount);
 		newModel.primitiveCount = totalPrimitiveCount;
 		newModel.setAABB(modelMin, modelMax);
-		
+
 		g_assets.models.push_back(newModel);
 
 		g_assets.globalRawIndices.insert(
@@ -811,8 +820,7 @@ void update_logic_and_animations(float deltaTime) {
 				for (uint32_t j = 0; j < j_count; ++j) {
 					g_joint_final_matrices[j_start + j] = identityDQ;
 				}
-			} 
-			else if (!it->second.bakedClips.empty() && clipIdx >= 0 && clipIdx < it->second.bakedClips.size()) {
+			} else if (!it->second.bakedClips.empty() && clipIdx >= 0 && clipIdx < it->second.bakedClips.size()) {
 				g_scene.animTimePositions[i] += deltaTime * g_registry.anim_speed[i];
 				const auto& clip = it->second.bakedClips[clipIdx];
 				const DualQuatScale* frameJoints = clip.GetFinalJointsFrame(g_scene.animTimePositions[i], g_registry.anim_loop[i]);
@@ -845,11 +853,12 @@ void update_logic_and_animations(float deltaTime) {
 		int currentClipIdx = g_registry.anim_clip[i];
 		int targetClipIdx = g_registry.target_anim_clip[i];
 
-        const LocalTRS* tracksA = nullptr;
-        if (currentClipIdx >= 0 && currentClipIdx < it->second.bakedClips.size()) {
-            const auto& clipA = it->second.bakedClips[currentClipIdx];
-            tracksA = clipA.GetLocalTracksFrame(g_scene.animTimePositions[i], g_registry.anim_loop[i]);
-        }
+		const LocalTRS* tracksA = nullptr;
+
+		if (currentClipIdx >= 0 && currentClipIdx < it->second.bakedClips.size()) {
+			const auto& clipA = it->second.bakedClips[currentClipIdx];
+			tracksA = clipA.GetLocalTracksFrame(g_scene.animTimePositions[i], g_registry.anim_loop[i]);
+		}
 
 		LocalTRS locals[MAX_BONES];
 		float blendWeight = 0.0f;
@@ -874,113 +883,116 @@ void update_logic_and_animations(float deltaTime) {
 
 		float magnitude = g_registry.anim_magnitude[i];
 
-        for (uint32_t b = 0; b < b_count; ++b) {
-            LocalTRS baseTrack;
-            float totalNWayWeight = 0.0f;
+		for (uint32_t b = 0; b < b_count; ++b) {
+			LocalTRS baseTrack;
+			float totalNWayWeight = 0.0f;
 
-            glm::vec3 accumT(0.0f);
-            glm::vec3 accumS(0.0f);
-            glm::quat accumR = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+			glm::vec3 accumT(0.0f);
+			glm::vec3 accumS(0.0f);
+			glm::quat accumR = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 
-            for (uint32_t layer = 0; layer < Registry::MAX_BLEND_LAYERS; ++layer) {
-                int clipIdx = g_registry.blend_clips[i][layer];
-                float weight = g_registry.blend_weights[i][layer];
+			for (uint32_t layer = 0; layer < Registry::MAX_BLEND_LAYERS; ++layer) {
+				int clipIdx = g_registry.blend_clips[i][layer];
+				float weight = g_registry.blend_weights[i][layer];
 
-                if (clipIdx >= 0 && weight > 0.0f) {
-                    const auto& layerClip = it->second.bakedClips[clipIdx];
-                    const LocalTRS* layerTracks = layerClip.GetLocalTracksFrame(g_scene.animTimePositions[i], true);
-                    
-                    if (layerTracks) {
-                        accumT += layerTracks[b].T * weight;
-                        accumS += layerTracks[b].S * weight;
-                        
-                        if (totalNWayWeight == 0.0f) {
-                            accumR = layerTracks[b].R;
-                        } else {
-                            float normalizedWeight = weight / (totalNWayWeight + weight);
-                            accumR = glm::slerp(accumR, layerTracks[b].R, normalizedWeight);
-                        }
-                        totalNWayWeight += weight;
-                    }
-                }
-            }
+				if (clipIdx >= 0 && weight > 0.0f) {
+					const auto& layerClip = it->second.bakedClips[clipIdx];
+					const LocalTRS* layerTracks = layerClip.GetLocalTracksFrame(g_scene.animTimePositions[i], true);
 
-            if (totalNWayWeight > 0.0f) {
-                baseTrack.T = accumT / totalNWayWeight;
-                baseTrack.S = accumS / totalNWayWeight;
-                baseTrack.R = accumR;
-            } else if (tracksA) {
-                baseTrack = tracksA[b]; 
-            } else {
-                glm::mat4 bindMat = g_bone_locals[b_start + b];
-                baseTrack.T = glm::vec3(bindMat[3]);
-                baseTrack.S = glm::vec3(
-                    glm::length(glm::vec3(bindMat[0])),
-                    glm::length(glm::vec3(bindMat[1])),
-                    glm::length(glm::vec3(bindMat[2]))
-                );
-                glm::mat3 rotMat(
-                    baseTrack.S.x > 0.0001f ? glm::vec3(bindMat[0]) / baseTrack.S.x : glm::vec3(1, 0, 0),
-                    baseTrack.S.y > 0.0001f ? glm::vec3(bindMat[1]) / baseTrack.S.y : glm::vec3(0, 1, 0),
-                    baseTrack.S.z > 0.0001f ? glm::vec3(bindMat[2]) / baseTrack.S.z : glm::vec3(0, 0, 1)
-                );
-                baseTrack.R = glm::quat_cast(rotMat);
-            }
+					if (layerTracks) {
+						accumT += layerTracks[b].T * weight;
+						accumS += layerTracks[b].S * weight;
 
-            float magnitude = g_registry.anim_magnitude[i];
-            if (magnitude != 1.0f) {
-                glm::mat4 bindMat = g_bone_locals[b_start + b];
-                
-                glm::vec3 restT = glm::vec3(bindMat[3]);
-                glm::vec3 restS = glm::vec3(
-                    glm::length(glm::vec3(bindMat[0])),
-                    glm::length(glm::vec3(bindMat[1])),
-                    glm::length(glm::vec3(bindMat[2]))
-                );
-                
-                glm::mat3 rotMat(
-                    restS.x > 0.0001f ? glm::vec3(bindMat[0]) / restS.x : glm::vec3(1, 0, 0),
-                    restS.y > 0.0001f ? glm::vec3(bindMat[1]) / restS.y : glm::vec3(0, 1, 0),
-                    restS.z > 0.0001f ? glm::vec3(bindMat[2]) / restS.z : glm::vec3(0, 0, 1)
-                );
-                glm::quat restR = glm::quat_cast(rotMat);
+						if (totalNWayWeight == 0.0f) {
+							accumR = layerTracks[b].R;
+						} else {
+							float normalizedWeight = weight / (totalNWayWeight + weight);
+							accumR = glm::slerp(accumR, layerTracks[b].R, normalizedWeight);
+						}
 
-                baseTrack.T = glm::mix(restT, baseTrack.T, magnitude);
-                baseTrack.S = glm::mix(restS, baseTrack.S, magnitude);
+						totalNWayWeight += weight;
+					}
+				}
+			}
 
-                if (glm::dot(restR, baseTrack.R) < 0.0f) {
-                    baseTrack.R = -baseTrack.R;
-                }
-                
-                baseTrack.R = glm::normalize(glm::slerp(restR, baseTrack.R, magnitude));
-            }
+			if (totalNWayWeight > 0.0f) {
+				baseTrack.T = accumT / totalNWayWeight;
+				baseTrack.S = accumS / totalNWayWeight;
+				baseTrack.R = accumR;
+			} else if (tracksA) {
+				baseTrack = tracksA[b];
+			} else {
+				glm::mat4 bindMat = g_bone_locals[b_start + b];
+				baseTrack.T = glm::vec3(bindMat[3]);
+				baseTrack.S = glm::vec3(
+				                  glm::length(glm::vec3(bindMat[0])),
+				                  glm::length(glm::vec3(bindMat[1])),
+				                  glm::length(glm::vec3(bindMat[2]))
+				              );
+				glm::mat3 rotMat(
+				    baseTrack.S.x > 0.0001f ? glm::vec3(bindMat[0]) / baseTrack.S.x : glm::vec3(1, 0, 0),
+				    baseTrack.S.y > 0.0001f ? glm::vec3(bindMat[1]) / baseTrack.S.y : glm::vec3(0, 1, 0),
+				    baseTrack.S.z > 0.0001f ? glm::vec3(bindMat[2]) / baseTrack.S.z : glm::vec3(0, 0, 1)
+				);
+				baseTrack.R = glm::quat_cast(rotMat);
+			}
 
-            // just a prototype
-            if (b == 0 || b == 1) { 
-                extern float g_app_time; // maybe ill use g_scene.animTimePositions[i] idk
-                
+			float magnitude = g_registry.anim_magnitude[i];
+
+			if (magnitude != 1.0f) {
+				glm::mat4 bindMat = g_bone_locals[b_start + b];
+
+				glm::vec3 restT = glm::vec3(bindMat[3]);
+				glm::vec3 restS = glm::vec3(
+				                      glm::length(glm::vec3(bindMat[0])),
+				                      glm::length(glm::vec3(bindMat[1])),
+				                      glm::length(glm::vec3(bindMat[2]))
+				                  );
+
+				glm::mat3 rotMat(
+				    restS.x > 0.0001f ? glm::vec3(bindMat[0]) / restS.x : glm::vec3(1, 0, 0),
+				    restS.y > 0.0001f ? glm::vec3(bindMat[1]) / restS.y : glm::vec3(0, 1, 0),
+				    restS.z > 0.0001f ? glm::vec3(bindMat[2]) / restS.z : glm::vec3(0, 0, 1)
+				);
+				glm::quat restR = glm::quat_cast(rotMat);
+
+				baseTrack.T = glm::mix(restT, baseTrack.T, magnitude);
+				baseTrack.S = glm::mix(restS, baseTrack.S, magnitude);
+
+				if (glm::dot(restR, baseTrack.R) < 0.0f) {
+					baseTrack.R = -baseTrack.R;
+				}
+
+				baseTrack.R = glm::normalize(glm::slerp(restR, baseTrack.R, magnitude));
+			}
+
+			// just a prototype
+			if (b == 0 || b == 1) {
+				extern float g_app_time; // maybe ill use g_scene.animTimePositions[i] idk
+
 				// TEMP
-                float speed = 2.0f;
-                float amp = 0.02f;
+				float speed = 2.0f;
+				float amp = 0.02f;
 
-                float breathCycle = sin(g_scene.animTimePositions[i] * speed);
-                
-                glm::vec3 breathScale = glm::vec3(
-                    1.0f, 
-                    1.0f + (breathCycle * amp), 
-                    1.0f + (breathCycle * amp * 1.5f)
-                );
-                
-                baseTrack.S *= breathScale;
-            }
-            if (blendWeight > 0.0f && tracksB) {
-                locals[b].T = glm::mix(baseTrack.T, tracksB[b].T, blendWeight);
-                locals[b].S = glm::mix(baseTrack.S, tracksB[b].S, blendWeight);
-                locals[b].R = glm::slerp(baseTrack.R, tracksB[b].R, blendWeight);
-            } else {
-                locals[b] = baseTrack;
-            }
-        }
+				float breathCycle = sin(g_scene.animTimePositions[i] * speed);
+
+				glm::vec3 breathScale = glm::vec3(
+				                            1.0f,
+				                            1.0f + (breathCycle * amp),
+				                            1.0f + (breathCycle * amp * 1.5f)
+				                        );
+
+				baseTrack.S *= breathScale;
+			}
+
+			if (blendWeight > 0.0f && tracksB) {
+				locals[b].T = glm::mix(baseTrack.T, tracksB[b].T, blendWeight);
+				locals[b].S = glm::mix(baseTrack.S, tracksB[b].S, blendWeight);
+				locals[b].R = glm::slerp(baseTrack.R, tracksB[b].R, blendWeight);
+			} else {
+				locals[b] = baseTrack;
+			}
+		}
 
 		if (mode == AnimMode::Hero || mode == AnimMode::Hybrid) {
 			uint32_t active_chains = g_registry.ik_active_chains[i];
@@ -1064,6 +1076,7 @@ void update_logic_and_animations(float deltaTime) {
 				}
 			}
 		}
+
 		EvaluateFK_And_CompressDQS(b_count, j_count, b_start, j_start, locals);
 	}
 

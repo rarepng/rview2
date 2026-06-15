@@ -3,7 +3,6 @@
 #include <cstdint>
 #define GLM_ENABLE_EXPERIMENTAL
 #define VMA_IMPLEMENTATION
-#include <exp/particle.hpp>
 #include <vkrenderer.hpp>
 #include <backends/imgui_impl_glfw.h>
 #include <imgui.h>
@@ -63,12 +62,6 @@ void vkrenderer::immediate_submit(rvkbucket& mvkobjs,
 	vkFreeCommandBuffers(mvkobjs.vkdevice.device, mvkobjs.cpools_graphics.at(0),
 	                     1, &cbuffer);
 }
-constexpr auto destroyDummy =
-[](rview::core::DummyTexture& tex, rvkbucket& mvkobjs) {
-	vkDestroyImageView(mvkobjs.vkdevice.device, tex.view, nullptr);
-	vkDestroyImage(mvkobjs.vkdevice.device, tex.image, nullptr);
-	vkFreeMemory(mvkobjs.vkdevice.device, tex.memory, nullptr);
-};
 
 // gotta move these somewhere more reasonable someday
 bool init_global_samplers(rvkbucket &objs) {
@@ -89,10 +82,24 @@ bool init_global_samplers(rvkbucket &objs) {
 		return false;
 	}
 
+	g_exitQ.enqueue(TeardownPhase::device, [device = objs.vkdevice.device,
+	sampler = objs.samplerz[0]]() {
+		vkDestroySampler(device, sampler, nullptr);
+	});
+
+
 	info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	vkCreateSampler(objs.vkdevice.device, &info, nullptr, &objs.samplerz[1]);
+
+	if (vkCreateSampler(objs.vkdevice.device, &info, nullptr, &objs.samplerz[1]) != VK_SUCCESS) {
+		return false;
+	}
+
+	g_exitQ.enqueue(TeardownPhase::device, [device = objs.vkdevice.device,
+	sampler = objs.samplerz[1]]() {
+		vkDestroySampler(device, sampler, nullptr);
+	});
 
 	return true;
 }
@@ -242,6 +249,15 @@ bool init_dummy_textures(rvkbucket &objs, VkCommandPool &cmdPool) {
 
 		vkDestroyBuffer(objs.vkdevice.device, stagingBuf, nullptr);
 		vkFreeMemory(objs.vkdevice.device, stagingMem, nullptr);
+
+		g_exitQ.enqueue(TeardownPhase::device, [device = objs.vkdevice.device,
+		                                        img = tex.image,
+		                                        view = tex.view,
+		mem = tex.memory]() {
+			vkDestroyImageView(device, view, nullptr);
+			vkDestroyImage(device, img, nullptr);
+			vkFreeMemory(device, mem, nullptr);
+		});
 
 		return tex;
 	};
@@ -417,11 +433,10 @@ bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 			} else {
 				std::cerr << "Failed to parse boot model: " << fname << "\n";
 			}
+
 			active_io_jobs.fetch_sub(1, std::memory_order_release);
 		});
 	}
-
-	if (!particle::createeverything(mvkobjs)) return false;
 
 	return true;
 }
@@ -875,13 +890,7 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	rview::io::save_state_to_json();
 
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
-
-
 	ui::cleanup(mvkobjs);
-
-	particle::destroyeveryting(mvkobjs);
-
-
 	vksyncobjects::cleanup(mvkobjs);
 
 	for (auto &x : mvkobjs.dpools)
@@ -922,46 +931,33 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 		                rview::core::exrtex.at(0).alloc);
 	}
 
-	mvkobjs.sbelt.free(mvkobjs.alloc);
-
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::global_materials.buffer, rview::core::global_materials.alloc);
-
-	vkDestroyDescriptorPool(mvkobjs.vkdevice.device, rview::core::global_materials.dedicated_pool, VK_NULL_HANDLE);
-
-	vkDestroyPipelineLayout(mvkobjs.vkdevice.device, rview::core::globalPipelineLayout, nullptr);
-	vkDestroyDescriptorPool(mvkobjs.vkdevice.device, rview::core::globalBindlessPool, nullptr);
-	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, rview::core::globalBindlessLayout, nullptr);
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::globalCameraUBO.buffer, rview::core::globalCameraUBO.alloc);
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::g_rawIndexSSBO.buffer, rview::core::g_rawIndexSSBO.alloc);
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::g_primitiveRegistrySSBO.buffer, rview::core::g_primitiveRegistrySSBO.alloc);
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::g_modelRegistrySSBO.buffer, rview::core::g_modelRegistrySSBO.alloc);
 	vmaDestroyBuffer(mvkobjs.alloc, g_morphDeltaSSBO.buffer, g_morphDeltaSSBO.alloc);
-
 	for (auto&& x : rview::core::g_indirectCommandBuffers)
 		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
-
 	for (auto&& x : rview::core::g_indirectCountBuffers)
 		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
-
 	for (auto&& x : rview::core::globalInstanceBuffers)
 		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
-
 	for (auto&& x : rview::core::globalIndirectBuffers)
 		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
-
 	for (auto&& x : model_manager::g_gpu_joint_buffers) {
 		if (x.buffer) vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
 	}
-
 	for (auto&& x : g_morphWeightBuffers) {
 		if (x.buffer) vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
 	}
-
 	for (auto& [id, asset] : model_manager::g_cpuModels) {
 		if (asset.geometryVBO.buffer) {
 			vmaDestroyBuffer(mvkobjs.alloc, asset.geometryVBO.buffer, asset.geometryVBO.alloc);
 		}
 	}
+
+	vkDestroyDescriptorPool(mvkobjs.vkdevice.device, rview::core::global_materials.dedicated_pool, VK_NULL_HANDLE);
 
 	for (const auto& i : model_manager::g_cpuModels) {
 		for (const auto& j : i.second.textures) {
@@ -971,32 +967,23 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	}
 
 	model_manager::g_cpuModels.clear();
+	g_exitQ.flush_and_die();
+	mvkobjs.sbelt.free(mvkobjs.alloc);
 
-	// if constexpr (vkdebug::is_active) {
-	// 	char* statsString = nullptr;
-	// 	vmaBuildStatsString(mvkobjs.alloc, &statsString, true);
-
-	// 	if (statsString) {
-	// 		std::cout << "=== VMA REPORT !! ===" << std::endl;
-	// 		std::cout << statsString << std::endl;
-	// 		std::cout << "=======================" << std::endl;
-	// 		vmaFreeStatsString(mvkobjs.alloc, statsString);
-	// 	}
-	// }
+	if constexpr (rdebug::is_active) {
+		char* statsString = nullptr;
+		vmaBuildStatsString(mvkobjs.alloc, &statsString, true);
+		if (statsString) {
+			std::cout << "=== VMA REPORT !! ===" << std::endl;
+			std::cout << statsString << std::endl;
+			std::cout << "=======================" << std::endl;
+			vmaFreeStatsString(mvkobjs.alloc, statsString);
+		}
+	}
 
 	vmaDestroyAllocator(mvkobjs.alloc);
-
-	destroyDummy(rview::core::defaults.purple, mvkobjs);
-	destroyDummy(rview::core::defaults.white, mvkobjs);
-	destroyDummy(rview::core::defaults.normal, mvkobjs);
-	destroyDummy(rview::core::defaults.black, mvkobjs);
-
-	for (const auto &i : mvkobjs.samplerz)
-		vkDestroySampler(mvkobjs.vkdevice, i, nullptr);
-
 	mvkobjs.schain.destroy_image_views(mvkobjs.schainimgviews);
 	vkb::destroy_swapchain(mvkobjs.schain);
-
 	vkb::destroy_device(mvkobjs.vkdevice);
 	vkb::destroy_surface(mvkobjs.inst.instance, mvkobjs.surface);
 	vkb::destroy_instance(mvkobjs.inst);
@@ -1242,12 +1229,6 @@ void vkrenderer::copy_engine_to_obs(VkCommandBuffer cmdBuffer, rvkbucket& mvkobj
 //     }
 //     return true;
 // }
-bool vkrenderer::uploadfordraw(rvkbucket& mvkobjs, VkCommandBuffer cbuffer) {
-	manimupdatetimer.start();
-
-
-	return true;
-}
 
 void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 	switch (e.type) {
@@ -1333,15 +1314,18 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 					if (active_io_jobs.load(std::memory_order_acquire) == 0) {
 						g_job_strings.reset();
 					}
+
 					const char* fname = g_job_strings.push_string(fname_view);
 					g_jobs.enqueue([fname]() {
 						model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
 						active_io_jobs.fetch_add(1, std::memory_order_release);
+
 						if (!staging.meshes.empty()) {
 							if (!vkrenderer::pending_staging_models.push(std::move(staging))) {
 								std::cerr << "Engine queue full! Dropped model: " << fname << '\n';
 							}
 						}
+
 						active_io_jobs.fetch_sub(1, std::memory_order_release);
 					});
 				}
@@ -1543,6 +1527,7 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			VkBufferCopy tailRegion{beltOffset, g_morphDeltaOffset, newMorphBytesToUpload};
 			vkCmdCopyBuffer(cmd, mvkobjs.sbelt.buffer, g_morphDeltaSSBO.buffer, 1, &tailRegion);
 		}
+
 		g_morphDeltaOffset = currentMorphByteSize;
 		add_barrier(g_morphDeltaSSBO.buffer);
 	}
@@ -1791,46 +1776,14 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	model_manager::upload_joint_matrices(mvkobjs);
 
 
-	currentgraph.add_pass([&] {
-		particle::record_compute(c);
-	});
-
-
 	std::call_once(obswrite, [&]() {
 		vkrenderer::write_obs(mvkobjs);
 	});
 
 
 
-	// currentgraph.add_pass([&mvkobjs, c] {
-	//     uint32_t num_instances = mvkobjs.frameInstances.size();
-	//     if (num_instances == 0) return;
-	//     vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_COMPUTE, rview::core::globalcullpline);
-	//     vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_COMPUTE,
-	//                             rview::core::globalPipelineLayout, 0, 1,
-	//                             &rview::core::globalBindlessSet, 0, nullptr);
-
-	//     vkpushconstants push{};
-	//     push.frameIndex = rview::core::currentFrame;
-	//     vkCmdPushConstants(c, rview::core::globalPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(vkpushconstants), &push);
-
-	//     uint32_t groupCount = (static_cast<uint32_t>(num_instances) + 63) / 64;
-	//     vkCmdDispatch(c, groupCount, 1, 1);
-	// });
-
-
 	// let that sync in
 	currentgraph.add_pass([&mvkobjs, c, imgidx] {
-
-
-		VkBufferMemoryBarrier2 particleBarrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
-		particleBarrier.buffer = particle::ssbobuffsnallocs.at(0).first;
-		particleBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-		particleBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
-		particleBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
-		particleBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-		particleBarrier.size = VK_WHOLE_SIZE;
-		particleBarrier.offset = 0;
 
 		// VkBufferMemoryBarrier2 indirectBarrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
 		// indirectBarrier.buffer = mvkobjs.globalIndirectBuffers[rview::core::currentFrame].buffer;
@@ -1861,11 +1814,11 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		depthBarrier.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
 		depthBarrier.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
 
-		VkBufferMemoryBarrier2 bufferBarriers[] = {particleBarrier};
+		VkBufferMemoryBarrier2 bufferBarriers[] = {}; // just idling
 		VkImageMemoryBarrier2 imageBarriers[] = {imageBarrier, depthBarrier};
 
 		VkDependencyInfo dep{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
-		dep.bufferMemoryBarrierCount = 1; // 2
+		dep.bufferMemoryBarrierCount = 0;
 		dep.pBufferMemoryBarriers = bufferBarriers;
 		dep.imageMemoryBarrierCount = 2;
 		dep.pImageMemoryBarriers = imageBarriers;
@@ -1978,18 +1931,6 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		                &scissor);
 
 
-		vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_GRAPHICS, particle::gpline);
-
-		vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_GRAPHICS, rview::core::globalPipelineLayout, 0, 1, &rview::core::globalBindlessSet, 0, nullptr);
-
-
-		vkpushconstants push{};
-		push.posIdx = particle::bindless_idx;
-		vkCmdPushConstants(c, rview::core::globalPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(vkpushconstants), &push);
-
-		vkCmdDraw(c, particle::Ps.size(), 1, 0, 0);
-
-
 
 		vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_GRAPHICS, playout::skinnedpline);
 		vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_GRAPHICS, rview::core::globalPipelineLayout, 0, 1, &rview::core::globalBindlessSet, 0, nullptr);
@@ -2003,7 +1944,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		    rview::core::g_indirectCommandBuffers[rview::core::currentFrame].buffer, 0,
 		    rview::core::g_indirectCountBuffers[rview::core::currentFrame].buffer, 0,
 		    100000, sizeof(VkDrawIndirectCommand));
-		
+
 		// TODO
 		ui::createdbgframe(mvkobjs);
 		ui::render(mvkobjs, c);

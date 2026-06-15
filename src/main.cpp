@@ -14,7 +14,7 @@ __attribute__((force_align_arg_pointer))
 int main(int c, char** v) {
 
 	std::unique_ptr<rvkbucket> mvk = std::make_unique<rvkbucket>();
-	vkdebug::set_thread_name("main");
+	rdebug::set_thread_name("main");
 
 	if (vkwind::init("RViewer", *mvk)) {
 		vkwind::frameupdate(*mvk);

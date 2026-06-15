@@ -39,9 +39,11 @@ inline void save_state_to_json() {
 		std::cerr << "Failed to open state.json for writing.\n";
 		return;
 	}
+
 	out << "{\n  \"models\": [\n";
 	std::map<uint32_t, std::vector<glm::vec3>> model_instances;
 	uint32_t active_instances = g_scene.entity_count.load(std::memory_order_relaxed);
+
 	for (uint32_t i = 0; i < active_instances; ++i) {
 		uint32_t modelID = g_scene.modelIDs[i];
 
@@ -49,7 +51,9 @@ inline void save_state_to_json() {
 
 		model_instances[modelID].push_back(g_scene.worldPositions[i]);
 	}
+
 	bool first_model = true;
+
 	for (auto const& [modelID, positions] : model_instances) {
 		if (model_manager::g_model_filepaths.find(modelID) == model_manager::g_model_filepaths.end()) continue;
 
@@ -63,6 +67,7 @@ inline void save_state_to_json() {
 		out << "      \"file\": \"" << filepath << "\",\n";
 		out << "      \"count\": " << positions.size() << ",\n";
 		out << "      \"positions\": [\n";
+
 		for (size_t p = 0; p < positions.size(); ++p) {
 			out << "        [" << positions[p].x << ", " << positions[p].y << ", " << positions[p].z << "]";
 
@@ -70,6 +75,7 @@ inline void save_state_to_json() {
 
 			out << "\n";
 		}
+
 		out << "      ],\n";
 		out << "      \"shaders\": {\n";
 		out << "        \"vx\": \"shaders/vx.spv\",\n";
@@ -78,6 +84,7 @@ inline void save_state_to_json() {
 		out << "      }\n";
 		out << "    }";
 	}
+
 	out << "\n  ]\n}\n";
 }
 };
@@ -141,7 +148,6 @@ void copy_engine_to_obs(VkCommandBuffer cmdBuffer, rvkbucket& mvkobjs, VkImage e
 void immediate_submit(rvkbucket& mvkobjs, std::function<void(VkCommandBuffer cbuffer)>&& fn);
 bool init(rvkbucket& mvkobjs);
 void setsize(rvkbucket& mvkobjs, unsigned int w, unsigned int h);
-bool uploadfordraw(rvkbucket& mvkobjs, VkCommandBuffer cbuffer);
 bool draw(rvkbucket& mvkobjs);
 void cleanup(rvkbucket& mvkobjs);
 void handleclick();

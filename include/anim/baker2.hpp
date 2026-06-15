@@ -33,6 +33,7 @@ inline void BakeSkeleton(const fastgltf::Asset& asset, ParsedSkeleton& skel, siz
 	if (asset.skins.size() > skinIndex) {
 		jointCount = static_cast<uint32_t>(asset.skins[skinIndex].joints.size());
 	}
+
 	skel.allocate(gltfNodeCount, jointCount, gltfNodeCount);
 
 	auto gltfToTopo = std::make_unique<int32_t[]>(gltfNodeCount);

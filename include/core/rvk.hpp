@@ -255,7 +255,7 @@ struct alignas(64) rdev {
 	StagingBelt sbelt{};
 
 	std::array<VkDescriptorPool, 1> dpools = {VK_NULL_HANDLE};
-	std::array<VkSampler, 4> samplerz{};
+	std::array<VkSampler, 2> samplerz{};
 };
 
 struct alignas(64) rwind {

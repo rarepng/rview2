@@ -3,7 +3,7 @@
 #include <string_view>
 #include <tracy/Tracy.hpp>
 
-namespace vkdebug {
+namespace rdebug {
 
 constexpr bool is_active = RVIEW_DEBUG;
 

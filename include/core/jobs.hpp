@@ -130,7 +130,7 @@ private:
 	std::vector<std::thread> workers;
 
 	void worker_loop() {
-		vkdebug::set_thread_name("worker");
+		rdebug::set_thread_name("worker");
 
 		while (running.load(std::memory_order_acquire)) {
 			jobs_available.acquire();
@@ -281,35 +281,39 @@ private:
 
 inline teardown g_exitQ;
 struct ScopedJobGuard {
-    std::atomic<int>& counter;
-    
-    ScopedJobGuard(std::atomic<int>& c) : counter(c) {}
-    ~ScopedJobGuard() {
-        counter.fetch_sub(1, std::memory_order_release);
-    }
-    ScopedJobGuard(const ScopedJobGuard&) = delete;
-    ScopedJobGuard& operator=(const ScopedJobGuard&) = delete;
+	std::atomic<int>& counter;
+
+	ScopedJobGuard(std::atomic<int>& c) : counter(c) {}
+	~ScopedJobGuard() {
+		counter.fetch_sub(1, std::memory_order_release);
+	}
+	ScopedJobGuard(const ScopedJobGuard&) = delete;
+	ScopedJobGuard& operator=(const ScopedJobGuard&) = delete;
 };
 class JobStringArena {
-    std::vector<char> buffer;
-    std::atomic<size_t> offset{0};
+	std::vector<char> buffer;
+	std::atomic<size_t> offset{0};
 
 public:
-    JobStringArena(size_t size) { buffer.resize(size); }
-    const char* push_string(std::string_view str) {
-        size_t start = offset.fetch_add(str.size() + 1, std::memory_order_relaxed);
-        
-        // add user friendly ":) file path is too long" or some &$#@
-        assert(start + str.size() + 1 <= buffer.size() && "Arena out of memory!");
+	JobStringArena(size_t size) {
+		buffer.resize(size);
+	}
+	const char* push_string(std::string_view str) {
+		size_t start = offset.fetch_add(str.size() + 1, std::memory_order_relaxed);
 
-        char* dest = &buffer[start];
-        memcpy(dest, str.data(), str.size());
-        dest[str.size()] = '\0';
+		// add user friendly ":) file path is too long" or some &$#@
+		assert(start + str.size() + 1 <= buffer.size() && "Arena out of memory!");
 
-        return dest;
-    }
+		char* dest = &buffer[start];
+		memcpy(dest, str.data(), str.size());
+		dest[str.size()] = '\0';
 
-    void reset() { offset.store(0, std::memory_order_relaxed); }
+		return dest;
+	}
+
+	void reset() {
+		offset.store(0, std::memory_order_relaxed);
+	}
 };
 
 inline JobStringArena g_job_strings(1024 * 1024);

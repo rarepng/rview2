@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <VkBootstrap.h>
 #include <pline.hpp>
+#include <core/jobs.hpp>
 
 
 namespace playout {
@@ -230,6 +231,15 @@ inline bool init_bindless(rvkbucket& objs) {
 		return false;
 	}
 
+	g_exitQ.enqueue(TeardownPhase::device, [device = objs.vkdevice.device,
+	                                        layout = rview::core::globalBindlessLayout,
+	                                        pool = rview::core::globalBindlessPool,
+	playout = rview::core::globalPipelineLayout]() {
+		vkDestroyPipelineLayout(device, playout, nullptr);
+		vkDestroyDescriptorPool(device, pool, nullptr);
+		vkDestroyDescriptorSetLayout(device, layout, nullptr);
+	});
+
 	return true;
 }
 inline void update_asset_descriptors(rvkbucket& mvkobjs) {
@@ -306,10 +316,6 @@ inline void update_asset_descriptors(rvkbucket& mvkobjs) {
 		std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
 		vkUpdateDescriptorSets(mvkobjs.vkdevice.device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 	}
-}
-
-inline void cleanup(rvkbucket &mvkobjs, VkPipelineLayout &vkplayout) {
-	vkDestroyPipelineLayout(mvkobjs.vkdevice.device, vkplayout, nullptr);
 }
 
 };

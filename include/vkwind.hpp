@@ -125,7 +125,7 @@ find_capable_gpu(rvkbucket& mvkobjs) noexcept {
 	instbuild.set_app_name("rview2")
 	         .require_api_version(1, 4);
 
-	if constexpr (vkdebug::is_active) {
+	if constexpr (rdebug::is_active) {
 		instbuild.request_validation_layers(true)
 		         .use_default_debug_messenger()
 		         .set_debug_callback(debugCallback);
@@ -145,7 +145,7 @@ find_capable_gpu(rvkbucket& mvkobjs) noexcept {
 	                .require_present(false)
 	                .select();
 
-	if (vkdebug::is_active) {
+	if constexpr (rdebug::is_active) {
 		if (!phys_ret) {
 			std::cerr << "[Debug] find_capable_gpu FAILED: " << phys_ret.error().message() << std::endl;
 		} else {
@@ -195,7 +195,9 @@ inline bool init(std::string title, rvkbucket& mvkobjs) {
 
 	mvkobjs.rdmode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
 
-	std::cout << SDL_GetError() << std::endl;
+	if constexpr (rdebug::is_active) {
+		std::cout << SDL_GetError() << std::endl;
+	}
 
 	auto candidate_ret = find_capable_gpu(mvkobjs);
 
@@ -244,7 +246,7 @@ inline void frameupdate(rvkbucket& mvkobjs) {
 
 	vkrenderer::initscene(mvkobjs);
 	vkrenderer::immediate_submit(mvkobjs, [&](VkCommandBuffer cbuffer) {
-		vkrenderer::uploadfordraw(mvkobjs, cbuffer);
+		// nothing now
 	});
 
 	const double perf_freq = static_cast<double>(SDL_GetPerformanceFrequency());
