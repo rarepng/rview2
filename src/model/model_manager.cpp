@@ -49,7 +49,7 @@ StagingModelData parse_model_to_staging(std::string_view filepath) {
 	StagingModelData staging;
 	staging.name = filepath;
 
-	fastgltf::Parser parser(fastgltf::Extensions::None);
+	fastgltf::Parser parser(fastgltf::Extensions::KHR_texture_basisu);
 	auto mappedFile = fastgltf::MappedGltfFile::FromPath(filepath);
 
 	if (!mappedFile) return staging;
@@ -277,6 +277,16 @@ StagingModelData parse_model_to_staging(std::string_view filepath) {
 
 				if (slot == 0 || slot == 1) {
 					fastgltf::copyFromAccessor<glm::vec3>(asset, acc, outPrim.vertexBytes[slot].data());
+					if (slot == 0 && acc.count > 0) {
+						glm::vec3 pmin(std::numeric_limits<float>::max());
+						glm::vec3 pmax(std::numeric_limits<float>::lowest());
+						glm::vec3* posArray = reinterpret_cast<glm::vec3*>(outPrim.vertexBytes[slot].data());
+						for (size_t v = 0; v < acc.count; ++v) {
+							pmin = glm::min(pmin, posArray[v]);
+							pmax = glm::max(pmax, posArray[v]);
+						}
+						outPrim.meta.setAABB(pmin, pmax);
+					}
 				} else if (slot == 2) {
 					fastgltf::copyFromAccessor<glm::vec4>(asset, acc, outPrim.vertexBytes[slot].data());
 				} else if (slot == 3) {
@@ -690,10 +700,33 @@ uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, Stagi
 	{
 		std::lock_guard<std::mutex> lock(g_assets.registryMutex);
 		assignedModelID = static_cast<uint32_t>(g_assets.models.size());
-		g_assets.models.push_back({ static_cast<uint32_t>(g_assets.primitives.size()), totalPrimitiveCount });
 
 		uint32_t globalByteOffset = static_cast<uint32_t>(g_assets.globalRawIndices.size());
 		uint32_t globalMorphOffset = static_cast<uint32_t>(g_assets.globalMorphBytes.size());
+
+		glm::vec3 modelMin(std::numeric_limits<float>::max());
+		glm::vec3 modelMax(std::numeric_limits<float>::lowest());
+		for (auto& meta : finalPrimitives) {
+			glm::vec3 primMin(meta.aabbMinX, meta.aabbMinY, meta.aabbMinZ);
+			glm::vec3 primMax(meta.aabbMaxX, meta.aabbMaxY, meta.aabbMaxZ);
+			modelMin = glm::min(modelMin, primMin);
+			modelMax = glm::max(modelMax, primMax);
+			meta.indexByteOffset += globalByteOffset;
+			if (meta.morphDeltaIdx != 0xFFFFFFFF) {
+				meta.morphDeltaIdx += globalMorphOffset;
+			}
+			g_assets.primitives.push_back(meta);
+		}
+		if (totalPrimitiveCount == 0) {
+			modelMin = glm::vec3(0.0f);
+			modelMax = glm::vec3(0.0f);
+		}
+		ModelMetadata newModel{};
+		newModel.firstPrimitiveIndex = static_cast<uint32_t>(g_assets.primitives.size() - totalPrimitiveCount);
+		newModel.primitiveCount = totalPrimitiveCount;
+		newModel.setAABB(modelMin, modelMax);
+		
+		g_assets.models.push_back(newModel);
 
 		g_assets.globalRawIndices.insert(
 		    g_assets.globalRawIndices.end(),

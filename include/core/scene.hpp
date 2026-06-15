@@ -54,11 +54,23 @@ struct PrimitiveMetadata {
 	uint32_t morphDeltaIdx = 0xFFFFFFFF;
 	uint32_t morphFormat = 0;
 	uint32_t vertexCount = 0;
+	float aabbMinX = 0.0f; float aabbMinY = 0.0f; float aabbMinZ = 0.0f;
+	float aabbMaxX = 0.0f; float aabbMaxY = 0.0f; float aabbMaxZ = 0.0f;
+	void setAABB(glm::vec3 min, glm::vec3 max) {
+		aabbMinX = min.x; aabbMinY = min.y; aabbMinZ = min.z;
+		aabbMaxX = max.x; aabbMaxY = max.y; aabbMaxZ = max.z;
+	}
 };
 
 struct ModelMetadata {
 	uint32_t firstPrimitiveIndex;
 	uint32_t primitiveCount;
+	float aabbMinX = 0.0f; float aabbMinY = 0.0f; float aabbMinZ = 0.0f;
+	float aabbMaxX = 0.0f; float aabbMaxY = 0.0f; float aabbMaxZ = 0.0f;
+	void setAABB(glm::vec3 min, glm::vec3 max) {
+		aabbMinX = min.x; aabbMinY = min.y; aabbMinZ = min.z;
+		aabbMaxX = max.x; aabbMaxY = max.y; aabbMaxZ = max.z;
+	}
 };
 
 // The Global Asset Database (Static Data)

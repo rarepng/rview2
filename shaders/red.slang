@@ -108,11 +108,19 @@ struct PrimitiveMetadata {
   uint morphDeltaIdx;
   uint morphFormat;
   uint vertexCount;
+  float aabbMinX; float aabbMinY; float aabbMinZ;
+  float aabbMaxX; float aabbMaxY; float aabbMaxZ;
+  float3 GetMin() { return float3(aabbMinX, aabbMinY, aabbMinZ); }
+  float3 GetMax() { return float3(aabbMaxX, aabbMaxY, aabbMaxZ); }
 };
 
 struct ModelMetadata {
   uint firstPrimitiveIndex;
   uint primitiveCount;
+  float aabbMinX; float aabbMinY; float aabbMinZ;
+  float aabbMaxX; float aabbMaxY; float aabbMaxZ;
+  float3 GetMin() { return float3(aabbMinX, aabbMinY, aabbMinZ); }
+  float3 GetMax() { return float3(aabbMaxX, aabbMaxY, aabbMaxZ); }
 };
 
 struct VkDrawIndirectCommand {
@@ -552,6 +560,57 @@ float4 pxmain(PXin in) : SV_Target {
 
     return float4(color, alpha);
 }
+bool IsVisible(float3 aabbMin, float3 aabbMax, float4x4 mvp) {
+  float3 center = (aabbMin + aabbMax) * 0.5f;
+  float3 extents = (aabbMax - aabbMin) * 0.5f;
+  float4 clipCenter = mul(mvp, float4(center, 1.0f));
+  float4x4 absMvp;
+  absMvp[0] = abs(mvp[0]);
+  absMvp[1] = abs(mvp[1]);
+  absMvp[2] = abs(mvp[2]);
+  absMvp[3] = abs(mvp[3]);
+  float4 clipExtent = mul(absMvp, float4(extents, 0.0f));
+  float minX = clipCenter.x - clipExtent.x;
+  float maxX = clipCenter.x + clipExtent.x;
+  float minY = clipCenter.y - clipExtent.y;
+  float maxY = clipCenter.y + clipExtent.y;
+  float minZ = clipCenter.z - clipExtent.z;
+  float maxZ = clipCenter.z + clipExtent.z;
+  float maxW = clipCenter.w + clipExtent.w;
+
+  if (maxW <= 0.01f) return false;
+  if (maxX < -maxW || minX > maxW) return false;
+  if (maxY < -maxW || minY > maxW) return false;
+  if (maxZ < 0.0f || minZ > maxW) return false;
+
+  return true;
+}
+
+bool IsVisibleTESTING(float3 aabbMin, float3 aabbMax, float4x4 mvp) {
+  float3 center = (aabbMin + aabbMax) * 0.5f;
+  float3 extents = (aabbMax - aabbMin) * 0.5f;
+  float4 clipCenter = mul(mvp, float4(center, 1.0f));
+  float4x4 absMvp;
+  absMvp[0] = abs(mvp[0]);
+  absMvp[1] = abs(mvp[1]);
+  absMvp[2] = abs(mvp[2]);
+  absMvp[3] = abs(mvp[3]);
+  float4 clipExtent = mul(absMvp, float4(extents, 0.0f));
+  float minX = clipCenter.x - clipExtent.x;
+  float maxX = clipCenter.x + clipExtent.x;
+  float minY = clipCenter.y - clipExtent.y;
+  float maxY = clipCenter.y + clipExtent.y;
+  float minZ = clipCenter.z - clipExtent.z;
+  float maxZ = clipCenter.z + clipExtent.z;
+  float maxW = clipCenter.w + clipExtent.w;
+
+  if (maxW <= 0.01f) return false;
+  if (minZ > maxW) return false;
+  if (minX > 0.0f || maxX < -maxW) return false;
+  if (minY > 0.0f || maxY < -maxW) return false;
+
+  return true;
+}
 
 [shader("compute")]
 [numthreads(64, 1, 1)]
@@ -561,23 +620,39 @@ void cxmain(uint3 threadID: SV_DispatchThreadID) {
   if (instanceID >= pc.stride) return;
 
   GPUInstanceData inst = instanceData[pc.frameIndex][instanceID];
-  
   if (inst.modelID == 0xFFFFFFFF) return;
 
-  // frustum culling will go here (HOPEFULLY)
+  float4x4 vp = mul(cammats.projection, cammats.view);
+  float4x4 mvp = mul(vp, inst.worldTransform);
 
   ModelMetadata model = modelRegistry[inst.modelID];
 
+  // if (!IsVisibleTESTING(model.GetMin(), model.GetMax(), mvp)) return;
+  if (!IsVisible(model.GetMin(), model.GetMax(), mvp)) return;
+
   for (uint i = 0; i < model.primitiveCount; i++) {
     if (i > 100) break;
+
+    uint globalPrimID = model.firstPrimitiveIndex + i;
+    PrimitiveMetadata prim = primitiveRegistry[globalPrimID];
+
+    float3 minB = prim.GetMin();
+    float3 maxB = prim.GetMax();
+
+    if (inst.isSkinned == 1) {
+      float3 center = (minB + maxB) * 0.8f;
+      float3 size = (maxB - minB) * 1.25f;
+      minB = center - size;
+      maxB = center + size;
+    }
+
+    // if (!IsVisibleTESTING(minB, maxB, mvp)) continue;
+    if (!IsVisible(minB, maxB, mvp)) continue;
 
     uint cmdIndex;
     InterlockedAdd(indirectDrawCount[pc.frameIndex][0], 1, cmdIndex);
 
     if (cmdIndex >= 100000) return;
-
-    uint globalPrimID = model.firstPrimitiveIndex + i;
-    PrimitiveMetadata prim = primitiveRegistry[globalPrimID];
 
     uint packedID = (instanceID << 16) | (globalPrimID & 0xFFFF);
 
