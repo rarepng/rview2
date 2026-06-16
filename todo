@@ -37,3 +37,4 @@ feedback place (in the offchance i ever get any)
 hot reloading dll (separate for dev cycle)
 hot reloading shaders
 apple clang preset(s) X_X [probably never let's be real]
+launcher > core (different cpu arch) > headless (same) ??

@@ -406,7 +406,7 @@ bool vkrenderer::initcpuQs(rvkbucket& mvkobjs) {
 }
 bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 	if constexpr (rdemo::is_active) {
-		const auto& scene = rdemo::SCENES[0];
+		const auto& scene = rdemo::SCENES[1];
 
 		for (const auto& spawn : scene.spawns) {
 			const char* fname = g_job_strings.push_string(spawn.filepath);

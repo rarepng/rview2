@@ -9,199 +9,43 @@
       "name": "base",
       "hidden": true,
       "description": "minimum",
-      "generator": "Ninja",
+      "generator": "Ninja Multi-Config",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "installDir": "${sourceDir}/dist/${presetName}",
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "gcc",
-        "CMAKE_CXX_COMPILER": "g++",
-        "CMAKE_CXX_STANDARD": "26",
-        "CMAKE_BUILD_TYPE": "${presetName}",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     },
     {
-      "name": "Debug",
+      "name": "gcc",
       "inherits": "base",
-      "displayName": "Debug",
-      "description": "Debug build with GCC, Ninja, C++26"
+      "displayName": "GCC",
+      "cacheVariables": { "CMAKE_C_COMPILER": "gcc", "CMAKE_CXX_COMPILER": "g++" }
     },
     {
-      "name": "Release",
+      "name": "clang",
       "inherits": "base",
-      "displayName": "Release",
-      "description": "Release build with GCC, Ninja, C++26"
-    },
-    {
-      "name": "RelWithDebInfo",
-      "inherits": "base",
-      "displayName": "Release w Debug Info",
-      "description": "Release with GDB Symbols"
-    },
-    {
-      "name": "Distribution",
-      "inherits": "base",
-      "displayName": "dist",
-      "description": " HW RT no AVX512"
-    },
-    {
-      "name": "BleedingEdge",
-      "inherits": "base",
-      "displayName": "bleeding edge",
-      "description": "was going to be the avx-512 builds"
-    },
-    {
-      "name": "sanitize",
-      "inherits": "base",
-      "displayName": "Sanitize ASan",
-      "description": "for finding memory corruptions"
-    },
-    {
-      "name": "clanged",
-      "inherits": "base",
-      "displayName": "clang++uml",
-      "description": "diagrams and other useless stuff",
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_CXX_FLAGS": "-DCLANG_UML"
-      }
-    },
-    {
-      "name": "realclang",
-      "inherits": "base",
-      "displayName": "clang++",
-      "description": "clang :(",
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
-    },
-    {
-      "name": "realclangREL",
-      "inherits": "base",
-      "displayName": "clang++rel",
-      "description": "clang release",
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_BUILD_TYPE": "Release"
-      }
-    },
-    {
-      "name": "realclangRELDBGINFO",
-      "inherits": "base",
-      "displayName": "clang++reldbginfo",
-      "description": "clang release with debug symbols",
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
-      }
-    },
-    {
-      "name": "realclangDIST",
-      "inherits": "base",
-      "displayName": "clang++dist",
-      "description": "clang distribution",
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_BUILD_TYPE": "Distribution"
-      }
-    },
-    {
-      "name": "realclang512",
-      "inherits": "base",
-      "displayName": "clang++512",
-      "description": "clang AVX512",
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_BUILD_TYPE": "BleedingEdge"
-      }
-    },
-    {
-      "name": "realclangsanitize",
-      "inherits": "base",
-      "displayName": "clang++san",
-      "description": "clang sanitize",
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_BUILD_TYPE": "sanitize"
-      }
-    },
-    {
-      "name": "mermaid",
-      "inherits": "base",
-      "displayName": "mermaid",
-      "description": "gcc mermaid"
-    },
-    {
-      "name": "MinSizeRel",
-      "inherits": "base",
-      "displayName": "minrel",
-      "description": "dynamic min release"
+      "displayName": "Clang",
+      "description": "GCC ABI and libraries are critical",
+      "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" }
     }
   ],
   "buildPresets": [
-    {
-      "name": "Debug",
-      "configurePreset": "Debug"
-    },
-    {
-      "name": "Release",
-      "configurePreset": "Release"
-    },
-    {
-      "name": "RelWithDebInfo",
-      "configurePreset": "RelWithDebInfo"
-    },
-    {
-      "name": "Distribution",
-      "configurePreset": "Distribution"
-    },
-    {
-      "name": "BleedingEdge",
-      "configurePreset": "BleedingEdge"
-    },
-    {
-      "name": "sanitize",
-      "configurePreset": "sanitize"
-    },
-    {
-      "name": "clanged",
-      "configurePreset": "clanged"
-    },
-    {
-      "name": "realclang",
-      "configurePreset": "realclang"
-    },
-    {
-      "name": "realclangREL",
-      "configurePreset": "realclangREL"
-    },
-    {
-      "name": "realclangRELDBGINFO",
-      "configurePreset": "realclangRELDBGINFO"
-    },
-    {
-      "name": "realclang512",
-      "configurePreset": "realclang512"
-    },
-    {
-      "name": "realclangsanitize",
-      "configurePreset": "realclangsanitize"
-    },
-    {
-      "name": "mermaid",
-      "configurePreset": "mermaid"
-    },
-    {
-      "name": "MinSizeRel",
-      "configurePreset": "MinSizeRel"
-    }
+    { "name": "Debug", "configurePreset": "gcc", "configuration": "Debug" },
+    { "name": "Release", "configurePreset": "gcc", "configuration": "Release" },
+    { "name": "RelWithDebInfo", "configurePreset": "gcc", "configuration": "RelWithDebInfo" },
+    { "name": "Distribution", "configurePreset": "gcc", "configuration": "Distribution" },
+    { "name": "BleedingEdge", "configurePreset": "gcc", "configuration": "BleedingEdge" },
+    { "name": "sanitize", "configurePreset": "gcc", "configuration": "sanitize" },
+    { "name": "mermaid", "configurePreset": "gcc", "configuration": "mermaid" },
+    { "name": "MinSizeRel", "configurePreset": "gcc", "configuration": "MinSizeRel" },
+    { "name": "realclang", "configurePreset": "clang", "configuration": "Debug" },
+    { "name": "realclangREL", "configurePreset": "clang", "configuration": "Release" },
+    { "name": "realclangRELDBGINFO", "configurePreset": "clang", "configuration": "RelWithDebInfo" },
+    { "name": "realclangDIST", "configurePreset": "clang", "configuration": "Distribution" },
+    { "name": "realclang512", "configurePreset": "clang", "configuration": "BleedingEdge" },
+    { "name": "realclangsanitize", "configurePreset": "clang", "configuration": "sanitize" },
+    { "name": "clanged", "configurePreset": "clang", "configuration": "clanged" },
+    { "name": "demo", "configurePreset": "clang", "configuration": "BleedingEdge"}
   ]
 }

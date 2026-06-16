@@ -36,6 +36,17 @@ if(NOT COMMAND CPMAddPackage)
     message(FATAL_ERROR "CPM broke again :(")
 endif()
 
+get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(is_multi_config)
+    set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo;Distribution;BleedingEdge;sanitize;clanged;mermaid;MinSizeRel" CACHE STRING "build types & other ghosts" FORCE)
+endif()
+
+set(CMAKE_MAP_IMPORTED_CONFIG_BLEEDINGEDGE Release RelWithDebInfo MinSizeRel Debug "")
+set(CMAKE_MAP_IMPORTED_CONFIG_DISTRIBUTION Release RelWithDebInfo MinSizeRel Debug "")
+set(CMAKE_MAP_IMPORTED_CONFIG_SANITIZE Debug RelWithDebInfo Release "")
+set(CMAKE_MAP_IMPORTED_CONFIG_CLANGED Debug Release "")
+set(CMAKE_MAP_IMPORTED_CONFIG_MERMAID Debug Release "")
+
 # brute force &#@! it we ball
 string(APPEND CMAKE_SHARED_LINKER_FLAGS " -static")
 string(APPEND CMAKE_EXE_LINKER_FLAGS " -static")
@@ -328,11 +339,15 @@ if(CMAKE_BUILD_TYPE STREQUAL "x") # scrapped
 else()
 
 add_executable(rview2 ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_HEADERS})
+# add_executable(rview2_headless ${PROJECT_SOURCES} ${PROJECT_HEADERS})
+# target_compile_definitions(rview2_headless PRIVATE RVIEW_HEADLESS=1)
 
 include(CMakeLocal.txt OPTIONAL)
 
 target_compile_definitions(rview2 PRIVATE
 "RVIEW_DEBUG=$<IF:$<CONFIG:Debug>,1,0>"
+"RVIEW_DEMO=$<BOOL:${RVIEW_DEMO}>"
+
 )
 
 target_link_directories(rview2 PRIVATE
@@ -346,6 +361,7 @@ target_compile_definitions(rview2 PRIVATE
     STEAMNETWORKINGSOCKETS_STATIC_LINK=1
     ABSL_OPTION_USE_STD_ORDERING=0
     ABSL_USES_STD_ORDERING=0
+    RVIEW_HEADLESS=0
 )
 
 
@@ -527,10 +543,10 @@ set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINA
 set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/shaders)
 
 
-install(TARGETS rview2 RUNTIME DESTINATION . CONFIGURATIONS Release Distribution BleedingEdge MinSizeRel)
-install(FILES ${ALL_SHADER_SPV_FILES} DESTINATION shaders)
-install(DIRECTORY "${PROJECT_SOURCE_DIR}/resources/" DESTINATION resources)
-install(FILES "${PROJECT_SOURCE_DIR}/boot.json" DESTINATION .)
+install(TARGETS rview2 RUNTIME DESTINATION $<CONFIG> CONFIGURATIONS Release Distribution BleedingEdge MinSizeRel)
+install(FILES ${ALL_SHADER_SPV_FILES} DESTINATION $<CONFIG>/shaders)
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/resources/" DESTINATION $<CONFIG>/resources)
+install(FILES "${PROJECT_SOURCE_DIR}/boot.json" DESTINATION $<CONFIG>)
 
 if(WIN32)
     get_filename_component(RVIEW2_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
@@ -539,7 +555,7 @@ if(WIN32)
         message(STATUS \"resolving dynamic libraries for $<TARGET_FILE_NAME:rview2>...\")
         
         file(GET_RUNTIME_DEPENDENCIES
-            EXECUTABLES \"$<TARGET_FILE:rview2>\"
+            EXECUTABLES \"\${CMAKE_INSTALL_PREFIX}/$<CONFIG>/$<TARGET_FILE_NAME:rview2>\"
             DIRECTORIES \"${RVIEW2_BIN_DIR}\"
             RESOLVED_DEPENDENCIES_VAR RESOLVED_DEPS
             UNRESOLVED_DEPENDENCIES_VAR UNRESOLVED_DEPS
@@ -557,7 +573,7 @@ if(WIN32)
             
             if(NOT LOWER_DEP_NAME MATCHES \"^(kernel32|kernelbase|user32|msvcrt|msvcp.*|advapi32|ws2_32|shell32|setupapi|ole32|oleaut32|gdi32|imm32|version|winmm|crypt32|dbghelp|iphlpapi|vulkan-1|ntdll|combase|sechost|rpcrt4|win32u|cfgmgr32)\\\\.dll$\")
                 message(STATUS \"deploying \${DEP_NAME}\")
-                file(INSTALL DESTINATION \"\${CMAKE_INSTALL_PREFIX}\" TYPE SHARED_LIBRARY FILES \"\${DEP}\")
+                file(INSTALL DESTINATION \"\${CMAKE_INSTALL_PREFIX}/$<CONFIG>\" TYPE SHARED_LIBRARY FILES \"\${DEP}\")
             endif()
         endforeach()
     "

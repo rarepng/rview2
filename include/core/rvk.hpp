@@ -307,17 +307,12 @@ constexpr bool is_windows = true;
 #else
 constexpr bool is_windows = false;
 #endif
-// TODO inject with cmake
-#ifdef HEADLESS
-constexpr bool headless = true;
-#else
-constexpr bool headless = false;
-#endif
+constexpr bool headless = RVIEW_HEADLESS;
 // constexpr const char* ext_memory_win32 = "VK_KHR_external_memory_win32";
 };
 };
 namespace anim {
-inline constexpr float samplerate{6.0f};
+inline constexpr float samplerate{120.0f}; // i have to separate the sample rate from the baking rate at some poiunt
 static constexpr uint32_t MAX_IK_CHAINS = 2;
 };
 namespace io {
