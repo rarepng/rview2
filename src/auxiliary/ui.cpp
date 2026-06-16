@@ -417,44 +417,47 @@ void ui::createdbgframe(rvkbucket &renderData) {
 				}
 
 				auto it = model_manager::g_cpuModels.find(srcModelID);
-                if (it != model_manager::g_cpuModels.end()) {
-                    it->second.refCount++;
-                }
+
+				if (it != model_manager::g_cpuModels.end()) {
+					it->second.refCount++;
+				}
+
 				g_selected_entity = new_dense_idx;
 			}
 		}
 
-		
+
 		ImGui::Spacing();
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.1f, 0.1f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.1f, 0.1f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
 
-        if (ImGui::Button("Delete Instance", ImVec2(-1, 30))) {
-            uint32_t sparse_idx = model_manager::g_registry.dense_to_sparse[g_selected_entity];
-            uint32_t gen = model_manager::g_registry.generations[sparse_idx];
-            model_manager::Entity ent = { (gen << 20) | sparse_idx };
-            
-            uint32_t targetModelID = g_scene.modelIDs[g_selected_entity];
-            vkrenderer::g_kill_queue.push_back({ent, targetModelID});
-            
-            g_selected_entity = 0xFFFFFFFF;
-        }
+		if (ImGui::Button("Delete Instance", ImVec2(-1, 30))) {
+			uint32_t sparse_idx = model_manager::g_registry.dense_to_sparse[g_selected_entity];
+			uint32_t gen = model_manager::g_registry.generations[sparse_idx];
+			model_manager::Entity ent = { (gen << 20) | sparse_idx };
 
-        if (ImGui::Button("Delete ALL Instances of this Model", ImVec2(-1, 30))) {
-            uint32_t targetModelID = g_scene.modelIDs[g_selected_entity];
-            uint32_t active_count = g_scene.entity_count.load(std::memory_order_relaxed);
+			uint32_t targetModelID = g_scene.modelIDs[g_selected_entity];
+			vkrenderer::g_kill_queue.push_back({ent, targetModelID});
 
-            for (uint32_t i = 0; i < active_count; ++i) {
-                if (g_scene.modelIDs[i] == targetModelID) {
-                    uint32_t sparse_idx = model_manager::g_registry.dense_to_sparse[i];
-                    uint32_t gen = model_manager::g_registry.generations[sparse_idx];
-                    vkrenderer::g_kill_queue.push_back({ { (gen << 20) | sparse_idx }, targetModelID });
-                }
-            }
-            g_selected_entity = 0xFFFFFFFF;
-        }
+			g_selected_entity = 0xFFFFFFFF;
+		}
 
-        ImGui::PopStyleColor(2);
+		if (ImGui::Button("Delete ALL Instances of this Model", ImVec2(-1, 30))) {
+			uint32_t targetModelID = g_scene.modelIDs[g_selected_entity];
+			uint32_t active_count = g_scene.entity_count.load(std::memory_order_relaxed);
+
+			for (uint32_t i = 0; i < active_count; ++i) {
+				if (g_scene.modelIDs[i] == targetModelID) {
+					uint32_t sparse_idx = model_manager::g_registry.dense_to_sparse[i];
+					uint32_t gen = model_manager::g_registry.generations[sparse_idx];
+					vkrenderer::g_kill_queue.push_back({ { (gen << 20) | sparse_idx }, targetModelID });
+				}
+			}
+
+			g_selected_entity = 0xFFFFFFFF;
+		}
+
+		ImGui::PopStyleColor(2);
 
 
 	}
@@ -632,70 +635,78 @@ void ui::addchat(std::string s) {
 }
 
 void ui::createdropwidget(rvkbucket& mvkobjs, VkCommandBuffer c) {
-    if (vkrenderer::g_activeDrops.empty()) return;
+	if (vkrenderer::g_activeDrops.empty()) return;
 
-    ImGui::SetNextWindowBgAlpha(0.9f);
-    
-    if (ImGui::Begin("Pending Spawns", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
-        
-        bool allParsed = true;
+	ImGui::SetNextWindowBgAlpha(0.9f);
 
-        for (int i = (int)vkrenderer::g_activeDrops.size() - 1; i >= 0; --i) {
-            auto& drop = vkrenderer::g_activeDrops[i];
-            allParsed &= drop.parseFinished;
+	if (ImGui::Begin("Pending Spawns", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
 
-            ImGui::PushID(drop.dropID);
-            ImGui::Text("File: %s", drop.filename.c_str());
-            
-            ImGui::SliderInt("Instances", &drop.instanceCount, 1, 100);
-            ImGui::DragFloat3("Spawn Location", glm::value_ptr(drop.spawnPos), 0.1f);
+		bool allParsed = true;
 
-            if (!drop.parseFinished) {
-                const char* status = "Working...";
-                if (drop.currentStep == model_manager::ParseStep::parsing) status = "Parsing...";
-                if (drop.currentStep == model_manager::ParseStep::baking) status = "Baking...";
-                
-                ImGui::TextColored(ImVec4(1, 1, 0, 1), "%s", status);
-                ImGui::BeginDisabled();
-            }
+		for (int i = (int)vkrenderer::g_activeDrops.size() - 1; i >= 0; --i) {
+			auto& drop = vkrenderer::g_activeDrops[i];
+			allParsed &= drop.parseFinished;
 
-            if (ImGui::Button("Spawn", ImVec2(120, 0))) {
-                drop.stagingData.requested_instances = drop.instanceCount;
-                drop.stagingData.spawn_position = drop.spawnPos;
-                
-                vkrenderer::g_commit_queue.push_back(std::move(drop.stagingData));
-                
-                vkrenderer::g_activeDrops.erase(vkrenderer::g_activeDrops.begin() + i);
-            }
+			ImGui::PushID(drop.dropID);
+			ImGui::Text("File: %s", drop.filename.c_str());
 
-            if (!drop.parseFinished) ImGui::EndDisabled();
+			ImGui::SliderInt("Instances", &drop.instanceCount, 1, 100);
+			ImGui::DragFloat3("Spawn Location", glm::value_ptr(drop.spawnPos), 0.1f);
 
-            ImGui::SameLine();
-            if (ImGui::Button("Cancel", ImVec2(120, 0))) {
-                vkrenderer::cancelspawn(i);
-            }
-            
-            ImGui::Separator();
-            ImGui::PopID();
-        }
+			if (!drop.parseFinished) {
+				const char* status = "Working...";
 
-        if (!allParsed) ImGui::BeginDisabled(); 
-        if (ImGui::Button("Spawn All", ImVec2(120, 0))) {
-            for (auto& drop : vkrenderer::g_activeDrops) {
-                drop.stagingData.requested_instances = drop.instanceCount;
-                drop.stagingData.spawn_position = drop.spawnPos;
-                vkrenderer::g_commit_queue.push_back(std::move(drop.stagingData));
-            }
-            vkrenderer::g_activeDrops.clear();
-        }
-        if (!allParsed) ImGui::EndDisabled();
+				if (drop.currentStep == model_manager::ParseStep::parsing) status = "Parsing...";
 
-        ImGui::SameLine();
-        if (ImGui::Button("Cancel All", ImVec2(120, 0))) {
-            vkrenderer::cancelall();
-        }
-    }
-    ImGui::End();
+				if (drop.currentStep == model_manager::ParseStep::baking) status = "Baking...";
+
+				ImGui::TextColored(ImVec4(1, 1, 0, 1), "%s", status);
+				ImGui::BeginDisabled();
+			}
+
+			if (ImGui::Button("Spawn", ImVec2(120, 0))) {
+				drop.stagingData.requested_instances = drop.instanceCount;
+				drop.stagingData.spawn_position = drop.spawnPos;
+
+				vkrenderer::g_commit_queue.push_back(std::move(drop.stagingData));
+
+				vkrenderer::g_activeDrops.erase(vkrenderer::g_activeDrops.begin() + i);
+			}
+
+			if (!drop.parseFinished) ImGui::EndDisabled();
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+				vkrenderer::cancelspawn(i);
+			}
+
+			ImGui::Separator();
+			ImGui::PopID();
+		}
+
+		if (!allParsed) ImGui::BeginDisabled();
+
+		if (ImGui::Button("Spawn All", ImVec2(120, 0))) {
+			for (auto& drop : vkrenderer::g_activeDrops) {
+				drop.stagingData.requested_instances = drop.instanceCount;
+				drop.stagingData.spawn_position = drop.spawnPos;
+				vkrenderer::g_commit_queue.push_back(std::move(drop.stagingData));
+			}
+
+			vkrenderer::g_activeDrops.clear();
+		}
+
+		if (!allParsed) ImGui::EndDisabled();
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("Cancel All", ImVec2(120, 0))) {
+			vkrenderer::cancelall();
+		}
+	}
+
+	ImGui::End();
 }
 void ui::render(rvkbucket &renderData, VkCommandBuffer cbuffer) {
 	ImGui::Render();

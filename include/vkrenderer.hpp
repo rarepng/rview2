@@ -175,15 +175,15 @@ glm::vec3 navmeshnormal(float x, float z);
 
 // somehow fit in the contexpr !headless
 struct DropSession {
-    uint32_t dropID;
-    model_manager::ParseStep currentStep = model_manager::ParseStep::parsing;
-    bool parseFinished = false;
-    
-    int instanceCount = 1;
-    glm::vec3 spawnPos{0.0f};
-    
-    std::string filename;
-    model_manager::StagingModelData stagingData;
+	uint32_t dropID;
+	model_manager::ParseStep currentStep = model_manager::ParseStep::parsing;
+	bool parseFinished = false;
+
+	int instanceCount = 1;
+	glm::vec3 spawnPos{0.0f};
+
+	std::string filename;
+	model_manager::StagingModelData stagingData;
 };
 inline std::atomic<uint32_t> g_dropCounter{0};
 inline std::vector<DropSession> g_activeDrops;
@@ -195,17 +195,17 @@ void cancelall();
 void commitspawn(rvkbucket& mvkobjs, VkCommandBuffer c, model_manager::StagingModelData&& drop);
 void cancelspawn(uint32_t id);
 struct CondemnedAsset {
-        GpuBuffer vbo;
-        std::vector<texdata> textures;
-        uint32_t framesRemaining = rview::core::MAX_FRAMES_IN_FLIGHT + 1;
-    };
+	GpuBuffer vbo;
+	std::vector<texdata> textures;
+	uint32_t framesRemaining = rview::core::MAX_FRAMES_IN_FLIGHT + 1;
+};
 
-    struct KillPayload {
-        model_manager::Entity entity;
-        uint32_t modelID;
-    };
+struct KillPayload {
+	model_manager::Entity entity;
+	uint32_t modelID;
+};
 
-    inline std::vector<KillPayload> g_kill_queue;
-    inline std::vector<CondemnedAsset> g_asset_death_row;
+inline std::vector<KillPayload> g_kill_queue;
+inline std::vector<CondemnedAsset> g_asset_death_row;
 
 };

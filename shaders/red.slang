@@ -647,22 +647,31 @@ void cxmain(uint3 threadID: SV_DispatchThreadID) {
     }
 
     // if (!IsVisibleTESTING(minB, maxB, mvp)) continue;
-    if (!IsVisible(minB, maxB, mvp)) continue;
+    bool isVisible = IsVisible(minB, maxB, mvp);
 
-    uint cmdIndex;
-    InterlockedAdd(indirectDrawCount[pc.frameIndex][0], 1, cmdIndex);
+    if (isVisible) {
+      uint waveCount = WaveActiveCountBits(true);
+      uint waveOffset = WavePrefixCountBits(true);
+      uint baseIndex = 0;
 
-    if (cmdIndex >= 100000) return;
+      if (waveOffset == 0) {
+        InterlockedAdd(indirectDrawCount[pc.frameIndex][0], waveCount, baseIndex);
+      }
 
-    uint packedID = (instanceID << 16) | (globalPrimID & 0xFFFF);
+      baseIndex = WaveReadLaneFirst(baseIndex);
+      uint cmdIndex = baseIndex + waveOffset;
 
-    VkDrawIndirectCommand cmd;
-    cmd.vertexCount = prim.indexCount;
-    cmd.instanceCount = 1;
-    cmd.firstVertex = 0;
-    cmd.firstInstance = packedID;
+      if (cmdIndex < 100000) {
+        uint packedID = (instanceID << 16) | (globalPrimID & 0xFFFF);
+        VkDrawIndirectCommand cmd;
+        cmd.vertexCount = prim.indexCount;
+        cmd.instanceCount = 1;
+        cmd.firstVertex = 0;
+        cmd.firstInstance = packedID;
 
-    indirectCommands[pc.frameIndex][cmdIndex] = cmd;
+        indirectCommands[pc.frameIndex][cmdIndex] = cmd;
+      }
+    }
   }
 }
 

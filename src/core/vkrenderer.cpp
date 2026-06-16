@@ -398,39 +398,43 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 	return true;
 }
 bool vkrenderer::initcpuQs(rvkbucket& mvkobjs) {
-    for (uint32_t i = 0; i < rview::core::MAX_FRAMES_IN_FLIGHT; ++i) {
-        if (!mvkobjs.sbelts[i].init(mvkobjs.alloc, 256 * 1024 * 1024)) return false;
-    }
-    return true;
+	for (uint32_t i = 0; i < rview::core::MAX_FRAMES_IN_FLIGHT; ++i) {
+		if (!mvkobjs.sbelts[i].init(mvkobjs.alloc, 256 * 1024 * 1024)) return false;
+	}
+
+	return true;
 }
 bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 	if constexpr (rdemo::is_active) {
-        const auto& scene = rdemo::SCENES[0];
-        
-        for (const auto& spawn : scene.spawns) {
-            const char* fname = g_job_strings.push_string(spawn.filepath);
-            uint32_t count = spawn.count;
-            glm::vec3 origin = spawn.origin;
-            auto modifier = spawn.modifier;
+		const auto& scene = rdemo::SCENES[0];
 
-            active_io_jobs.fetch_add(1, std::memory_order_release);
-            g_jobs.enqueue([fname, count, origin, modifier]() {
-                model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
-                staging.requested_instances = count;
-                staging.spawn_position = origin;
-                staging.skipui = true;
-                staging.demo_modifier = modifier;
+		for (const auto& spawn : scene.spawns) {
+			const char* fname = g_job_strings.push_string(spawn.filepath);
+			uint32_t count = spawn.count;
+			glm::vec3 origin = spawn.origin;
+			auto modifier = spawn.modifier;
 
-                if (!staging.meshes.empty()) {
-                    while (!vkrenderer::pending_staging_models.push(std::move(staging))) {
-                        std::this_thread::yield();
-                    }
-                }
-                active_io_jobs.fetch_sub(1, std::memory_order_release);
-            });
-        }
-        return true; // will skip boot.json for nows
-    }
+			active_io_jobs.fetch_add(1, std::memory_order_release);
+			g_jobs.enqueue([fname, count, origin, modifier]() {
+				model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
+				staging.requested_instances = count;
+				staging.spawn_position = origin;
+				staging.skipui = true;
+				staging.demo_modifier = modifier;
+
+				if (!staging.meshes.empty()) {
+					while (!vkrenderer::pending_staging_models.push(std::move(staging))) {
+						std::this_thread::yield();
+					}
+				}
+
+				active_io_jobs.fetch_sub(1, std::memory_order_release);
+			});
+		}
+
+		return true; // will skip boot.json for nows
+	}
+
 	simdjson::ondemand::parser p;
 	simdjson::padded_string j;
 
@@ -454,8 +458,10 @@ bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 		// no x["position"].get(pos_arr) == simdjson::SUCCESS
 		simdjson::ondemand::array pos_arr = x["position"].get_array();
 		auto it = pos_arr.begin();
-		float pX = static_cast<float>((*it).get_double()); ++it;
-		float pY = static_cast<float>((*it).get_double()); ++it;
+		float pX = static_cast<float>((*it).get_double());
+		++it;
+		float pY = static_cast<float>((*it).get_double());
+		++it;
 		float pZ = static_cast<float>((*it).get_double());
 		glm::vec3 start_pos(pX, pY, pZ);
 		uint32_t instance_count = static_cast<uint32_t>(c);
@@ -474,6 +480,7 @@ bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 					if constexpr (rdebug::is_active) {
 						std::cerr << "Engine queue full! Dropped boot model: " << fname << "\n";
 					}
+
 					std::this_thread::yield();
 				}
 			} else {
@@ -1021,7 +1028,7 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 
 	model_manager::g_cpuModels.clear();
 	g_exitQ.flush_and_die();
-	std::ranges::for_each(mvkobjs.sbelts,[&mvkobjs](auto& x){
+	std::ranges::for_each(mvkobjs.sbelts, [&mvkobjs](auto & x) {
 		x.free(mvkobjs.alloc);
 	});
 
@@ -1381,30 +1388,33 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 					session.spawnPos = hitPos;
 					session.filename = std::string(fname_view);
 					vkrenderer::g_activeDrops.emplace_back(std::move(session));
-					vkrenderer::g_openDropModal = true; 
+					vkrenderer::g_openDropModal = true;
 
-            if (active_io_jobs.load(std::memory_order_acquire) == 0) g_job_strings.reset();
-            const char* fname = g_job_strings.push_string(fname_view);
-            
-            g_jobs.enqueue([fname, currentDropID]() {
-                model_manager::g_progress_queue.push({currentDropID, model_manager::ParseStep::parsing});
-                
-                
-                model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
-                
-                model_manager::g_progress_queue.push({currentDropID, model_manager::ParseStep::done});
+					if (active_io_jobs.load(std::memory_order_acquire) == 0) g_job_strings.reset();
 
-                staging.dropID = currentDropID;
-                staging.skipui = false; 
+					const char* fname = g_job_strings.push_string(fname_view);
 
-                active_io_jobs.fetch_add(1, std::memory_order_release);
-                if (!staging.meshes.empty()) {
-                    while (!vkrenderer::pending_staging_models.push(std::move(staging))) {
-                        std::this_thread::yield();
-                    }
-                }
-                active_io_jobs.fetch_sub(1, std::memory_order_release);
-            });
+					g_jobs.enqueue([fname, currentDropID]() {
+						model_manager::g_progress_queue.push({currentDropID, model_manager::ParseStep::parsing});
+
+
+						model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
+
+						model_manager::g_progress_queue.push({currentDropID, model_manager::ParseStep::done});
+
+						staging.dropID = currentDropID;
+						staging.skipui = false;
+
+						active_io_jobs.fetch_add(1, std::memory_order_release);
+
+						if (!staging.meshes.empty()) {
+							while (!vkrenderer::pending_staging_models.push(std::move(staging))) {
+								std::this_thread::yield();
+							}
+						}
+
+						active_io_jobs.fetch_sub(1, std::memory_order_release);
+					});
 
 				}
 
@@ -1424,77 +1434,81 @@ void vkrenderer::moveplayer() {
 }
 // 1. MUST use && to avoid copy-constructor deleted errors
 void vkrenderer::commitspawn(rvkbucket& mvkobjs, VkCommandBuffer c, model_manager::StagingModelData&& drop) {
-    std::vector<uint32_t> uploadedTexIDs(drop.textures.size(), 0xFFFFFFFF);
-    uint32_t modelID = model_manager::commit_staging_to_vulkan(mvkobjs, c, drop, uploadedTexIDs);
+	std::vector<uint32_t> uploadedTexIDs(drop.textures.size(), 0xFFFFFFFF);
+	uint32_t modelID = model_manager::commit_staging_to_vulkan(mvkobjs, c, drop, uploadedTexIDs);
 
-    for (uint32_t i = 0; i < drop.requested_instances; ++i) {
-        uint32_t b_count = drop.parsed_skel ? drop.parsed_skel->nodeCount : 0;
-        uint32_t j_count = drop.parsed_skel ? drop.parsed_skel->jointCount : 0;
-        uint32_t b_start = (b_count > 0) ? static_cast<uint32_t>(model_manager::g_bone_locals.size()) : 0;
-        uint32_t j_start = (j_count > 0) ? static_cast<uint32_t>(model_manager::g_joint_to_node.size()) : 0;
+	for (uint32_t i = 0; i < drop.requested_instances; ++i) {
+		uint32_t b_count = drop.parsed_skel ? drop.parsed_skel->nodeCount : 0;
+		uint32_t j_count = drop.parsed_skel ? drop.parsed_skel->jointCount : 0;
+		uint32_t b_start = (b_count > 0) ? static_cast<uint32_t>(model_manager::g_bone_locals.size()) : 0;
+		uint32_t j_start = (j_count > 0) ? static_cast<uint32_t>(model_manager::g_joint_to_node.size()) : 0;
 
-        model_manager::Entity new_ent = model_manager::g_registry.create_entity(
-            modelID, drop.isSkinned, b_start, b_count, j_start, j_count
-        );
+		model_manager::Entity new_ent = model_manager::g_registry.create_entity(
+		                                    modelID, drop.isSkinned, b_start, b_count, j_start, j_count
+		                                );
 
-        if (!model_manager::g_registry.is_valid(new_ent)) continue;
+		if (!model_manager::g_registry.is_valid(new_ent)) continue;
 
-        uint32_t dense_idx = model_manager::g_registry.get_dense_index(new_ent);
+		uint32_t dense_idx = model_manager::g_registry.get_dense_index(new_ent);
 
-        if (b_count > 0) {
-            for (uint32_t b = 0; b < b_count; ++b) {
-                int32_t parent = drop.parsed_skel->parentIndices[b];
-                model_manager::g_bone_parents.push_back(parent >= 0 ? parent + b_start : -1);
-                model_manager::g_bone_entity_owner.push_back(dense_idx);
-            }
+		if (b_count > 0) {
+			for (uint32_t b = 0; b < b_count; ++b) {
+				int32_t parent = drop.parsed_skel->parentIndices[b];
+				model_manager::g_bone_parents.push_back(parent >= 0 ? parent + b_start : -1);
+				model_manager::g_bone_entity_owner.push_back(dense_idx);
+			}
 
-            model_manager::g_bone_locals.insert(model_manager::g_bone_locals.end(),
-                drop.parsed_skel->localTransforms.get(), drop.parsed_skel->localTransforms.get() + b_count);
-            model_manager::g_bone_globals.insert(model_manager::g_bone_globals.end(),
-                drop.parsed_skel->globalTransforms.get(), drop.parsed_skel->globalTransforms.get() + b_count);
+			model_manager::g_bone_locals.insert(model_manager::g_bone_locals.end(),
+			                                    drop.parsed_skel->localTransforms.get(), drop.parsed_skel->localTransforms.get() + b_count);
+			model_manager::g_bone_globals.insert(model_manager::g_bone_globals.end(),
+			                                     drop.parsed_skel->globalTransforms.get(), drop.parsed_skel->globalTransforms.get() + b_count);
 
-            if (j_count > 0) {
-                for (uint32_t j = 0; j < j_count; ++j) {
-                    model_manager::g_joint_to_node.push_back(drop.parsed_skel->jointToNodeMap[j] + b_start);
-                }
+			if (j_count > 0) {
+				for (uint32_t j = 0; j < j_count; ++j) {
+					model_manager::g_joint_to_node.push_back(drop.parsed_skel->jointToNodeMap[j] + b_start);
+				}
 
-                model_manager::g_joint_inverse_binds.insert(model_manager::g_joint_inverse_binds.end(),
-                    drop.parsed_skel->inverseBindMatrices.get(), drop.parsed_skel->inverseBindMatrices.get() + j_count);
+				model_manager::g_joint_inverse_binds.insert(model_manager::g_joint_inverse_binds.end(),
+				                                    drop.parsed_skel->inverseBindMatrices.get(), drop.parsed_skel->inverseBindMatrices.get() + j_count);
 
-                for (uint32_t j = 0; j < j_count; ++j) {
-                    model_manager::g_joint_final_matrices.push_back(
-                        Mat4ToDualQuatScale(drop.parsed_skel->finalJointMatrices[j])
-                    );
-                }
-            }
-        }
-if (drop.demo_modifier) {
-        drop.demo_modifier(i, drop.requested_instances, new_ent, drop.spawn_position);
-    } else {
-        model_manager::g_registry.position(new_ent) = drop.spawn_position;
-    }      
-    }
+				for (uint32_t j = 0; j < j_count; ++j) {
+					model_manager::g_joint_final_matrices.push_back(
+					    Mat4ToDualQuatScale(drop.parsed_skel->finalJointMatrices[j])
+					);
+				}
+			}
+		}
+
+		if (drop.demo_modifier) {
+			drop.demo_modifier(i, drop.requested_instances, new_ent, drop.spawn_position);
+		} else {
+			model_manager::g_registry.position(new_ent) = drop.spawn_position;
+		}
+	}
+
 	auto it = model_manager::g_cpuModels.find(modelID);
-    if (it != model_manager::g_cpuModels.end()) {
-        it->second.refCount += drop.requested_instances;
-    }
+
+	if (it != model_manager::g_cpuModels.end()) {
+		it->second.refCount += drop.requested_instances;
+	}
 }
 
 void vkrenderer::spawnall(rvkbucket& mvkobjs, VkCommandBuffer c) {
-    for (auto& drop : g_activeDrops) {
-        drop.stagingData.requested_instances = drop.instanceCount;
-        drop.stagingData.spawn_position = drop.spawnPos;
-        commitspawn(mvkobjs, c, std::move(drop.stagingData));
-    }
-    g_activeDrops.clear(); 
+	for (auto& drop : g_activeDrops) {
+		drop.stagingData.requested_instances = drop.instanceCount;
+		drop.stagingData.spawn_position = drop.spawnPos;
+		commitspawn(mvkobjs, c, std::move(drop.stagingData));
+	}
+
+	g_activeDrops.clear();
 }
 
 void vkrenderer::cancelspawn(uint32_t id) {
-    g_activeDrops.erase(g_activeDrops.begin() + id);
+	g_activeDrops.erase(g_activeDrops.begin() + id);
 }
 
 void vkrenderer::cancelall() {
-    g_activeDrops.clear();
+	g_activeDrops.clear();
 }
 
 void vkrenderer::movecam(rvkbucket& mvkobjs) {
@@ -1619,7 +1633,8 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			}
 
 			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(newBytesToUpload);
-			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.globalRawIndices.data() + rview::core::g_rawIndexOffset, newBytesToUpload);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.globalRawIndices.data() + rview::core::g_rawIndexOffset,
+			            newBytesToUpload);
 			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, newBytesToUpload);
 
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_rawIndexOffset, newBytesToUpload};
@@ -1632,7 +1647,8 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			descriptors_need_update = true;
 		} else {
 			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(newBytesToUpload);
-			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.globalRawIndices.data() + rview::core::g_rawIndexOffset, newBytesToUpload);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.globalRawIndices.data() + rview::core::g_rawIndexOffset,
+			            newBytesToUpload);
 			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, newBytesToUpload);
 
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_rawIndexOffset, newBytesToUpload};
@@ -1660,7 +1676,8 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			}
 
 			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(newMorphBytesToUpload);
-			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.globalMorphBytes.data() + g_morphDeltaOffset, newMorphBytesToUpload);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.globalMorphBytes.data() + g_morphDeltaOffset,
+			            newMorphBytesToUpload);
 			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, newMorphBytesToUpload);
 
 			VkBufferCopy tailRegion{beltOffset, g_morphDeltaOffset, newMorphBytesToUpload};
@@ -1673,7 +1690,8 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			descriptors_need_update = true;
 		} else {
 			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(newMorphBytesToUpload);
-			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.globalMorphBytes.data() + g_morphDeltaOffset, newMorphBytesToUpload);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.globalMorphBytes.data() + g_morphDeltaOffset,
+			            newMorphBytesToUpload);
 			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, newMorphBytesToUpload);
 
 			VkBufferCopy tailRegion{beltOffset, g_morphDeltaOffset, newMorphBytesToUpload};
@@ -1788,6 +1806,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	                    UINT64_MAX) != VK_SUCCESS) {
 		return false;
 	}
+
 	// good spot as any
 	mvkobjs.sbelts[rview::core::currentFrame].reset();
 
@@ -1853,87 +1872,95 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	}
 
 
-    // maybe this is not worth it...
-model_manager::ProgressUpdate update;
-    while (model_manager::g_progress_queue.pop(update)) {
-        for (auto& drop : g_activeDrops) {
-            if (drop.dropID == update.requestID) {
-                drop.currentStep = update.step;
-                break;
-            }
-        }
-    }
+	// maybe this is not worth it...
+	model_manager::ProgressUpdate update;
 
-    model_manager::StagingModelData ephemeralstage;
-    while (pending_staging_models.pop(ephemeralstage)) {
-        if (ephemeralstage.skipui) {
-            g_commit_queue.push_back(std::move(ephemeralstage));
-        } else {
-            for (auto& drop : g_activeDrops) {
-                if (drop.dropID == ephemeralstage.dropID) {
-                    drop.stagingData = std::move(ephemeralstage);
-                    drop.parseFinished = true;
-                    break;
-                }
-            }
-        }
-    }
+	while (model_manager::g_progress_queue.pop(update)) {
+		for (auto& drop : g_activeDrops) {
+			if (drop.dropID == update.requestID) {
+				drop.currentStep = update.step;
+				break;
+			}
+		}
+	}
+
+	model_manager::StagingModelData ephemeralstage;
+
+	while (pending_staging_models.pop(ephemeralstage)) {
+		if (ephemeralstage.skipui) {
+			g_commit_queue.push_back(std::move(ephemeralstage));
+		} else {
+			for (auto& drop : g_activeDrops) {
+				if (drop.dropID == ephemeralstage.dropID) {
+					drop.stagingData = std::move(ephemeralstage);
+					drop.parseFinished = true;
+					break;
+				}
+			}
+		}
+	}
+
 	//couldnt think of somewhere better to leave this
-for (auto& payload : g_commit_queue) {
-        commitspawn(mvkobjs, c, std::move(payload));
-    }
-    g_commit_queue.clear();
+	for (auto& payload : g_commit_queue) {
+		commitspawn(mvkobjs, c, std::move(payload));
+	}
+
+	g_commit_queue.clear();
 
 	for (int i = (int)g_asset_death_row.size() - 1; i >= 0; --i) {
-        auto& dead = g_asset_death_row[i];
-        
-        if (dead.framesRemaining == 0) {
-            if (dead.vbo.buffer != VK_NULL_HANDLE) {
-                vmaDestroyBuffer(mvkobjs.alloc, dead.vbo.buffer, dead.vbo.alloc);
-            }
-            for (auto& tex : dead.textures) {
-                vmaDestroyImage(mvkobjs.alloc, tex.img, tex.alloc);
-                vkDestroyImageView(mvkobjs.vkdevice.device, tex.imgview, nullptr);
-            }
-            
-            // O(1) Remove
-            g_asset_death_row[i] = std::move(g_asset_death_row.back());
-            g_asset_death_row.pop_back();
-        } else {
-            dead.framesRemaining--;
-        }
-    }
+		auto& dead = g_asset_death_row[i];
 
-    for (auto& kill : g_kill_queue) {
-        model_manager::g_registry.destroy_entity(kill.entity);
+		if (dead.framesRemaining == 0) {
+			if (dead.vbo.buffer != VK_NULL_HANDLE) {
+				vmaDestroyBuffer(mvkobjs.alloc, dead.vbo.buffer, dead.vbo.alloc);
+			}
 
-        auto it = model_manager::g_cpuModels.find(kill.modelID);
-        if (it != model_manager::g_cpuModels.end()) {
-            
-            it->second.refCount--;
+			for (auto& tex : dead.textures) {
+				vmaDestroyImage(mvkobjs.alloc, tex.img, tex.alloc);
+				vkDestroyImageView(mvkobjs.vkdevice.device, tex.imgview, nullptr);
+			}
 
-            if (it->second.refCount == 0) {
-                
-                {
-                    std::lock_guard<std::mutex> lock(rview::core::global_materials.mtx);
-                    for (uint32_t matID : it->second.materialIDs) {
-                        rview::core::global_materials.free_slots.push(matID);
-                    }
-                }
+			// O(1) Remove
+			g_asset_death_row[i] = std::move(g_asset_death_row.back());
+			g_asset_death_row.pop_back();
+		} else {
+			dead.framesRemaining--;
+		}
+	}
 
-                vkrenderer::CondemnedAsset deadAsset;
-                deadAsset.vbo = it->second.geometryVBO;
-                deadAsset.textures = std::move(it->second.textures);
-                
-                g_asset_death_row.push_back(std::move(deadAsset));
+	for (auto& kill : g_kill_queue) {
+		model_manager::g_registry.destroy_entity(kill.entity);
 
-                model_manager::g_cpuModels.erase(it);
-            }
-        }
-    }
-    g_kill_queue.clear();
+		auto it = model_manager::g_cpuModels.find(kill.modelID);
 
-    model_manager::update_logic_and_animations(rview::core::tickdiff);
+		if (it != model_manager::g_cpuModels.end()) {
+
+			it->second.refCount--;
+
+			if (it->second.refCount == 0) {
+
+				{
+					std::lock_guard<std::mutex> lock(rview::core::global_materials.mtx);
+
+					for (uint32_t matID : it->second.materialIDs) {
+						rview::core::global_materials.free_slots.push(matID);
+					}
+				}
+
+				vkrenderer::CondemnedAsset deadAsset;
+				deadAsset.vbo = it->second.geometryVBO;
+				deadAsset.textures = std::move(it->second.textures);
+
+				g_asset_death_row.push_back(std::move(deadAsset));
+
+				model_manager::g_cpuModels.erase(it);
+			}
+		}
+	}
+
+	g_kill_queue.clear();
+
+	model_manager::update_logic_and_animations(rview::core::tickdiff);
 
 	update_dynamic_instances(mvkobjs);
 
@@ -2024,6 +2051,7 @@ for (auto& payload : g_commit_queue) {
 		vkCmdPipelineBarrier2(c, &fillDep);
 
 		uint32_t active_instances = g_scene.entity_count.load(std::memory_order_relaxed);
+
 		if (active_instances == 0) return;
 
 		vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_COMPUTE, rview::core::globalcullpline);
@@ -2124,7 +2152,7 @@ for (auto& payload : g_commit_queue) {
 		    rview::core::g_indirectCommandBuffers[rview::core::currentFrame].buffer, 0,
 		    rview::core::g_indirectCountBuffers[rview::core::currentFrame].buffer, 0,
 		    100000, sizeof(VkDrawIndirectCommand));
-		
+
 		// TODO MOVE to separate async pipeline >:( i probably wont ever but eh.. the thought that counts ig
 		ui::createdbgframe(mvkobjs);
 		ui::createdropwidget(mvkobjs, c);

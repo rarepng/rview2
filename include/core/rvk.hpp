@@ -461,11 +461,6 @@ struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
 
 };
 
-struct vkgltfobjs {
-	std::vector<std::vector<std::vector<GpuBuffer>>> vbos{};
-	std::vector<std::vector<GpuBuffer>> ebos{};
-	std::vector<texdata> texs{};
-};
 namespace rpool {
 static inline bool create(const std::span<VkDescriptorPoolSize>& pools, const VkDevice& dev, VkDescriptorPool* dpool) {
 	VkDescriptorPoolCreateInfo descriptorPool{};

@@ -13,6 +13,7 @@
 #include <functional>
 #include <map>
 #include <dbg/trace.hpp>
+#include <condition_variable>
 
 struct alignas(64) job {
 	void (*execute)(void*) {
@@ -102,21 +103,23 @@ public:
 
 	template<typename F>
 	void enqueue(F&& f) {
-		std::lock_guard<std::mutex> lock(queue_mutex);
-		uint32_t next_tail = (tail + 1) & QUEUE_MASK;
+		uint32_t next_tail;
+		{
+			std::unique_lock<std::mutex> lock(queue_mutex);
+			next_tail = (tail + 1) & QUEUE_MASK;
 
-		// i was told this is for (backpressure) // recheck and verify
-		while (next_tail == head) {
-			queue_mutex.unlock();
-			std::this_thread::yield();
-			queue_mutex.lock();
+			queue_not_full_cv.wait(lock, [this, next_tail]() {
+				return next_tail != head;
+			});
+
+			ring_buffer[tail] = job::make(std::forward<F>(f));
+			tail = next_tail;
 		}
-
-		ring_buffer[tail] = job::make(std::forward<F>(f));
-		tail = next_tail;
 
 		jobs_available.release();
 	}
+
+	std::condition_variable queue_not_full_cv;
 
 private:
 	alignas(64) std::array<job, QUEUE_SIZE> ring_buffer{};
@@ -151,6 +154,7 @@ private:
 
 				head = (head + 1) & QUEUE_MASK;
 			}
+			queue_not_full_cv.notify_one();
 			ZoneScopedN("jobexec");
 			current_job.run_and_dispose();
 

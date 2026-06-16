@@ -436,17 +436,17 @@ inline glm::mat4 get_bone_matrix(uint32_t dense_idx, uint32_t target_bone_topo_i
 	return glm::mat4(1.0f);
 }
 enum class ParseStep {
-        parsing,
-        baking,
-        done
-    };
+	parsing,
+	baking,
+	done
+};
 
-    struct ProgressUpdate {
-        uint32_t requestID;
-        ParseStep step;
-    };
+struct ProgressUpdate {
+	uint32_t requestID;
+	ParseStep step;
+};
 
-    // Tiny lock-free queue for telemetry
-    inline LockFreeMPMC<ProgressUpdate, 128> g_progress_queue;
+// Tiny lock-free queue for telemetry
+inline LockFreeMPMC<ProgressUpdate, 128> g_progress_queue;
 
 }
