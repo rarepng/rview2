@@ -23,6 +23,7 @@
 #include <vulkan/vulkan.h>
 #include <core/scene.hpp>
 #include <vktex.hpp>
+#include <core/jobs.hpp>
 
 struct gltfnodedata {
 	std::shared_ptr<vknode> rootnode;
@@ -93,6 +94,8 @@ struct CPUModelAsset {
 	std::vector<DODAnimationClip> bakedClips;
 	GpuBuffer geometryVBO;
 	std::vector<texdata> textures;
+	std::vector<uint32_t> materialIDs;
+	uint32_t refCount = 0;
 };
 
 inline std::mutex g_modelResourceMtx;
@@ -176,6 +179,9 @@ struct StagingModelData {
 	uint32_t requested_instances = 1;
 
 	glm::vec3 spawn_position = glm::vec3(0.0f);
+	bool skipui = false;
+	uint32_t dropID = 0xFFFFFFFF;
+	void (*demo_modifier)(uint32_t idx, uint32_t total, struct Entity e, glm::vec3 origin) = nullptr;
 };
 
 std::string get_glb_json_chunk(std::string_view filepath);
@@ -209,13 +215,13 @@ private:
 	static constexpr uint32_t MAX_ENTITIES = SceneData::MAX_ENTITIES;
 
 	std::array<uint32_t, MAX_ENTITIES> sparse;
-	std::array<uint32_t, MAX_ENTITIES> dense_to_sparse;
-	std::array<uint32_t, MAX_ENTITIES> generations;
 	std::vector<uint32_t> free_indices;
 	std::mutex registry_mtx;
 
 public:
 	static constexpr uint32_t MAX_BLEND_LAYERS = 4;
+	std::array<uint32_t, MAX_ENTITIES> dense_to_sparse;
+	std::array<uint32_t, MAX_ENTITIES> generations;
 
 	alignas(64) std::array<int, MAX_ENTITIES> anim_clip{};
 	alignas(64) std::array<float, MAX_ENTITIES> anim_speed{};
@@ -429,6 +435,18 @@ inline glm::mat4 get_bone_matrix(uint32_t dense_idx, uint32_t target_bone_topo_i
 
 	return glm::mat4(1.0f);
 }
+enum class ParseStep {
+        parsing,
+        baking,
+        done
+    };
 
+    struct ProgressUpdate {
+        uint32_t requestID;
+        ParseStep step;
+    };
+
+    // Tiny lock-free queue for telemetry
+    inline LockFreeMPMC<ProgressUpdate, 128> g_progress_queue;
 
 }

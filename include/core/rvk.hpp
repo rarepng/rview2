@@ -232,65 +232,7 @@ struct alignas(16) LocalTRS {
 	float pad1;
 };
 
-// starting segmentation
-
-struct alignas(64) rdev {
-	vkb::Instance inst{};
-	vkb::Device vkdevice{};
-	VmaAllocator alloc{nullptr};
-
-	VkQueue graphicsQ{VK_NULL_HANDLE};
-	VkQueue presentQ{VK_NULL_HANDLE};
-	VkQueue computeQ{VK_NULL_HANDLE};
-	VkQueue transferQ{VK_NULL_HANDLE};
-
-	uint32_t graphicsQidx{};
-	uint32_t presentQidx{};
-	uint32_t computeQidx{};
-	uint32_t transferQidx{};
-
-	rctx ctx{};
-	DeletionQueue deletionQ{};
-	DeletionQueue cleanupQ{};
-	StagingBelt sbelt{};
-
-	std::array<VkDescriptorPool, 1> dpools = {VK_NULL_HANDLE};
-	std::array<VkSampler, 2> samplerz{};
-};
-
-struct alignas(64) rwind {
-	SDL_Window* wind = nullptr;
-	const SDL_DisplayMode* rdmode = nullptr;
-	SDL_Event e{};
-	VkSurfaceKHR surface{};
-	vkb::Swapchain schain{};
-	std::vector<VkImage> schainimgs;
-	std::vector<VkImageView> schainimgviews;
-
-	int width{0};
-	int height{0};
-	bool fullscreen{false};
-	bool mshutdown{false};
-
-	VkImage rddepthimage = VK_NULL_HANDLE;
-	VkImageView rddepthimageview = VK_NULL_HANDLE;
-	VmaAllocation rddepthimagealloc = VK_NULL_HANDLE;
-	VkFormat rddepthformat{};
-
-	VkImage rddepthimageref = VK_NULL_HANDLE;
-	VkImageView rddepthimageviewref = VK_NULL_HANDLE;
-	VmaAllocation rddepthimageallocref = VK_NULL_HANDLE;
-	VkFormat rddepthformatref{};
-
-	struct obs_rendertarget {
-		VkImage img = VK_NULL_HANDLE;
-		VkImageView view = VK_NULL_HANDLE;
-		VkDeviceMemory memory = VK_NULL_HANDLE;
-		void* shared_handle = nullptr;
-		uint32_t width = 1920;
-		uint32_t height = 1080;
-	} obs_target;
-};
+// starting segmentation still..
 
 namespace rview {
 namespace core {
@@ -382,6 +324,65 @@ namespace io {
 
 };
 
+};
+
+
+struct alignas(64) rdev {
+	vkb::Instance inst{};
+	vkb::Device vkdevice{};
+	VmaAllocator alloc{nullptr};
+
+	VkQueue graphicsQ{VK_NULL_HANDLE};
+	VkQueue presentQ{VK_NULL_HANDLE};
+	VkQueue computeQ{VK_NULL_HANDLE};
+	VkQueue transferQ{VK_NULL_HANDLE};
+
+	uint32_t graphicsQidx{};
+	uint32_t presentQidx{};
+	uint32_t computeQidx{};
+	uint32_t transferQidx{};
+
+	rctx ctx{};
+	DeletionQueue deletionQ{};
+	DeletionQueue cleanupQ{};
+	std::array<StagingBelt, rview::core::MAX_FRAMES_IN_FLIGHT> sbelts{};
+
+	std::array<VkDescriptorPool, 1> dpools = {VK_NULL_HANDLE};
+	std::array<VkSampler, 2> samplerz{};
+};
+
+struct alignas(64) rwind {
+	SDL_Window* wind = nullptr;
+	const SDL_DisplayMode* rdmode = nullptr;
+	SDL_Event e{};
+	VkSurfaceKHR surface{};
+	vkb::Swapchain schain{};
+	std::vector<VkImage> schainimgs;
+	std::vector<VkImageView> schainimgviews;
+
+	int width{0};
+	int height{0};
+	bool fullscreen{false};
+	bool mshutdown{false};
+
+	VkImage rddepthimage = VK_NULL_HANDLE;
+	VkImageView rddepthimageview = VK_NULL_HANDLE;
+	VmaAllocation rddepthimagealloc = VK_NULL_HANDLE;
+	VkFormat rddepthformat{};
+
+	VkImage rddepthimageref = VK_NULL_HANDLE;
+	VkImageView rddepthimageviewref = VK_NULL_HANDLE;
+	VmaAllocation rddepthimageallocref = VK_NULL_HANDLE;
+	VkFormat rddepthformatref{};
+
+	struct obs_rendertarget {
+		VkImage img = VK_NULL_HANDLE;
+		VkImageView view = VK_NULL_HANDLE;
+		VkDeviceMemory memory = VK_NULL_HANDLE;
+		void* shared_handle = nullptr;
+		uint32_t width = 1920;
+		uint32_t height = 1080;
+	} obs_target;
 };
 
 struct DODAnimationClip {

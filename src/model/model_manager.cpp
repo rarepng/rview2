@@ -595,7 +595,7 @@ uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, Stagi
 
 	if (staging.strictAlignedTotalBytes > 0) {
 		vkvbo::init(mvkobjs, modelVbo, staging.strictAlignedTotalBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-		beltOffset = mvkobjs.sbelt.reserve(staging.strictAlignedTotalBytes);
+		beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(staging.strictAlignedTotalBytes);
 	}
 
 	std::vector<PrimitiveMetadata> finalPrimitives;
@@ -624,7 +624,7 @@ uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, Stagi
 				size_t byteSize = prim.vertexBytes[slot].size();
 				size_t alignedSize = (byteSize + 255) & ~255;
 
-				std::memcpy(mvkobjs.sbelt.mappedData + beltOffset + currentBufferOffset, prim.vertexBytes[slot].data(), byteSize);
+				std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset + currentBufferOffset, prim.vertexBytes[slot].data(), byteSize);
 
 				uint32_t bIdx = rview::core::globalBufferCounter.fetch_add(1, std::memory_order_relaxed);
 
@@ -681,10 +681,10 @@ uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, Stagi
 	}
 
 	if (staging.strictAlignedTotalBytes > 0) {
-		vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelt.allocation, beltOffset, staging.strictAlignedTotalBytes);
+		vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, staging.strictAlignedTotalBytes);
 
 		VkBufferCopy region{beltOffset, 0, staging.strictAlignedTotalBytes};
-		vkCmdCopyBuffer(cmd, mvkobjs.sbelt.buffer, modelVbo.buffer, 1, &region);
+		vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, modelVbo.buffer, 1, &region);
 
 		VkBufferMemoryBarrier2 b{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
 		b.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
@@ -768,6 +768,7 @@ uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, Stagi
 		cpuAsset.geometryVBO = modelVbo;
 		cpuAsset.bakedClips = std::move(staging.bakedClips);
 		cpuAsset.textures = std::move(model_textures);
+		cpuAsset.materialIDs = globalMaterialIds;
 		g_cpuModels[assignedModelID] = std::move(cpuAsset);
 		g_model_filepaths[assignedModelID] = staging.name;
 	}

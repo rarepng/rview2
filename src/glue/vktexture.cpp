@@ -39,9 +39,9 @@ texdata upload_texture_async(rvkbucket& rdata, VkCommandBuffer cmd, const uint8_
 	VmaAllocationCreateInfo vmaAllocInfo{ .usage = VMA_MEMORY_USAGE_GPU_ONLY };
 	vmaCreateImage(rdata.alloc, &imgInfo, &vmaAllocInfo, &out_tex.img, &out_tex.alloc, nullptr);
 
-	VkDeviceSize beltOffset = rdata.sbelt.reserve(imgByteSize);
-	std::memcpy(rdata.sbelt.mappedData + beltOffset, pixels, imgByteSize);
-	vmaFlushAllocation(rdata.alloc, rdata.sbelt.allocation, beltOffset, imgByteSize);
+	VkDeviceSize beltOffset = rdata.sbelts[rview::core::currentFrame].reserve(imgByteSize);
+	std::memcpy(rdata.sbelts[rview::core::currentFrame].mappedData + beltOffset, pixels, imgByteSize);
+	vmaFlushAllocation(rdata.alloc, rdata.sbelts[rview::core::currentFrame].allocation, beltOffset, imgByteSize);
 
 	VkImageMemoryBarrier b1{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
 	b1.srcAccessMask = 0;
@@ -58,7 +58,7 @@ texdata upload_texture_async(rvkbucket& rdata, VkCommandBuffer cmd, const uint8_
 	// region.bufferImageHeight = 0;
 	region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
 	region.imageExtent = {static_cast<uint32_t>(w), static_cast<uint32_t>(h), 1};
-	vkCmdCopyBufferToImage(cmd, rdata.sbelt.buffer, out_tex.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+	vkCmdCopyBufferToImage(cmd, rdata.sbelts[rview::core::currentFrame].buffer, out_tex.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
 	VkImageMemoryBarrier b2 = b1;
 	b2.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;

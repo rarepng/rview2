@@ -23,6 +23,7 @@
 #include <core/scene.hpp>
 #include <vkvbo.hpp>
 #include <model_manager.hpp>
+#include <dbg/demo.hpp>
 
 enum InputKey : uint8_t {
 	Key_W = 0, Key_S, Key_A, Key_D, Key_Q, Key_E,
@@ -171,5 +172,40 @@ bool initvma(rvkbucket& mvkobjs);
 bool recreateswapchain(rvkbucket& mvkobjs);
 float navmesh(float x, float z);
 glm::vec3 navmeshnormal(float x, float z);
+
+// somehow fit in the contexpr !headless
+struct DropSession {
+    uint32_t dropID;
+    model_manager::ParseStep currentStep = model_manager::ParseStep::parsing;
+    bool parseFinished = false;
+    
+    int instanceCount = 1;
+    glm::vec3 spawnPos{0.0f};
+    
+    std::string filename;
+    model_manager::StagingModelData stagingData;
+};
+inline std::atomic<uint32_t> g_dropCounter{0};
+inline std::vector<DropSession> g_activeDrops;
+inline bool g_openDropModal = false;
+inline std::vector<model_manager::StagingModelData> g_commit_queue;
+
+void spawnall(rvkbucket& mvkobjs, VkCommandBuffer c);
+void cancelall();
+void commitspawn(rvkbucket& mvkobjs, VkCommandBuffer c, model_manager::StagingModelData&& drop);
+void cancelspawn(uint32_t id);
+struct CondemnedAsset {
+        GpuBuffer vbo;
+        std::vector<texdata> textures;
+        uint32_t framesRemaining = rview::core::MAX_FRAMES_IN_FLIGHT + 1;
+    };
+
+    struct KillPayload {
+        model_manager::Entity entity;
+        uint32_t modelID;
+    };
+
+    inline std::vector<KillPayload> g_kill_queue;
+    inline std::vector<CondemnedAsset> g_asset_death_row;
 
 };

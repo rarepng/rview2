@@ -32,6 +32,8 @@ void render(rvkbucket &mvkobjs, VkCommandBuffer cbuffer);
 void cleanup(rvkbucket &mvkobjs);
 void backspace();
 
+void createdropwidget(rvkbucket& mvkobjs, VkCommandBuffer c);
+
 inline std::string inputxt{};
 inline std::vector<std::string> chattxts;
 inline float mfps = 0.0f;

@@ -3,6 +3,7 @@ OBS HEADLESS!!!!!!!!
 bendy bones
 gns piping
 viseme mapping
+just move the $&@#ing ui to a separate async pipeline
 modularize passes (compute: pre, post, async)
 miniaudio
 the stupid vertex smearing
@@ -31,6 +32,8 @@ update readme
 demos!!!!!!!
 jolt
 meshoptimizer
+the spinner
+feedback place (in the offchance i ever get any)
 hot reloading dll (separate for dev cycle)
 hot reloading shaders
 apple clang preset(s) X_X [probably never let's be real]
