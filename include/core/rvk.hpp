@@ -19,6 +19,7 @@
 #include <tracy/Tracy.hpp>
 #include <fstream>
 #include <map>
+#include <conf.hpp>
 // temp TODO [CRITICAL]
 // #include <dbg/demo.hpp>
 

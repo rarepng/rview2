@@ -8,7 +8,6 @@
 
 namespace rdemo {
 //maybe will move to somwhere central along with debug idk..
-inline constexpr bool is_active = RVIEW_DEMO;
 
 // consteval?
 inline constexpr uint32_t calc_grid_dim(uint32_t total_instances) {

@@ -1,8 +1,8 @@
+#define GLM_ENABLE_EXPERIMENTAL
+#define VMA_IMPLEMENTATION
 #include <backends/imgui_impl_sdl3.h>
 #include <core/rvk.hpp>
 #include <cstdint>
-#define GLM_ENABLE_EXPERIMENTAL
-#define VMA_IMPLEMENTATION
 #include <vkrenderer.hpp>
 #include <backends/imgui_impl_glfw.h>
 #include <imgui.h>
@@ -10,11 +10,12 @@
 #include <cstdlib>
 #include <ctime>
 #include <future>
+#include <iostream>
+#include <ranges>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/spline.hpp>
-#include <iostream>
-#include <ranges>
+#include <dbg/demo.hpp>
 #include <vk/commandbuffer.hpp>
 #include <vk/commandpool.hpp>
 #include <vksyncobjects.hpp>

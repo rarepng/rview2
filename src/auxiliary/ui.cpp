@@ -115,7 +115,7 @@ void ui::createdbgframe(rvkbucket &renderData) {
 	ImGui_ImplSDL3_ProcessEvent(&renderData.e);
 
 	ImGuiWindowFlags imguiWindowFlags = 0;
-	ImGui::Begin("Engine Inspector", nullptr, imguiWindowFlags);
+	ImGui::Begin("", nullptr, imguiWindowFlags);
 	static std::array<float, 60> fps_history{0};
 	static int fps_idx = 0;
 	static float fps_sum = 0.0f;
@@ -133,7 +133,7 @@ void ui::createdbgframe(rvkbucket &renderData) {
 	ImGui::Separator();
 
 	uint32_t active_entities = g_scene.entity_count.load(std::memory_order_relaxed);
-	ImGui::Text("Active Entities: %u", active_entities);
+	ImGui::Text("Active Count: %u", active_entities);
 
 	ImGui::SeparatorText("Camera Controls");
 
