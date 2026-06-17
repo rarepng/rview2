@@ -40,3 +40,4 @@ hot reloading shaders
 apple clang preset(s) X_X [probably never let's be real]
 launcher > core (different cpu arch) > headless (same) ??
 move animation baking to async compute
+retain shape key names for mapping and ui? (animation keys too)
