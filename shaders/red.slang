@@ -661,7 +661,7 @@ void cxmain(uint3 threadID: SV_DispatchThreadID) {
       baseIndex = WaveReadLaneFirst(baseIndex);
       uint cmdIndex = baseIndex + waveOffset;
 
-      if (cmdIndex < 100000) {
+      if (cmdIndex < 100000) { // idk if i can do it better than this or at all
         uint packedID = (instanceID << 16) | (globalPrimID & 0xFFFF);
         VkDrawIndirectCommand cmd;
         cmd.vertexCount = prim.indexCount;

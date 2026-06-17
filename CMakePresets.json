@@ -31,21 +31,12 @@
     }
   ],
   "buildPresets": [
-    { "name": "Debug", "configurePreset": "gcc", "configuration": "Debug" },
-    { "name": "Release", "configurePreset": "gcc", "configuration": "Release" },
-    { "name": "RelWithDebInfo", "configurePreset": "gcc", "configuration": "RelWithDebInfo" },
-    { "name": "Distribution", "configurePreset": "gcc", "configuration": "Distribution" },
-    { "name": "BleedingEdge", "configurePreset": "gcc", "configuration": "BleedingEdge" },
-    { "name": "sanitize", "configurePreset": "gcc", "configuration": "sanitize" },
     { "name": "mermaid", "configurePreset": "gcc", "configuration": "mermaid" },
-    { "name": "MinSizeRel", "configurePreset": "gcc", "configuration": "MinSizeRel" },
     { "name": "realclang", "configurePreset": "clang", "configuration": "Debug" },
     { "name": "realclangREL", "configurePreset": "clang", "configuration": "Release" },
     { "name": "realclangRELDBGINFO", "configurePreset": "clang", "configuration": "RelWithDebInfo" },
     { "name": "realclangDIST", "configurePreset": "clang", "configuration": "Distribution" },
     { "name": "realclang512", "configurePreset": "clang", "configuration": "BleedingEdge" },
-    { "name": "realclangsanitize", "configurePreset": "clang", "configuration": "sanitize" },
-    { "name": "clanged", "configurePreset": "clang", "configuration": "clanged" },
-    { "name": "demo", "configurePreset": "clang", "configuration": "BleedingEdge"}
+    { "name": "realclangsanitize", "configurePreset": "clang", "configuration": "sanitize" }
   ]
 }

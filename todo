@@ -27,7 +27,8 @@ decoupled physics loop(s)
 replace imgui or find a way to use it without all the vertex overhead
 tune VMA to use maybe 64MB instead of 256MB
 runtime env map update (and skybox)
-clang-format instead of astyle [maybe]
+clang-format instead of astyle ~~[maybe]~~ [definitely]
+revisit clang-uml
 update readme
 demos!!!!!!!
 jolt
@@ -38,3 +39,4 @@ hot reloading dll (separate for dev cycle)
 hot reloading shaders
 apple clang preset(s) X_X [probably never let's be real]
 launcher > core (different cpu arch) > headless (same) ??
+move animation baking to async compute

@@ -485,11 +485,11 @@ function(add_shader)
     set(multiValueArgs "")
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     set(SHADER_SOURCE "${PROJECT_SOURCE_DIR}/shaders/${ARG_SOURCE}")
-    set(SPV_OUTPUT "${PROJECT_BINARY_DIR}/shaders/${ARG_OUTPUT_NAME}")
+    set(SPV_OUTPUT "${PROJECT_BINARY_DIR}/$<CONFIG>/shaders/${ARG_OUTPUT_NAME}")
     get_filename_component(OUT_DIR ${SPV_OUTPUT} DIRECTORY)
-    file(MAKE_DIRECTORY ${OUT_DIR})
     add_custom_command(
         OUTPUT "${SPV_OUTPUT}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${OUT_DIR}"
         COMMAND slangc
             -entry ${ARG_ENTRY}
             -stage ${ARG_STAGE}
@@ -513,7 +513,6 @@ add_shader(SOURCE red.slang ENTRY cxmain STAGE compute OUTPUT_NAME cx.spv)
 # add_shader(SOURCE dbg.slang ENTRY cxmain STAGE compute OUTPUT_NAME cx.spv)
 
 add_custom_target(shaders_tar ALL DEPENDS ${ALL_SHADER_SPV_FILES})
-add_dependencies(rview2 shaders_tar)
 
 
 add_custom_target(assets ALL
@@ -524,10 +523,10 @@ add_custom_target(assets ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
         "${PROJECT_SOURCE_DIR}/resources"
         "$<TARGET_FILE_DIR:rview2>/resources"
-        
-    COMMENT "syncing resources and configs..."
+    
+    COMMENT "syncing resources, shaders and configs..."
 )
-
+add_dependencies(assets shaders_tar) # full circle
 add_dependencies(rview2 assets)
 
 add_custom_target(state
@@ -539,8 +538,9 @@ add_custom_target(state
 )
 
 
-set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/resources)
-set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/shaders)
+set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES "$<TARGET_FILE_DIR:rview2>/resources")
+set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES "$<TARGET_FILE_DIR:rview2>/shaders")
+set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES "$<TARGET_FILE_DIR:rview2>/boot.json")
 
 
 install(TARGETS rview2 RUNTIME DESTINATION $<CONFIG> CONFIGURATIONS Release Distribution BleedingEdge MinSizeRel)

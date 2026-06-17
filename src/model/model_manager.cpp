@@ -1143,7 +1143,7 @@ void upload_joint_matrices(rvkbucket& mvkobjs) {
 void init_gpu_joint_buffers(rvkbucket& mvkobjs) {
 	g_gpu_joint_buffers.resize(rview::core::MAX_FRAMES_IN_FLIGHT);
 
-	size_t bufferSize = 250000 * sizeof(DualQuatScale);
+	size_t bufferSize = rview::anim::maxjoints * sizeof(DualQuatScale);
 
 	for (uint32_t i = 0; i < rview::core::MAX_FRAMES_IN_FLIGHT; ++i) {
 		VkBufferCreateInfo binfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};

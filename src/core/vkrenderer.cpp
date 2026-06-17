@@ -349,7 +349,7 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 
 	if (!initcpuQs(mvkobjs)) return false;
 
-	model_manager::reserve_mega_buffers(250000);
+	model_manager::reserve_mega_buffers(rview::anim::megabuffers);
 
 	if (!playout::init_bindless(mvkobjs)) return false;
 
@@ -874,7 +874,7 @@ bool vkrenderer::initui(rvkbucket& mvkobjs) {
 	return true;
 }
 bool vkrenderer::initglobalmorphs(rvkbucket& mvkobjs) {
-	size_t bufferSize = 250000 * sizeof(float);
+	size_t bufferSize = rview::anim::maxmorphs * sizeof(float);
 
 	for (uint32_t i = 0; i < rview::core::MAX_FRAMES_IN_FLIGHT; ++i) {
 		VkBufferCreateInfo binfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};

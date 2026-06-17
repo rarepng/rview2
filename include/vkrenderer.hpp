@@ -23,7 +23,6 @@
 #include <core/scene.hpp>
 #include <vkvbo.hpp>
 #include <model_manager.hpp>
-#include <dbg/demo.hpp>
 
 enum InputKey : uint8_t {
 	Key_W = 0, Key_S, Key_A, Key_D, Key_Q, Key_E,

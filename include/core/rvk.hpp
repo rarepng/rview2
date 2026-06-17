@@ -19,6 +19,9 @@
 #include <tracy/Tracy.hpp>
 #include <fstream>
 #include <map>
+// temp TODO [CRITICAL]
+// #include <dbg/demo.hpp>
+
 // all this &$#! for a stupid ugly diagram
 // #ifndef __cpp_lib_move_only_function
 // #ifdef __clang__
@@ -313,7 +316,10 @@ constexpr bool headless = RVIEW_HEADLESS;
 };
 namespace anim {
 inline constexpr float samplerate{120.0f}; // i have to separate the sample rate from the baking rate at some poiunt
-static constexpr uint32_t MAX_IK_CHAINS = 2;
+inline constexpr uint32_t MAX_IK_CHAINS{2};
+inline constexpr size_t maxmorphs{rdemo::is_active ? 24'000:24'000}; // all in all not per shape, there's no way to unify them otherwise i dont think
+inline constexpr size_t maxjoints{rdemo::is_active ? 3'072'000:24'000};
+inline constexpr size_t megabuffers{rdemo::is_active ? 3'072'000:24'000};
 };
 namespace io {
 
