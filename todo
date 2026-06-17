@@ -22,9 +22,10 @@ demos!!!!!!!
 wuffs/exr/replace stb (except maybe for hdr)/that gltf extension for compressed images
 hot reloading shaders
 volk
-hot reloading dll (separate for dev cycle)
+hot reloading dll (separate for dev cycle) [horrible idea, great flex]
 unify cleanup as lambdas (more memory but cleaner)
 dev arguments in main
 OBS HEADLESS!!!!!!!!
 the stupid vertex smearing
 clang-format instead of astyle [maybe]
+retain shape key names for mapping and ui?
