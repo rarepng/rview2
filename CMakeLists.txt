@@ -13,15 +13,22 @@ set(ZLIB_USE_STATIC_LIBS ON)
 find_package(OpenSSL REQUIRED)
 
 set(CPM_PATH "${CMAKE_BINARY_DIR}/_deps/CPM.cmake")
-if(NOT EXISTS ${CPM_PATH})
+if(EXISTS "${CPM_PATH}")
+    file(SIZE "${CPM_PATH}" _cpm_size)
+    if(_cpm_size EQUAL 0)
+        file(REMOVE "${CPM_PATH}")
+    endif()
+endif()
+if(NOT EXISTS "${CPM_PATH}")
     file(DOWNLOAD
         https://github.com/cpm-cmake/CPM.cmake/releases/latest/download/CPM.cmake
-        ${CPM_PATH}
+        "${CPM_PATH}"
         STATUS status
     )
     list(GET status 0 code)
     if(NOT code EQUAL 0)
-        message(FATAL_ERROR "CPM download failed")
+        file(REMOVE "${CPM_PATH}")
+        message(FATAL_ERROR "CPM download failed. Cleaned up empty file.")
     endif()
 endif()
 include(${CPM_PATH})
@@ -29,6 +36,20 @@ if(NOT COMMAND CPMAddPackage)
     message(FATAL_ERROR "CPM broke again :(")
 endif()
 
+get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(is_multi_config)
+    set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo;Distribution;BleedingEdge;sanitize;clanged;mermaid;MinSizeRel" CACHE STRING "build types & other ghosts" FORCE)
+endif()
+
+set(CMAKE_MAP_IMPORTED_CONFIG_BLEEDINGEDGE Release RelWithDebInfo MinSizeRel Debug "")
+set(CMAKE_MAP_IMPORTED_CONFIG_DISTRIBUTION Release RelWithDebInfo MinSizeRel Debug "")
+set(CMAKE_MAP_IMPORTED_CONFIG_SANITIZE Debug RelWithDebInfo Release "")
+set(CMAKE_MAP_IMPORTED_CONFIG_CLANGED Debug Release "")
+set(CMAKE_MAP_IMPORTED_CONFIG_MERMAID Debug Release "")
+
+# brute force &#@! it we ball
+string(APPEND CMAKE_SHARED_LINKER_FLAGS " -static")
+string(APPEND CMAKE_EXE_LINKER_FLAGS " -static")
 
 set(submodules_path
         ${PROJECT_SOURCE_DIR}/sub
@@ -207,6 +228,14 @@ CPMAddPackage(
 )
 
 CPMAddPackage(
+    NAME imguizmo
+    GITHUB_REPOSITORY cedricguillemet/imguizmo
+    GIT_TAG master
+    EXCLUDE_FROM_ALL YES
+    DOWNLOAD_ONLY YES
+)
+
+CPMAddPackage(
     NAME stb
     GITHUB_REPOSITORY nothings/stb
     GIT_TAG master
@@ -272,9 +301,10 @@ set(OTHER_SOURCES
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_demo.cpp
+    ${imguizmo_SOURCE_DIR}/src/ImGuizmo.cpp
 )
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-if(CMAKE_BUILD_TYPE STREQUAL "x") # clangd
+if(CMAKE_BUILD_TYPE STREQUAL "x") # scrapped
 
     add_library(rview2 ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_HEADERS})
 
@@ -307,10 +337,17 @@ if(CMAKE_BUILD_TYPE STREQUAL "x") # clangd
     )
 
 else()
+
 add_executable(rview2 ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_HEADERS})
+# add_executable(rview2_headless ${PROJECT_SOURCES} ${PROJECT_HEADERS})
+# target_compile_definitions(rview2_headless PRIVATE RVIEW_HEADLESS=1)
+
+include(CMakeLocal.txt OPTIONAL)
 
 target_compile_definitions(rview2 PRIVATE
 "RVIEW_DEBUG=$<IF:$<CONFIG:Debug>,1,0>"
+"RVIEW_DEMO=$<BOOL:${RVIEW_DEMO}>"
+
 )
 
 target_link_directories(rview2 PRIVATE
@@ -324,6 +361,7 @@ target_compile_definitions(rview2 PRIVATE
     STEAMNETWORKINGSOCKETS_STATIC_LINK=1
     ABSL_OPTION_USE_STD_ORDERING=0
     ABSL_USES_STD_ORDERING=0
+    RVIEW_HEADLESS=0
 )
 
 
@@ -375,6 +413,7 @@ target_include_directories(rview2
         "${PROJECT_SOURCE_DIR}/cmake_more_cache/gns/include/GameNetworkingSockets"
         "${stb_SOURCE_DIR}"
         "${imgui_SOURCE_DIR}"
+        "${imguizmo_SOURCE_DIR}/src"
         "${simdjson_SOURCE_DIR}/include"
         "${tracy_SOURCE_DIR}/public"
         "${submodules_path}/vma/include"
@@ -446,11 +485,11 @@ function(add_shader)
     set(multiValueArgs "")
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     set(SHADER_SOURCE "${PROJECT_SOURCE_DIR}/shaders/${ARG_SOURCE}")
-    set(SPV_OUTPUT "${PROJECT_BINARY_DIR}/shaders/${ARG_OUTPUT_NAME}")
+    set(SPV_OUTPUT "${PROJECT_BINARY_DIR}/$<CONFIG>/shaders/${ARG_OUTPUT_NAME}")
     get_filename_component(OUT_DIR ${SPV_OUTPUT} DIRECTORY)
-    file(MAKE_DIRECTORY ${OUT_DIR})
     add_custom_command(
         OUTPUT "${SPV_OUTPUT}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${OUT_DIR}"
         COMMAND slangc
             -entry ${ARG_ENTRY}
             -stage ${ARG_STAGE}
@@ -472,16 +511,11 @@ add_shader(SOURCE red.slang ENTRY cxmain STAGE compute OUTPUT_NAME cx.spv)
 # add_shader(SOURCE dbg.slang ENTRY vxmain STAGE vertex OUTPUT_NAME vx.spv)
 # add_shader(SOURCE dbg.slang ENTRY pxmain STAGE pixel OUTPUT_NAME px.spv)
 # add_shader(SOURCE dbg.slang ENTRY cxmain STAGE compute OUTPUT_NAME cx.spv)
-add_shader(SOURCE particle.slang ENTRY vxmain STAGE vertex OUTPUT_NAME pvx.spv)
-add_shader(SOURCE particle.slang ENTRY pxmain STAGE pixel OUTPUT_NAME ppx.spv)
-add_shader(SOURCE particle.slang ENTRY cxmain STAGE compute OUTPUT_NAME pcx.spv)
 
 add_custom_target(shaders_tar ALL DEPENDS ${ALL_SHADER_SPV_FILES})
-add_dependencies(rview2 shaders_tar)
 
 
-add_custom_command(
-    TARGET rview2 POST_BUILD
+add_custom_target(assets ALL
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${PROJECT_SOURCE_DIR}/boot.json"
         "$<TARGET_FILE_DIR:rview2>/boot.json"
@@ -489,22 +523,30 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
         "${PROJECT_SOURCE_DIR}/resources"
         "$<TARGET_FILE_DIR:rview2>/resources"
+    
+    COMMENT "syncing resources, shaders and configs..."
+)
+add_dependencies(assets shaders_tar) # full circle
+add_dependencies(rview2 assets)
+
+add_custom_target(state
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "$<TARGET_FILE_DIR:rview2>/state.json"
+        "${PROJECT_SOURCE_DIR}/state.json"
         
-    COMMENT "copying resources and configs"
+    COMMENT "reverse syncing state.json"
 )
 
 
+set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES "$<TARGET_FILE_DIR:rview2>/resources")
+set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES "$<TARGET_FILE_DIR:rview2>/shaders")
+set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES "$<TARGET_FILE_DIR:rview2>/boot.json")
 
 
-
-set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/resources)
-set_property(TARGET rview2 APPEND PROPERTY ADDITIONAL_CLEAN_FILES ${PROJECT_BINARY_DIR}/shaders)
-
-
-install(TARGETS rview2 RUNTIME DESTINATION . CONFIGURATIONS Release Distribution BleedingEdge MinSizeRel)
-install(FILES ${ALL_SHADER_SPV_FILES} DESTINATION shaders)
-install(DIRECTORY "${PROJECT_SOURCE_DIR}/resources/" DESTINATION resources)
-install(FILES "${PROJECT_SOURCE_DIR}/boot.json" DESTINATION .)
+install(TARGETS rview2 RUNTIME DESTINATION $<CONFIG> CONFIGURATIONS Release Distribution BleedingEdge MinSizeRel)
+install(FILES ${ALL_SHADER_SPV_FILES} DESTINATION $<CONFIG>/shaders)
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/resources/" DESTINATION $<CONFIG>/resources)
+install(FILES "${PROJECT_SOURCE_DIR}/boot.json" DESTINATION $<CONFIG>)
 
 if(WIN32)
     get_filename_component(RVIEW2_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
@@ -513,7 +555,7 @@ if(WIN32)
         message(STATUS \"resolving dynamic libraries for $<TARGET_FILE_NAME:rview2>...\")
         
         file(GET_RUNTIME_DEPENDENCIES
-            EXECUTABLES \"$<TARGET_FILE:rview2>\"
+            EXECUTABLES \"\${CMAKE_INSTALL_PREFIX}/$<CONFIG>/$<TARGET_FILE_NAME:rview2>\"
             DIRECTORIES \"${RVIEW2_BIN_DIR}\"
             RESOLVED_DEPENDENCIES_VAR RESOLVED_DEPS
             UNRESOLVED_DEPENDENCIES_VAR UNRESOLVED_DEPS
@@ -531,7 +573,7 @@ if(WIN32)
             
             if(NOT LOWER_DEP_NAME MATCHES \"^(kernel32|kernelbase|user32|msvcrt|msvcp.*|advapi32|ws2_32|shell32|setupapi|ole32|oleaut32|gdi32|imm32|version|winmm|crypt32|dbghelp|iphlpapi|vulkan-1|ntdll|combase|sechost|rpcrt4|win32u|cfgmgr32)\\\\.dll$\")
                 message(STATUS \"deploying \${DEP_NAME}\")
-                file(INSTALL DESTINATION \"\${CMAKE_INSTALL_PREFIX}\" TYPE SHARED_LIBRARY FILES \"\${DEP}\")
+                file(INSTALL DESTINATION \"\${CMAKE_INSTALL_PREFIX}/$<CONFIG>\" TYPE SHARED_LIBRARY FILES \"\${DEP}\")
             endif()
         endforeach()
     "

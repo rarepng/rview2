@@ -9,7 +9,7 @@ CompileFlags:
     - -Wno-sign-compare
     - -ferror-limit=0
 
-  Remove:
+  Remove: []
     # - -fmodules-ts
     # - -fmodule-mapper=*
     # - -fdeps-format=*

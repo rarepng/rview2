@@ -54,6 +54,16 @@ public:
 
 	void printtree();
 
+	inline glm::vec3 getblendtrans() const {
+		return nodeblendtrans;
+	}
+	inline glm::quat getblendrot() const {
+		return nodeblendrot;
+	}
+	inline glm::vec3 getblendscale() const {
+		return nodeblendscale;
+	}
+
 private:
 	void printnodes(std::shared_ptr<vknode> start, int indent);
 

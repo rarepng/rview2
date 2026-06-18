@@ -2,8 +2,7 @@
 #include <algorithm>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/quaternion.hpp>
-
-#include "vknode.hpp"
+#include <anim/vknode.hpp>
 
 vknode::~vknode() {}
 

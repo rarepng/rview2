@@ -1,31 +1,43 @@
 fml
-render to zero copy texture for obs (i hope it works)
+OBS HEADLESS!!!!!!!!
+bendy bones
+gns piping
+viseme mapping
+just move the $&@#ing ui to a separate async pipeline
+modularize passes (compute: pre, post, async)
+miniaudio
+the stupid vertex smearing
+kill the bucket
+unify cleanup as lambdas (more memory but cleaner)
+texture compression at runtime [droptime] (probably basis universal)
+wuffs/exr/replace stb (except maybe for hdr)/that gltf extension for compressed images
+single source for slang and cpp
+PAINFUL order independant transparency
+refractions and SSR
+inverse hull outlines (somehow efficiently)
 gltf compliance
 gltf extensions (emission, sheen, gloss)
-gns piping
-shape keys
-bendy bones
-google's tensorflow or find a library for viseme mapping idk
-custom (pre) lambda allocator per thread
-unify the job scheduler, tasks and thread pools (cpu)
-modularize passes (compute: pre, post, async)
-renderdoc headers
-audio
-sdl_mixer
-obs
-kill the bucket
-jolt
-meshoptimizer
-apple clang preset(s) X_X
+PROPER DELETION and DEFERRED CLEANUP!!!!!! [[CRITICAL]] // maybe dedicated wait device idle lambda?
+volk for runtime recovery
+sparse virtual textures because $*@# id
+actual ui overhaul with proper tools
+shadows [i dont care for shadows personally but gotta rip that bandaid off at some point]
+anti aliasing [ ditto ]
+decoupled physics loop(s)
+replace imgui or find a way to use it without all the vertex overhead
+tune VMA to use maybe 64MB instead of 256MB
+runtime env map update (and skybox)
+clang-format instead of astyle ~~[maybe]~~ [definitely]
+revisit clang-uml
 update readme
 demos!!!!!!!
-wuffs/exr/replace stb (except maybe for hdr)/that gltf extension for compressed images
+jolt
+meshoptimizer
+the spinner
+feedback place (in the offchance i ever get any)
+hot reloading dll (separate for dev cycle)
 hot reloading shaders
-volk
-hot reloading dll (separate for dev cycle) [horrible idea, great flex]
-unify cleanup as lambdas (more memory but cleaner)
-dev arguments in main
-OBS HEADLESS!!!!!!!!
-the stupid vertex smearing
-clang-format instead of astyle [maybe]
-retain shape key names for mapping and ui?
+apple clang preset(s) X_X [probably never let's be real]
+launcher > core (different cpu arch) > headless (same) ??
+move animation baking to async compute
+retain shape key names for mapping and ui? (animation keys too)

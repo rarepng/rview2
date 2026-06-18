@@ -35,7 +35,7 @@
 #     using_namespace: rview2
 
 # clanger stopped working
-compilation_database_dir: build/clanged
+compilation_database_dir: build
 output_directory: diagrams
 
 remove_compile_flags:

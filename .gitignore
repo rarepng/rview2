@@ -23,3 +23,6 @@ docs
 CMakeUserPresets.json
 html
 git.diff
+CMakeLocal.txt
+notes.md
+notes.txt

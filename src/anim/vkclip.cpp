@@ -1,4 +1,4 @@
-#include "vkclip.hpp"
+#include <anim/vkclip.hpp>
 vkclip::vkclip(std::string name) : animname(name) {}
 void vkclip::addchan(const fastgltf::Asset &model, const fastgltf::Animation &anim,
                      const fastgltf::AnimationChannel &chann) {

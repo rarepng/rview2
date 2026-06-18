@@ -1,13 +1,12 @@
 #pragma once
-#include "anim/flatskelly.hpp"
+#include <anim/flatskelly.hpp>
 #include <fastgltf/core.hpp>
 #include <fastgltf/types.hpp>
 #include <fastgltf/tools.hpp>
 #include <fastgltf/glm_element_traits.hpp>
-#include <fastgltf/tools.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <queue>
-#include <vector>
+#include <memory>
 
 namespace AssetBaker {
 
@@ -25,17 +24,25 @@ inline void ParseNodeTransform(const fastgltf::Node& node, glm::mat4& outMat) {
 	}, node.transform);
 }
 
-inline void BakeSkeleton(const fastgltf::Asset& asset, FlatSkeleton& skel, size_t skinIndex = 0) {
-	// FlatSkeleton skel{};
-	skel.parentIndices.fill(-1);
-
+inline void BakeSkeleton(const fastgltf::Asset& asset, ParsedSkeleton& skel, size_t skinIndex = 0) {
 	if (asset.nodes.empty()) return;
 
-	std::vector<int32_t> gltfToTopo(asset.nodes.size(), -1);
-	skel.gltfToTopoMap.fill(-1);
-	uint32_t topoIdx = 0;
+	uint32_t gltfNodeCount = static_cast<uint32_t>(asset.nodes.size());
+	uint32_t jointCount = 0;
 
-	std::vector<bool> isChild(asset.nodes.size(), false);
+	if (asset.skins.size() > skinIndex) {
+		jointCount = static_cast<uint32_t>(asset.skins[skinIndex].joints.size());
+	}
+
+	skel.allocate(gltfNodeCount, jointCount, gltfNodeCount);
+
+	auto gltfToTopo = std::make_unique<int32_t[]>(gltfNodeCount);
+	auto isChild = std::make_unique<bool[]>(gltfNodeCount);
+
+	for (uint32_t i = 0; i < gltfNodeCount; ++i) {
+		gltfToTopo[i] = -1;
+		isChild[i] = false;
+	}
 
 	for (const auto& node : asset.nodes) {
 		for (auto child : node.children) isChild[child] = true;
@@ -43,21 +50,18 @@ inline void BakeSkeleton(const fastgltf::Asset& asset, FlatSkeleton& skel, size_
 
 	std::queue<size_t> q;
 
-	for (size_t i = 0; i < isChild.size(); ++i) {
+	for (size_t i = 0; i < gltfNodeCount; ++i) {
 		if (!isChild[i]) q.push(i);
 	}
+
+	uint32_t topoIdx = 0;
 
 	while (!q.empty()) {
 		size_t nodeIdx = q.front();
 		q.pop();
 
-		if (topoIdx >= MAX_BONES) break;
-
 		gltfToTopo[nodeIdx] = topoIdx;
-
-		if (nodeIdx < MAX_BONES) {
-			skel.gltfToTopoMap[nodeIdx] = topoIdx;
-		}
+		skel.gltfToTopoMap[nodeIdx] = topoIdx;
 
 		glm::mat4 localMat(1.0f);
 		ParseNodeTransform(asset.nodes[nodeIdx], localMat);
@@ -72,42 +76,37 @@ inline void BakeSkeleton(const fastgltf::Asset& asset, FlatSkeleton& skel, size_
 
 	skel.nodeCount = topoIdx;
 
-	for (size_t i = 0; i < asset.nodes.size(); ++i) {
+	for (size_t i = 0; i < gltfNodeCount; ++i) {
 		int32_t parentTopo = gltfToTopo[i];
 
 		if (parentTopo >= 0) {
 			for (auto childIdx : asset.nodes[i].children) {
 				int32_t childTopo = gltfToTopo[childIdx];
 
-				if (childTopo >= 0 && childTopo < MAX_BONES) skel.parentIndices[childTopo] = parentTopo;
+				if (childTopo >= 0) skel.parentIndices[childTopo] = parentTopo;
 			}
 		}
 	}
 
-	if (asset.skins.size() > skinIndex) {
+	if (jointCount > 0) {
 		const auto& skin = asset.skins[skinIndex];
-		skel.jointCount = std::min(static_cast<uint32_t>(skin.joints.size()), MAX_BONES);
 
-		for (size_t j = 0; j < skel.jointCount; ++j) {
+		for (size_t j = 0; j < jointCount; ++j) {
 			size_t gltfNodeIdx = skin.joints[j];
 			skel.jointToNodeMap[j] = gltfToTopo[gltfNodeIdx];
 		}
 
 		if (skin.inverseBindMatrices.has_value()) {
 			const auto& acc = asset.accessors[skin.inverseBindMatrices.value()];
-			std::vector<glm::mat4> tempMat(acc.count);
-			fastgltf::copyFromAccessor<glm::mat4>(asset, acc, tempMat.data());
-			size_t copyCount = std::min(acc.count, static_cast<size_t>(MAX_BONES));
-			std::memcpy(skel.inverseBindMatrices.data(), tempMat.data(), copyCount * sizeof(glm::mat4));
-		} else {
-			for (size_t j = 0; j < skel.jointCount; ++j) {
-				skel.inverseBindMatrices[j] = glm::mat4(1.0f);
-			}
+
+			auto tempMat = std::make_unique<glm::mat4[]>(acc.count);
+			fastgltf::copyFromAccessor<glm::mat4>(asset, acc, tempMat.get());
+
+			size_t copyCount = std::min(static_cast<size_t>(acc.count), static_cast<size_t>(jointCount));
+			std::memcpy(skel.inverseBindMatrices.get(), tempMat.get(), copyCount * sizeof(glm::mat4));
 		}
 	}
 
 	skel.UpdateGlobalMatrices();
-
-	// return skel;
 }
 }

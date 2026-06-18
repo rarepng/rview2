@@ -1,15 +1,12 @@
 #pragma once
 
 #define _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR
-
-#include "netbuffer.hpp"
-
+#include <net/netbuffer.hpp>
 #include <steam/isteamnetworkingutils.h>
 #include <steam/steamnetworkingsockets.h>
 #ifndef STEAMNETWORKINGSOCKETS_OPENSOURCE
 #include <steam/steam_api.h>
 #endif
-
 #include <functional>
 #include <glm/glm.hpp>
 #include <string>

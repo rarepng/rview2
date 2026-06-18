@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/rvk.hpp"
+#include <core/rvk.hpp>
 #include <vector>
 #include <functional>
 #include <string_view>
@@ -37,6 +37,7 @@ struct BatchResult {
 }
 
 namespace rview::rvk::tex {
+texdata upload_texture_async(rvkbucket& rdata, VkCommandBuffer cmd, const uint8_t* pixels, int w, int h);
 [[nodiscard]] BatchResult load_batch(
     rvkbucket& rdata,
     std::vector<texdata>& out_textures,

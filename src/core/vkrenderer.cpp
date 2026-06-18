@@ -1,29 +1,29 @@
-#include "backends/imgui_impl_sdl3.h"
-#include "core/rvk.hpp"
-#include <cstdint>
 #define GLM_ENABLE_EXPERIMENTAL
 #define VMA_IMPLEMENTATION
-#include "exp/particle.hpp"
-#include "vkrenderer.hpp"
+#include <backends/imgui_impl_sdl3.h>
+#include <core/rvk.hpp>
+#include <cstdint>
+#include <vkrenderer.hpp>
 #include <backends/imgui_impl_glfw.h>
 #include <imgui.h>
 #include <vk_mem_alloc.h>
 #include <cstdlib>
 #include <ctime>
 #include <future>
+#include <iostream>
+#include <ranges>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/spline.hpp>
-#include <iostream>
-#include <ranges>
-#include "vk/commandbuffer.hpp"
-#include "vk/commandpool.hpp"
-#include "vksyncobjects.hpp"
+#include <dbg/demo.hpp>
+#include <vk/commandbuffer.hpp>
+#include <vk/commandpool.hpp>
+#include <vksyncobjects.hpp>
 #include <SDL3/SDL_vulkan.h>
-#include "vktex.hpp"
-#include "playout.hpp"
-#include "ubo.hpp"
-#include "obs_bridge.hpp"
+#include <vktex.hpp>
+#include <playout.hpp>
+#include <ubo.hpp>
+#include <obs_bridge.hpp>
 
 void vkrenderer::immediate_submit(rvkbucket& mvkobjs,
                                   std::function<void(VkCommandBuffer cbuffer)> &&fn) {
@@ -63,19 +63,6 @@ void vkrenderer::immediate_submit(rvkbucket& mvkobjs,
 	vkFreeCommandBuffers(mvkobjs.vkdevice.device, mvkobjs.cpools_graphics.at(0),
 	                     1, &cbuffer);
 }
-constexpr auto destroyDummy =
-[](rview::core::DummyTexture& tex, rvkbucket& mvkobjs) {
-	vkDestroyImageView(mvkobjs.vkdevice.device, tex.view, nullptr);
-	vkDestroyImage(mvkobjs.vkdevice.device, tex.image, nullptr);
-	vkFreeMemory(mvkobjs.vkdevice.device, tex.memory, nullptr);
-};
-// temp
-void UpdateAllInstances(std::vector<genericinstance*>& instances) {
-	std::ranges::for_each(instances,
-	[](genericinstance * inst) {
-		inst->checkforupdates();
-	});
-}
 
 // gotta move these somewhere more reasonable someday
 bool init_global_samplers(rvkbucket &objs) {
@@ -96,10 +83,24 @@ bool init_global_samplers(rvkbucket &objs) {
 		return false;
 	}
 
+	g_exitQ.enqueue(TeardownPhase::device, [device = objs.vkdevice.device,
+	sampler = objs.samplerz[0]]() {
+		vkDestroySampler(device, sampler, nullptr);
+	});
+
+
 	info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	vkCreateSampler(objs.vkdevice.device, &info, nullptr, &objs.samplerz[1]);
+
+	if (vkCreateSampler(objs.vkdevice.device, &info, nullptr, &objs.samplerz[1]) != VK_SUCCESS) {
+		return false;
+	}
+
+	g_exitQ.enqueue(TeardownPhase::device, [device = objs.vkdevice.device,
+	sampler = objs.samplerz[1]]() {
+		vkDestroySampler(device, sampler, nullptr);
+	});
 
 	return true;
 }
@@ -250,6 +251,15 @@ bool init_dummy_textures(rvkbucket &objs, VkCommandPool &cmdPool) {
 		vkDestroyBuffer(objs.vkdevice.device, stagingBuf, nullptr);
 		vkFreeMemory(objs.vkdevice.device, stagingMem, nullptr);
 
+		g_exitQ.enqueue(TeardownPhase::device, [device = objs.vkdevice.device,
+		                                        img = tex.image,
+		                                        view = tex.view,
+		mem = tex.memory]() {
+			vkDestroyImageView(device, view, nullptr);
+			vkDestroyImage(device, img, nullptr);
+			vkFreeMemory(device, mem, nullptr);
+		});
+
 		return tex;
 	};
 
@@ -322,6 +332,8 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 	// }}))
 	// 	return false;
 
+	g_commit_queue.reserve(64);
+
 	if (!initvma(mvkobjs)) return false;
 
 	if (!getqueue(mvkobjs)) return false;
@@ -338,7 +350,15 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 
 	if (!initcpuQs(mvkobjs)) return false;
 
+	model_manager::reserve_mega_buffers(rview::anim::megabuffers);
+
 	if (!playout::init_bindless(mvkobjs)) return false;
+
+	if (!initglobalmats(mvkobjs)) return false;
+
+	model_manager::init_gpu_joint_buffers(mvkobjs);
+
+	if (!playout::init_pipelines(mvkobjs)) return false;
 
 	if (!init_global_samplers(mvkobjs)) return false;
 
@@ -350,9 +370,9 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 
 	if (!ubo::init_global(mvkobjs)) return false;
 
-	if (!initglobalmats(mvkobjs)) return false;
-
 	if (!initglobalinstances(mvkobjs))return false;
+
+	if (!initglobalmorphs(mvkobjs)) return false;
 
 	if (!initglobalindirect(mvkobjs))return false;
 
@@ -379,9 +399,43 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 	return true;
 }
 bool vkrenderer::initcpuQs(rvkbucket& mvkobjs) {
-	return mvkobjs.sbelt.init(mvkobjs.alloc, 256 * 1024 * 1024);
+	for (uint32_t i = 0; i < rview::core::MAX_FRAMES_IN_FLIGHT; ++i) {
+		if (!mvkobjs.sbelts[i].init(mvkobjs.alloc, 256 * 1024 * 1024)) return false;
+	}
+
+	return true;
 }
 bool vkrenderer::initscene(rvkbucket& mvkobjs) {
+	if constexpr (rdemo::is_active) {
+		const auto& scene = rdemo::SCENES[1];
+
+		for (const auto& spawn : scene.spawns) {
+			const char* fname = g_job_strings.push_string(spawn.filepath);
+			uint32_t count = spawn.count;
+			glm::vec3 origin = spawn.origin;
+			auto modifier = spawn.modifier;
+
+			active_io_jobs.fetch_add(1, std::memory_order_release);
+			g_jobs.enqueue([fname, count, origin, modifier]() {
+				model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
+				staging.requested_instances = count;
+				staging.spawn_position = origin;
+				staging.skipui = true;
+				staging.demo_modifier = modifier;
+
+				if (!staging.meshes.empty()) {
+					while (!vkrenderer::pending_staging_models.push(std::move(staging))) {
+						std::this_thread::yield();
+					}
+				}
+
+				active_io_jobs.fetch_sub(1, std::memory_order_release);
+			});
+		}
+
+		return true; // will skip boot.json for nows
+	}
+
 	simdjson::ondemand::parser p;
 	simdjson::padded_string j;
 
@@ -401,26 +455,42 @@ bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 	for (simdjson::ondemand::object x : models) {
 		std::string_view f = x["file"].get_string();
 		uint64_t c = x["count"].get_uint64();
+		// POSITION NOT OPTIONAL AND MUST BE 3
+		// no x["position"].get(pos_arr) == simdjson::SUCCESS
+		simdjson::ondemand::array pos_arr = x["position"].get_array();
+		auto it = pos_arr.begin();
+		float pX = static_cast<float>((*it).get_double());
+		++it;
+		float pY = static_cast<float>((*it).get_double());
+		++it;
+		float pZ = static_cast<float>((*it).get_double());
+		glm::vec3 start_pos(pX, pY, pZ);
+		uint32_t instance_count = static_cast<uint32_t>(c);
+		const char* fname = g_job_strings.push_string(f);
+		active_io_jobs.fetch_add(1, std::memory_order_release);
 
-		simdjson::ondemand::object shaders = x["shaders"].get_object();
-		std::string_view vx = shaders["vx"].get_string();
-		std::string_view px = shaders["px"].get_string();
+		g_jobs.enqueue([fname, instance_count, start_pos]() {
+			model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
+			staging.requested_instances = instance_count;
+			staging.dropID = 0xFFFFFFFF; // irrelevant
+			staging.skipui = true;
+			staging.spawn_position = start_pos;
 
-		mplayer.emplace_back(std::make_shared<playoutgeneric>());
-		selectiondata.instancesettings.emplace_back();
-		selectiondata.instancesettings.back().resize(c);
+			if (!staging.meshes.empty()) {
+				while (!vkrenderer::pending_staging_models.push(std::move(staging))) {
+					if constexpr (rdebug::is_active) {
+						std::cerr << "Engine queue full! Dropped boot model: " << fname << "\n";
+					}
 
-		if (!mplayer.back()->setup(mvkobjs, f, c, vx, px)) {
-			return false;
-		}
+					std::this_thread::yield();
+				}
+			} else {
+				std::cerr << "Failed to parse boot model: " << fname << "\n";
+			}
 
-		for (size_t i{0}; i < c; i++) {
-			selectiondata.instancesettings.back().at(i) = &mplayer.back()->getinst(i)->getinstancesettings();
-		}
-
+			active_io_jobs.fetch_sub(1, std::memory_order_release);
+		});
 	}
-
-	if (!particle::createeverything(mvkobjs)) return false;
 
 	return true;
 }
@@ -443,6 +513,24 @@ bool vkrenderer::initglobalmats(rvkbucket &mvkobjs) {
 	}
 
 	rview::core::global_materials.mapped_data = allocResult.pMappedData;
+	model_manager::MaterialData* mats = static_cast<model_manager::MaterialData*>(allocResult.pMappedData);
+
+	for (uint32_t i = 0; i < rview::core::MAX_GLOBAL_MATERIALS; ++i) {
+		mats[i].albedoIdx = 0xFFFFFFFF;
+		mats[i].normalIdx = 0xFFFFFFFF;
+		mats[i].ormIdx = 0xFFFFFFFF;
+		mats[i].emissiveIdx = 0xFFFFFFFF;
+		mats[i].transmissionIdx = 0xFFFFFFFF;
+		mats[i].sheenIdx = 0xFFFFFFFF;
+		mats[i].clearcoatIdx = 0xFFFFFFFF;
+		mats[i].thicknessIdx = 0xFFFFFFFF;
+
+		mats[i].baseColorFactor = glm::vec4(1.0f);
+		mats[i].emissiveFactor = glm::vec3(0.0f);
+		mats[i].normalScale = 1.0f;
+		mats[i].roughnessFactor = 1.0f;
+		mats[i].metallicFactor = 0.0f;
+	}
 
 	for (uint32_t i = 0; i < rview::core::MAX_GLOBAL_MATERIALS; ++i) {
 		rview::core::global_materials.free_slots.push(i);
@@ -573,7 +661,17 @@ void vkrenderer::update_dynamic_instances(rvkbucket& mvkobjs) {
 	vmaMapMemory(mvkobjs.alloc, rview::core::globalInstanceBuffers[rview::core::currentFrame].alloc, &mappedData);
 	GPUInstanceData* gpuInsts = static_cast<GPUInstanceData*>(mappedData);
 
+	void* weightData;
+	vmaMapMemory(mvkobjs.alloc, g_morphWeightBuffers[rview::core::currentFrame].alloc, &weightData);
+	float* mappedWeights = static_cast<float*>(weightData);
+	uint32_t globalWeightOffset = 0;
+
 	for (uint32_t i = 0; i < safe_instances; ++i) {
+		if (!model_manager::g_registry.is_visible[i] || g_scene.modelIDs[i] == 0xFFFFFFFF) {
+			gpuInsts[i].modelID = 0xFFFFFFFF;
+			continue;
+		}
+
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f), g_scene.worldPositions[i]) *
 		                      glm::toMat4(g_scene.rotations[i]) *
 		                      glm::scale(glm::mat4(1.0f), g_scene.scales[i]);
@@ -584,13 +682,23 @@ void vkrenderer::update_dynamic_instances(rvkbucket& mvkobjs) {
 		gpuInsts[i].jointOffset    = g_scene.jointOffsets[i];
 		gpuInsts[i].isSkinned      = g_scene.isSkinned[i];
 
-		gpuInsts[i].indexCount     = 0;
-		gpuInsts[i].firstIndex     = 0;
-		gpuInsts[i].vertexOffset   = 0;
+		gpuInsts[i].indexCount     		= 0;
+		gpuInsts[i].firstIndex     		= 0;
+		gpuInsts[i].vertexOffset   		= 0;
+		uint32_t wCount = static_cast<uint32_t>(model_manager::g_registry.morph_weights[i].size());
+		gpuInsts[i].morphWeightOffset = globalWeightOffset;
+
+		if (wCount > 0) {
+			std::memcpy(mappedWeights + globalWeightOffset, model_manager::g_registry.morph_weights[i].data(), wCount * sizeof(float));
+			globalWeightOffset += wCount;
+		}
 	}
 
 	vmaFlushAllocation(mvkobjs.alloc, rview::core::globalInstanceBuffers[rview::core::currentFrame].alloc, 0, safe_instances * sizeof(GPUInstanceData));
 	vmaUnmapMemory(mvkobjs.alloc, rview::core::globalInstanceBuffers[rview::core::currentFrame].alloc);
+
+	vmaFlushAllocation(mvkobjs.alloc, g_morphWeightBuffers[rview::core::currentFrame].alloc, 0, globalWeightOffset * sizeof(float));
+	vmaUnmapMemory(mvkobjs.alloc, g_morphWeightBuffers[rview::core::currentFrame].alloc);
 }
 bool vkrenderer::initvma(rvkbucket& mvkobjs) {
 	VmaAllocatorCreateInfo allocinfo{};
@@ -766,6 +874,38 @@ bool vkrenderer::initui(rvkbucket& mvkobjs) {
 
 	return true;
 }
+bool vkrenderer::initglobalmorphs(rvkbucket& mvkobjs) {
+	size_t bufferSize = rview::anim::maxmorphs * sizeof(float);
+
+	for (uint32_t i = 0; i < rview::core::MAX_FRAMES_IN_FLIGHT; ++i) {
+		VkBufferCreateInfo binfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+		binfo.size = bufferSize;
+		binfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+		VmaAllocationCreateInfo vmaallocinfo{};
+		vmaallocinfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+		vmaallocinfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+		if (vmaCreateBuffer(mvkobjs.alloc, &binfo, &vmaallocinfo,
+		                    &g_morphWeightBuffers[i].buffer,
+		                    &g_morphWeightBuffers[i].alloc, nullptr) != VK_SUCCESS) {
+			return false;
+		}
+
+		VkDescriptorBufferInfo ssboInfo{g_morphWeightBuffers[i].buffer, 0, VK_WHOLE_SIZE};
+		VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+		write.dstSet = rview::core::globalBindlessSet;
+		write.dstBinding = 18;
+		write.dstArrayElement = i;
+		write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		write.descriptorCount = 1;
+		write.pBufferInfo = &ssboInfo;
+
+		vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &write, 0, nullptr);
+	}
+
+	return true;
+}
 void vkrenderer::write_obs(rvkbucket& mvkobjs) {
 	VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
 	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -801,34 +941,20 @@ void vkrenderer::write_obs(rvkbucket& mvkobjs) {
 }
 void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 
+	rview::io::save_state_to_json();
+
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
-
 	ui::cleanup(mvkobjs);
-
-	particle::destroyeveryting(mvkobjs);
-
-
 	vksyncobjects::cleanup(mvkobjs);
 
 	for (auto &x : mvkobjs.dpools)
 		rpool::destroy(mvkobjs.vkdevice.device, x);
 
-	for (const auto &i : mplayer)
-		i->cleanuplines(mvkobjs);
+	playout::cleanup_pipelines(mvkobjs);
 
-	for (const auto &i : mplayer)
-		i->cleanupbuffers(mvkobjs);
+	model_manager::StagingModelData temp;
 
-	for (const auto &i : mplayer)
-		i->cleanupmodels(mvkobjs);
-
-	mplayer.clear();
-	selectiondata.instancesettings.clear();
-
-	// must
-	std::shared_ptr<playoutgeneric> temp;
-
-	while (pending_models.pop(temp)) {}
+	while (pending_staging_models.pop(temp)) {}
 
 	//temp
 	mvkobjs.cleanupQ.flush();
@@ -859,19 +985,12 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 		                rview::core::exrtex.at(0).alloc);
 	}
 
-	mvkobjs.sbelt.free(mvkobjs.alloc);
-
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::global_materials.buffer, rview::core::global_materials.alloc);
-
-	vkDestroyDescriptorPool(mvkobjs.vkdevice.device, rview::core::global_materials.dedicated_pool, VK_NULL_HANDLE);
-
-	vkDestroyPipelineLayout(mvkobjs.vkdevice.device, rview::core::globalPipelineLayout, nullptr);
-	vkDestroyDescriptorPool(mvkobjs.vkdevice.device, rview::core::globalBindlessPool, nullptr);
-	vkDestroyDescriptorSetLayout(mvkobjs.vkdevice.device, rview::core::globalBindlessLayout, nullptr);
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::globalCameraUBO.buffer, rview::core::globalCameraUBO.alloc);
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::g_rawIndexSSBO.buffer, rview::core::g_rawIndexSSBO.alloc);
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::g_primitiveRegistrySSBO.buffer, rview::core::g_primitiveRegistrySSBO.alloc);
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::g_modelRegistrySSBO.buffer, rview::core::g_modelRegistrySSBO.alloc);
+	vmaDestroyBuffer(mvkobjs.alloc, g_morphDeltaSSBO.buffer, g_morphDeltaSSBO.alloc);
 
 	for (auto&& x : rview::core::g_indirectCommandBuffers)
 		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
@@ -885,29 +1004,50 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	for (auto&& x : rview::core::globalIndirectBuffers)
 		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
 
-	//dbg only block
-	// char* statsString = nullptr;
-	// vmaBuildStatsString(mvkobjs.alloc, &statsString, true);
-	// if (statsString) {
-	// 	std::cout << "=== VMA REPORT !! ===" << std::endl;
-	// 	std::cout << statsString << std::endl;
-	// 	std::cout << "=======================" << std::endl;
-	// 	vmaFreeStatsString(mvkobjs.alloc, statsString);
-	// }
+	for (auto&& x : model_manager::g_gpu_joint_buffers) {
+		if (x.buffer) vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
+	}
+
+	for (auto&& x : g_morphWeightBuffers) {
+		if (x.buffer) vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
+	}
+
+	for (auto& [id, asset] : model_manager::g_cpuModels) {
+		if (asset.geometryVBO.buffer) {
+			vmaDestroyBuffer(mvkobjs.alloc, asset.geometryVBO.buffer, asset.geometryVBO.alloc);
+		}
+	}
+
+	vkDestroyDescriptorPool(mvkobjs.vkdevice.device, rview::core::global_materials.dedicated_pool, VK_NULL_HANDLE);
+
+	for (const auto& i : model_manager::g_cpuModels) {
+		for (const auto& j : i.second.textures) {
+			vmaDestroyImage(mvkobjs.alloc, j.img, j.alloc);
+			vkDestroyImageView(mvkobjs.vkdevice.device, j.imgview, nullptr);
+		}
+	}
+
+	model_manager::g_cpuModels.clear();
+	g_exitQ.flush_and_die();
+	std::ranges::for_each(mvkobjs.sbelts, [&mvkobjs](auto & x) {
+		x.free(mvkobjs.alloc);
+	});
+
+	if constexpr (rdebug::is_active) {
+		char* statsString = nullptr;
+		vmaBuildStatsString(mvkobjs.alloc, &statsString, true);
+
+		if (statsString) {
+			std::cout << "=== VMA REPORT !! ===" << std::endl;
+			std::cout << statsString << std::endl;
+			std::cout << "=======================" << std::endl;
+			vmaFreeStatsString(mvkobjs.alloc, statsString);
+		}
+	}
 
 	vmaDestroyAllocator(mvkobjs.alloc);
-
-	destroyDummy(rview::core::defaults.purple, mvkobjs);
-	destroyDummy(rview::core::defaults.white, mvkobjs);
-	destroyDummy(rview::core::defaults.normal, mvkobjs);
-	destroyDummy(rview::core::defaults.black, mvkobjs);
-
-	for (const auto &i : mvkobjs.samplerz)
-		vkDestroySampler(mvkobjs.vkdevice, i, nullptr);
-
 	mvkobjs.schain.destroy_image_views(mvkobjs.schainimgviews);
 	vkb::destroy_swapchain(mvkobjs.schain);
-
 	vkb::destroy_device(mvkobjs.vkdevice);
 	vkb::destroy_surface(mvkobjs.inst.instance, mvkobjs.surface);
 	vkb::destroy_instance(mvkobjs.inst);
@@ -1153,26 +1293,6 @@ void vkrenderer::copy_engine_to_obs(VkCommandBuffer cmdBuffer, rvkbucket& mvkobj
 //     }
 //     return true;
 // }
-bool vkrenderer::uploadfordraw(rvkbucket& mvkobjs, VkCommandBuffer cbuffer) {
-	manimupdatetimer.start();
-
-	for (const auto &i : mplayer)
-		i->uploadvboebo(mvkobjs, cbuffer);
-
-	return true;
-}
-
-bool vkrenderer::uploadfordraw(rvkbucket& mvkobjs, std::shared_ptr<playoutgeneric>& x) {
-	ZoneScoped;
-	manimupdatetimer.start();
-
-	x->uploadvboebo(mvkobjs,
-	                mvkobjs.cbuffers_graphics.at(0).at(rview::core::currentFrame));
-
-	rview::core::uploadubossbotime = manimupdatetimer.stop();
-
-	return true;
-}
 
 void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 	switch (e.type) {
@@ -1249,28 +1369,56 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 
 				break;
 			}
-
 		case SDL_EVENT_DROP_FILE:
 			[[unlikely]] {
-				std::string fname = e.drop.data;
+				std::string_view fname_view(e.drop.data);
 
-				g_jobs.enqueue([&mvkobjs, fname]() {
-					auto newp = std::make_shared<playoutgeneric>();
+				if (fname_view.ends_with(".glb") || fname_view.ends_with(".vrm") ||
+				        fname_view.ends_with(".GLB") || fname_view.ends_with(".VRM")) {
+					uint32_t currentDropID = g_dropCounter.fetch_add(1, std::memory_order_relaxed);
+					float mx, my;
+					SDL_GetMouseState(&mx, &my);
+					glm::vec4 viewport(0.0f, 0.0f, (float)mvkobjs.width, (float)mvkobjs.height);
+					glm::vec3 nearPt = glm::unProject(glm::vec3(mx, viewport.w - my, 0.0f), persviewproj[0], persviewproj[1], viewport);
+					glm::vec3 farPt  = glm::unProject(glm::vec3(mx, viewport.w - my, 1.0f), persviewproj[0], persviewproj[1], viewport);
+					glm::vec3 rayDir = glm::normalize(farPt - nearPt);
+					float t = (glm::abs(rayDir.y) > 0.001f) ? (0.0f - rview::core::camwpos.y) / rayDir.y : -1.0f;
+					glm::vec3 hitPos = (t > 0.0f && t <= 50.0f) ? (rview::core::camwpos + rayDir * t) : (rview::core::camwpos + rayDir * 50.0f);
+					vkrenderer::DropSession session{};
+					session.dropID = currentDropID;
+					session.spawnPos = hitPos;
+					session.filename = std::string(fname_view);
+					vkrenderer::g_activeDrops.emplace_back(std::move(session));
+					vkrenderer::g_openDropModal = true;
 
-					//hardcoded shaders
-					bool success = newp->setup(mvkobjs, fname.c_str(), 1,
-					                           "shaders/vx.spv", "shaders/px.spv");
+					if (active_io_jobs.load(std::memory_order_acquire) == 0) g_job_strings.reset();
 
-					if (success) {
-						if (!pending_models.push(std::move(newp))) {
-							std::cout << "Engine queue full! Dropped model: " << fname << "\n";
+					const char* fname = g_job_strings.push_string(fname_view);
+
+					g_jobs.enqueue([fname, currentDropID]() {
+						model_manager::g_progress_queue.push({currentDropID, model_manager::ParseStep::parsing});
+
+
+						model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
+
+						model_manager::g_progress_queue.push({currentDropID, model_manager::ParseStep::done});
+
+						staging.dropID = currentDropID;
+						staging.skipui = false;
+
+						active_io_jobs.fetch_add(1, std::memory_order_release);
+
+						if (!staging.meshes.empty()) {
+							while (!vkrenderer::pending_staging_models.push(std::move(staging))) {
+								std::this_thread::yield();
+							}
 						}
-					} else {
-						std::cout << "model not added, probably wrong format. \n"
-						          << "only binary gltf files (.glb) are accepted. Provided was: "
-						          << fname << std::endl;
-					}
-				});
+
+						active_io_jobs.fetch_sub(1, std::memory_order_release);
+					});
+
+				}
+
 				break;
 			}
 		case SDL_EVENT_DROP_COMPLETE:
@@ -1284,6 +1432,84 @@ void vkrenderer::moveplayer() {
 	//                    ->getinst(selectiondata.iidx)
 	//                    ->getinstancesettings();
 	// s.msworldpos = playermoveto;
+}
+// 1. MUST use && to avoid copy-constructor deleted errors
+void vkrenderer::commitspawn(rvkbucket& mvkobjs, VkCommandBuffer c, model_manager::StagingModelData&& drop) {
+	std::vector<uint32_t> uploadedTexIDs(drop.textures.size(), 0xFFFFFFFF);
+	uint32_t modelID = model_manager::commit_staging_to_vulkan(mvkobjs, c, drop, uploadedTexIDs);
+
+	for (uint32_t i = 0; i < drop.requested_instances; ++i) {
+		uint32_t b_count = drop.parsed_skel ? drop.parsed_skel->nodeCount : 0;
+		uint32_t j_count = drop.parsed_skel ? drop.parsed_skel->jointCount : 0;
+		uint32_t b_start = (b_count > 0) ? static_cast<uint32_t>(model_manager::g_bone_locals.size()) : 0;
+		uint32_t j_start = (j_count > 0) ? static_cast<uint32_t>(model_manager::g_joint_to_node.size()) : 0;
+
+		model_manager::Entity new_ent = model_manager::g_registry.create_entity(
+		                                    modelID, drop.isSkinned, b_start, b_count, j_start, j_count
+		                                );
+
+		if (!model_manager::g_registry.is_valid(new_ent)) continue;
+
+		uint32_t dense_idx = model_manager::g_registry.get_dense_index(new_ent);
+
+		if (b_count > 0) {
+			for (uint32_t b = 0; b < b_count; ++b) {
+				int32_t parent = drop.parsed_skel->parentIndices[b];
+				model_manager::g_bone_parents.push_back(parent >= 0 ? parent + b_start : -1);
+				model_manager::g_bone_entity_owner.push_back(dense_idx);
+			}
+
+			model_manager::g_bone_locals.insert(model_manager::g_bone_locals.end(),
+			                                    drop.parsed_skel->localTransforms.get(), drop.parsed_skel->localTransforms.get() + b_count);
+			model_manager::g_bone_globals.insert(model_manager::g_bone_globals.end(),
+			                                     drop.parsed_skel->globalTransforms.get(), drop.parsed_skel->globalTransforms.get() + b_count);
+
+			if (j_count > 0) {
+				for (uint32_t j = 0; j < j_count; ++j) {
+					model_manager::g_joint_to_node.push_back(drop.parsed_skel->jointToNodeMap[j] + b_start);
+				}
+
+				model_manager::g_joint_inverse_binds.insert(model_manager::g_joint_inverse_binds.end(),
+				                                    drop.parsed_skel->inverseBindMatrices.get(), drop.parsed_skel->inverseBindMatrices.get() + j_count);
+
+				for (uint32_t j = 0; j < j_count; ++j) {
+					model_manager::g_joint_final_matrices.push_back(
+					    Mat4ToDualQuatScale(drop.parsed_skel->finalJointMatrices[j])
+					);
+				}
+			}
+		}
+
+		if (drop.demo_modifier) {
+			drop.demo_modifier(i, drop.requested_instances, new_ent, drop.spawn_position);
+		} else {
+			model_manager::g_registry.position(new_ent) = drop.spawn_position;
+		}
+	}
+
+	auto it = model_manager::g_cpuModels.find(modelID);
+
+	if (it != model_manager::g_cpuModels.end()) {
+		it->second.refCount += drop.requested_instances;
+	}
+}
+
+void vkrenderer::spawnall(rvkbucket& mvkobjs, VkCommandBuffer c) {
+	for (auto& drop : g_activeDrops) {
+		drop.stagingData.requested_instances = drop.instanceCount;
+		drop.stagingData.spawn_position = drop.spawnPos;
+		commitspawn(mvkobjs, c, std::move(drop.stagingData));
+	}
+
+	g_activeDrops.clear();
+}
+
+void vkrenderer::cancelspawn(uint32_t id) {
+	g_activeDrops.erase(g_activeDrops.begin() + id);
+}
+
+void vkrenderer::cancelall() {
+	g_activeDrops.clear();
 }
 
 void vkrenderer::movecam(rvkbucket& mvkobjs) {
@@ -1345,15 +1571,16 @@ void vkrenderer::movecam(rvkbucket& mvkobjs) {
 				glm::vec3 h = nearPt + t * d;
 				h.y = navmesh(h.x, h.z);
 
-				modelsettings &s = mplayer[selectiondata.midx]
-				                   ->getinst(selectiondata.iidx)
-				                   ->getinstancesettings();
-				s.msworldpos = h;
-				playerlookto = glm::normalize(h - s.msworldpos);
+				// TODO
+				// modelsettings &s = mplayer[selectiondata.midx]
+				//                    ->getinst(selectiondata.iidx)
+				//                    ->getinstancesettings();
+				// s.msworldpos = h;
+				// playerlookto = glm::normalize(h - s.msworldpos);
 
-				if (glm::abs(h.x - s.msworldpos.x) > 2.1f || glm::abs(h.z - s.msworldpos.z) > 2.1f) {
-					s.msworldrot.y = glm::degrees(glm::atan(playerlookto.x, playerlookto.z));
-				}
+				// if (glm::abs(h.x - s.msworldpos.x) > 2.1f || glm::abs(h.z - s.msworldpos.z) > 2.1f) {
+				// 	s.msworldrot.y = glm::degrees(glm::atan(playerlookto.x, playerlookto.z));
+				// }
 			}
 		}
 	}
@@ -1406,12 +1633,13 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 				vkCmdCopyBuffer(cmd, rview::core::g_rawIndexSSBO.buffer, newBuffer.buffer, 1, &copyRegion);
 			}
 
-			VkDeviceSize beltOffset = mvkobjs.sbelt.reserve(newBytesToUpload);
-			std::memcpy(mvkobjs.sbelt.mappedData + beltOffset, g_assets.globalRawIndices.data() + rview::core::g_rawIndexOffset, newBytesToUpload);
-			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelt.allocation, beltOffset, newBytesToUpload);
+			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(newBytesToUpload);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.globalRawIndices.data() + rview::core::g_rawIndexOffset,
+			            newBytesToUpload);
+			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, newBytesToUpload);
 
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_rawIndexOffset, newBytesToUpload};
-			vkCmdCopyBuffer(cmd, mvkobjs.sbelt.buffer, newBuffer.buffer, 1, &tailRegion);
+			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, newBuffer.buffer, 1, &tailRegion);
 
 			safe_cleanup(mvkobjs, rview::core::g_rawIndexSSBO);
 
@@ -1419,16 +1647,60 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			rview::core::g_rawIndexCapacity = newCapacity;
 			descriptors_need_update = true;
 		} else {
-			VkDeviceSize beltOffset = mvkobjs.sbelt.reserve(newBytesToUpload);
-			std::memcpy(mvkobjs.sbelt.mappedData + beltOffset, g_assets.globalRawIndices.data() + rview::core::g_rawIndexOffset, newBytesToUpload);
-			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelt.allocation, beltOffset, newBytesToUpload);
+			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(newBytesToUpload);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.globalRawIndices.data() + rview::core::g_rawIndexOffset,
+			            newBytesToUpload);
+			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, newBytesToUpload);
 
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_rawIndexOffset, newBytesToUpload};
-			vkCmdCopyBuffer(cmd, mvkobjs.sbelt.buffer, rview::core::g_rawIndexSSBO.buffer, 1, &tailRegion);
+			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, rview::core::g_rawIndexSSBO.buffer, 1, &tailRegion);
 		}
 
 		rview::core::g_rawIndexOffset = currentByteSize;
 		add_barrier(rview::core::g_rawIndexSSBO.buffer);
+	}
+
+	uint32_t currentMorphByteSize = static_cast<uint32_t>(g_assets.globalMorphBytes.size());
+	uint32_t newMorphBytesToUpload = currentMorphByteSize - g_morphDeltaOffset;
+
+	if (newMorphBytesToUpload > 0) {
+		if (currentMorphByteSize > g_morphDeltaCapacity) {
+			uint32_t newCapacity = std::max(g_morphDeltaCapacity * 2, currentMorphByteSize + (1024 * 1024 * 8));
+
+			GpuBuffer newBuffer;
+			vkvbo::init(mvkobjs, newBuffer, newCapacity, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+			            VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+
+			if (g_morphDeltaSSBO.buffer != VK_NULL_HANDLE) {
+				VkBufferCopy copyRegion{0, 0, g_morphDeltaOffset};
+				vkCmdCopyBuffer(cmd, g_morphDeltaSSBO.buffer, newBuffer.buffer, 1, &copyRegion);
+			}
+
+			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(newMorphBytesToUpload);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.globalMorphBytes.data() + g_morphDeltaOffset,
+			            newMorphBytesToUpload);
+			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, newMorphBytesToUpload);
+
+			VkBufferCopy tailRegion{beltOffset, g_morphDeltaOffset, newMorphBytesToUpload};
+			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, newBuffer.buffer, 1, &tailRegion);
+
+			safe_cleanup(mvkobjs, g_morphDeltaSSBO);
+
+			g_morphDeltaSSBO = newBuffer;
+			g_morphDeltaCapacity = newCapacity;
+			descriptors_need_update = true;
+		} else {
+			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(newMorphBytesToUpload);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.globalMorphBytes.data() + g_morphDeltaOffset,
+			            newMorphBytesToUpload);
+			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, newMorphBytesToUpload);
+
+			VkBufferCopy tailRegion{beltOffset, g_morphDeltaOffset, newMorphBytesToUpload};
+			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, g_morphDeltaSSBO.buffer, 1, &tailRegion);
+		}
+
+		g_morphDeltaOffset = currentMorphByteSize;
+		add_barrier(g_morphDeltaSSBO.buffer);
 	}
 
 	uint32_t currentPrimCount = static_cast<uint32_t>(g_assets.primitives.size());
@@ -1449,24 +1721,24 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 				vkCmdCopyBuffer(cmd, rview::core::g_primitiveRegistrySSBO.buffer, newBuffer.buffer, 1, &copyRegion);
 			}
 
-			VkDeviceSize beltOffset = mvkobjs.sbelt.reserve(uploadBytes);
-			std::memcpy(mvkobjs.sbelt.mappedData + beltOffset, g_assets.primitives.data() + rview::core::g_primOffset, uploadBytes);
-			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelt.allocation, beltOffset, uploadBytes);
+			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(uploadBytes);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.primitives.data() + rview::core::g_primOffset, uploadBytes);
+			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, uploadBytes);
 
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_primOffset * sizeof(PrimitiveMetadata), uploadBytes};
-			vkCmdCopyBuffer(cmd, mvkobjs.sbelt.buffer, newBuffer.buffer, 1, &tailRegion);
+			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, newBuffer.buffer, 1, &tailRegion);
 
 			safe_cleanup(mvkobjs, rview::core::g_primitiveRegistrySSBO);
 			rview::core::g_primitiveRegistrySSBO = newBuffer;
 			rview::core::g_primCapacity = newCap;
 			descriptors_need_update = true;
 		} else {
-			VkDeviceSize beltOffset = mvkobjs.sbelt.reserve(uploadBytes);
-			std::memcpy(mvkobjs.sbelt.mappedData + beltOffset, g_assets.primitives.data() + rview::core::g_primOffset, uploadBytes);
-			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelt.allocation, beltOffset, uploadBytes);
+			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(uploadBytes);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.primitives.data() + rview::core::g_primOffset, uploadBytes);
+			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, uploadBytes);
 
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_primOffset * sizeof(PrimitiveMetadata), uploadBytes};
-			vkCmdCopyBuffer(cmd, mvkobjs.sbelt.buffer, rview::core::g_primitiveRegistrySSBO.buffer, 1, &tailRegion);
+			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, rview::core::g_primitiveRegistrySSBO.buffer, 1, &tailRegion);
 		}
 
 		rview::core::g_primOffset = currentPrimCount;
@@ -1491,24 +1763,24 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 				vkCmdCopyBuffer(cmd, rview::core::g_modelRegistrySSBO.buffer, newBuffer.buffer, 1, &copyRegion);
 			}
 
-			VkDeviceSize beltOffset = mvkobjs.sbelt.reserve(uploadBytes);
-			std::memcpy(mvkobjs.sbelt.mappedData + beltOffset, g_assets.models.data() + rview::core::g_modelOffset, uploadBytes);
-			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelt.allocation, beltOffset, uploadBytes);
+			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(uploadBytes);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.models.data() + rview::core::g_modelOffset, uploadBytes);
+			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, uploadBytes);
 
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_modelOffset * sizeof(ModelMetadata), uploadBytes};
-			vkCmdCopyBuffer(cmd, mvkobjs.sbelt.buffer, newBuffer.buffer, 1, &tailRegion);
+			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, newBuffer.buffer, 1, &tailRegion);
 
 			safe_cleanup(mvkobjs, rview::core::g_modelRegistrySSBO);
 			rview::core::g_modelRegistrySSBO = newBuffer;
 			rview::core::g_modelCapacity = newCap;
 			descriptors_need_update = true;
 		} else {
-			VkDeviceSize beltOffset = mvkobjs.sbelt.reserve(uploadBytes);
-			std::memcpy(mvkobjs.sbelt.mappedData + beltOffset, g_assets.models.data() + rview::core::g_modelOffset, uploadBytes);
-			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelt.allocation, beltOffset, uploadBytes);
+			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(uploadBytes);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.models.data() + rview::core::g_modelOffset, uploadBytes);
+			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, uploadBytes);
 
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_modelOffset * sizeof(ModelMetadata), uploadBytes};
-			vkCmdCopyBuffer(cmd, mvkobjs.sbelt.buffer, rview::core::g_modelRegistrySSBO.buffer, 1, &tailRegion);
+			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, rview::core::g_modelRegistrySSBO.buffer, 1, &tailRegion);
 		}
 
 		rview::core::g_modelOffset = currentModelCount;
@@ -1535,6 +1807,9 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	                    UINT64_MAX) != VK_SUCCESS) {
 		return false;
 	}
+
+	// good spot as any
+	mvkobjs.sbelts[rview::core::currentFrame].reset();
 
 	if (vkResetFences(mvkobjs.vkdevice.device, 1,
 	                  &mvkobjs.fencez.at(rview::core::currentFrame)) != VK_SUCCESS)
@@ -1566,7 +1841,6 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	        VK_SUCCESS)
 		return false;
 
-	sync_assets_to_gpu(c, mvkobjs);
 
 	double tick = static_cast<double>(SDL_GetTicks()) / 1000.0;
 	rview::core::tickdiff = tick - vkrenderer::mlasttick;
@@ -1599,60 +1873,103 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	}
 
 
-	// isdfk
-	std::shared_ptr<playoutgeneric> newly_loaded_model;
+	// maybe this is not worth it...
+	model_manager::ProgressUpdate update;
 
-	while (pending_models.pop(newly_loaded_model)) {
-		uploadfordraw(mvkobjs, newly_loaded_model);
-		mplayer.push_back(newly_loaded_model);
-
-		selectiondata.instancesettings.emplace_back();
-		selectiondata.instancesettings.back().emplace_back(
-		                                  &mplayer.back()->getinst(0)->getinstancesettings()
-		                              );
+	while (model_manager::g_progress_queue.pop(update)) {
+		for (auto& drop : g_activeDrops) {
+			if (drop.dropID == update.requestID) {
+				drop.currentStep = update.step;
+				break;
+			}
+		}
 	}
 
-	// joint anims
-	// if (dummytick / 2) {
-	for (const auto &i : mplayer)
-		i->updateanims();
+	model_manager::StagingModelData ephemeralstage;
 
-	// 	dummytick = 0;
-	// }
-
-	mmatupdatetimer.start();
-
-	// joint mats
-	for (const auto &i : mplayer)
-		i->updatemats();
-
-	rview::core::updatemattime = mmatupdatetimer.stop();
-
-
-	for (const auto& i : mplayer) {
-		i->sync_scene_data();
+	while (pending_staging_models.pop(ephemeralstage)) {
+		if (ephemeralstage.skipui) {
+			g_commit_queue.push_back(std::move(ephemeralstage));
+		} else {
+			for (auto& drop : g_activeDrops) {
+				if (drop.dropID == ephemeralstage.dropID) {
+					drop.stagingData = std::move(ephemeralstage);
+					drop.parseFinished = true;
+					break;
+				}
+			}
+		}
 	}
+
+	//couldnt think of somewhere better to leave this
+	for (auto& payload : g_commit_queue) {
+		commitspawn(mvkobjs, c, std::move(payload));
+	}
+
+	g_commit_queue.clear();
+
+	for (int i = (int)g_asset_death_row.size() - 1; i >= 0; --i) {
+		auto& dead = g_asset_death_row[i];
+
+		if (dead.framesRemaining == 0) {
+			if (dead.vbo.buffer != VK_NULL_HANDLE) {
+				vmaDestroyBuffer(mvkobjs.alloc, dead.vbo.buffer, dead.vbo.alloc);
+			}
+
+			for (auto& tex : dead.textures) {
+				vmaDestroyImage(mvkobjs.alloc, tex.img, tex.alloc);
+				vkDestroyImageView(mvkobjs.vkdevice.device, tex.imgview, nullptr);
+			}
+
+			// O(1) Remove
+			g_asset_death_row[i] = std::move(g_asset_death_row.back());
+			g_asset_death_row.pop_back();
+		} else {
+			dead.framesRemaining--;
+		}
+	}
+
+	for (auto& kill : g_kill_queue) {
+		model_manager::g_registry.destroy_entity(kill.entity);
+
+		auto it = model_manager::g_cpuModels.find(kill.modelID);
+
+		if (it != model_manager::g_cpuModels.end()) {
+
+			it->second.refCount--;
+
+			if (it->second.refCount == 0) {
+
+				{
+					std::lock_guard<std::mutex> lock(rview::core::global_materials.mtx);
+
+					for (uint32_t matID : it->second.materialIDs) {
+						rview::core::global_materials.free_slots.push(matID);
+					}
+				}
+
+				vkrenderer::CondemnedAsset deadAsset;
+				deadAsset.vbo = it->second.geometryVBO;
+				deadAsset.textures = std::move(it->second.textures);
+
+				g_asset_death_row.push_back(std::move(deadAsset));
+
+				model_manager::g_cpuModels.erase(it);
+			}
+		}
+	}
+
+	g_kill_queue.clear();
+
+	model_manager::update_logic_and_animations(rview::core::tickdiff);
 
 	update_dynamic_instances(mvkobjs);
 
+	sync_assets_to_gpu(c, mvkobjs);
 
 	movecam(mvkobjs);
 
-
-	// joint check
-	// if (dummytick % 2) {
-	for (const auto &i : mplayer)
-		for (size_t j{0}; j < i->instcount(); j++)
-			i->getinst(j)->checkforupdates();
-
-	// }
-
-	// dummytick++;
-
 	moveplayer();
-
-
-	muploadubossbotimer.start();
 
 	{
 		// invisible lock
@@ -1664,17 +1981,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		std::memcpy(dst + (2 * sizeof(glm::mat4)), &campos4, sizeof(glm::vec4));
 		vmaUnmapMemory(mvkobjs.alloc, rview::core::globalCameraUBO.alloc);
 	}
-
-	for (const auto &i : mplayer)
-		i->uploadubossbo(mvkobjs, persviewproj, rview::core::camwpos);
-
-	rview::core::uploadubossbotime = muploadubossbotimer.stop();
-
-
-
-	currentgraph.add_pass([&] {
-		particle::record_compute(c);
-	});
+	model_manager::upload_joint_matrices(mvkobjs);
 
 
 	std::call_once(obswrite, [&]() {
@@ -1683,35 +1990,8 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 
 
-	// currentgraph.add_pass([&mvkobjs, c] {
-	//     uint32_t num_instances = mvkobjs.frameInstances.size();
-	//     if (num_instances == 0) return;
-	//     vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_COMPUTE, rview::core::globalcullpline);
-	//     vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_COMPUTE,
-	//                             rview::core::globalPipelineLayout, 0, 1,
-	//                             &rview::core::globalBindlessSet, 0, nullptr);
-
-	//     vkpushconstants push{};
-	//     push.frameIndex = rview::core::currentFrame;
-	//     vkCmdPushConstants(c, rview::core::globalPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(vkpushconstants), &push);
-
-	//     uint32_t groupCount = (static_cast<uint32_t>(num_instances) + 63) / 64;
-	//     vkCmdDispatch(c, groupCount, 1, 1);
-	// });
-
-
 	// let that sync in
 	currentgraph.add_pass([&mvkobjs, c, imgidx] {
-
-
-		VkBufferMemoryBarrier2 particleBarrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
-		particleBarrier.buffer = particle::ssbobuffsnallocs.at(0).first;
-		particleBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-		particleBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
-		particleBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
-		particleBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-		particleBarrier.size = VK_WHOLE_SIZE;
-		particleBarrier.offset = 0;
 
 		// VkBufferMemoryBarrier2 indirectBarrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
 		// indirectBarrier.buffer = mvkobjs.globalIndirectBuffers[rview::core::currentFrame].buffer;
@@ -1742,11 +2022,11 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		depthBarrier.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
 		depthBarrier.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
 
-		VkBufferMemoryBarrier2 bufferBarriers[] = {particleBarrier};
+		VkBufferMemoryBarrier2 bufferBarriers[] = {}; // just idling
 		VkImageMemoryBarrier2 imageBarriers[] = {imageBarrier, depthBarrier};
 
 		VkDependencyInfo dep{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
-		dep.bufferMemoryBarrierCount = 1; // 2
+		dep.bufferMemoryBarrierCount = 0;
 		dep.pBufferMemoryBarriers = bufferBarriers;
 		dep.imageMemoryBarrierCount = 2;
 		dep.pImageMemoryBarriers = imageBarriers;
@@ -1755,9 +2035,6 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	});
 
 	currentgraph.add_pass([c] {
-		uint32_t active_instances = g_scene.entity_count.load(std::memory_order_relaxed);
-
-		if (active_instances == 0) return;
 
 		vkCmdFillBuffer(c, rview::core::g_indirectCountBuffers[rview::core::currentFrame].buffer, 0, sizeof(uint32_t), 0);
 
@@ -1773,6 +2050,10 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		fillDep.bufferMemoryBarrierCount = 1;
 		fillDep.pBufferMemoryBarriers = &fillBarrier;
 		vkCmdPipelineBarrier2(c, &fillDep);
+
+		uint32_t active_instances = g_scene.entity_count.load(std::memory_order_relaxed);
+
+		if (active_instances == 0) return;
 
 		vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_COMPUTE, rview::core::globalcullpline);
 		vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_COMPUTE, rview::core::globalPipelineLayout, 0, 1, &rview::core::globalBindlessSet, 0, nullptr);
@@ -1859,20 +2140,8 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		                &scissor);
 
 
-		vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_GRAPHICS, particle::gpline);
 
-		vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_GRAPHICS, rview::core::globalPipelineLayout, 0, 1, &rview::core::globalBindlessSet, 0, nullptr);
-
-
-		vkpushconstants push{};
-		push.posIdx = particle::bindless_idx;
-		vkCmdPushConstants(c, rview::core::globalPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(vkpushconstants), &push);
-
-		vkCmdDraw(c, particle::Ps.size(), 1, 0, 0);
-
-
-
-		vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_GRAPHICS, playoutgeneric::skinnedpline);
+		vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_GRAPHICS, playout::skinnedpline);
 		vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_GRAPHICS, rview::core::globalPipelineLayout, 0, 1, &rview::core::globalBindlessSet, 0, nullptr);
 
 		vkpushconstants pc_mdi{};
@@ -1885,8 +2154,9 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		    rview::core::g_indirectCountBuffers[rview::core::currentFrame].buffer, 0,
 		    100000, sizeof(VkDrawIndirectCommand));
 
-
-		ui::createdbgframe(mvkobjs, selectiondata);
+		// TODO MOVE to separate async pipeline >:( i probably wont ever but eh.. the thought that counts ig
+		ui::createdbgframe(mvkobjs);
+		ui::createdropwidget(mvkobjs, c);
 		ui::render(mvkobjs, c);
 
 		vkCmdEndRendering(c);

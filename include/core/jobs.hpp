@@ -13,6 +13,7 @@
 #include <functional>
 #include <map>
 #include <dbg/trace.hpp>
+#include <condition_variable>
 
 struct alignas(64) job {
 	void (*execute)(void*) {
@@ -102,21 +103,23 @@ public:
 
 	template<typename F>
 	void enqueue(F&& f) {
-		std::lock_guard<std::mutex> lock(queue_mutex);
-		uint32_t next_tail = (tail + 1) & QUEUE_MASK;
+		uint32_t next_tail;
+		{
+			std::unique_lock<std::mutex> lock(queue_mutex);
+			next_tail = (tail + 1) & QUEUE_MASK;
 
-		// i was told this is for (backpressure) // recheck and verify
-		while (next_tail == head) {
-			queue_mutex.unlock();
-			std::this_thread::yield();
-			queue_mutex.lock();
+			queue_not_full_cv.wait(lock, [this, next_tail]() {
+				return next_tail != head;
+			});
+
+			ring_buffer[tail] = job::make(std::forward<F>(f));
+			tail = next_tail;
 		}
-
-		ring_buffer[tail] = job::make(std::forward<F>(f));
-		tail = next_tail;
 
 		jobs_available.release();
 	}
+
+	std::condition_variable queue_not_full_cv;
 
 private:
 	alignas(64) std::array<job, QUEUE_SIZE> ring_buffer{};
@@ -130,7 +133,7 @@ private:
 	std::vector<std::thread> workers;
 
 	void worker_loop() {
-		vkdebug::set_thread_name("worker");
+		rdebug::set_thread_name("worker");
 
 		while (running.load(std::memory_order_acquire)) {
 			jobs_available.acquire();
@@ -151,6 +154,7 @@ private:
 
 				head = (head + 1) & QUEUE_MASK;
 			}
+			queue_not_full_cv.notify_one();
 			ZoneScopedN("jobexec");
 			current_job.run_and_dispose();
 
@@ -280,3 +284,41 @@ private:
 };
 
 inline teardown g_exitQ;
+struct ScopedJobGuard {
+	std::atomic<int>& counter;
+
+	ScopedJobGuard(std::atomic<int>& c) : counter(c) {}
+	~ScopedJobGuard() {
+		counter.fetch_sub(1, std::memory_order_release);
+	}
+	ScopedJobGuard(const ScopedJobGuard&) = delete;
+	ScopedJobGuard& operator=(const ScopedJobGuard&) = delete;
+};
+class JobStringArena {
+	std::vector<char> buffer;
+	std::atomic<size_t> offset{0};
+
+public:
+	JobStringArena(size_t size) {
+		buffer.resize(size);
+	}
+	const char* push_string(std::string_view str) {
+		size_t start = offset.fetch_add(str.size() + 1, std::memory_order_relaxed);
+
+		// add user friendly ":) file path is too long" or some &$#@
+		assert(start + str.size() + 1 <= buffer.size() && "Arena out of memory!");
+
+		char* dest = &buffer[start];
+		memcpy(dest, str.data(), str.size());
+		dest[str.size()] = '\0';
+
+		return dest;
+	}
+
+	void reset() {
+		offset.store(0, std::memory_order_relaxed);
+	}
+};
+
+inline JobStringArena g_job_strings(1024 * 1024);
+inline std::atomic<int> active_io_jobs{0};

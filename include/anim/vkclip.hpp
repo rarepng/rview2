@@ -2,8 +2,8 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "vkchannel.hpp"
-#include "vknode.hpp"
+#include <anim/vkchannel.hpp>
+#include <anim/vknode.hpp>
 
 class vkclip {
 public:

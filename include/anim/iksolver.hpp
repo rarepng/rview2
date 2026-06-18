@@ -2,8 +2,7 @@
 #include <glm/glm.hpp>
 #include <memory>
 #include <vector>
-
-#include "vknode.hpp"
+#include <anim/vknode.hpp>
 
 class iksolver {
 public:

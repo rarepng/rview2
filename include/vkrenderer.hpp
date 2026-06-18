@@ -15,19 +15,79 @@
 #include <future>
 #include <numeric>
 #include <simdjson.h>
-#include "timer.hpp"
-#include "ui.hpp"
-#include "vkcam.hpp"
-#include "playoutgeneric.hpp"
-#include "core/rvk.hpp"
-#include "core/jobs.hpp"
-#include "core/scene.hpp"
+#include <timer.hpp>
+#include <ui.hpp>
+#include <vkcam.hpp>
+#include <core/rvk.hpp>
+#include <core/jobs.hpp>
+#include <core/scene.hpp>
 #include <vkvbo.hpp>
+#include <model_manager.hpp>
 
 enum InputKey : uint8_t {
 	Key_W = 0, Key_S, Key_A, Key_D, Key_Q, Key_E,
 	Key_RightClick,
 	Input_Count
+};
+namespace rview {
+namespace io {
+inline void save_state_to_json() {
+	std::lock_guard<std::mutex> lock(model_manager::g_modelResourceMtx);
+	std::ofstream out("state.json");
+
+	if (!out.is_open()) {
+		std::cerr << "Failed to open state.json for writing.\n";
+		return;
+	}
+
+	out << "{\n  \"models\": [\n";
+	std::map<uint32_t, std::vector<glm::vec3>> model_instances;
+	uint32_t active_instances = g_scene.entity_count.load(std::memory_order_relaxed);
+
+	for (uint32_t i = 0; i < active_instances; ++i) {
+		uint32_t modelID = g_scene.modelIDs[i];
+
+		if (modelID == 0xFFFFFFFF) continue;
+
+		model_instances[modelID].push_back(g_scene.worldPositions[i]);
+	}
+
+	bool first_model = true;
+
+	for (auto const& [modelID, positions] : model_instances) {
+		if (model_manager::g_model_filepaths.find(modelID) == model_manager::g_model_filepaths.end()) continue;
+
+		if (!first_model) out << ",\n";
+
+		first_model = false;
+
+		const std::string& filepath = model_manager::g_model_filepaths[modelID];
+
+		out << "    {\n";
+		out << "      \"file\": \"" << filepath << "\",\n";
+		out << "      \"count\": " << positions.size() << ",\n";
+		out << "      \"positions\": [\n";
+
+		for (size_t p = 0; p < positions.size(); ++p) {
+			out << "        [" << positions[p].x << ", " << positions[p].y << ", " << positions[p].z << "]";
+
+			if (p < positions.size() - 1) out << ",";
+
+			out << "\n";
+		}
+
+		out << "      ],\n";
+		out << "      \"shaders\": {\n";
+		out << "        \"vx\": \"shaders/vx.spv\",\n";
+		out << "        \"px\": \"shaders/px.spv\",\n";
+		out << "        \"cx\": \"shaders/cx.spv\"\n";
+		out << "      }\n";
+		out << "    }";
+	}
+
+	out << "\n  ]\n}\n";
+}
+};
 };
 
 namespace vkrenderer {
@@ -36,9 +96,7 @@ namespace vkrenderer {
 
 inline std::bitset<Input_Count> input_state;
 
-inline std::vector<std::shared_ptr<playoutgeneric>> mplayer;
-inline LockFreeMPMC<std::shared_ptr<playoutgeneric>, 32> pending_models;
-inline selection selectiondata{};
+inline LockFreeMPMC<model_manager::StagingModelData, 32> pending_staging_models;
 inline glm::vec3 playermoveto{0.0f};
 inline glm::vec3 playerlookto{0.0f};
 
@@ -70,6 +128,8 @@ inline std::atomic<bool> m_requiresUpload{false};
 inline std::once_flag obswrite{};
 inline std::once_flag spoutsend{};
 
+bool initglobalmorphs(rvkbucket& mvkobjs);
+
 void sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs);
 bool ges();
 bool initcpuQs(rvkbucket& mvkobjs);
@@ -88,8 +148,6 @@ void copy_engine_to_obs(VkCommandBuffer cmdBuffer, rvkbucket& mvkobjs, VkImage e
 void immediate_submit(rvkbucket& mvkobjs, std::function<void(VkCommandBuffer cbuffer)>&& fn);
 bool init(rvkbucket& mvkobjs);
 void setsize(rvkbucket& mvkobjs, unsigned int w, unsigned int h);
-bool uploadfordraw(rvkbucket& mvkobjs, VkCommandBuffer cbuffer);
-bool uploadfordraw(rvkbucket& mvkobjs, std::shared_ptr<playoutgeneric>& x);
 bool draw(rvkbucket& mvkobjs);
 void cleanup(rvkbucket& mvkobjs);
 void handleclick();
@@ -113,5 +171,40 @@ bool initvma(rvkbucket& mvkobjs);
 bool recreateswapchain(rvkbucket& mvkobjs);
 float navmesh(float x, float z);
 glm::vec3 navmeshnormal(float x, float z);
+
+// somehow fit in the contexpr !headless
+struct DropSession {
+	uint32_t dropID;
+	model_manager::ParseStep currentStep = model_manager::ParseStep::parsing;
+	bool parseFinished = false;
+
+	int instanceCount = 1;
+	glm::vec3 spawnPos{0.0f};
+
+	std::string filename;
+	model_manager::StagingModelData stagingData;
+};
+inline std::atomic<uint32_t> g_dropCounter{0};
+inline std::vector<DropSession> g_activeDrops;
+inline bool g_openDropModal = false;
+inline std::vector<model_manager::StagingModelData> g_commit_queue;
+
+void spawnall(rvkbucket& mvkobjs, VkCommandBuffer c);
+void cancelall();
+void commitspawn(rvkbucket& mvkobjs, VkCommandBuffer c, model_manager::StagingModelData&& drop);
+void cancelspawn(uint32_t id);
+struct CondemnedAsset {
+	GpuBuffer vbo;
+	std::vector<texdata> textures;
+	uint32_t framesRemaining = rview::core::MAX_FRAMES_IN_FLIGHT + 1;
+};
+
+struct KillPayload {
+	model_manager::Entity entity;
+	uint32_t modelID;
+};
+
+inline std::vector<KillPayload> g_kill_queue;
+inline std::vector<CondemnedAsset> g_asset_death_row;
 
 };

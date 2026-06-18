@@ -1,8 +1,6 @@
 #define GLM_ENABLE_EXPERIMENTAL
-
 #include <glm/gtx/quaternion.hpp>
-
-#include "iksolver.hpp"
+#include <anim/iksolver.hpp>
 
 iksolver::iksolver() : iksolver(10) {}
 
