@@ -14,8 +14,8 @@ public:
 	                float blendfactor);
 	std::string getName();
 	float getEndTime();
+	std::vector<std::shared_ptr<vkchannel>> animchannels{};
 
 private:
-	std::vector<std::shared_ptr<vkchannel>> animchannels{};
 	std::string animname;
 };

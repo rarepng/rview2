@@ -115,7 +115,7 @@ void ui::createdbgframe(rvkbucket &renderData) {
 	ImGui_ImplSDL3_ProcessEvent(&renderData.e);
 
 	ImGuiWindowFlags imguiWindowFlags = 0;
-	ImGui::Begin("", nullptr, imguiWindowFlags);
+	ImGui::Begin(" ", nullptr, imguiWindowFlags);
 	static std::array<float, 60> fps_history{0};
 	static int fps_idx = 0;
 	static float fps_sum = 0.0f;
@@ -653,36 +653,30 @@ void ui::createdropwidget(rvkbucket& mvkobjs, VkCommandBuffer c) {
 			ImGui::SliderInt("Instances", &drop.instanceCount, 1, 100);
 			ImGui::DragFloat3("Spawn Location", glm::value_ptr(drop.spawnPos), 0.1f);
 
-			if (!drop.parseFinished) {
+			bool is_disabled = !drop.parseFinished;
+			if (is_disabled) {
 				const char* status = "Working...";
-
 				if (drop.currentStep == model_manager::ParseStep::parsing) status = "Parsing...";
-
 				if (drop.currentStep == model_manager::ParseStep::baking) status = "Baking...";
-
 				ImGui::TextColored(ImVec4(1, 1, 0, 1), "%s", status);
 				ImGui::BeginDisabled();
 			}
 
-			if (ImGui::Button("Spawn", ImVec2(120, 0))) {
-				drop.stagingData.requested_instances = drop.instanceCount;
-				drop.stagingData.spawn_position = drop.spawnPos;
-
-				vkrenderer::g_commit_queue.push_back(std::move(drop.stagingData));
-
-				vkrenderer::g_activeDrops.erase(vkrenderer::g_activeDrops.begin() + i);
-			}
-
-			if (!drop.parseFinished) ImGui::EndDisabled();
-
+			bool spawn_clicked = ImGui::Button("Spawn", ImVec2(120, 0));
+			if (is_disabled) ImGui::EndDisabled();
 			ImGui::SameLine();
-
-			if (ImGui::Button("Cancel", ImVec2(120, 0))) {
-				vkrenderer::cancelspawn(i);
-			}
-
+			bool cancel_clicked = ImGui::Button("Cancel", ImVec2(120, 0));
 			ImGui::Separator();
 			ImGui::PopID();
+
+			if (spawn_clicked) {
+				drop.stagingData.requested_instances = drop.instanceCount;
+				drop.stagingData.spawn_position = drop.spawnPos;
+				vkrenderer::g_commit_queue.push_back(std::move(drop.stagingData));
+				vkrenderer::g_activeDrops.erase(vkrenderer::g_activeDrops.begin() + i);
+			} else if (cancel_clicked) {
+				vkrenderer::cancelspawn(i);
+			}
 		}
 
 		if (!allParsed) ImGui::BeginDisabled();

@@ -73,199 +73,181 @@ animType vkchannel::getAnimType() {
 }
 
 glm::vec<3, float> vkchannel::getScale(float time) {
-	if (scale.size() == 0) {
-		return glm::vec<3, float> {1.0f};
+	if (scale.empty()) return glm::vec<3, float> {1.0f};
+	const float* t_data = timing.data();
+	const glm::vec3* v_data = scale.data();
+	size_t count = timing.size();
+	if (time <= t_data[0]) return v_data[0];
+	if (time >= t_data[count - 1]) {
+		return (interpolationtype0 == interpolationType::CUBICSPLINE)
+		       ? v_data[(count - 1) * 3 + 1]
+		       : v_data[count - 1];
 	}
 
-	if (time < timing.at(0)) {
-		return scale.at(0);
-	}
+	size_t first = 0;
+	size_t len = count;
+	while (len > 0) {
+		size_t half = len >> 1;
+		size_t mid = first + half;
 
-	if (time > timing.back()) {
-		return scale.back();
-	}
-
-	size_t prev{0};
-	size_t next{scale.size() - 1};
-	size_t mid{0};
-
-	while (prev <= next) {
-		mid = (prev + next) / 2;
-
-		if (time > timing.at(mid)) {
-			prev = mid + 1;
-		} else if (time < timing.at(mid)) {
-			next = mid - 1;
+		if (t_data[mid] <= time) {
+			first = mid + 1;
+			len -= half + 1;
 		} else {
-			break;
+			len = half;
 		}
 	}
 
-	if (prev == next) {
-		return scale.at(prev);
-	}
-
-	glm::vec3 finscale{1.0f};
+	size_t next = first;
+	size_t prev = first - 1;
+	if (time == t_data[prev]) return v_data[prev];
 
 	switch (interpolationtype0) {
 		case interpolationType::LINEAR: {
-				float intTime = (time - timing.at(prev)) / (timing.at(next) - timing.at(prev));
-				glm::vec<3, float> prevscale{scale.at(prev)};
-				glm::vec<3, float> nextscale{scale.at(next)};
-				finscale = prevscale + intTime * (nextscale - prevscale);
+				float intTime = (time - t_data[prev]) / (t_data[next] - t_data[prev]);
+				return v_data[prev] + intTime * (v_data[next] - v_data[prev]);
 			}
-			break;
 
 		case interpolationType::CUBICSPLINE: {
-				float dtime = timing.at(next) - timing.at(prev);
-				glm::vec3 prevtangent = dtime * scale.at(prev * 3 + 2);
-				glm::vec3 nexttanget = dtime * scale.at(next * 3);
-				float intTime = (time - timing.at(prev)) / (timing.at(next) - timing.at(prev));
+				float dtime = t_data[next] - t_data[prev];
+				float intTime = (time - t_data[prev]) / dtime;
 				float intTime2 = intTime * intTime;
 				float intTime3 = intTime2 * intTime;
-				glm::vec3 prevp = scale.at(prev * 3 + 1);
-				glm::vec3 nextp = scale.at(next * 3 + 1);
-				finscale = (2 * intTime3 - 3 * intTime2 + 1) * prevp + (intTime3 - 2 * intTime2 + intTime) * prevtangent +
-				           (-2 * intTime3 + 3 * intTime2) * nextp + (intTime3 - intTime2) * nexttanget;
+
+				glm::vec3 prevtangent = v_data[prev * 3 + 2] * dtime;
+				glm::vec3 nexttanget  = v_data[next * 3]     * dtime;
+				glm::vec3 prevp       = v_data[prev * 3 + 1];
+				glm::vec3 nextp       = v_data[next * 3 + 1];
+
+				return (2.0f * intTime3 - 3.0f * intTime2 + 1.0f) * prevp +
+				       (intTime3 - 2.0f * intTime2 + intTime)     * prevtangent +
+				       (-2.0f * intTime3 + 3.0f * intTime2)       * nextp +
+				       (intTime3 - intTime2)                      * nexttanget;
 			}
-			break;
 
 		case interpolationType::STEP:
-			finscale = scale.at(prev);
-			break;
+			return v_data[prev];
 	}
 
-	return finscale;
+	return v_data[prev];
 }
 glm::vec<3, float> vkchannel::getTranslate(float time) {
-	if (trans.size() == 0) {
-		return glm::vec<3, float> {0.0f};
+	if (trans.empty()) return glm::vec<3, float> {0.0f};
+	const float* t_data = timing.data();
+	const glm::vec3* v_data = trans.data();
+	size_t count = timing.size();
+	if (time <= t_data[0]) return v_data[0];
+	if (time >= t_data[count - 1]) {
+		return (interpolationtype0 == interpolationType::CUBICSPLINE)
+		       ? v_data[(count - 1) * 3 + 1]
+		       : v_data[count - 1];
 	}
 
-	if (time < timing.at(0)) {
-		return trans.at(0);
-	}
-
-	if (time > timing.back()) {
-		return trans.back();
-	}
-
-	size_t prev{0};
-	size_t next{trans.size() - 1};
-	size_t mid{0};
-
-	while (prev <= next) {
-		mid = (prev + next) / 2;
-
-		if (time > timing.at(mid)) {
-			prev = mid + 1;
-		} else if (time < timing.at(mid)) {
-			next = mid - 1;
+	size_t first = 0;
+	size_t len = count;
+	while (len > 0) {
+		size_t half = len >> 1;
+		size_t mid = first + half;
+		if (t_data[mid] <= time) {
+			first = mid + 1;
+			len -= half + 1;
 		} else {
-			break;
+			len = half;
 		}
 	}
 
-	if (prev == next) {
-		return trans.at(prev);
-	}
-
-	glm::vec3 fintrans{1.0f};
+	size_t next = first;
+	size_t prev = first - 1;
+	if (time == t_data[prev]) return v_data[prev];
 
 	switch (interpolationtype0) {
 		case interpolationType::LINEAR: {
-				float intTime = (time - timing.at(prev)) / (timing.at(next) - timing.at(prev));
-				glm::vec<3, float> prevtrans{trans.at(prev)};
-				glm::vec<3, float> nexttrans{trans.at(next)};
-				fintrans = prevtrans + intTime * (nexttrans - prevtrans);
+				float intTime = (time - t_data[prev]) / (t_data[next] - t_data[prev]);
+				return v_data[prev] + intTime * (v_data[next] - v_data[prev]);
 			}
-			break;
 
 		case interpolationType::CUBICSPLINE: {
-				float dtime = timing.at(next) - timing.at(prev);
-				glm::vec3 prevtangent = dtime * trans.at(prev * 3 + 2);
-				glm::vec3 nexttanget = dtime * trans.at(next * 3);
-				float intTime = (time - timing.at(prev)) / (timing.at(next) - timing.at(prev));
+				float dtime = t_data[next] - t_data[prev];
+				float intTime = (time - t_data[prev]) / dtime;
 				float intTime2 = intTime * intTime;
 				float intTime3 = intTime2 * intTime;
-				glm::vec3 prevp = trans.at(prev * 3 + 1);
-				glm::vec3 nextp = trans.at(next * 3 + 1);
-				fintrans = (2 * intTime3 - 3 * intTime2 + 1) * prevp + (intTime3 - 2 * intTime2 + intTime) * prevtangent +
-				           (-2 * intTime3 + 3 * intTime2) * nextp + (intTime3 - intTime2) * nexttanget;
+
+				glm::vec3 prevtangent = v_data[prev * 3 + 2] * dtime;
+				glm::vec3 nexttanget  = v_data[next * 3]     * dtime;
+				glm::vec3 prevp       = v_data[prev * 3 + 1];
+				glm::vec3 nextp       = v_data[next * 3 + 1];
+
+				return (2.0f * intTime3 - 3.0f * intTime2 + 1.0f) * prevp +
+				       (intTime3 - 2.0f * intTime2 + intTime)     * prevtangent +
+				       (-2.0f * intTime3 + 3.0f * intTime2)       * nextp +
+				       (intTime3 - intTime2)                      * nexttanget;
 			}
-			break;
 
 		case interpolationType::STEP:
-			fintrans = trans.at(prev);
-			break;
+			return v_data[prev];
 	}
 
-	return fintrans;
+	return v_data[prev];
 }
 glm::qua<float> vkchannel::getRotate(float time) {
-	if (rot.size() == 0) {
-		return glm::identity<glm::quat>();
+	if (rot.empty()) return glm::identity<glm::quat>();
+	const float* t_data = timing.data();
+	const glm::quat* r_data = rot.data();
+	size_t count = timing.size();
+	if (time <= t_data[0]) return r_data[0];
+
+	if (time >= t_data[count - 1]) {
+		return (interpolationtype0 == interpolationType::CUBICSPLINE)
+		       ? r_data[(count - 1) * 3 + 1]
+		       : r_data[count - 1];
 	}
 
-	if (time < timing.at(0)) {
-		return rot.at(0);
-	}
+	size_t first = 0;
+	size_t len = count;
+	while (len > 0) {
+		size_t half = len >> 1;
+		size_t mid = first + half;
 
-	if (time > timing.back()) {
-		return rot.back();
-	}
-
-	size_t prev{0};
-	size_t next{rot.size() - 1};
-	size_t mid{0};
-
-	while (prev <= next) {
-		mid = (prev + next) / 2;
-
-		if (time > timing.at(mid)) {
-			prev = mid + 1;
-		} else if (time < timing.at(mid)) {
-			next = mid - 1;
+		if (t_data[mid] <= time) {
+			first = mid + 1;
+			len -= half + 1;
 		} else {
-			break;
+			len = half;
 		}
 	}
 
-	if (prev == next) {
-		return rot.at(prev);
-	}
-
-	glm::qua<float> finrot{1.0f, 0.0f, 0.0f, 0.0f};
+	size_t next = first;
+	size_t prev = first - 1;
+	if (time == t_data[prev]) return r_data[prev];
 
 	switch (interpolationtype0) {
 		case interpolationType::LINEAR: {
-				float intTime = (time - timing.at(prev)) / (timing.at(next) - timing.at(prev));
-				glm::qua<float> prevrot{rot.at(prev)};
-				glm::qua<float> nextrot{rot.at(next)};
-				finrot = glm::slerp(prevrot, nextrot, intTime);
+				float intTime = (time - t_data[prev]) / (t_data[next] - t_data[prev]);
+				return glm::slerp(r_data[prev], r_data[next], intTime);
 			}
-			break;
 
 		case interpolationType::CUBICSPLINE: {
-				float dtime = timing.at(next) - timing.at(prev);
-				glm::quat prevtangent = dtime * rot.at(prev * 3 + 2);
-				glm::quat nexttanget = dtime * rot.at(next * 3);
-				float intTime = (time - timing.at(prev)) / (timing.at(next) - timing.at(prev));
+				float dtime = t_data[next] - t_data[prev];
+				float intTime = (time - t_data[prev]) / dtime;
 				float intTime2 = intTime * intTime;
 				float intTime3 = intTime2 * intTime;
-				glm::quat prevp = rot.at(prev * 3 + 1);
-				glm::quat nextp = rot.at(next * 3 + 1);
-				finrot = (2 * intTime3 - 3 * intTime2 + 1) * prevp + (intTime3 - 2 * intTime2 + intTime) * prevtangent +
-				         (-2 * intTime3 + 3 * intTime2) * nextp + (intTime3 - intTime2) * nexttanget;
+
+				glm::quat prevtangent = r_data[prev * 3 + 2] * dtime;
+				glm::quat nexttanget  = r_data[next * 3]     * dtime;
+				glm::quat prevp       = r_data[prev * 3 + 1];
+				glm::quat nextp       = r_data[next * 3 + 1];
+
+				return (2.0f * intTime3 - 3.0f * intTime2 + 1.0f) * prevp +
+				       (intTime3 - 2.0f * intTime2 + intTime)     * prevtangent +
+				       (-2.0f * intTime3 + 3.0f * intTime2)       * nextp +
+				       (intTime3 - intTime2)                      * nexttanget;
 			}
-			break;
 
 		case interpolationType::STEP:
-			finrot = rot.at(prev);
-			break;
+			return r_data[prev];
 	}
 
-	return finrot;
+	return r_data[prev];
 }
 
 float vkchannel::getMaxTime() {

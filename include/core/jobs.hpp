@@ -15,6 +15,8 @@
 #include <dbg/trace.hpp>
 #include <condition_variable>
 
+inline std::array<std::atomic<bool>, 8192> g_cancellation_tokens{}; // magic
+
 struct alignas(64) job {
 	void (*execute)(void*) {
 		nullptr
@@ -67,102 +69,6 @@ struct alignas(64) job {
 	}
 };
 
-class threadpool {
-public:
-	inline static constexpr uint32_t QUEUE_SIZE = 1024;
-	inline static constexpr uint32_t QUEUE_MASK = QUEUE_SIZE - 1;
-
-	threadpool() {
-		uint32_t num_threads = std::thread::hardware_concurrency();
-
-		if (num_threads <= 1) num_threads = 2;
-
-		running.store(true, std::memory_order_release);
-
-		for (uint32_t i = 0; i < num_threads - 1; ++i) {
-			workers.emplace_back(&threadpool::worker_loop, this);
-		}
-	}
-	void stop_and_join_all() {
-		if (running.exchange(false, std::memory_order_acq_rel)) {
-			jobs_available.release(workers.size() * 2);
-
-			for (auto& w : workers) {
-				if (w.joinable()) {
-					w.join();
-				}
-			}
-		}
-	}
-
-
-	~threadpool() {
-		stop_and_join_all();
-	}
-
-
-	template<typename F>
-	void enqueue(F&& f) {
-		uint32_t next_tail;
-		{
-			std::unique_lock<std::mutex> lock(queue_mutex);
-			next_tail = (tail + 1) & QUEUE_MASK;
-
-			queue_not_full_cv.wait(lock, [this, next_tail]() {
-				return next_tail != head;
-			});
-
-			ring_buffer[tail] = job::make(std::forward<F>(f));
-			tail = next_tail;
-		}
-
-		jobs_available.release();
-	}
-
-	std::condition_variable queue_not_full_cv;
-
-private:
-	alignas(64) std::array<job, QUEUE_SIZE> ring_buffer{};
-	uint32_t head{0};
-	uint32_t tail{0};
-
-	std::mutex queue_mutex;
-	std::counting_semaphore<QUEUE_SIZE> jobs_available{0};
-	std::atomic<bool> running{false};
-
-	std::vector<std::thread> workers;
-
-	void worker_loop() {
-		rdebug::set_thread_name("worker");
-
-		while (running.load(std::memory_order_acquire)) {
-			jobs_available.acquire();
-
-			if (!running.load(std::memory_order_acquire)) return;
-
-			job current_job;
-
-			{
-				std::lock_guard<std::mutex> lock(queue_mutex);
-
-				if (head == tail) continue;
-
-				current_job = ring_buffer[head];
-
-				ring_buffer[head].execute = nullptr;
-				ring_buffer[head].destroy = nullptr;
-
-				head = (head + 1) & QUEUE_MASK;
-			}
-			queue_not_full_cv.notify_one();
-			ZoneScopedN("jobexec");
-			current_job.run_and_dispose();
-
-		}
-	}
-};
-
-inline threadpool g_jobs{};
 
 
 template<typename T, size_t Capacity>
@@ -224,7 +130,11 @@ public:
 			if (dif == 0) {
 				if (dequeue_pos.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed)) break;
 			} else if (dif < 0) {
-				return false;
+				if (pos == enqueue_pos.load(std::memory_order_relaxed)) {
+					return false;
+				}
+
+				std::this_thread::yield();
 			} else {
 				pos = dequeue_pos.load(std::memory_order_relaxed);
 			}
@@ -319,6 +229,148 @@ public:
 		offset.store(0, std::memory_order_relaxed);
 	}
 };
+
+
+class ThreadLocalArena {
+	std::unique_ptr<uint8_t[]> buffer;
+	size_t capacity = 0;
+	size_t offset = 0;
+
+public:
+	ThreadLocalArena() = default;
+
+	void init(size_t size) {
+		buffer = std::make_unique<uint8_t[]>(size);
+		capacity = size;
+		offset = 0;
+	}
+
+	void* allocate(size_t size, size_t alignment = 64) {
+		size_t current_addr = reinterpret_cast<size_t>(buffer.get() + offset);
+		size_t padding = (alignment - (current_addr % alignment)) % alignment;
+
+		if (offset + padding + size > capacity) {
+			// [[OERFLOW]]
+			return nullptr;
+		}
+
+		offset += padding;
+		void* ptr = buffer.get() + offset;
+		offset += size;
+		return ptr;
+	}
+
+	void reset() {
+		offset = 0;
+	}
+};
+
+inline constexpr size_t MAX_WORKER_THREADS = 64;
+inline std::array<ThreadLocalArena, MAX_WORKER_THREADS> g_thread_arenas;
+inline std::atomic<uint32_t> g_arena_counter{0};
+inline thread_local uint32_t t_arena_index = 0xFFFFFFFF;
+
+// temp memory for any job that requires [[invoke]]
+inline ThreadLocalArena& get_local_arena() {
+	if (t_arena_index == 0xFFFFFFFF) {
+		t_arena_index = g_arena_counter.fetch_add(1, std::memory_order_relaxed) % MAX_WORKER_THREADS;
+		g_thread_arenas[t_arena_index].init(64 * 1024 * 1024); // 64MB sandbox per thread
+	}
+
+	return g_thread_arenas[t_arena_index];
+}
+
+
+class threadpool {
+public:
+	inline static constexpr uint32_t QUEUE_SIZE = 1024;
+
+	threadpool() {
+		uint32_t num_threads = std::thread::hardware_concurrency();
+
+		if (num_threads <= 1) num_threads = 2;
+
+		running.store(true, std::memory_order_release);
+
+		for (uint32_t i = 0; i < num_threads - 1; ++i) {
+			workers.emplace_back(&threadpool::worker_loop, this);
+		}
+	}
+
+	bool is_running() const {
+		return running.load(std::memory_order_acquire);
+	}
+
+	void stop_and_join_all() {
+		if (running.exchange(false, std::memory_order_acq_rel)) {
+			jobs_available.release(workers.size() * 2);
+
+			for (auto& w : workers) {
+				if (w.joinable()) {
+					w.join();
+				}
+			}
+
+			job current_job;
+
+			while (queue.pop(current_job)) {
+				if (current_job.destroy) {
+					current_job.destroy(current_job.payload);
+				}
+			}
+		}
+	}
+
+	~threadpool() {
+		stop_and_join_all();
+	}
+
+	template<typename F>
+	void enqueue(F&& f) {
+		job new_job = job::make(std::forward<F>(f));
+
+		while (!queue.push(new_job)) {
+			std::this_thread::yield();
+		}
+
+		jobs_available.release();
+	}
+
+	bool help_execute() {
+		job current_job;
+
+		if (queue.pop(current_job)) {
+			// X_X
+			// jobs_available.try_acquire();
+
+			current_job.run_and_dispose();
+			return true;
+		}
+
+		return false;
+	}
+
+private:
+	LockFreeMPMC<job, QUEUE_SIZE> queue;
+	std::counting_semaphore<QUEUE_SIZE> jobs_available{0};
+	std::atomic<bool> running{false};
+
+	std::vector<std::thread> workers;
+
+	void worker_loop() {
+		rdebug::set_thread_name("worker");
+
+		while (running.load(std::memory_order_acquire)) {
+			jobs_available.acquire();
+			if (!running.load(std::memory_order_acquire)) return;
+
+			ZoneScopedN("jobexec");
+			while (help_execute()) {}
+		}
+	}
+};
+
+inline threadpool g_jobs{};
 
 inline JobStringArena g_job_strings(1024 * 1024);
 inline std::atomic<int> active_io_jobs{0};

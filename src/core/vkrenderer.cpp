@@ -941,6 +941,15 @@ void vkrenderer::write_obs(rvkbucket& mvkobjs) {
 }
 void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 
+	cancelall();
+
+	while (active_io_jobs.load(std::memory_order_acquire) > 0) {
+		g_jobs.help_execute(); // idk if this is a good idea.. but &*$# it main thread balling
+		std::this_thread::yield();
+	}
+
+	g_jobs.stop_and_join_all();
+
 	rview::io::save_state_to_json();
 
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
@@ -1375,7 +1384,10 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 
 				if (fname_view.ends_with(".glb") || fname_view.ends_with(".vrm") ||
 				        fname_view.ends_with(".GLB") || fname_view.ends_with(".VRM")) {
-					uint32_t currentDropID = g_dropCounter.fetch_add(1, std::memory_order_relaxed);
+
+					uint32_t currentDropID = g_dropCounter.fetch_add(1, std::memory_order_relaxed) % 8192; // TODO constexpr number of cancellation tokens [[MAGIC]]
+					g_cancellation_tokens[currentDropID].store(false, std::memory_order_release);
+
 					float mx, my;
 					SDL_GetMouseState(&mx, &my);
 					glm::vec4 viewport(0.0f, 0.0f, (float)mvkobjs.width, (float)mvkobjs.height);
@@ -1384,6 +1396,7 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 					glm::vec3 rayDir = glm::normalize(farPt - nearPt);
 					float t = (glm::abs(rayDir.y) > 0.001f) ? (0.0f - rview::core::camwpos.y) / rayDir.y : -1.0f;
 					glm::vec3 hitPos = (t > 0.0f && t <= 50.0f) ? (rview::core::camwpos + rayDir * t) : (rview::core::camwpos + rayDir * 50.0f);
+
 					vkrenderer::DropSession session{};
 					session.dropID = currentDropID;
 					session.spawnPos = hitPos;
@@ -1391,22 +1404,28 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 					vkrenderer::g_activeDrops.emplace_back(std::move(session));
 					vkrenderer::g_openDropModal = true;
 
-					if (active_io_jobs.load(std::memory_order_acquire) == 0) g_job_strings.reset();
+					if (active_io_jobs.load(std::memory_order_acquire) == 0) {
+						g_job_strings.reset();
+					}
 
 					const char* fname = g_job_strings.push_string(fname_view);
+					active_io_jobs.fetch_add(1, std::memory_order_release);
 
 					g_jobs.enqueue([fname, currentDropID]() {
 						model_manager::g_progress_queue.push({currentDropID, model_manager::ParseStep::parsing});
 
+						model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname, currentDropID);
 
-						model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
+						if (g_cancellation_tokens[currentDropID].load(std::memory_order_acquire)) {
+							model_manager::g_progress_queue.push({currentDropID, model_manager::ParseStep::cancelled});
+							active_io_jobs.fetch_sub(1, std::memory_order_release);
+							return;
+						}
 
 						model_manager::g_progress_queue.push({currentDropID, model_manager::ParseStep::done});
 
 						staging.dropID = currentDropID;
 						staging.skipui = false;
-
-						active_io_jobs.fetch_add(1, std::memory_order_release);
 
 						if (!staging.meshes.empty()) {
 							while (!vkrenderer::pending_staging_models.push(std::move(staging))) {
@@ -1416,7 +1435,6 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 
 						active_io_jobs.fetch_sub(1, std::memory_order_release);
 					});
-
 				}
 
 				break;
@@ -1505,10 +1523,15 @@ void vkrenderer::spawnall(rvkbucket& mvkobjs, VkCommandBuffer c) {
 }
 
 void vkrenderer::cancelspawn(uint32_t id) {
+	uint32_t dropID = g_activeDrops[id].dropID;
+	g_cancellation_tokens[dropID].store(true, std::memory_order_release);
 	g_activeDrops.erase(g_activeDrops.begin() + id);
 }
 
 void vkrenderer::cancelall() {
+	for (auto& drop : g_activeDrops) {
+		g_cancellation_tokens[drop.dropID].store(true, std::memory_order_release);
+	}
 	g_activeDrops.clear();
 }
 
@@ -1641,7 +1664,12 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_rawIndexOffset, newBytesToUpload};
 			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, newBuffer.buffer, 1, &tailRegion);
 
-			safe_cleanup(mvkobjs, rview::core::g_rawIndexSSBO);
+			if (rview::core::g_rawIndexSSBO.buffer != VK_NULL_HANDLE) {
+    vkrenderer::CondemnedAsset dead;
+    dead.vbo = rview::core::g_rawIndexSSBO;
+    vkrenderer::g_asset_death_row.push_back(std::move(dead));
+}
+rview::core::g_rawIndexSSBO = newBuffer;
 
 			rview::core::g_rawIndexSSBO = newBuffer;
 			rview::core::g_rawIndexCapacity = newCapacity;
@@ -1684,7 +1712,12 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			VkBufferCopy tailRegion{beltOffset, g_morphDeltaOffset, newMorphBytesToUpload};
 			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, newBuffer.buffer, 1, &tailRegion);
 
-			safe_cleanup(mvkobjs, g_morphDeltaSSBO);
+			if (g_morphDeltaSSBO.buffer != VK_NULL_HANDLE) {
+    vkrenderer::CondemnedAsset dead;
+    dead.vbo = g_morphDeltaSSBO;
+    vkrenderer::g_asset_death_row.push_back(std::move(dead));
+}
+g_morphDeltaSSBO = newBuffer;
 
 			g_morphDeltaSSBO = newBuffer;
 			g_morphDeltaCapacity = newCapacity;
@@ -1728,7 +1761,12 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_primOffset * sizeof(PrimitiveMetadata), uploadBytes};
 			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, newBuffer.buffer, 1, &tailRegion);
 
-			safe_cleanup(mvkobjs, rview::core::g_primitiveRegistrySSBO);
+			if (rview::core::g_primitiveRegistrySSBO.buffer != VK_NULL_HANDLE) {
+    vkrenderer::CondemnedAsset dead;
+    dead.vbo = rview::core::g_primitiveRegistrySSBO;
+    vkrenderer::g_asset_death_row.push_back(std::move(dead));
+}
+rview::core::g_primitiveRegistrySSBO = newBuffer;
 			rview::core::g_primitiveRegistrySSBO = newBuffer;
 			rview::core::g_primCapacity = newCap;
 			descriptors_need_update = true;
@@ -1770,7 +1808,12 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_modelOffset * sizeof(ModelMetadata), uploadBytes};
 			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, newBuffer.buffer, 1, &tailRegion);
 
-			safe_cleanup(mvkobjs, rview::core::g_modelRegistrySSBO);
+			if (rview::core::g_modelRegistrySSBO.buffer != VK_NULL_HANDLE) {
+    vkrenderer::CondemnedAsset dead;
+    dead.vbo = rview::core::g_modelRegistrySSBO;
+    vkrenderer::g_asset_death_row.push_back(std::move(dead));
+}
+rview::core::g_modelRegistrySSBO = newBuffer;
 			rview::core::g_modelRegistrySSBO = newBuffer;
 			rview::core::g_modelCapacity = newCap;
 			descriptors_need_update = true;
@@ -1902,26 +1945,21 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	}
 
 	//couldnt think of somewhere better to leave this
-	for (auto& payload : g_commit_queue) {
-		commitspawn(mvkobjs, c, std::move(payload));
+	if (!g_commit_queue.empty()) {
+		commitspawn(mvkobjs, c, std::move(g_commit_queue.front()));
+		g_commit_queue.erase(g_commit_queue.begin());
 	}
-
-	g_commit_queue.clear();
 
 	for (int i = (int)g_asset_death_row.size() - 1; i >= 0; --i) {
 		auto& dead = g_asset_death_row[i];
-
 		if (dead.framesRemaining == 0) {
 			if (dead.vbo.buffer != VK_NULL_HANDLE) {
 				vmaDestroyBuffer(mvkobjs.alloc, dead.vbo.buffer, dead.vbo.alloc);
 			}
-
 			for (auto& tex : dead.textures) {
 				vmaDestroyImage(mvkobjs.alloc, tex.img, tex.alloc);
 				vkDestroyImageView(mvkobjs.vkdevice.device, tex.imgview, nullptr);
 			}
-
-			// O(1) Remove
 			g_asset_death_row[i] = std::move(g_asset_death_row.back());
 			g_asset_death_row.pop_back();
 		} else {

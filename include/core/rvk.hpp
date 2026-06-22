@@ -20,6 +20,7 @@
 #include <fstream>
 #include <map>
 #include <conf.hpp>
+#include <dbg/trace.hpp>
 // temp TODO [CRITICAL]
 // #include <dbg/demo.hpp>
 
@@ -316,11 +317,11 @@ constexpr bool headless = RVIEW_HEADLESS;
 };
 };
 namespace anim {
-inline constexpr float samplerate{120.0f}; // i have to separate the sample rate from the baking rate at some poiunt
+inline constexpr float samplerate{rdemo::is_active ? 120.0f : rdebug::is_active ? 6.0f : 60.0f }; // i have to separate the sample rate from the baking rate at some poiunt
 inline constexpr uint32_t MAX_IK_CHAINS{2};
-inline constexpr size_t maxmorphs{rdemo::is_active ? 24'000:24'000}; // all in all not per shape, there's no way to unify them otherwise i dont think
-inline constexpr size_t maxjoints{rdemo::is_active ? 3'072'000:24'000};
-inline constexpr size_t megabuffers{rdemo::is_active ? 3'072'000:24'000};
+inline constexpr size_t maxmorphs{rdemo::is_active ? 24'000 : 24'000}; // all in all not per shape, there's no way to unify them otherwise i dont think
+inline constexpr size_t maxjoints{rdemo::is_active ? 3'072'000 : 24'000};
+inline constexpr size_t megabuffers{rdemo::is_active ? 3'072'000 : 24'000};
 };
 namespace io {
 
@@ -477,6 +478,7 @@ static inline void destroy(const VkDevice& dev, VkDescriptorPool dpool) {
 	vkDestroyDescriptorPool(dev, dpool, nullptr);
 }
 };
+// useless now everything uses the death row now
 inline void safe_cleanup(rvkbucket& objs, GpuBuffer& bufferData) {
 	VkBuffer buf = bufferData.buffer;
 	VmaAllocation alloc = bufferData.alloc;

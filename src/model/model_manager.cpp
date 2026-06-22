@@ -10,6 +10,7 @@
 #include <fastgltf/core.hpp>
 #include <fastgltf/tools.hpp>
 #include <fastgltf/glm_element_traits.hpp>
+#include <anim/anim2.hpp>
 
 namespace fastgltf {
 template <> struct ElementTraits<std::array<int8_t, 3>> : ElementTraitsBase<std::array<int8_t, 3>, AccessorType::Vec3, int8_t> {};
@@ -45,9 +46,19 @@ std::string get_glb_json_chunk(std::string_view filepath) {
 	return json;
 }
 
-StagingModelData parse_model_to_staging(std::string_view filepath) {
+StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t dropID) {
 	StagingModelData staging;
 	staging.name = filepath;
+	staging.dropID = dropID;
+
+	if (dropID != 0xFFFFFFFF) {
+		ProgressUpdate update;
+		update.requestID = dropID;
+		update.step = ParseStep::parsing;
+		strncpy(update.message, filepath.data(), sizeof(update.message) - 1);
+		update.message[sizeof(update.message) - 1] = '\0';
+		g_progress_queue.push(update);
+	}
 
 	fastgltf::Parser parser(fastgltf::Extensions::KHR_texture_basisu);
 	auto mappedFile = fastgltf::MappedGltfFile::FromPath(filepath);
@@ -447,74 +458,212 @@ StagingModelData parse_model_to_staging(std::string_view filepath) {
 		};
 		build_nodelist(nodedata.nodelist, rootNodeNum);
 
-		std::vector<bool> allTrueMask(nodedata.nodelist.size(), true);
+		staging.bakedClips.resize(std::max<size_t>(10, asset.animations.size())); // TODO fix the magic 10 (from anim too)!!!!!
 
-		for (auto& anim0 : asset.animations) {
-			std::shared_ptr<vkclip> clip0 = std::make_shared<vkclip>(static_cast<std::string>(anim0.name));
+		if (!asset.animations.empty()) {
+			std::atomic<int> pending_clips{static_cast<int>(asset.animations.size())};
+			std::vector<bool> allTrueMask(nodedata.nodelist.size(), true);
 
-			for (auto& c : anim0.channels) {
-				clip0->addchan(asset, anim0, c);
+			struct BakeContext {
+				StagingModelData* staging;
+				std::vector<bool>* mask;
+				gltfnodedata* nodedata;
+				std::atomic<int>* pending_clips;
+				fastgltf::Asset* asset;
+				uint32_t dropID;
+			};
+
+			BakeContext ctx { &staging, &allTrueMask, &nodedata, &pending_clips, &asset, dropID };
+			BakeContext* pCtx = &ctx;
+
+			if (dropID != 0xFFFFFFFF) {
+				ProgressUpdate bakeUpdate;
+				bakeUpdate.requestID = dropID;
+				bakeUpdate.step = ParseStep::baking;
+				strncpy(bakeUpdate.message, "Baking Animations...", sizeof(bakeUpdate.message) - 1);
+				g_progress_queue.push(bakeUpdate);
 			}
 
-			DODAnimationClip baked{};
-			baked.name = clip0->getName();
-			baked.duration = clip0->getEndTime();
-			baked.sampleRate = rview::anim::samplerate;
-			baked.nodeCount = staging.parsed_skel->nodeCount;
-			baked.jointCount = staging.parsed_skel->jointCount;
-			baked.frameCount = static_cast<uint32_t>(baked.duration * baked.sampleRate) + 1;
+			for (size_t animIdx = 0; animIdx < asset.animations.size(); ++animIdx) {
+				uint32_t aIdx = static_cast<uint32_t>(animIdx);
 
-			baked.globalTransforms.resize(baked.frameCount * baked.nodeCount, glm::mat4(1.0f));
-			baked.finalJointMatrices.resize(baked.frameCount * baked.jointCount, glm::mat4(1.0f));
-			baked.finalJointDQs.resize(baked.frameCount * baked.jointCount, DualQuatScale());
-			baked.localTracks.resize(baked.frameCount * baked.nodeCount);
+				g_jobs.enqueue([pCtx, aIdx]() {
+					ScopedJobGuard guard(*pCtx->pending_clips);
 
-
-			for (uint32_t f = 0; f < baked.frameCount; ++f) {
-				float t = static_cast<float>(f) / baked.sampleRate;
-
-				clip0->setFrame(nodedata.nodelist, allTrueMask, t);
-
-				for (uint32_t n = 0; n < nodedata.nodelist.size(); ++n) {
-					if (n >= MAX_BONES) continue;
-
-					int32_t topoIdx = staging.parsed_skel->gltfToTopoMap[n];
-
-					if (topoIdx >= 0 && topoIdx < static_cast<int32_t>(baked.nodeCount)) {
-						if (nodedata.nodelist[n]) {
-
-							staging.parsed_skel->localTransforms[topoIdx] = nodedata.nodelist[n]->getlocalmatrix();
-
-							LocalTRS trs;
-							trs.T = nodedata.nodelist[n]->getblendtrans();
-							trs.R = nodedata.nodelist[n]->getblendrot();
-							trs.S = nodedata.nodelist[n]->getblendscale();
-							baked.localTracks[(f * baked.nodeCount) + topoIdx] = trs;
-						}
+					if (!g_jobs.is_running() ||
+					        (pCtx->dropID != 0xFFFFFFFF && g_cancellation_tokens[pCtx->dropID].load(std::memory_order_relaxed))) {
+						return;
 					}
-				}
 
-				staging.parsed_skel->UpdateGlobalMatrices();
+					const auto& anim0 = pCtx->asset->animations[aIdx];
 
-				uint32_t globalOffset = f * baked.nodeCount;
-				uint32_t jointOffset = f * baked.jointCount;
+					ThreadLocalArena isolatedArena;
+					isolatedArena.init(128 * 1024 * 1024);
 
-				std::memcpy(&baked.globalTransforms[globalOffset],
-				            staging.parsed_skel->globalTransforms.get(),
-				            baked.nodeCount * sizeof(glm::mat4));
+					DODRawClip rawClip = extract_raw_clip(isolatedArena, *pCtx->asset, anim0);
 
-				for (uint32_t j = 0; j < baked.jointCount; ++j) {
-					baked.finalJointDQs[jointOffset + j] = Mat4ToDualQuatScale(staging.parsed_skel->finalJointMatrices[j]);
-				}
+					JobSkeletonState jobSkel;
+					jobSkel.allocate_from_arena(isolatedArena, *pCtx->staging->parsed_skel);
+
+					DODAnimationClip baked{};
+					baked.name = std::string(rawClip.name);
+					baked.duration = rawClip.duration;
+					baked.sampleRate = rview::anim::samplerate;
+					baked.nodeCount = jobSkel.nodeCount;
+					baked.jointCount = jobSkel.jointCount;
+
+					baked.frameCount = static_cast<uint32_t>(baked.duration * baked.sampleRate) + 1;
+
+					if (baked.duration <= 0.0f || baked.frameCount == 0) baked.frameCount = 1;
+
+					baked.globalTransforms.resize(baked.frameCount * baked.nodeCount, glm::mat4(1.0f));
+					baked.finalJointMatrices.resize(baked.frameCount * baked.jointCount, glm::mat4(1.0f));
+					baked.finalJointDQs.resize(baked.frameCount * baked.jointCount, DualQuatScale());
+					baked.localTracks.resize(baked.frameCount * baked.nodeCount);
+
+					std::vector<LocalTRS> restPoseTracks(baked.nodeCount);
+
+					for (uint32_t n = 0; n < baked.nodeCount; ++n) {
+						glm::mat4 restMat = pCtx->staging->parsed_skel->localTransforms[n];
+						LocalTRS trs;
+						trs.T = glm::vec3(restMat[3]);
+						trs.S = glm::vec3(glm::length(glm::vec3(restMat[0])), glm::length(glm::vec3(restMat[1])), glm::length(glm::vec3(restMat[2])));
+
+						glm::mat3 rotMat(
+						    trs.S.x > 0.0001f ? glm::vec3(restMat[0]) / trs.S.x : glm::vec3(1, 0, 0),
+						    trs.S.y > 0.0001f ? glm::vec3(restMat[1]) / trs.S.y : glm::vec3(0, 1, 0),
+						    trs.S.z > 0.0001f ? glm::vec3(restMat[2]) / trs.S.z : glm::vec3(0, 0, 1)
+						);
+						trs.R = glm::quat_cast(rotMat);
+						restPoseTracks[n] = trs;
+					}
+
+					uint32_t framesPerBatch = 64;
+					uint32_t batchCount = (baked.frameCount + framesPerBatch - 1) / framesPerBatch;
+					std::atomic<int> batchesPending{static_cast<int>(batchCount)};
+
+					struct SubJobCtx {
+						DODAnimationClip* baked;
+						BakeContext* pCtx;
+						std::vector<LocalTRS>* restPoseTracks;
+						DODRawClip* rawClip;
+						std::atomic<int>* batchesPending;
+						uint32_t framesPerBatch;
+					} subCtx { &baked, pCtx, &restPoseTracks, &rawClip, &batchesPending, framesPerBatch };
+
+					SubJobCtx* pSubCtx = &subCtx;
+
+					for (uint32_t b = 0; b < batchCount; ++b) {
+						g_jobs.enqueue([pSubCtx, b]() {
+							ScopedJobGuard batchGuard(*pSubCtx->batchesPending);
+
+							if (pSubCtx->pCtx->dropID != 0xFFFFFFFF &&
+							        g_cancellation_tokens[pSubCtx->pCtx->dropID].load(std::memory_order_relaxed)) {
+								return;
+							}
+
+							// pointer containment unit
+							DODAnimationClip& baked = *pSubCtx->baked;
+							const DODRawClip& rawClip = *pSubCtx->rawClip;
+							const std::vector<LocalTRS>& restPoseTracks = *pSubCtx->restPoseTracks;
+							const ParsedSkeleton& skel = *pSubCtx->pCtx->staging->parsed_skel;
+							const auto& mask = *pSubCtx->pCtx->mask;
+							const uint32_t sampleRate = baked.sampleRate;
+
+							std::vector<glm::mat4> localTransforms(baked.nodeCount);
+							std::vector<glm::mat4> globalTransforms(baked.nodeCount);
+							std::vector<glm::mat4> finalJointMatrices(baked.jointCount);
+							std::vector<uint8_t> dirtyNodes(baked.nodeCount, 0);
+
+							uint32_t startF = b * pSubCtx->framesPerBatch;
+							uint32_t endF = std::min(startF + pSubCtx->framesPerBatch, baked.frameCount);
+
+							for (uint32_t f = startF; f < endF; ++f) {
+
+								// TOO COLD TO BE HERE
+								// if (pSubCtx->pCtx->dropID != 0xFFFFFFFF &&
+								// 	g_cancellation_tokens[pSubCtx->pCtx->dropID].load(std::memory_order_relaxed)) {
+								// 	return;
+								// }
+
+								float t = static_cast<float>(f) / sampleRate;
+
+								std::memcpy(&baked.localTracks[f * baked.nodeCount], restPoseTracks.data(), baked.nodeCount * sizeof(LocalTRS));
+								std::memcpy(localTransforms.data(), skel.localTransforms.get(), baked.nodeCount * sizeof(glm::mat4));
+								std::fill(dirtyNodes.begin(), dirtyNodes.end(), 0);
+
+								for (uint32_t c = 0; c < rawClip.channelCount; ++c) {
+									const DODRawChannel& chan = rawClip.channels[c];
+
+									if (!mask[chan.targetNode]) continue;
+									int32_t topoIdx = skel.gltfToTopoMap[chan.targetNode];
+									if (topoIdx >= 0 && topoIdx < static_cast<int32_t>(baked.nodeCount)) {
+										LocalTRS& trs = baked.localTracks[(f * baked.nodeCount) + topoIdx];
+										if (chan.path == AnimPathType::Rotation) trs.R = chan.sample_quat(t);
+										else if (chan.path == AnimPathType::Scale) trs.S = chan.sample_vec3(t);
+										else if (chan.path == AnimPathType::Translation) trs.T = chan.sample_vec3(t);
+										dirtyNodes[topoIdx] = 1;
+									}
+								}
+
+								for (uint32_t n = 0; n < baked.nodeCount; ++n) {
+									if (dirtyNodes[n]) {
+										const LocalTRS& trs = baked.localTracks[(f * baked.nodeCount) + n];
+										localTransforms[n] = glm::translate(glm::mat4(1.0f), trs.T) * glm::mat4_cast(trs.R) * glm::scale(glm::mat4(1.0f), trs.S);
+									}
+								}
+
+								for (uint32_t i = 0; i < baked.nodeCount; ++i) {
+									int32_t parent = skel.parentIndices[i];
+									if (parent >= 0) {
+										globalTransforms[i] = globalTransforms[parent] * localTransforms[i];
+									} else {
+										globalTransforms[i] = localTransforms[i];
+									}
+								}
+
+								for (uint32_t j = 0; j < baked.jointCount; ++j) {
+									uint32_t nodeIdx = skel.jointToNodeMap[j];
+									finalJointMatrices[j] = globalTransforms[nodeIdx] * skel.inverseBindMatrices[j];
+								}
+
+								uint32_t globalOffset = f * baked.nodeCount;
+								uint32_t jointOffset = f * baked.jointCount;
+								std::memcpy(&baked.globalTransforms[globalOffset], globalTransforms.data(), baked.nodeCount * sizeof(glm::mat4));
+
+								for (uint32_t j = 0; j < baked.jointCount; ++j) {
+									baked.finalJointDQs[jointOffset + j] = Mat4ToDualQuatScale(finalJointMatrices[j]);
+								}
+							}
+						});
+					}
+
+					while (batchesPending.load(std::memory_order_acquire) > 0) {
+						if (!g_jobs.help_execute()) std::this_thread::yield();
+					}
+
+					pCtx->staging->bakedClips[aIdx] = std::move(baked);
+				});
 			}
 
-			staging.bakedClips.push_back(std::move(baked));
+			while (pending_clips.load(std::memory_order_acquire) > 0) {
+				if (!g_jobs.help_execute()) {
+					std::this_thread::yield();
+				}
+			}
+		}
+
+		if (dropID != 0xFFFFFFFF && !g_cancellation_tokens[dropID].load(std::memory_order_acquire)) {
+			ProgressUpdate doneUpdate;
+			doneUpdate.requestID = dropID;
+			doneUpdate.step = ParseStep::done;
+			strncpy(doneUpdate.message, "Done", sizeof(doneUpdate.message) - 1);
+			g_progress_queue.push(doneUpdate);
 		}
 
 		std::memcpy(staging.parsed_skel->localTransforms.get(), savedRestPose.data(), staging.parsed_skel->nodeCount * sizeof(glm::mat4));
 		staging.parsed_skel->UpdateGlobalMatrices();
 	}
-
 	return staging;
 }
 
@@ -748,16 +897,6 @@ uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, Stagi
 		    localMorphBytes.begin(),
 		    localMorphBytes.end()
 		);
-
-		for (auto& meta : finalPrimitives) {
-			meta.indexByteOffset += globalByteOffset;
-
-			if (meta.morphDeltaIdx != 0xFFFFFFFF) {
-				meta.morphDeltaIdx += globalMorphOffset;
-			}
-
-			g_assets.primitives.push_back(meta);
-		}
 	}
 
 	{
@@ -882,7 +1021,7 @@ void update_logic_and_animations(float deltaTime) {
 			}
 		}
 
-		float magnitude = g_registry.anim_magnitude[i];
+		float magnitude = g_registry.anim_magnitude[i]; // TODO
 
 		for (uint32_t b = 0; b < b_count; ++b) {
 			LocalTRS baseTrack;

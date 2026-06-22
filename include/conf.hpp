@@ -1,5 +1,5 @@
 #pragma once
 
-namespace rdemo{
-    inline constexpr bool is_active = RVIEW_DEMO;
+namespace rdemo {
+inline constexpr bool is_active = RVIEW_DEMO;
 };

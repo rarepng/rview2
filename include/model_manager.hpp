@@ -185,7 +185,7 @@ struct StagingModelData {
 };
 
 std::string get_glb_json_chunk(std::string_view filepath);
-StagingModelData parse_model_to_staging(std::string_view filepath);
+StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t dropID = 0xFFFFFFFF);
 
 uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, StagingModelData& staging,
                                   std::vector<uint32_t>& uploadedTextureBindlessIDs);
@@ -438,15 +438,17 @@ inline glm::mat4 get_bone_matrix(uint32_t dense_idx, uint32_t target_bone_topo_i
 enum class ParseStep {
 	parsing,
 	baking,
-	done
+	done,
+	cancelled
 };
 
 struct ProgressUpdate {
 	uint32_t requestID;
 	ParseStep step;
+	char message[128]; // HARDCODED
 };
 
-// Tiny lock-free queue for telemetry
+// queue just for telemetry might delete
 inline LockFreeMPMC<ProgressUpdate, 128> g_progress_queue;
 
 }
