@@ -1532,6 +1532,7 @@ void vkrenderer::cancelall() {
 	for (auto& drop : g_activeDrops) {
 		g_cancellation_tokens[drop.dropID].store(true, std::memory_order_release);
 	}
+
 	g_activeDrops.clear();
 }
 
@@ -1665,11 +1666,12 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, newBuffer.buffer, 1, &tailRegion);
 
 			if (rview::core::g_rawIndexSSBO.buffer != VK_NULL_HANDLE) {
-    vkrenderer::CondemnedAsset dead;
-    dead.vbo = rview::core::g_rawIndexSSBO;
-    vkrenderer::g_asset_death_row.push_back(std::move(dead));
-}
-rview::core::g_rawIndexSSBO = newBuffer;
+				vkrenderer::CondemnedAsset dead;
+				dead.vbo = rview::core::g_rawIndexSSBO;
+				vkrenderer::g_asset_death_row.push_back(std::move(dead));
+			}
+
+			rview::core::g_rawIndexSSBO = newBuffer;
 
 			rview::core::g_rawIndexSSBO = newBuffer;
 			rview::core::g_rawIndexCapacity = newCapacity;
@@ -1713,11 +1715,12 @@ rview::core::g_rawIndexSSBO = newBuffer;
 			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, newBuffer.buffer, 1, &tailRegion);
 
 			if (g_morphDeltaSSBO.buffer != VK_NULL_HANDLE) {
-    vkrenderer::CondemnedAsset dead;
-    dead.vbo = g_morphDeltaSSBO;
-    vkrenderer::g_asset_death_row.push_back(std::move(dead));
-}
-g_morphDeltaSSBO = newBuffer;
+				vkrenderer::CondemnedAsset dead;
+				dead.vbo = g_morphDeltaSSBO;
+				vkrenderer::g_asset_death_row.push_back(std::move(dead));
+			}
+
+			g_morphDeltaSSBO = newBuffer;
 
 			g_morphDeltaSSBO = newBuffer;
 			g_morphDeltaCapacity = newCapacity;
@@ -1762,11 +1765,12 @@ g_morphDeltaSSBO = newBuffer;
 			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, newBuffer.buffer, 1, &tailRegion);
 
 			if (rview::core::g_primitiveRegistrySSBO.buffer != VK_NULL_HANDLE) {
-    vkrenderer::CondemnedAsset dead;
-    dead.vbo = rview::core::g_primitiveRegistrySSBO;
-    vkrenderer::g_asset_death_row.push_back(std::move(dead));
-}
-rview::core::g_primitiveRegistrySSBO = newBuffer;
+				vkrenderer::CondemnedAsset dead;
+				dead.vbo = rview::core::g_primitiveRegistrySSBO;
+				vkrenderer::g_asset_death_row.push_back(std::move(dead));
+			}
+
+			rview::core::g_primitiveRegistrySSBO = newBuffer;
 			rview::core::g_primitiveRegistrySSBO = newBuffer;
 			rview::core::g_primCapacity = newCap;
 			descriptors_need_update = true;
@@ -1809,11 +1813,12 @@ rview::core::g_primitiveRegistrySSBO = newBuffer;
 			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, newBuffer.buffer, 1, &tailRegion);
 
 			if (rview::core::g_modelRegistrySSBO.buffer != VK_NULL_HANDLE) {
-    vkrenderer::CondemnedAsset dead;
-    dead.vbo = rview::core::g_modelRegistrySSBO;
-    vkrenderer::g_asset_death_row.push_back(std::move(dead));
-}
-rview::core::g_modelRegistrySSBO = newBuffer;
+				vkrenderer::CondemnedAsset dead;
+				dead.vbo = rview::core::g_modelRegistrySSBO;
+				vkrenderer::g_asset_death_row.push_back(std::move(dead));
+			}
+
+			rview::core::g_modelRegistrySSBO = newBuffer;
 			rview::core::g_modelRegistrySSBO = newBuffer;
 			rview::core::g_modelCapacity = newCap;
 			descriptors_need_update = true;
@@ -1952,14 +1957,17 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 	for (int i = (int)g_asset_death_row.size() - 1; i >= 0; --i) {
 		auto& dead = g_asset_death_row[i];
+
 		if (dead.framesRemaining == 0) {
 			if (dead.vbo.buffer != VK_NULL_HANDLE) {
 				vmaDestroyBuffer(mvkobjs.alloc, dead.vbo.buffer, dead.vbo.alloc);
 			}
+
 			for (auto& tex : dead.textures) {
 				vmaDestroyImage(mvkobjs.alloc, tex.img, tex.alloc);
 				vkDestroyImageView(mvkobjs.vkdevice.device, tex.imgview, nullptr);
 			}
+
 			g_asset_death_row[i] = std::move(g_asset_death_row.back());
 			g_asset_death_row.pop_back();
 		} else {
@@ -1999,7 +2007,10 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 	g_kill_queue.clear();
 
-	model_manager::update_logic_and_animations(rview::core::tickdiff);
+	rview::core::global_frame_counter.fetch_add(1, std::memory_order_relaxed);
+
+	model_manager::ProcessDeferredStateChanges(rview::core::global_frame_counter.load(std::memory_order_relaxed));
+	model_manager::DispatchAnimationJobs(rview::core::tickdiff);
 
 	update_dynamic_instances(mvkobjs);
 

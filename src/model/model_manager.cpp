@@ -1,7 +1,5 @@
 #include <model_manager.hpp>
 #include <vkvbo.hpp>
-#include <anim/vkclip.hpp>
-#include <anim/vknode.hpp>
 #include <fstream>
 #include <simdjson.h>
 #include <unordered_map>
@@ -413,67 +411,23 @@ StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t drop
 		std::vector<glm::mat4> savedRestPose(staging.parsed_skel->nodeCount);
 		std::memcpy(savedRestPose.data(), staging.parsed_skel->localTransforms.get(), staging.parsed_skel->nodeCount * sizeof(glm::mat4));
 
-		gltfnodedata nodedata{};
-		int rootNodeNum = asset.scenes.at(0).nodeIndices.at(0);
-		nodedata.rootnode = vknode::createroot(rootNodeNum);
+		// staging.bakedClips.resize(std::max<size_t>(10, asset.animations.size())); // TODO fix the magic 10 (from anim too)!!!!!
 
-		std::function<void(std::shared_ptr<vknode>)> build_nodedata = [&](std::shared_ptr<vknode> treeNode) {
-			int nodeNum = treeNode->getnum();
-			const fastgltf::Node &node = asset.nodes.at(nodeNum);
-			treeNode->setname(static_cast<std::string>(node.name));
-			std::visit(fastgltf::visitor{
-				[](auto & arg) {},
-				[&](fastgltf::TRS trs) {
-					treeNode->settranslation(glm::make_vec3(trs.translation.data()));
-					treeNode->setrotation(glm::make_quat(trs.rotation.data()));
-					treeNode->setscale(glm::make_vec3(trs.scale.data()));
-				}}, node.transform);
-			treeNode->calculatenodemat();
-		};
-
-		std::function<void(std::shared_ptr<vknode>)> build_nodes = [&](std::shared_ptr<vknode> treeNode) {
-			int nodeNum = treeNode->getnum();
-			const auto &childNodes = asset.nodes.at(nodeNum).children;
-			treeNode->addchildren(childNodes);
-
-			for (auto &childNode : treeNode->getchildren()) {
-				build_nodedata(childNode);
-				build_nodes(childNode);
-			}
-		};
-
-		build_nodedata(nodedata.rootnode);
-		build_nodes(nodedata.rootnode);
-
-		nodedata.nodelist.reserve(asset.nodes.size());
-		nodedata.nodelist.resize(asset.nodes.size());
-		nodedata.nodelist.at(rootNodeNum) = nodedata.rootnode;
-
-		std::function<void(std::vector<std::shared_ptr<vknode>>&, int)> build_nodelist = [&](std::vector<std::shared_ptr<vknode>>& nodeList, int nodeNum) {
-			for (auto &childNode : nodeList.at(nodeNum)->getchildren()) {
-				int childNodeNum = childNode->getnum();
-				nodeList.at(childNodeNum) = childNode;
-				build_nodelist(nodeList, childNodeNum);
-			}
-		};
-		build_nodelist(nodedata.nodelist, rootNodeNum);
-
-		staging.bakedClips.resize(std::max<size_t>(10, asset.animations.size())); // TODO fix the magic 10 (from anim too)!!!!!
+		staging.parsedPools.resize(asset.animations.size());
 
 		if (!asset.animations.empty()) {
 			std::atomic<int> pending_clips{static_cast<int>(asset.animations.size())};
-			std::vector<bool> allTrueMask(nodedata.nodelist.size(), true);
+			std::vector<bool> allTrueMask(asset.nodes.size(), true);
 
 			struct BakeContext {
 				StagingModelData* staging;
 				std::vector<bool>* mask;
-				gltfnodedata* nodedata;
 				std::atomic<int>* pending_clips;
 				fastgltf::Asset* asset;
 				uint32_t dropID;
 			};
 
-			BakeContext ctx { &staging, &allTrueMask, &nodedata, &pending_clips, &asset, dropID };
+			BakeContext ctx { &staging, &allTrueMask, &pending_clips, &asset, dropID };
 			BakeContext* pCtx = &ctx;
 
 			if (dropID != 0xFFFFFFFF) {
@@ -505,8 +459,9 @@ StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t drop
 					JobSkeletonState jobSkel;
 					jobSkel.allocate_from_arena(isolatedArena, *pCtx->staging->parsed_skel);
 
-					DODAnimationClip baked{};
+					AnimPoolData baked{};
 					baked.name = std::string(rawClip.name);
+					baked.skeletonSignature = GenerateSkeletonSignature(*pCtx->staging->parsed_skel);
 					baked.duration = rawClip.duration;
 					baked.sampleRate = rview::anim::samplerate;
 					baked.nodeCount = jobSkel.nodeCount;
@@ -517,7 +472,6 @@ StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t drop
 					if (baked.duration <= 0.0f || baked.frameCount == 0) baked.frameCount = 1;
 
 					baked.globalTransforms.resize(baked.frameCount * baked.nodeCount, glm::mat4(1.0f));
-					baked.finalJointMatrices.resize(baked.frameCount * baked.jointCount, glm::mat4(1.0f));
 					baked.finalJointDQs.resize(baked.frameCount * baked.jointCount, DualQuatScale());
 					baked.localTracks.resize(baked.frameCount * baked.nodeCount);
 
@@ -543,7 +497,7 @@ StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t drop
 					std::atomic<int> batchesPending{static_cast<int>(batchCount)};
 
 					struct SubJobCtx {
-						DODAnimationClip* baked;
+						AnimPoolData* baked;
 						BakeContext* pCtx;
 						std::vector<LocalTRS>* restPoseTracks;
 						DODRawClip* rawClip;
@@ -563,7 +517,7 @@ StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t drop
 							}
 
 							// pointer containment unit
-							DODAnimationClip& baked = *pSubCtx->baked;
+							AnimPoolData& baked = *pSubCtx->baked;
 							const DODRawClip& rawClip = *pSubCtx->rawClip;
 							const std::vector<LocalTRS>& restPoseTracks = *pSubCtx->restPoseTracks;
 							const ParsedSkeleton& skel = *pSubCtx->pCtx->staging->parsed_skel;
@@ -596,12 +550,16 @@ StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t drop
 									const DODRawChannel& chan = rawClip.channels[c];
 
 									if (!mask[chan.targetNode]) continue;
+
 									int32_t topoIdx = skel.gltfToTopoMap[chan.targetNode];
+
 									if (topoIdx >= 0 && topoIdx < static_cast<int32_t>(baked.nodeCount)) {
 										LocalTRS& trs = baked.localTracks[(f * baked.nodeCount) + topoIdx];
+
 										if (chan.path == AnimPathType::Rotation) trs.R = chan.sample_quat(t);
 										else if (chan.path == AnimPathType::Scale) trs.S = chan.sample_vec3(t);
 										else if (chan.path == AnimPathType::Translation) trs.T = chan.sample_vec3(t);
+
 										dirtyNodes[topoIdx] = 1;
 									}
 								}
@@ -615,6 +573,7 @@ StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t drop
 
 								for (uint32_t i = 0; i < baked.nodeCount; ++i) {
 									int32_t parent = skel.parentIndices[i];
+
 									if (parent >= 0) {
 										globalTransforms[i] = globalTransforms[parent] * localTransforms[i];
 									} else {
@@ -642,7 +601,7 @@ StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t drop
 						if (!g_jobs.help_execute()) std::this_thread::yield();
 					}
 
-					pCtx->staging->bakedClips[aIdx] = std::move(baked);
+					pCtx->staging->parsedPools[aIdx] = std::move(baked);
 				});
 			}
 
@@ -664,6 +623,7 @@ StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t drop
 		std::memcpy(staging.parsed_skel->localTransforms.get(), savedRestPose.data(), staging.parsed_skel->nodeCount * sizeof(glm::mat4));
 		staging.parsed_skel->UpdateGlobalMatrices();
 	}
+
 	return staging;
 }
 
@@ -899,15 +859,27 @@ uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, Stagi
 		);
 	}
 
+	std::vector<uint32_t> committedHandles;
+	committedHandles.reserve(staging.parsedPools.size());
+
+	for (auto& pool : staging.parsedPools) {
+		if (pool.frameCount > 0) {
+			uint32_t handle = g_animPoolRegistry.RegisterPool(std::move(pool));
+			committedHandles.push_back(handle);
+		}
+	}
+
 	{
 		std::lock_guard<std::mutex> resLock(g_modelResourceMtx);
 		g_modelVBOs[assignedModelID] = modelVbo;
+
 		CPUModelAsset cpuAsset;
 		cpuAsset.isSkinned = staging.isSkinned;
 		cpuAsset.geometryVBO = modelVbo;
-		cpuAsset.bakedClips = std::move(staging.bakedClips);
+		cpuAsset.defaultClips = std::move(committedHandles);
 		cpuAsset.textures = std::move(model_textures);
 		cpuAsset.materialIDs = globalMaterialIds;
+
 		g_cpuModels[assignedModelID] = std::move(cpuAsset);
 		g_model_filepaths[assignedModelID] = staging.name;
 	}
@@ -915,347 +887,6 @@ uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, Stagi
 	g_assets.requiresUpload.store(true, std::memory_order_release);
 
 	return assignedModelID;
-}
-inline void EvaluateFK_And_CompressDQS(
-    uint32_t b_count, uint32_t j_count, uint32_t b_start, uint32_t j_start,
-    const LocalTRS* locals) {
-	for (uint32_t b = 0; b < b_count; ++b) {
-		glm::mat4 localMat = glm::translate(glm::mat4(1.0f), locals[b].T) * glm::mat4_cast(locals[b].R) * glm::scale(glm::mat4(1.0f), locals[b].S);
-
-		int32_t parent = g_bone_parents[b_start + b];
-
-		if (parent >= 0) g_bone_globals[b_start + b] = g_bone_globals[parent] * localMat;
-		else             g_bone_globals[b_start + b] = localMat;
-	}
-
-	for (uint32_t j = 0; j < j_count; ++j) {
-		uint32_t globalNodeIdx = g_joint_to_node[j_start + j];
-		glm::mat4 finalMat = g_bone_globals[globalNodeIdx] * g_joint_inverse_binds[j_start + j];
-		g_joint_final_matrices[j_start + j] = Mat4ToDualQuatScale(finalMat);
-	}
-}
-void update_logic_and_animations(float deltaTime) {
-	ZoneScoped;
-	uint32_t active_instances = g_scene.entity_count.load(std::memory_order_relaxed);
-
-	for (uint32_t i = 0; i < active_instances; ++i) {
-		if (!g_registry.is_visible[i] || g_registry.anim_mode[i] != AnimMode::Baked) continue;
-
-		uint32_t j_start = g_registry.joint_start_index[i];
-		uint32_t j_count = g_registry.joint_count[i];
-
-		if (j_count == 0 || g_scene.modelIDs[i] == 0xFFFFFFFF) continue;
-
-		auto it = g_cpuModels.find(g_scene.modelIDs[i]);
-
-		if (it != g_cpuModels.end()) {
-			int clipIdx = g_registry.anim_clip[i];
-
-			if (clipIdx == -1) {
-				DualQuatScale identityDQ;
-				identityDQ.real  = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-				identityDQ.dual  = glm::quat(0.0f, 0.0f, 0.0f, 0.0f);
-				identityDQ.scale = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
-
-				for (uint32_t j = 0; j < j_count; ++j) {
-					g_joint_final_matrices[j_start + j] = identityDQ;
-				}
-			} else if (!it->second.bakedClips.empty() && clipIdx >= 0 && clipIdx < it->second.bakedClips.size()) {
-				g_scene.animTimePositions[i] += deltaTime * g_registry.anim_speed[i];
-				const auto& clip = it->second.bakedClips[clipIdx];
-				const DualQuatScale* frameJoints = clip.GetFinalJointsFrame(g_scene.animTimePositions[i], g_registry.anim_loop[i]);
-
-				if (frameJoints) {
-					std::memcpy(&g_joint_final_matrices[j_start], frameJoints, j_count * sizeof(DualQuatScale));
-				}
-			}
-		}
-	}
-
-	for (uint32_t i = 0; i < active_instances; ++i) {
-		AnimMode mode = g_registry.anim_mode[i];
-
-		if (!g_registry.is_visible[i] || (mode != AnimMode::Dynamic && mode != AnimMode::Hero && mode != AnimMode::Hybrid)) continue;
-
-		uint32_t b_start = g_registry.bone_start_index[i];
-		uint32_t b_count = g_registry.bone_count[i];
-		uint32_t j_start = g_registry.joint_start_index[i];
-		uint32_t j_count = g_registry.joint_count[i];
-
-		if (b_count == 0 || g_scene.modelIDs[i] == 0xFFFFFFFF) continue;
-
-		auto it = g_cpuModels.find(g_scene.modelIDs[i]);
-
-		if (it == g_cpuModels.end() || it->second.bakedClips.empty()) continue;
-
-		g_scene.animTimePositions[i] += deltaTime * g_registry.anim_speed[i];
-
-		int currentClipIdx = g_registry.anim_clip[i];
-		int targetClipIdx = g_registry.target_anim_clip[i];
-
-		const LocalTRS* tracksA = nullptr;
-
-		if (currentClipIdx >= 0 && currentClipIdx < it->second.bakedClips.size()) {
-			const auto& clipA = it->second.bakedClips[currentClipIdx];
-			tracksA = clipA.GetLocalTracksFrame(g_scene.animTimePositions[i], g_registry.anim_loop[i]);
-		}
-
-		LocalTRS locals[MAX_BONES];
-		float blendWeight = 0.0f;
-		const LocalTRS* tracksB = nullptr;
-
-		if (targetClipIdx >= 0 && targetClipIdx < it->second.bakedClips.size()) {
-			g_registry.current_blend_time[i] += deltaTime;
-			blendWeight = glm::clamp(g_registry.current_blend_time[i] / g_registry.blend_duration[i], 0.0f, 1.0f);
-
-			const auto& clipB = it->second.bakedClips[targetClipIdx];
-			tracksB = clipB.GetLocalTracksFrame(g_registry.current_blend_time[i], true);
-
-			if (blendWeight >= 1.0f) {
-				g_registry.anim_clip[i] = targetClipIdx;
-				g_registry.target_anim_clip[i] = -1;
-				g_scene.animTimePositions[i] = g_registry.current_blend_time[i];
-				g_registry.current_blend_time[i] = 0.0f;
-				blendWeight = 0.0f;
-				tracksB = nullptr;
-			}
-		}
-
-		float magnitude = g_registry.anim_magnitude[i]; // TODO
-
-		for (uint32_t b = 0; b < b_count; ++b) {
-			LocalTRS baseTrack;
-			float totalNWayWeight = 0.0f;
-
-			glm::vec3 accumT(0.0f);
-			glm::vec3 accumS(0.0f);
-			glm::quat accumR = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-
-			for (uint32_t layer = 0; layer < Registry::MAX_BLEND_LAYERS; ++layer) {
-				int clipIdx = g_registry.blend_clips[i][layer];
-				float weight = g_registry.blend_weights[i][layer];
-
-				if (clipIdx >= 0 && weight > 0.0f) {
-					const auto& layerClip = it->second.bakedClips[clipIdx];
-					const LocalTRS* layerTracks = layerClip.GetLocalTracksFrame(g_scene.animTimePositions[i], true);
-
-					if (layerTracks) {
-						accumT += layerTracks[b].T * weight;
-						accumS += layerTracks[b].S * weight;
-
-						if (totalNWayWeight == 0.0f) {
-							accumR = layerTracks[b].R;
-						} else {
-							float normalizedWeight = weight / (totalNWayWeight + weight);
-							accumR = glm::slerp(accumR, layerTracks[b].R, normalizedWeight);
-						}
-
-						totalNWayWeight += weight;
-					}
-				}
-			}
-
-			if (totalNWayWeight > 0.0f) {
-				baseTrack.T = accumT / totalNWayWeight;
-				baseTrack.S = accumS / totalNWayWeight;
-				baseTrack.R = accumR;
-			} else if (tracksA) {
-				baseTrack = tracksA[b];
-			} else {
-				glm::mat4 bindMat = g_bone_locals[b_start + b];
-				baseTrack.T = glm::vec3(bindMat[3]);
-				baseTrack.S = glm::vec3(
-				                  glm::length(glm::vec3(bindMat[0])),
-				                  glm::length(glm::vec3(bindMat[1])),
-				                  glm::length(glm::vec3(bindMat[2]))
-				              );
-				glm::mat3 rotMat(
-				    baseTrack.S.x > 0.0001f ? glm::vec3(bindMat[0]) / baseTrack.S.x : glm::vec3(1, 0, 0),
-				    baseTrack.S.y > 0.0001f ? glm::vec3(bindMat[1]) / baseTrack.S.y : glm::vec3(0, 1, 0),
-				    baseTrack.S.z > 0.0001f ? glm::vec3(bindMat[2]) / baseTrack.S.z : glm::vec3(0, 0, 1)
-				);
-				baseTrack.R = glm::quat_cast(rotMat);
-			}
-
-			float magnitude = g_registry.anim_magnitude[i];
-
-			if (magnitude != 1.0f) {
-				glm::mat4 bindMat = g_bone_locals[b_start + b];
-
-				glm::vec3 restT = glm::vec3(bindMat[3]);
-				glm::vec3 restS = glm::vec3(
-				                      glm::length(glm::vec3(bindMat[0])),
-				                      glm::length(glm::vec3(bindMat[1])),
-				                      glm::length(glm::vec3(bindMat[2]))
-				                  );
-
-				glm::mat3 rotMat(
-				    restS.x > 0.0001f ? glm::vec3(bindMat[0]) / restS.x : glm::vec3(1, 0, 0),
-				    restS.y > 0.0001f ? glm::vec3(bindMat[1]) / restS.y : glm::vec3(0, 1, 0),
-				    restS.z > 0.0001f ? glm::vec3(bindMat[2]) / restS.z : glm::vec3(0, 0, 1)
-				);
-				glm::quat restR = glm::quat_cast(rotMat);
-
-				baseTrack.T = glm::mix(restT, baseTrack.T, magnitude);
-				baseTrack.S = glm::mix(restS, baseTrack.S, magnitude);
-
-				if (glm::dot(restR, baseTrack.R) < 0.0f) {
-					baseTrack.R = -baseTrack.R;
-				}
-
-				baseTrack.R = glm::normalize(glm::slerp(restR, baseTrack.R, magnitude));
-			}
-
-			// just a prototype
-			if (b == 0 || b == 1) {
-				extern float g_app_time; // maybe ill use g_scene.animTimePositions[i] idk
-
-				// TEMP
-				float speed = 2.0f;
-				float amp = 0.02f;
-
-				float breathCycle = sin(g_scene.animTimePositions[i] * speed);
-
-				glm::vec3 breathScale = glm::vec3(
-				                            1.0f,
-				                            1.0f + (breathCycle * amp),
-				                            1.0f + (breathCycle * amp * 1.5f)
-				                        );
-
-				baseTrack.S *= breathScale;
-			}
-
-			if (blendWeight > 0.0f && tracksB) {
-				locals[b].T = glm::mix(baseTrack.T, tracksB[b].T, blendWeight);
-				locals[b].S = glm::mix(baseTrack.S, tracksB[b].S, blendWeight);
-				locals[b].R = glm::slerp(baseTrack.R, tracksB[b].R, blendWeight);
-			} else {
-				locals[b] = baseTrack;
-			}
-		}
-
-		if (mode == AnimMode::Hero || mode == AnimMode::Hybrid) {
-			uint32_t active_chains = g_registry.ik_active_chains[i];
-
-			for (uint32_t ik_idx = 0; ik_idx < active_chains; ++ik_idx) {
-				int effector = g_registry.ik_effector_node[i][ik_idx];
-				int root = g_registry.ik_root_node[i][ik_idx];
-				glm::vec3 target = g_registry.ik_target_pos[i][ik_idx];
-
-				if (effector < 0 || root < 0) continue;
-
-				int chain[MAX_BONES];
-				int chain_len = 0;
-				int curr = effector;
-
-				while (curr >= 0) {
-					chain[chain_len++] = curr;
-
-					if (curr == root) break;
-
-					curr = g_bone_parents[b_start + curr];
-
-					if (curr >= 0) curr -= b_start;
-				}
-
-				for (int iter = 0; iter < 10; ++iter) {
-					for (uint32_t b = 0; b < b_count; ++b) {
-						glm::mat4 localMat = glm::translate(glm::mat4(1.0f), locals[b].T) * glm::mat4_cast(locals[b].R) * glm::scale(glm::mat4(1.0f), locals[b].S);
-						int32_t parent = g_bone_parents[b_start + b];
-
-						if (parent >= 0) g_bone_globals[b_start + b] = g_bone_globals[parent] * localMat;
-						else             g_bone_globals[b_start + b] = localMat;
-					}
-
-					glm::vec3 effector_pos = glm::vec3(g_bone_globals[b_start + effector][3]);
-
-					if (glm::length(target - effector_pos) < 0.001f) break;
-
-					for (int c = 0; c < chain_len; ++c) {
-						int b = chain[c];
-						glm::vec3 node_pos = glm::vec3(g_bone_globals[b_start + b][3]);
-
-						glm::vec3 to_effector = effector_pos - node_pos;
-						glm::vec3 to_target = target - node_pos;
-
-						if (glm::length(to_effector) < 0.001f || glm::length(to_target) < 0.001f) continue;
-
-						to_effector = glm::normalize(to_effector);
-						to_target = glm::normalize(to_target);
-
-						if (glm::dot(to_effector, to_target) > 0.9999f) continue;
-
-						glm::quat delta_global = glm::rotation(to_effector, to_target);
-
-						glm::quat parent_global_rot{1.0f, 0.0f, 0.0f, 0.0f};
-						int p = g_bone_parents[b_start + b];
-
-						if (p >= 0) {
-							glm::mat3 pMat(g_bone_globals[p]);
-							pMat[0] = glm::normalize(pMat[0]);
-							pMat[1] = glm::normalize(pMat[1]);
-							pMat[2] = glm::normalize(pMat[2]);
-							parent_global_rot = glm::quat_cast(pMat);
-						}
-
-						glm::quat delta_local = glm::inverse(parent_global_rot) * delta_global * parent_global_rot;
-						locals[b].R = glm::normalize(delta_local * locals[b].R);
-
-						for (int k = c; k >= 0; --k) {
-							int child = chain[k];
-							int child_p = g_bone_parents[b_start + child];
-							glm::mat4 child_local = glm::translate(glm::mat4(1.0f), locals[child].T) * glm::mat4_cast(locals[child].R) * glm::scale(glm::mat4(1.0f),
-							                        locals[child].S);
-
-							if (child_p >= 0) g_bone_globals[b_start + child] = g_bone_globals[child_p] * child_local;
-							else              g_bone_globals[b_start + child] = child_local;
-						}
-
-						effector_pos = glm::vec3(g_bone_globals[b_start + effector][3]);
-					}
-				}
-			}
-		}
-
-		EvaluateFK_And_CompressDQS(b_count, j_count, b_start, j_start, locals);
-	}
-
-	for (uint32_t i = 0; i < active_instances; ++i) {
-		if (!g_registry.is_visible[i]) continue;
-
-		uint32_t parent_idx = g_registry.attach_parent_entity[i];
-		int32_t parent_bone = g_registry.attach_parent_bone[i];
-
-		if (parent_idx != 0xFFFFFFFF && parent_bone >= 0) {
-
-			glm::mat4 bone_local_mat = get_bone_matrix(parent_idx, parent_bone);
-
-			glm::mat4 offset_mat = glm::translate(glm::mat4(1.0f), g_registry.attach_offset_pos[i]) * glm::mat4_cast(g_registry.attach_offset_rot[i]);
-
-			glm::mat4 final_attachment_mat = bone_local_mat * offset_mat;
-
-			glm::vec3 parent_world_pos = g_scene.worldPositions[parent_idx];
-			glm::quat parent_world_rot = g_scene.rotations[parent_idx];
-			glm::vec3 parent_scale     = g_scene.scales[parent_idx];
-
-			glm::mat4 parent_world_mat = glm::translate(glm::mat4(1.0f), parent_world_pos) * glm::mat4_cast(parent_world_rot) * glm::scale(glm::mat4(1.0f),
-			                             parent_scale);
-
-			glm::mat4 absolute_world_mat = parent_world_mat * final_attachment_mat;
-
-			g_scene.worldPositions[i] = glm::vec3(absolute_world_mat[3]);
-
-			glm::vec3 scale;
-			glm::quat rotation;
-			glm::vec3 translation;
-			glm::vec3 skew;
-			glm::vec4 perspective;
-			glm::decompose(absolute_world_mat, scale, rotation, translation, skew, perspective);
-
-			g_scene.rotations[i] = glm::conjugate(rotation);
-			g_scene.scales[i] = scale;
-		}
-	}
 }
 
 void upload_joint_matrices(rvkbucket& mvkobjs) {

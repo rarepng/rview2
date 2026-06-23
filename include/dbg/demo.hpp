@@ -52,9 +52,12 @@ inline constexpr std::array<DemoSpawn, 2> MIXED_GRID_SPAWNS = {{
 
 				auto it = model_manager::g_cpuModels.find(modelID);
 
-				if (it != model_manager::g_cpuModels.end() && !it->second.bakedClips.empty()) {
-					uint32_t num_clips = it->second.bakedClips.size();
-					model_manager::g_registry.anim_clip[dense] = static_cast<int>(pcg_hash(idx) * num_clips);
+				if (it != model_manager::g_cpuModels.end() && !it->second.defaultClips.empty()) {
+					uint32_t num_clips = static_cast<uint32_t>(it->second.defaultClips.size());
+					uint32_t rand_clip_idx = static_cast<uint32_t>(pcg_hash(idx) * num_clips);
+
+					model_manager::g_registry.current_pool[dense] = it->second.defaultClips[rand_clip_idx];
+					model_manager::g_registry.pipeline_flags[dense] = model_manager::ANIM_FLAG_GPU_BAKED;
 					model_manager::g_registry.anim_speed[dense] = 0.8f + (pcg_hash(idx * 1337) * 0.4f);
 				}
 			}
@@ -73,8 +76,12 @@ inline constexpr std::array<DemoSpawn, 2> MIXED_GRID_SPAWNS = {{
 
 				auto it = model_manager::g_cpuModels.find(modelID);
 
-				if (it != model_manager::g_cpuModels.end() && !it->second.bakedClips.empty()) {
-					model_manager::g_registry.anim_clip[dense] = static_cast<int>(pcg_hash(idx + 5000) * it->second.bakedClips.size());
+				if (it != model_manager::g_cpuModels.end() && !it->second.defaultClips.empty()) {
+					uint32_t num_clips = static_cast<uint32_t>(it->second.defaultClips.size());
+					uint32_t rand_clip_idx = static_cast<uint32_t>(pcg_hash(idx) * num_clips);
+
+					model_manager::g_registry.current_pool[dense] = it->second.defaultClips[rand_clip_idx];
+					model_manager::g_registry.pipeline_flags[dense] = model_manager::ANIM_FLAG_GPU_BAKED;
 					model_manager::g_registry.anim_speed[dense] = 0.8f + (pcg_hash(idx * 999) * 0.4f);
 				}
 			}
@@ -100,9 +107,12 @@ inline constexpr std::array<DemoSpawn, 2> CUBE_GRID_SPAWNS = {{
 
 				auto it = model_manager::g_cpuModels.find(modelID);
 
-				if (it != model_manager::g_cpuModels.end() && !it->second.bakedClips.empty()) {
-					int max_allowed = std::min(4, static_cast<int>(it->second.bakedClips.size()));
-					model_manager::g_registry.anim_clip[dense] = static_cast<int>(pcg_hash(idx) * max_allowed);
+				if (it != model_manager::g_cpuModels.end() && !it->second.defaultClips.empty()) {
+					uint32_t num_clips = static_cast<uint32_t>(it->second.defaultClips.size());
+					uint32_t rand_clip_idx = static_cast<uint32_t>(pcg_hash(idx) * num_clips);
+
+					model_manager::g_registry.current_pool[dense] = it->second.defaultClips[rand_clip_idx];
+					model_manager::g_registry.pipeline_flags[dense] = model_manager::ANIM_FLAG_GPU_BAKED;
 					model_manager::g_registry.anim_speed[dense] = 0.8f + (pcg_hash(idx * 1337) * 0.4f);
 				}
 			}
@@ -124,9 +134,12 @@ inline constexpr std::array<DemoSpawn, 2> CUBE_GRID_SPAWNS = {{
 
 				auto it = model_manager::g_cpuModels.find(modelID);
 
-				if (it != model_manager::g_cpuModels.end() && !it->second.bakedClips.empty()) {
-					int max_allowed = std::min(4, static_cast<int>(it->second.bakedClips.size()));
-					model_manager::g_registry.anim_clip[dense] = static_cast<int>(pcg_hash(idx + 5000) * max_allowed);
+				if (it != model_manager::g_cpuModels.end() && !it->second.defaultClips.empty()) {
+					uint32_t num_clips = static_cast<uint32_t>(it->second.defaultClips.size());
+					uint32_t rand_clip_idx = static_cast<uint32_t>(pcg_hash(idx) * num_clips);
+
+					model_manager::g_registry.current_pool[dense] = it->second.defaultClips[rand_clip_idx];
+					model_manager::g_registry.pipeline_flags[dense] = model_manager::ANIM_FLAG_GPU_BAKED;
 					model_manager::g_registry.anim_speed[dense] = 0.8f + (pcg_hash(idx * 999) * 0.4f);
 				}
 			}

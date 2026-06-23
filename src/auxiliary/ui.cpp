@@ -219,20 +219,107 @@ void ui::createdbgframe(rvkbucket &renderData) {
 
 		ImGui::SeparatorText("Animation & IK");
 
-		int anim_mode = static_cast<int>(model_manager::g_registry.anim_mode[g_selected_entity]);
-		const char* modes[] = { "Baked", "Hybrid", "Dynamic", "Hero" };
+		int current_flags = static_cast<int>(model_manager::g_registry.pipeline_flags[g_selected_entity]);
+		const char* modes[] = { "GPU Baked", "CPU Eval Only", "Hybrid (CPU + IK)", "Hero (Blend + IK)" };
+		int current_mode_idx = 0;
 
-		if (ImGui::Combo("Anim Mode", &anim_mode, modes, IM_ARRAYSIZE(modes))) {
-			model_manager::g_registry.anim_mode[g_selected_entity] = static_cast<AnimMode>(anim_mode);
+		if (current_flags == model_manager::MASK_HERO) current_mode_idx = 3;
+		else if (current_flags == model_manager::MASK_HYBRID) current_mode_idx = 2;
+		else if (current_flags == model_manager::ANIM_FLAG_CPU_EVAL) current_mode_idx = 1;
+		else current_mode_idx = 0;
+
+		if (ImGui::Combo("Pipeline Mode", &current_mode_idx, modes, IM_ARRAYSIZE(modes))) {
+			model_manager::AnimPipelineFlags new_flags = model_manager::ANIM_FLAG_GPU_BAKED;
+
+			if (current_mode_idx == 1) new_flags = model_manager::ANIM_FLAG_CPU_EVAL;
+
+			if (current_mode_idx == 2) new_flags = model_manager::MASK_HYBRID;
+
+			if (current_mode_idx == 3) new_flags = model_manager::MASK_HERO;
+
+			uint64_t safe_frame = rview::core::global_frame_counter.load(std::memory_order_relaxed)
+			                      + rview::core::MAX_FRAMES_IN_FLIGHT + 1;
+
+			model_manager::g_stateChangeQueue.push({
+				g_selected_entity,
+				model_manager::g_registry.current_pool[g_selected_entity],
+				new_flags,
+				safe_frame
+			});
 		}
 
-		if (ImGui::SliderInt("Clip ID", &model_manager::g_registry.anim_clip[g_selected_entity], -1, 10)) {
-			g_scene.animTimePositions[g_selected_entity] = 0.0f;
+		uint32_t current_pool_handle = model_manager::g_registry.current_pool[g_selected_entity];
+		const model_manager::AnimPoolData* current_pool = model_manager::g_animPoolRegistry.GetPool(current_pool_handle);
+		uint64_t active_signature = current_pool ? current_pool->skeletonSignature : 0;
+
+		auto it = model_manager::g_cpuModels.find(g_scene.modelIDs[g_selected_entity]);
+
+		if (it != model_manager::g_cpuModels.end() && !it->second.defaultClips.empty()) {
+			ImGui::SeparatorText("Model Default Clips");
+
+			std::string current_name = current_pool ? current_pool->name : "Bind Pose";
+
+			if (ImGui::BeginCombo("Select Anim", current_name.c_str())) {
+				for (uint32_t handle : it->second.defaultClips) {
+					const auto* pool = model_manager::g_animPoolRegistry.GetPool(handle);
+
+					if (!pool) continue;
+
+					bool is_selected = (current_pool_handle == handle);
+
+					if (ImGui::Selectable(pool->name.c_str(), is_selected)) {
+						uint64_t safe_frame = rview::core::global_frame_counter.load(std::memory_order_relaxed) + rview::core::MAX_FRAMES_IN_FLIGHT + 1;
+						model_manager::g_stateChangeQueue.push({
+							g_selected_entity, handle, model_manager::g_registry.pipeline_flags[g_selected_entity], safe_frame
+						});
+						g_scene.animTimePositions[g_selected_entity] = 0.0f;
+					}
+
+					if (is_selected) ImGui::SetItemDefaultFocus();
+				}
+
+				ImGui::EndCombo();
+			}
+		}
+
+		if (active_signature != 0) {
+			ImGui::SeparatorText("Global Animation Pool (Shared)");
+
+			std::vector<uint32_t> compatible_pools;
+
+			// overriding without exact skeleton match causes memory corruption obviously
+			for (uint32_t p = 0; p < model_manager::g_animPoolRegistry.pools.size(); ++p) {
+				if (model_manager::g_animPoolRegistry.pools[p].skeletonSignature == active_signature) {
+					compatible_pools.push_back(p);
+				}
+			}
+
+			std::string global_current = current_pool ? current_pool->name + " (ID: " + std::to_string(current_pool_handle) + ")" : "None";
+
+			if (ImGui::BeginCombo("Force Global Override", global_current.c_str())) {
+				for (uint32_t pHandle : compatible_pools) {
+					const auto& pool = model_manager::g_animPoolRegistry.pools[pHandle];
+					bool is_selected = (current_pool_handle == pHandle);
+					std::string label = pool.name + " (ID: " + std::to_string(pHandle) + ")";
+
+					if (ImGui::Selectable(label.c_str(), is_selected)) {
+						uint64_t safe_frame = rview::core::global_frame_counter.load(std::memory_order_relaxed) + rview::core::MAX_FRAMES_IN_FLIGHT + 1;
+						model_manager::g_stateChangeQueue.push({
+							g_selected_entity, pHandle, model_manager::g_registry.pipeline_flags[g_selected_entity], safe_frame
+						});
+						g_scene.animTimePositions[g_selected_entity] = 0.0f;
+					}
+
+					if (is_selected) ImGui::SetItemDefaultFocus();
+				}
+
+				ImGui::EndCombo();
+			}
 		}
 
 		ImGui::SameLine();
 
-		if (model_manager::g_registry.anim_clip[g_selected_entity] == -1) {
+		if (model_manager::g_registry.current_pool[g_selected_entity] == model_manager::INVALID_ANIM_POOL) {
 			ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "[BIND POSE / FROZEN]");
 		} else {
 			ImGui::TextDisabled("(Playing Clip)");
@@ -277,65 +364,49 @@ void ui::createdbgframe(rvkbucket &renderData) {
 			}
 		}
 
+
 		ImGui::SeparatorText("Animation Blending & Playback");
 
 		ImGui::SliderFloat("Playback Speed", &model_manager::g_registry.anim_speed[g_selected_entity], 0.0f, 5.0f, "%.2fx");
 
-		auto it = model_manager::g_cpuModels.find(modelID);
+		auto modelIt = model_manager::g_cpuModels.find(modelID);
 
-		if (it != model_manager::g_cpuModels.end() && !it->second.bakedClips.empty()) {
-			int numClips = static_cast<int>(it->second.bakedClips.size());
+		if (modelIt != model_manager::g_cpuModels.end() && !modelIt->second.defaultClips.empty()) {
+			int numClips = static_cast<int>(modelIt->second.defaultClips.size());
 
 			ImGui::TextDisabled("Crossfade to a new clip:");
-			ImGui::SliderInt("Target Clip", &model_manager::g_registry.target_anim_clip[g_selected_entity], -1, numClips - 1);
-			ImGui::SliderFloat("Blend Duration", &model_manager::g_registry.blend_duration[g_selected_entity], 0.1f, 3.0f, "%.2f sec");
 
-			if (ImGui::Button("Trigger Crossfade", ImVec2(-1, 0))) {
+			static int target_clip_idx = 0;
+			ImGui::SliderInt("Target Master Clip", &target_clip_idx, 0, numClips - 1);
+			ImGui::SliderFloat("Fade Duration", &model_manager::g_registry.blend_duration[g_selected_entity], 0.1f, 3.0f, "%.2f sec");
+
+			if (ImGui::Button("Trigger Fade", ImVec2(-1, 0))) {
+				model_manager::g_registry.target_pool[g_selected_entity] = modelIt->second.defaultClips[target_clip_idx];
 				model_manager::g_registry.current_blend_time[g_selected_entity] = 0.0f;
 			}
 
 			ImGui::Spacing();
-
 			ImGui::SliderFloat("Anim Magnitude", &model_manager::g_registry.anim_magnitude[g_selected_entity], 0.0f, 2.0f, "%.2f");
-
-			if (ImGui::IsItemHovered()) {
-				ImGui::SetTooltip("0.0 = Rest Pose | 1.0 = Normal | >1.0 = Exaggerated");
-			}
 
 			ImGui::SeparatorText("N-Way Blending (Simultaneous)");
 
 			for (uint32_t layer = 0; layer < model_manager::Registry::MAX_BLEND_LAYERS; ++layer) {
 				ImGui::PushID(layer);
-
-				std::string layerLabel = "Layer " + std::to_string(layer);
-				ImGui::Text("%s", layerLabel.c_str());
-
+				ImGui::Text("Layer %d", layer);
 				ImGui::SetNextItemWidth(120.0f);
 				ImGui::SliderInt("Clip", &model_manager::g_registry.blend_clips[g_selected_entity][layer], -1, numClips - 1);
-
 				ImGui::SameLine();
-
 				ImGui::SetNextItemWidth(150.0f);
 				ImGui::SliderFloat("Weight", &model_manager::g_registry.blend_weights[g_selected_entity][layer], 0.0f, 1.0f);
-
 				ImGui::PopID();
-			}
-
-			ImGui::SeparatorText("State Crossfading (Temporal)");
-			ImGui::TextDisabled("Transition entire state over time");
-			ImGui::SliderInt("Target Master Clip", &model_manager::g_registry.target_anim_clip[g_selected_entity], -1, numClips - 1);
-			ImGui::SliderFloat("Fade Duration", &model_manager::g_registry.blend_duration[g_selected_entity], 0.1f, 3.0f, "%.2f sec");
-
-			if (ImGui::Button("Trigger Fade", ImVec2(-1, 0))) {
-				model_manager::g_registry.current_blend_time[g_selected_entity] = 0.0f;
 			}
 		}
 
 		ImGui::SeparatorText("IK Chains (Hybrid / Hero)");
 
-		AnimMode mode = model_manager::g_registry.anim_mode[g_selected_entity];
+		model_manager::AnimPipelineFlags flags = model_manager::g_registry.pipeline_flags[g_selected_entity];
 
-		if (mode == AnimMode::Hybrid || mode == AnimMode::Hero) {
+		if ((flags & model_manager::ANIM_FLAG_IK) != 0) {
 
 			int active_chains = static_cast<int>(model_manager::g_registry.ik_active_chains[g_selected_entity]);
 
@@ -498,8 +569,9 @@ void ui::createdbgframe(rvkbucket &renderData) {
 			g_scene.scales[g_selected_entity] = scale;
 		}
 
-		if ((model_manager::g_registry.anim_mode[g_selected_entity] == AnimMode::Hero ||
-		        model_manager::g_registry.anim_mode[g_selected_entity] == AnimMode::Hybrid) &&
+		model_manager::AnimPipelineFlags gizmo_flags = model_manager::g_registry.pipeline_flags[g_selected_entity];
+
+		if ((gizmo_flags & model_manager::ANIM_FLAG_IK) != 0 &&
 		        model_manager::g_registry.ik_active_chains[g_selected_entity] > 0) {
 
 			int chain_idx = active_ik_gizmo_chain;
@@ -654,16 +726,22 @@ void ui::createdropwidget(rvkbucket& mvkobjs, VkCommandBuffer c) {
 			ImGui::DragFloat3("Spawn Location", glm::value_ptr(drop.spawnPos), 0.1f);
 
 			bool is_disabled = !drop.parseFinished;
+
 			if (is_disabled) {
 				const char* status = "Working...";
+
 				if (drop.currentStep == model_manager::ParseStep::parsing) status = "Parsing...";
+
 				if (drop.currentStep == model_manager::ParseStep::baking) status = "Baking...";
+
 				ImGui::TextColored(ImVec4(1, 1, 0, 1), "%s", status);
 				ImGui::BeginDisabled();
 			}
 
 			bool spawn_clicked = ImGui::Button("Spawn", ImVec2(120, 0));
+
 			if (is_disabled) ImGui::EndDisabled();
+
 			ImGui::SameLine();
 			bool cancel_clicked = ImGui::Button("Cancel", ImVec2(120, 0));
 			ImGui::Separator();

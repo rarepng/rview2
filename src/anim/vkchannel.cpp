@@ -74,10 +74,15 @@ animType vkchannel::getAnimType() {
 
 glm::vec<3, float> vkchannel::getScale(float time) {
 	if (scale.empty()) return glm::vec<3, float> {1.0f};
+
 	const float* t_data = timing.data();
+
 	const glm::vec3* v_data = scale.data();
+
 	size_t count = timing.size();
+
 	if (time <= t_data[0]) return v_data[0];
+
 	if (time >= t_data[count - 1]) {
 		return (interpolationtype0 == interpolationType::CUBICSPLINE)
 		       ? v_data[(count - 1) * 3 + 1]
@@ -86,6 +91,7 @@ glm::vec<3, float> vkchannel::getScale(float time) {
 
 	size_t first = 0;
 	size_t len = count;
+
 	while (len > 0) {
 		size_t half = len >> 1;
 		size_t mid = first + half;
@@ -100,6 +106,7 @@ glm::vec<3, float> vkchannel::getScale(float time) {
 
 	size_t next = first;
 	size_t prev = first - 1;
+
 	if (time == t_data[prev]) return v_data[prev];
 
 	switch (interpolationtype0) {
@@ -133,10 +140,15 @@ glm::vec<3, float> vkchannel::getScale(float time) {
 }
 glm::vec<3, float> vkchannel::getTranslate(float time) {
 	if (trans.empty()) return glm::vec<3, float> {0.0f};
+
 	const float* t_data = timing.data();
+
 	const glm::vec3* v_data = trans.data();
+
 	size_t count = timing.size();
+
 	if (time <= t_data[0]) return v_data[0];
+
 	if (time >= t_data[count - 1]) {
 		return (interpolationtype0 == interpolationType::CUBICSPLINE)
 		       ? v_data[(count - 1) * 3 + 1]
@@ -145,9 +157,11 @@ glm::vec<3, float> vkchannel::getTranslate(float time) {
 
 	size_t first = 0;
 	size_t len = count;
+
 	while (len > 0) {
 		size_t half = len >> 1;
 		size_t mid = first + half;
+
 		if (t_data[mid] <= time) {
 			first = mid + 1;
 			len -= half + 1;
@@ -158,6 +172,7 @@ glm::vec<3, float> vkchannel::getTranslate(float time) {
 
 	size_t next = first;
 	size_t prev = first - 1;
+
 	if (time == t_data[prev]) return v_data[prev];
 
 	switch (interpolationtype0) {
@@ -191,9 +206,11 @@ glm::vec<3, float> vkchannel::getTranslate(float time) {
 }
 glm::qua<float> vkchannel::getRotate(float time) {
 	if (rot.empty()) return glm::identity<glm::quat>();
+
 	const float* t_data = timing.data();
 	const glm::quat* r_data = rot.data();
 	size_t count = timing.size();
+
 	if (time <= t_data[0]) return r_data[0];
 
 	if (time >= t_data[count - 1]) {
@@ -204,6 +221,7 @@ glm::qua<float> vkchannel::getRotate(float time) {
 
 	size_t first = 0;
 	size_t len = count;
+
 	while (len > 0) {
 		size_t half = len >> 1;
 		size_t mid = first + half;
@@ -218,6 +236,7 @@ glm::qua<float> vkchannel::getRotate(float time) {
 
 	size_t next = first;
 	size_t prev = first - 1;
+
 	if (time == t_data[prev]) return r_data[prev];
 
 	switch (interpolationtype0) {

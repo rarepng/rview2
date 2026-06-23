@@ -8,6 +8,7 @@ modularize passes (compute: pre, post, async)
 miniaudio
 the stupid vertex smearing
 kill the bucket
+stop delaying fixing tangents
 unify cleanup as lambdas (more memory but cleaner)
 texture compression at runtime [droptime] (probably basis universal)
 wuffs/exr/replace stb (except maybe for hdr)/that gltf extension for compressed images

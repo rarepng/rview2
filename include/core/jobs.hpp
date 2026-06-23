@@ -362,9 +362,11 @@ private:
 
 		while (running.load(std::memory_order_acquire)) {
 			jobs_available.acquire();
+
 			if (!running.load(std::memory_order_acquire)) return;
 
 			ZoneScopedN("jobexec");
+
 			while (help_execute()) {}
 		}
 	}

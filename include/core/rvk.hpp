@@ -245,7 +245,8 @@ inline constexpr uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!! different devices mig
 inline constexpr uint32_t MAX_BINDLESS_BUFFERS = 1024;
 static constexpr size_t MAX_GLOBAL_MATERIALS = 10000;
 inline constexpr size_t idximguipool{0};
-inline uint32_t currentFrame{0};
+inline std::atomic<uint64_t> global_frame_counter{0}; // atomic version
+inline uint32_t currentFrame{0}; // not atomic will be deleted :(
 inline uint32_t hdrmiplod{0};
 inline std::atomic<uint32_t> globalBufferCounter{1};
 inline GlobalBufferHeap global_buffers{};
