@@ -406,6 +406,11 @@ bool vkrenderer::initcpuQs(rvkbucket& mvkobjs) {
 	return true;
 }
 bool vkrenderer::initscene(rvkbucket& mvkobjs) {
+
+	if constexpr(rdebug::is_active) {
+		rdebug::init(mvkobjs.inst, mvkobjs.vkdevice.physical_device, mvkobjs.vkdevice, mvkobjs.graphicsQ, mvkobjs.cbuffers_graphics.at(0).at(0));
+	}
+
 	if constexpr (rdemo::is_active) {
 		const auto& scene = rdemo::SCENES[1];
 
@@ -953,6 +958,11 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	rview::io::save_state_to_json();
 
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
+
+	if constexpr (rdebug::is_active) {
+		TracyVkDestroy(rdebug::tracyCTX);
+	}
+
 	ui::cleanup(mvkobjs);
 	vksyncobjects::cleanup(mvkobjs);
 
@@ -2041,6 +2051,9 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 	// let that sync in
 	currentgraph.add_pass([&mvkobjs, c, imgidx] {
+		if constexpr(rdebug::is_active) {
+			TracyVkZone(rdebug::tracyCTX, c, "syncs");
+		}
 
 		// VkBufferMemoryBarrier2 indirectBarrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
 		// indirectBarrier.buffer = mvkobjs.globalIndirectBuffers[rview::core::currentFrame].buffer;
@@ -2084,6 +2097,10 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	});
 
 	currentgraph.add_pass([c] {
+
+		if constexpr(rdebug::is_active) {
+			TracyVkZone(rdebug::tracyCTX, c, "compute/cull");
+		}
 
 		vkCmdFillBuffer(c, rview::core::g_indirectCountBuffers[rview::core::currentFrame].buffer, 0, sizeof(uint32_t), 0);
 
@@ -2139,6 +2156,9 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 	currentgraph.add_pass([&mvkobjs, c, imgidx] {
 
+		if constexpr(rdebug::is_active) {
+			TracyVkZone(rdebug::tracyCTX, c, "rendering");
+		}
 
 		VkViewport viewport{};
 		viewport.x = 0.0f;
@@ -2214,6 +2234,10 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 
 	currentgraph.add_pass([&mvkobjs, c, imgidx] {
+
+		if constexpr(rdebug::is_active) {
+			TracyVkZone(rdebug::tracyCTX, c, "last sync");
+		}
 
 		VkImageMemoryBarrier2 barrier{};
 		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;

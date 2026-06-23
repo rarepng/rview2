@@ -452,7 +452,7 @@ StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t drop
 					const auto& anim0 = pCtx->asset->animations[aIdx];
 
 					ThreadLocalArena isolatedArena;
-					isolatedArena.init(128 * 1024 * 1024);
+					isolatedArena.init(128 * 1024 * 1024); // magic
 
 					DODRawClip rawClip = extract_raw_clip(isolatedArena, *pCtx->asset, anim0);
 

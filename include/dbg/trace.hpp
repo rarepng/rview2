@@ -2,6 +2,7 @@
 #include <vulkan/vulkan.h>
 #include <string_view>
 #include <tracy/Tracy.hpp>
+#include <tracy/TracyVulkan.hpp>
 
 namespace rdebug {
 
@@ -10,12 +11,14 @@ constexpr bool is_active = RVIEW_DEBUG;
 inline PFN_vkSetDebugUtilsObjectNameEXT SetObjectName = nullptr;
 inline PFN_vkCmdBeginDebugUtilsLabelEXT CmdBeginLabel = nullptr;
 inline PFN_vkCmdEndDebugUtilsLabelEXT CmdEndLabel   = nullptr;
+inline TracyVkCtx tracyCTX   = nullptr;
 
-inline void init(VkInstance instance) {
+inline void init(VkInstance instance, VkPhysicalDevice physdev, VkDevice device, VkQueue queue, VkCommandBuffer cmdbuf) {
 	if constexpr (is_active) {
 		SetObjectName = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectNameEXT"));
 		CmdBeginLabel = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT"));
 		CmdEndLabel   = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT"));
+		tracyCTX = TracyVkContext(physdev, device, queue, cmdbuf);
 	}
 }
 

@@ -352,7 +352,8 @@ public:
 
 private:
 	LockFreeMPMC<job, QUEUE_SIZE> queue;
-	std::counting_semaphore<QUEUE_SIZE> jobs_available{0};
+	// $&#@ it we ball x2
+	std::counting_semaphore<std::numeric_limits<std::ptrdiff_t>::max()> jobs_available{0};
 	std::atomic<bool> running{false};
 
 	std::vector<std::thread> workers;

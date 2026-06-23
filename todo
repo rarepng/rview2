@@ -43,3 +43,4 @@ launcher > core (different cpu arch) > headless (same) ??
 move animation baking to async compute
 retain shape key names for mapping and ui? (animation keys too)
 sparse binding?
+consider deque instead of most vectors?

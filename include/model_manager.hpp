@@ -122,7 +122,7 @@ inline void reserve_mega_buffers(size_t capacity) {
 
 struct AnimPoolRegistry {
 	std::mutex mtx;
-	std::vector<AnimPoolData> pools;
+	std::deque<AnimPoolData> pools;
 	std::unordered_map<std::string, uint32_t> nameToHandle;
 
 	uint32_t RegisterPool(AnimPoolData&& data) {
@@ -742,9 +742,10 @@ inline void DispatchAnimationJobs(float deltaTime) {
 	}
 
 	while (pending_chunks.load(std::memory_order_acquire) > 0) {
-		if (!g_jobs.help_execute()) {
-			std::this_thread::yield();
-		}
+		// main thread BANNED from helping
+		// if (!g_jobs.help_execute()) {
+		std::this_thread::yield();
+		// }
 	}
 
 	UpdateAttachments();
