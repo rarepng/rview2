@@ -20,18 +20,13 @@
 inline std::array<std::atomic<bool>, 8192> g_cancellation_tokens{}; // magic
 
 struct alignas(64) job {
-	void (*execute)(void*) {
-		nullptr
-	};
-	void (*destroy)(void*) {
-		nullptr
-	};
-	alignas(16) char payload[48] {}; // 8+8 for the ptrs and 48 payload
+	void (*execute)(void*){nullptr};
+	void (*destroy)(void*){nullptr};
+	alignas(16) char payload[48]{}; // 8+8 for the ptrs and 48 payload
 
 	job() = default;
 
-	template<typename F>
-	static job make(F&& f) {
+	template <typename F> static job make(F&& f) {
 		using DecayedF = std::decay_t<F>;
 		// CRUICAL!!
 		static_assert(sizeof(DecayedF) <= 48, "lambda capture exceeds 56 bytes. NO HEAPS ALLOWED");
@@ -39,14 +34,10 @@ struct alignas(64) job {
 		static_assert(alignof(DecayedF) <= 16, "lambda alignment exceeds 16 bytes");
 
 		job j;
-		j.execute = [](void* ptr) {
-			(*static_cast<DecayedF*>(ptr))();
-		};
+		j.execute = [](void* ptr) { (*static_cast<DecayedF*>(ptr))(); };
 
 		if constexpr (!std::is_trivially_destructible_v<DecayedF>) {
-			j.destroy = [](void* ptr) {
-				static_cast<DecayedF*>(ptr)->~DecayedF();
-			};
+			j.destroy = [](void* ptr) { static_cast<DecayedF*>(ptr)->~DecayedF(); };
 		}
 
 		void* target = j.payload;
@@ -63,7 +54,8 @@ struct alignas(64) job {
 		if (execute) {
 			execute(payload);
 
-			if (destroy) destroy(payload);
+			if (destroy)
+				destroy(payload);
 
 			execute = nullptr;
 			destroy = nullptr;
@@ -73,16 +65,14 @@ struct alignas(64) job {
 
 
 
-template<typename T, size_t Capacity>
-class LockFreeMPMC {
-private:
+template <typename T, size_t Capacity> class LockFreeMPMC {
+  private:
 	struct Cell {
 		std::atomic<size_t> sequence;
 		T data;
 	};
 
-	static_assert((Capacity != 0) && ((Capacity & (~Capacity + 1)) == Capacity),
-	              "Capacity must be a power of 2");
+	static_assert((Capacity != 0) && ((Capacity & (~Capacity + 1)) == Capacity), "Capacity must be a power of 2");
 	static constexpr size_t buffer_mask = Capacity - 1;
 
 	std::array<Cell, Capacity> buffer;
@@ -90,7 +80,7 @@ private:
 	alignas(std::hardware_destructive_interference_size) std::atomic<size_t> enqueue_pos{0};
 	alignas(std::hardware_destructive_interference_size) std::atomic<size_t> dequeue_pos{0};
 
-public:
+  public:
 	LockFreeMPMC() {
 		for (size_t i = 0; i < Capacity; ++i) {
 			buffer[i].sequence.store(i, std::memory_order_relaxed);
@@ -107,7 +97,8 @@ public:
 			std::ptrdiff_t dif = static_cast<std::ptrdiff_t>(seq) - static_cast<std::ptrdiff_t>(pos);
 
 			if (dif == 0) {
-				if (enqueue_pos.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed)) break;
+				if (enqueue_pos.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed))
+					break;
 			} else if (dif < 0) {
 				return false;
 			} else {
@@ -130,7 +121,8 @@ public:
 			std::ptrdiff_t dif = static_cast<std::ptrdiff_t>(seq) - static_cast<std::ptrdiff_t>(pos + 1);
 
 			if (dif == 0) {
-				if (dequeue_pos.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed)) break;
+				if (dequeue_pos.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed))
+					break;
 			} else if (dif < 0) {
 				if (pos == enqueue_pos.load(std::memory_order_relaxed)) {
 					return false;
@@ -152,18 +144,9 @@ public:
 // will use more memory than regular cleanup
 // about 64 bytes per resource instead of 16
 // idk if ill use it but it's here
-enum class TeardownPhase : int {
-	logic = 0,
-	graph = 1,
-	pline = 2,
-	buffer = 4,
-	vma = 8,
-	device = 16,
-	instance = 32,
-	window = 64
-};
+enum class TeardownPhase : int { logic = 0, graph = 1, pline = 2, buffer = 4, vma = 8, device = 16, instance = 32, window = 64 };
 class teardown {
-public:
+  public:
 	teardown(const teardown&) = delete;
 	teardown& operator=(const teardown&) = delete;
 	teardown() = default;
@@ -176,7 +159,8 @@ public:
 	void flush_and_die() {
 		std::lock_guard<std::mutex> lock(m_mutex);
 
-		if (m_is_dead) return;
+		if (m_is_dead)
+			return;
 
 		m_is_dead = true;
 
@@ -189,7 +173,7 @@ public:
 		m_queue.clear();
 	}
 
-private:
+  private:
 	std::mutex m_mutex;
 	bool m_is_dead = false;
 	std::map<int, std::vector<std::move_only_function<void()>>> m_queue;
@@ -210,7 +194,7 @@ class JobStringArena {
 	std::vector<char> buffer;
 	std::atomic<size_t> offset{0};
 
-public:
+  public:
 	JobStringArena(size_t size) {
 		buffer.resize(size);
 	}
@@ -234,20 +218,19 @@ public:
 
 
 class ThreadLocalArena {
-private:
+  private:
 	struct Block {
 		std::unique_ptr<uint8_t[]> data;
 		size_t capacity;
 		size_t offset = 0;
 
-		explicit Block(size_t cap)
-			: data{std::make_unique_for_overwrite<uint8_t[]>(cap)}, capacity{cap} {}
+		explicit Block(size_t cap) : data{std::make_unique_for_overwrite<uint8_t[]>(cap)}, capacity{cap} {}
 	};
 
 	std::vector<Block> blocks;
 	size_t defaultBlockSize = 0;
 
-public:
+  public:
 	ThreadLocalArena() = default;
 
 	void init(size_t initialBlockSize) {
@@ -309,7 +292,7 @@ inline ThreadLocalArena& get_local_arena() {
 
 
 class threadpool {
-public:
+  public:
 	inline static constexpr uint32_t QUEUE_SIZE = 1024;
 
 	threadpool() {
@@ -350,8 +333,7 @@ public:
 		stop_and_join_all();
 	}
 
-	template<typename F>
-	void enqueue(F&& f) {
+	template <typename F> void enqueue(F&& f) {
 		job new_job = job::make(std::forward<F>(f));
 
 		while (!queue.push(new_job)) {
@@ -375,7 +357,7 @@ public:
 		return false;
 	}
 
-private:
+  private:
 	LockFreeMPMC<job, QUEUE_SIZE> queue;
 	// $&#@ it we ball x2
 	std::counting_semaphore<std::numeric_limits<std::ptrdiff_t>::max()> jobs_available{0};
@@ -409,7 +391,7 @@ private:
 inline threadpool g_jobs{};
 
 class reaper_thread {
-public:
+  public:
 	reaper_thread() {
 		running.store(true, std::memory_order_release);
 		worker = std::thread(&reaper_thread::loop, this);
@@ -419,18 +401,19 @@ public:
 		if (running.exchange(false, std::memory_order_acq_rel)) {
 			items_available.release();
 
-			if (worker.joinable()) worker.join();
+			if (worker.joinable())
+				worker.join();
 
 			job current_job;
 
 			while (queue.pop(current_job)) {
-				if (current_job.destroy) current_job.destroy(current_job.payload);
+				if (current_job.destroy)
+					current_job.destroy(current_job.payload);
 			}
 		}
 	}
 
-	template<typename F>
-	void enqueue(F&& f) {
+	template <typename F> void enqueue(F&& f) {
 		job new_job = job::make(std::forward<F>(f));
 
 		while (!queue.push(new_job)) {
@@ -440,7 +423,7 @@ public:
 		items_available.release();
 	}
 
-private:
+  private:
 	LockFreeMPMC<job, 1024> queue;
 	std::counting_semaphore<std::numeric_limits<std::ptrdiff_t>::max()> items_available{0};
 	std::atomic<bool> running{false};

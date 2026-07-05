@@ -101,7 +101,7 @@ struct AssetRegistry {
 	uint32_t register_model(uint32_t primCount) {
 		std::lock_guard<std::mutex> lock(registryMutex);
 		uint32_t modelID = static_cast<uint32_t>(models.size());
-		models.push_back({ static_cast<uint32_t>(primitives.size()), primCount });
+		models.push_back({static_cast<uint32_t>(primitives.size()), primCount});
 		return modelID;
 	}
 };

@@ -81,23 +81,22 @@ struct StagingBelt {
 
 	bool init(VmaAllocator allocator, VkDeviceSize size = 256 * 1024 * 1024) {
 		capacity = size;
-		VkBufferCreateInfo bci = {
-			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-			.size = size,
-			.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-			.sharingMode = VK_SHARING_MODE_EXCLUSIVE
-		};
+		VkBufferCreateInfo bci = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+								  .size = size,
+								  .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+								  .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
 		VmaAllocationCreateInfo aci{};
 		aci.usage = VMA_MEMORY_USAGE_AUTO;
-		aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-		            VMA_ALLOCATION_CREATE_MAPPED_BIT;
+		aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 		VmaAllocationInfo info;
 		auto x = vmaCreateBuffer(allocator, &bci, &aci, &buffer, &allocation, &info);
 		mappedData = static_cast<uint8_t*>(info.pMappedData);
 		currentOffset = 0;
 
-		if (x == VK_SUCCESS)return true;
-		else return false;
+		if (x == VK_SUCCESS)
+			return true;
+		else
+			return false;
 	}
 
 	//i have to think about syncing with this if i have 2+ staging buffers so each frame in flight has its own
@@ -182,7 +181,7 @@ struct alignas(16) GPUInstanceData {
 	uint32_t isSkinned;
 	uint32_t indexCount;
 	uint32_t firstIndex;
-	int32_t  vertexOffset;
+	int32_t vertexOffset;
 	uint32_t morphWeightOffset;
 };
 
@@ -241,93 +240,94 @@ struct alignas(16) LocalTRS {
 // starting segmentation still..
 
 namespace rview {
-namespace core {
-inline constexpr uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!! different devices might not serve 3 swapchain images
-inline constexpr uint32_t MAX_BINDLESS_BUFFERS = 1024;
-static constexpr size_t MAX_GLOBAL_MATERIALS = 10000;
-inline constexpr size_t idximguipool{0};
-inline std::atomic<uint64_t> global_frame_counter{0}; // atomic version
-inline uint32_t currentFrame{0}; // not atomic will be deleted :(
-inline uint32_t hdrmiplod{0};
-inline std::atomic<uint32_t> globalBufferCounter{1};
-inline GlobalBufferHeap global_buffers{};
-inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> globalInstanceBuffers{};
-inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> globalIndirectBuffers{};
-inline std::array<RenderGraph, rview::core::MAX_FRAMES_IN_FLIGHT> frameGraphs{};
-inline GpuBuffer g_rawIndexSSBO{};
-inline uint32_t g_rawIndexCapacity = 0;
-inline uint32_t g_rawIndexOffset = 0;
-inline GpuBuffer g_primitiveRegistrySSBO{};
-inline uint32_t g_primCapacity = 0;
-inline uint32_t g_primOffset = 0;
-inline GpuBuffer g_modelRegistrySSBO{};
-inline uint32_t g_modelCapacity = 0;
-inline uint32_t g_modelOffset = 0;
-inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> g_indirectCommandBuffers;
-inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> g_indirectCountBuffers;
-inline ssbodata globalCameraUBO{};
-inline GlobalMaterialHeap global_materials{};
-inline std::vector<GPUInstanceData> frameInstances;
-inline VkPipelineLayout globalPipelineLayout = VK_NULL_HANDLE;
-inline VkDescriptorSetLayout globalBindlessLayout = VK_NULL_HANDLE;
-inline VkDescriptorPool globalBindlessPool = VK_NULL_HANDLE;
-inline VkDescriptorSet globalBindlessSet = VK_NULL_HANDLE;
-inline VkPipeline globalcullpline = VK_NULL_HANDLE;
-inline std::atomic<uint32_t> globalTextureCounter{4};
-inline std::array<texdata, 1> exrtex{};
-inline const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
-struct DummyTexture {
-	VkImage image = VK_NULL_HANDLE;
-	VkDeviceMemory memory = VK_NULL_HANDLE;
-	VkImageView view = VK_NULL_HANDLE;
-};
-inline struct {
-	DummyTexture purple;
-	DummyTexture white;
-	DummyTexture normal;
-	DummyTexture black;
-} defaults;
+	namespace core {
+		inline constexpr uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!! different devices might not serve 3 swapchain images
+		inline constexpr uint32_t MAX_BINDLESS_BUFFERS = 1024;
+		static constexpr size_t MAX_GLOBAL_MATERIALS = 10000;
+		inline constexpr size_t idximguipool{0};
+		inline std::atomic<uint64_t> global_frame_counter{0}; // atomic version
+		inline uint32_t currentFrame{0};					  // not atomic will be deleted :(
+		inline uint32_t hdrmiplod{0};
+		inline std::atomic<uint32_t> globalBufferCounter{1};
+		inline GlobalBufferHeap global_buffers{};
+		inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> globalInstanceBuffers{};
+		inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> globalIndirectBuffers{};
+		inline std::array<RenderGraph, rview::core::MAX_FRAMES_IN_FLIGHT> frameGraphs{};
+		inline GpuBuffer g_rawIndexSSBO{};
+		inline uint32_t g_rawIndexCapacity = 0;
+		inline uint32_t g_rawIndexOffset = 0;
+		inline GpuBuffer g_primitiveRegistrySSBO{};
+		inline uint32_t g_primCapacity = 0;
+		inline uint32_t g_primOffset = 0;
+		inline GpuBuffer g_modelRegistrySSBO{};
+		inline uint32_t g_modelCapacity = 0;
+		inline uint32_t g_modelOffset = 0;
+		inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> g_indirectCommandBuffers;
+		inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> g_indirectCountBuffers;
+		inline ssbodata globalCameraUBO{};
+		inline GlobalMaterialHeap global_materials{};
+		inline std::vector<GPUInstanceData> frameInstances;
+		inline VkPipelineLayout globalPipelineLayout = VK_NULL_HANDLE;
+		inline VkDescriptorSetLayout globalBindlessLayout = VK_NULL_HANDLE;
+		inline VkDescriptorPool globalBindlessPool = VK_NULL_HANDLE;
+		inline VkDescriptorSet globalBindlessSet = VK_NULL_HANDLE;
+		inline VkPipeline globalcullpline = VK_NULL_HANDLE;
+		inline std::atomic<uint32_t> globalTextureCounter{4};
+		inline std::array<texdata, 1> exrtex{};
+		inline const std::shared_ptr<std::shared_mutex> mtx2{std::make_shared<std::shared_mutex>()};
+		struct DummyTexture {
+			VkImage image = VK_NULL_HANDLE;
+			VkDeviceMemory memory = VK_NULL_HANDLE;
+			VkImageView view = VK_NULL_HANDLE;
+		};
+		inline struct {
+			DummyTexture purple;
+			DummyTexture white;
+			DummyTexture normal;
+			DummyTexture black;
+		} defaults;
 
 
 
-inline glm::vec3 camwpos{0.0f, 1.6f, 2.9f};
-inline cam mvkcam{};
-inline float fov = 1.0472f;
-inline float azimuth{0.0f};
-inline float elevation{0.0f};
-inline int camfor{0};
-inline int camright{0};
-inline int camup{0};
-inline double tickdiff{0.0f};
-inline float frametime{0.0f};
-inline float updateanimtime{0.0f};
-inline float updatemattime{0.0f};
-inline float uploadubossbotime{0.0f};
-inline float iksolvetime{0.0f};
-inline float rduigeneratetime{0.0f};
-inline float rduidrawtime{0.0f};
-inline float loadingprog{0.0f};
+		inline glm::vec3 camwpos{0.0f, 1.6f, 2.9f};
+		inline cam mvkcam{};
+		inline float fov = 1.0472f;
+		inline float azimuth{0.0f};
+		inline float elevation{0.0f};
+		inline int camfor{0};
+		inline int camright{0};
+		inline int camup{0};
+		inline double tickdiff{0.0f};
+		inline float frametime{0.0f};
+		inline float updateanimtime{0.0f};
+		inline float updatemattime{0.0f};
+		inline float uploadubossbotime{0.0f};
+		inline float iksolvetime{0.0f};
+		inline float rduigeneratetime{0.0f};
+		inline float rduidrawtime{0.0f};
+		inline float loadingprog{0.0f};
 
-namespace platform {
+		namespace platform {
 #ifdef _WIN32
-constexpr bool is_windows = true;
+			constexpr bool is_windows = true;
 #else
-constexpr bool is_windows = false;
+			constexpr bool is_windows = false;
 #endif
-constexpr bool headless = RVIEW_HEADLESS;
-// constexpr const char* ext_memory_win32 = "VK_KHR_external_memory_win32";
-};
-};
-namespace anim {
-inline constexpr float samplerate{rdemo::is_active ? 120.0f : rdebug::is_active ? 6.0f : 60.0f }; // i have to separate the sample rate from the baking rate at some poiunt
-inline constexpr uint32_t MAX_IK_CHAINS{2};
-inline constexpr size_t maxmorphs{rdemo::is_active ? 24'000 : 24'000}; // all in all not per shape, there's no way to unify them otherwise i dont think
-inline constexpr size_t maxjoints{rdemo::is_active ? 3'072'000 : 24'000};
-inline constexpr size_t megabuffers{rdemo::is_active ? 3'072'000 : 24'000};
-};
-namespace io {
-
-};
+			constexpr bool headless = RVIEW_HEADLESS;
+			// constexpr const char* ext_memory_win32 = "VK_KHR_external_memory_win32";
+		};
+	};
+	namespace anim {
+		inline constexpr float samplerate{rdemo::is_active	  ? 120.0f
+										  : rdebug::is_active ? 6.0f
+															  : 60.0f}; // i have to separate the sample rate from the baking rate at some poiunt
+		inline constexpr uint32_t MAX_IK_CHAINS{2};
+		inline constexpr size_t maxmorphs{rdemo::is_active ? 24'000
+														   : 24'000}; // all in all not per shape, there's no way to unify them otherwise i dont think
+		inline constexpr size_t maxjoints{rdemo::is_active ? 3'072'000 : 24'000};
+		inline constexpr size_t megabuffers{rdemo::is_active ? 3'072'000 : 24'000};
+	};
+	namespace io {};
 
 };
 
@@ -406,7 +406,8 @@ struct DODAnimationClip {
 	std::vector<LocalTRS> localTracks;
 
 	inline const DualQuatScale* GetFinalJointsFrame(float time, bool loop) const {
-		if (frameCount == 0 || jointCount == 0) return nullptr;
+		if (frameCount == 0 || jointCount == 0)
+			return nullptr;
 
 		float adjustedTime = time;
 
@@ -418,22 +419,27 @@ struct DODAnimationClip {
 
 		uint32_t frameIndex = static_cast<uint32_t>(adjustedTime * sampleRate);
 
-		if (frameIndex >= frameCount) frameIndex = frameCount - 1;
+		if (frameIndex >= frameCount)
+			frameIndex = frameCount - 1;
 
 		return &finalJointDQs[frameIndex * jointCount];
 		// return &finalJointMatrices[frameIndex * jointCount];
 	}
 	inline const LocalTRS* GetLocalTracksFrame(float time, bool loop) const {
-		if (frameCount == 0 || nodeCount == 0) return nullptr;
+		if (frameCount == 0 || nodeCount == 0)
+			return nullptr;
 
 		float adjustedTime = time;
 
-		if (loop) adjustedTime = std::fmod(time, duration);
-		else      adjustedTime = std::min(time, duration);
+		if (loop)
+			adjustedTime = std::fmod(time, duration);
+		else
+			adjustedTime = std::min(time, duration);
 
 		uint32_t frameIndex = static_cast<uint32_t>(adjustedTime * sampleRate);
 
-		if (frameIndex >= frameCount) frameIndex = frameCount - 1;
+		if (frameIndex >= frameCount)
+			frameIndex = frameCount - 1;
 
 		return &localTracks[frameIndex * nodeCount];
 	}
@@ -446,15 +452,20 @@ struct alignas(64) rframe {
 	std::array<VkCommandPool, 3> cpools_transfer = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
 	std::array<VkCommandPool, 3> cpools_present = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
 
-	std::array<std::array<VkCommandBuffer, 3>, 3> cbuffers_graphics = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
-	std::array<std::array<VkCommandBuffer, 3>, 3> cbuffers_compute = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
-	std::array<std::array<VkCommandBuffer, 3>, 3> cbuffers_transfer = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}, {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
+	std::array<std::array<VkCommandBuffer, 3>, 3> cbuffers_graphics = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},
+																		{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},
+																		{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
+	std::array<std::array<VkCommandBuffer, 3>, 3> cbuffers_compute = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},
+																	   {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},
+																	   {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
+	std::array<std::array<VkCommandBuffer, 3>, 3> cbuffers_transfer = {{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},
+																		{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE},
+																		{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}};
 
-	std::array<std::array<VkSemaphore, 8>, 3> semaphorez {{
-			{{ VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE }},
-			{{ VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE }},
-			{{ VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE }}
-		}};
+	std::array<std::array<VkSemaphore, 8>, 3> semaphorez{
+		{{{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}},
+		 {{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}},
+		 {{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE}}}};
 	std::array<VkFence, 3> fencez{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
 
 	std::array<DeletionQueue, 3> framedeletionQ{};
@@ -463,22 +474,21 @@ struct alignas(64) rframe {
 // static_assert(sizeof(vkpushconstants) == 128, "Struct size mismatch!");
 struct alignas(64) rvkbucket : public rdev, public rwind, public rframe {
 	// no more bucket
-
 };
 
 namespace rpool {
-static inline bool create(const std::span<VkDescriptorPoolSize>& pools, const VkDevice& dev, VkDescriptorPool* dpool) {
-	VkDescriptorPoolCreateInfo descriptorPool{};
-	descriptorPool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorPool.poolSizeCount = pools.size();
-	descriptorPool.pPoolSizes = pools.data();
-	descriptorPool.maxSets = 1024; //not sure
+	static inline bool create(const std::span<VkDescriptorPoolSize>& pools, const VkDevice& dev, VkDescriptorPool* dpool) {
+		VkDescriptorPoolCreateInfo descriptorPool{};
+		descriptorPool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		descriptorPool.poolSizeCount = pools.size();
+		descriptorPool.pPoolSizes = pools.data();
+		descriptorPool.maxSets = 1024; //not sure
 
-	return vkCreateDescriptorPool(dev, &descriptorPool, nullptr, dpool) == VK_SUCCESS;
-}
-static inline void destroy(const VkDevice& dev, VkDescriptorPool dpool) {
-	vkDestroyDescriptorPool(dev, dpool, nullptr);
-}
+		return vkCreateDescriptorPool(dev, &descriptorPool, nullptr, dpool) == VK_SUCCESS;
+	}
+	static inline void destroy(const VkDevice& dev, VkDescriptorPool dpool) {
+		vkDestroyDescriptorPool(dev, dpool, nullptr);
+	}
 };
 // useless now everything uses the death row now
 inline void safe_cleanup(rvkbucket& objs, GpuBuffer& bufferData) {
@@ -486,9 +496,7 @@ inline void safe_cleanup(rvkbucket& objs, GpuBuffer& bufferData) {
 	VmaAllocation alloc = bufferData.alloc;
 
 	if (buf != VK_NULL_HANDLE) {
-		objs.deletionQ.push_function([ =, &objs]() {
-			vmaDestroyBuffer(objs.alloc, buf, alloc);
-		});
+		objs.deletionQ.push_function([=, &objs]() { vmaDestroyBuffer(objs.alloc, buf, alloc); });
 	}
 
 	bufferData.buffer = VK_NULL_HANDLE;

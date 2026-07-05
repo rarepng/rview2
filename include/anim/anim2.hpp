@@ -13,7 +13,7 @@
 
 // in to replace vkclip, vkchannel, vknode [[HOPEFULLY]]
 namespace fastgltf {
-template <> struct ElementTraits<glm::quat> : ElementTraitsBase<glm::quat, AccessorType::Vec4, float> {};
+	template <> struct ElementTraits<glm::quat> : ElementTraitsBase<glm::quat, AccessorType::Vec4, float> {};
 }
 
 enum class AnimPathType { Translation, Rotation, Scale };
@@ -29,9 +29,11 @@ struct DODRawChannel {
 	glm::quat* quatValues;
 
 	glm::vec3 sample_vec3(float time) const {
-		if (keyCount == 0) return glm::vec3(0.0f);
+		if (keyCount == 0)
+			return glm::vec3(0.0f);
 
-		if (time <= times[0]) return vec3Values[0];
+		if (time <= times[0])
+			return vec3Values[0];
 
 		if (time >= times[keyCount - 1]) {
 			return (interp == InterpolationType::CubicSpline) ? vec3Values[(keyCount - 1) * 3 + 1] : vec3Values[keyCount - 1];
@@ -55,11 +57,13 @@ struct DODRawChannel {
 		uint32_t prev = (first > 0) ? first - 1 : 0;
 		uint32_t next = (prev + 1 < keyCount) ? prev + 1 : prev;
 
-		if (interp == InterpolationType::Step) return vec3Values[prev];
+		if (interp == InterpolationType::Step)
+			return vec3Values[prev];
 
 		float dt = times[next] - times[prev];
 
-		if (dt <= 0.00001f) return vec3Values[prev];
+		if (dt <= 0.00001f)
+			return vec3Values[prev];
 
 		float t = (time - times[prev]) / dt;
 
@@ -73,16 +77,16 @@ struct DODRawChannel {
 		glm::vec3 nextTangent = vec3Values[next * 3] * dt;
 		glm::vec3 prevP = vec3Values[prev * 3 + 1];
 		glm::vec3 nextP = vec3Values[next * 3 + 1];
-		return (2.0f * t3 - 3.0f * t2 + 1.0f) * prevP +
-		       (t3 - 2.0f * t2 + t) * prevTangent +
-		       (-2.0f * t3 + 3.0f * t2) * nextP +
-		       (t3 - t2) * nextTangent;
+		return (2.0f * t3 - 3.0f * t2 + 1.0f) * prevP + (t3 - 2.0f * t2 + t) * prevTangent + (-2.0f * t3 + 3.0f * t2) * nextP +
+			   (t3 - t2) * nextTangent;
 	}
 
 	glm::quat sample_quat(float time) const {
-		if (keyCount == 0) return glm::identity<glm::quat>();
+		if (keyCount == 0)
+			return glm::identity<glm::quat>();
 
-		if (time <= times[0]) return quatValues[0];
+		if (time <= times[0])
+			return quatValues[0];
 
 		if (time >= times[keyCount - 1]) {
 			return (interp == InterpolationType::CubicSpline) ? quatValues[(keyCount - 1) * 3 + 1] : quatValues[keyCount - 1];
@@ -106,11 +110,13 @@ struct DODRawChannel {
 		uint32_t prev = (first > 0) ? first - 1 : 0;
 		uint32_t next = (prev + 1 < keyCount) ? prev + 1 : prev;
 
-		if (interp == InterpolationType::Step) return quatValues[prev];
+		if (interp == InterpolationType::Step)
+			return quatValues[prev];
 
 		float dt = times[next] - times[prev];
 
-		if (dt <= 0.00001f) return quatValues[prev];
+		if (dt <= 0.00001f)
+			return quatValues[prev];
 
 		float t = (time - times[prev]) / dt;
 
@@ -125,10 +131,8 @@ struct DODRawChannel {
 		glm::quat prevP = quatValues[prev * 3 + 1];
 		glm::quat nextP = quatValues[next * 3 + 1];
 
-		return (2.0f * t3 - 3.0f * t2 + 1.0f) * prevP +
-		       (t3 - 2.0f * t2 + t) * prevTangent +
-		       (-2.0f * t3 + 3.0f * t2) * nextP +
-		       (t3 - t2) * nextTangent;
+		return (2.0f * t3 - 3.0f * t2 + 1.0f) * prevP + (t3 - 2.0f * t2 + t) * prevTangent + (-2.0f * t3 + 3.0f * t2) * nextP +
+			   (t3 - t2) * nextTangent;
 	}
 };
 
@@ -151,7 +155,8 @@ inline void* arena_alloc_aligned(ThreadLocalArena& arena, size_t size, size_t al
 	uintptr_t ptr = reinterpret_cast<uintptr_t>(raw);
 	uintptr_t offset = alignment - (ptr % alignment);
 
-	if (offset == alignment) offset = 0;
+	if (offset == alignment)
+		offset = 0;
 
 	return reinterpret_cast<void*>(ptr + offset);
 }
@@ -174,9 +179,12 @@ inline DODRawClip extract_raw_clip(ThreadLocalArena& arena, const fastgltf::Asse
 		DODRawChannel& outChan = clip.channels[i];
 		outChan.targetNode = inChan.nodeIndex.value();
 
-		if (inSamp.interpolation == fastgltf::AnimationInterpolation::Step) outChan.interp = InterpolationType::Step;
-		else if (inSamp.interpolation == fastgltf::AnimationInterpolation::Linear) outChan.interp = InterpolationType::Linear;
-		else outChan.interp = InterpolationType::CubicSpline;
+		if (inSamp.interpolation == fastgltf::AnimationInterpolation::Step)
+			outChan.interp = InterpolationType::Step;
+		else if (inSamp.interpolation == fastgltf::AnimationInterpolation::Linear)
+			outChan.interp = InterpolationType::Linear;
+		else
+			outChan.interp = InterpolationType::CubicSpline;
 
 		size_t timeAccIdx = inSamp.inputAccessor;
 		const auto& timeAcc = asset.accessors[timeAccIdx];

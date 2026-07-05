@@ -16,9 +16,7 @@ void netserver::Start() {
 	if (m_Running)
 		return;
 
-	m_NetworkThread = std::thread([this]() {
-		NetworkThreadFunc();
-	});
+	m_NetworkThread = std::thread([this]() { NetworkThreadFunc(); });
 }
 
 void netserver::Stop() {
@@ -43,8 +41,7 @@ void netserver::NetworkThreadFunc() {
 	serverLocalAddress.m_port = m_Port;
 
 	SteamNetworkingConfigValue_t options;
-	options.SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged,
-	               (void*)netserver::ConnectionStatusChangedCallback);
+	options.SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged, (void*)netserver::ConnectionStatusChangedCallback);
 
 	m_ListenSocket = m_Interface->CreateListenSocketIP(serverLocalAddress, 1, &options);
 
@@ -70,7 +67,7 @@ void netserver::NetworkThreadFunc() {
 
 	std::cout << "Closing connections..." << std::endl;
 
-	for (const auto &[clientID, clientInfo] : m_ConnectedClients) {
+	for (const auto& [clientID, clientInfo] : m_ConnectedClients) {
 		m_Interface->CloseConnection(clientID, 0, "Server Shutdown", true);
 	}
 
@@ -94,42 +91,42 @@ void netserver::OnConnectionStatusChanged(SteamNetConnectionStatusChangedCallbac
 
 		case k_ESteamNetworkingConnectionState_ClosedByPeer:
 		case k_ESteamNetworkingConnectionState_ProblemDetectedLocally: {
-				if (status->m_eOldState == k_ESteamNetworkingConnectionState_Connected) {
-					auto itClient = m_ConnectedClients.find(status->m_hConn);
+			if (status->m_eOldState == k_ESteamNetworkingConnectionState_Connected) {
+				auto itClient = m_ConnectedClients.find(status->m_hConn);
 
-					m_ClientDisconnectedCallback(itClient->second);
+				m_ClientDisconnectedCallback(itClient->second);
 
-					m_ConnectedClients.erase(itClient);
-				}
-
-				m_Interface->CloseConnection(status->m_hConn, 0, nullptr, false);
-				break;
+				m_ConnectedClients.erase(itClient);
 			}
+
+			m_Interface->CloseConnection(status->m_hConn, 0, nullptr, false);
+			break;
+		}
 
 		case k_ESteamNetworkingConnectionState_Connecting: {
-				if (m_Interface->AcceptConnection(status->m_hConn) != k_EResultOK) {
-					m_Interface->CloseConnection(status->m_hConn, 0, nullptr, false);
-					std::cout << "Couldn't accept connection (it was already closed?)" << std::endl;
-					break;
-				}
-
-				if (!m_Interface->SetConnectionPollGroup(status->m_hConn, m_PollGroup)) {
-					m_Interface->CloseConnection(status->m_hConn, 0, nullptr, false);
-					std::cout << "Failed to set poll group" << std::endl;
-					break;
-				}
-
-				SteamNetConnectionInfo_t connectionInfo;
-				m_Interface->GetConnectionInfo(status->m_hConn, &connectionInfo);
-
-				auto &client = m_ConnectedClients[status->m_hConn];
-				client.ID = (ClientID)status->m_hConn;
-				client.ConnectionDesc = connectionInfo.m_szConnectionDescription;
-
-				m_ClientConnectedCallback(client);
-
+			if (m_Interface->AcceptConnection(status->m_hConn) != k_EResultOK) {
+				m_Interface->CloseConnection(status->m_hConn, 0, nullptr, false);
+				std::cout << "Couldn't accept connection (it was already closed?)" << std::endl;
 				break;
 			}
+
+			if (!m_Interface->SetConnectionPollGroup(status->m_hConn, m_PollGroup)) {
+				m_Interface->CloseConnection(status->m_hConn, 0, nullptr, false);
+				std::cout << "Failed to set poll group" << std::endl;
+				break;
+			}
+
+			SteamNetConnectionInfo_t connectionInfo;
+			m_Interface->GetConnectionInfo(status->m_hConn, &connectionInfo);
+
+			auto& client = m_ConnectedClients[status->m_hConn];
+			client.ID = (ClientID)status->m_hConn;
+			client.ConnectionDesc = connectionInfo.m_szConnectionDescription;
+
+			m_ClientConnectedCallback(client);
+
+			break;
+		}
 
 		case k_ESteamNetworkingConnectionState_Connected:
 			break;
@@ -145,7 +142,7 @@ void netserver::PollConnectionStateChanges() {
 
 void netserver::PollIncomingMessages() {
 	while (m_Running) {
-		ISteamNetworkingMessage *incomingMessage = nullptr;
+		ISteamNetworkingMessage* incomingMessage = nullptr;
 		int messageCount = m_Interface->ReceiveMessagesOnPollGroup(m_PollGroup, &incomingMessage, 1);
 
 		if (messageCount == 0)
@@ -174,26 +171,28 @@ void netserver::SetClientNick(HSteamNetConnection hConn, const char* nick) {
 	m_Interface->SetConnectionName(hConn, nick);
 }
 
-void netserver::SetDataReceivedCallback(const DataReceivedCallback &function) {
+void netserver::SetDataReceivedCallback(const DataReceivedCallback& function) {
 	m_DataReceivedCallback = function;
 }
 
-void netserver::SetClientConnectedCallback(const ClientConnectedCallback &function) {
+void netserver::SetClientConnectedCallback(const ClientConnectedCallback& function) {
 	m_ClientConnectedCallback = function;
 }
 
-void netserver::SetClientDisconnectedCallback(const ClientDisconnectedCallback &function) {
+void netserver::SetClientDisconnectedCallback(const ClientDisconnectedCallback& function) {
 	m_ClientDisconnectedCallback = function;
 }
 
 void netserver::SendBufferToClient(ClientID clientID, netbuffer buffer, bool reliable) {
-	m_Interface->SendMessageToConnection((HSteamNetConnection)clientID, buffer.d, (ClientID)buffer.s,
-	                                     reliable ? k_nSteamNetworkingSend_Reliable : k_nSteamNetworkingSend_Unreliable,
-	                                     nullptr);
+	m_Interface->SendMessageToConnection((HSteamNetConnection)clientID,
+										 buffer.d,
+										 (ClientID)buffer.s,
+										 reliable ? k_nSteamNetworkingSend_Reliable : k_nSteamNetworkingSend_Unreliable,
+										 nullptr);
 }
 
 void netserver::SendBufferToAllClients(netbuffer buffer, ClientID excludeClientID, bool reliable) {
-	for (const auto &[clientID, clientInfo] : m_ConnectedClients) {
+	for (const auto& [clientID, clientInfo] : m_ConnectedClients) {
 		if (clientID != excludeClientID)
 			SendBufferToClient(clientID, buffer, reliable);
 	}
@@ -214,7 +213,7 @@ void netserver::sendgamestate(const ClientID clientID, ClientID clientID2, int s
 	SendBufferToClient(clientID, netbuffer(s.data(), s.size()), reliable);
 }
 
-void netserver::sendgamepos(const ClientID clientID, ClientID clientID2, const glm::vec3 &pos, bool reliable) {
+void netserver::sendgamepos(const ClientID clientID, ClientID clientID2, const glm::vec3& pos, bool reliable) {
 	std::string newpos{"40000000000000000"};
 	std::memcpy(&newpos.at(1), &clientID2, 4);
 	std::memcpy(&newpos.at(5), &pos, 12);
@@ -232,7 +231,7 @@ void netserver::sendconnections(const ClientID clientID, const std::vector<Clien
 	SendBufferToClient(clientID, netbuffer(newpos.data(), newpos.size()), reliable);
 }
 
-void netserver::SendStringToAllClients(const std::string &string, ClientID excludeClientID, bool reliable) {
+void netserver::SendStringToAllClients(const std::string& string, ClientID excludeClientID, bool reliable) {
 	SendBufferToAllClients(netbuffer(string.data(), string.size()), excludeClientID, reliable);
 }
 
@@ -240,7 +239,7 @@ void netserver::KickClient(ClientID clientID) {
 	m_Interface->CloseConnection(clientID, 0, "Kicked by host", false);
 }
 
-void netserver::OnFatalError(const std::string &message) {
+void netserver::OnFatalError(const std::string& message) {
 	std::cout << message << std::endl;
 	m_Running = false;
 }

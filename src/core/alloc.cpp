@@ -25,7 +25,7 @@ inline void ensure_rpmalloc() {
 	}
 }
 
-void* operator new (std::size_t size) {
+void* operator new(std::size_t size) {
 	ensure_rpmalloc();
 	return rpmalloc(size);
 }
@@ -33,7 +33,7 @@ void* operator new[](std::size_t size) {
 	ensure_rpmalloc();
 	return rpmalloc(size);
 }
-void* operator new (std::size_t size, std::align_val_t al) {
+void* operator new(std::size_t size, std::align_val_t al) {
 	ensure_rpmalloc();
 	return rpaligned_alloc(static_cast<std::size_t>(al), size);
 }
@@ -41,7 +41,7 @@ void* operator new[](std::size_t size, std::align_val_t al) {
 	ensure_rpmalloc();
 	return rpaligned_alloc(static_cast<std::size_t>(al), size);
 }
-void* operator new (std::size_t size, const std::nothrow_t&) noexcept {
+void* operator new(std::size_t size, const std::nothrow_t&) noexcept {
 	ensure_rpmalloc();
 	return rpmalloc(size);
 }
@@ -49,7 +49,7 @@ void* operator new[](std::size_t size, const std::nothrow_t&) noexcept {
 	ensure_rpmalloc();
 	return rpmalloc(size);
 }
-void* operator new (std::size_t size, std::align_val_t al, const std::nothrow_t&) noexcept {
+void* operator new(std::size_t size, std::align_val_t al, const std::nothrow_t&) noexcept {
 	ensure_rpmalloc();
 	return rpaligned_alloc(static_cast<std::size_t>(al), size);
 }
@@ -58,7 +58,7 @@ void* operator new[](std::size_t size, std::align_val_t al, const std::nothrow_t
 	return rpaligned_alloc(static_cast<std::size_t>(al), size);
 }
 
-void operator delete (void* p) noexcept {
+void operator delete(void* p) noexcept {
 	if (p) {
 		ensure_rpmalloc();
 		rpfree(p);
@@ -70,7 +70,7 @@ void operator delete[](void* p) noexcept {
 		rpfree(p);
 	}
 }
-void operator delete (void* p, std::size_t) noexcept {
+void operator delete(void* p, std::size_t) noexcept {
 	if (p) {
 		ensure_rpmalloc();
 		rpfree(p);
@@ -82,7 +82,7 @@ void operator delete[](void* p, std::size_t) noexcept {
 		rpfree(p);
 	}
 }
-void operator delete (void* p, std::align_val_t) noexcept {
+void operator delete(void* p, std::align_val_t) noexcept {
 	if (p) {
 		ensure_rpmalloc();
 		rpfree(p);
@@ -94,7 +94,7 @@ void operator delete[](void* p, std::align_val_t) noexcept {
 		rpfree(p);
 	}
 }
-void operator delete (void* p, std::size_t, std::align_val_t) noexcept {
+void operator delete(void* p, std::size_t, std::align_val_t) noexcept {
 	if (p) {
 		ensure_rpmalloc();
 		rpfree(p);

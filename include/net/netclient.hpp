@@ -5,7 +5,7 @@
 #include <steam/isteamnetworkingutils.h>
 #include <steam/steamnetworkingsockets.h>
 #ifndef STEAMNETWORKINGSOCKETS_OPENSOURCE
-#include <steam/steam_api.h>
+#	include <steam/steam_api.h>
 #endif
 #include <functional>
 #include <glm/glm.hpp>
@@ -13,31 +13,31 @@
 #include <thread>
 
 class netclient {
-public:
+  public:
 	enum class ConnectionStatus { Disconnected = 0, Connected, Connecting, FailedToConnect };
 
-public:
+  public:
 	using DataReceivedCallback = std::function<void(const netbuffer)>;
 	using ServerConnectedCallback = std::function<void()>;
 	using ServerDisconnectedCallback = std::function<void()>;
 
-public:
+  public:
 	netclient() = default;
 	~netclient();
 
-	void ConnectToServer(const std::string &serverAddress);
+	void ConnectToServer(const std::string& serverAddress);
 	void Disconnect();
 
-	void SetDataReceivedCallback(const DataReceivedCallback &function);
-	void SetServerConnectedCallback(const ServerConnectedCallback &function);
-	void SetServerDisconnectedCallback(const ServerDisconnectedCallback &function);
+	void SetDataReceivedCallback(const DataReceivedCallback& function);
+	void SetServerConnectedCallback(const ServerConnectedCallback& function);
+	void SetServerDisconnectedCallback(const ServerDisconnectedCallback& function);
 
 	void SendBuffer(netbuffer buffer, bool reliable = true);
 	void SendString(std::string string, bool reliable = true);
 	void sendgamestate(int state, bool reliable = true);
-	void sendgamepos(const glm::vec3 &pos, bool reliable = true);
+	void sendgamepos(const glm::vec3& pos, bool reliable = true);
 
-	template <typename T> void SendData(const T &data, bool reliable = true) {
+	template <typename T> void SendData(const T& data, bool reliable = true) {
 		SendBuffer(Buffer(&data, sizeof(T)), reliable);
 	}
 
@@ -51,20 +51,20 @@ public:
 		return m_ConnectionDebugMessage;
 	}
 
-private:
+  private:
 	void NetworkThreadFunc();
 	void Shutdown();
 
-private:
+  private:
 	static void ConnectionStatusChangedCallback(SteamNetConnectionStatusChangedCallback_t* info);
 	void OnConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t* info);
 
 	void PollIncomingMessages();
 	void PollConnectionStateChanges();
 
-	void OnFatalError(const std::string &message);
+	void OnFatalError(const std::string& message);
 
-private:
+  private:
 	std::thread m_NetworkThread;
 	DataReceivedCallback m_DataReceivedCallback;
 	ServerConnectedCallback m_ServerConnectedCallback;

@@ -639,7 +639,7 @@ if(WIN32)
             get_filename_component(DEP_NAME \${DEP} NAME)
             string(TOLOWER \${DEP_NAME} LOWER_DEP_NAME)
             
-            if(NOT LOWER_DEP_NAME MATCHES \"^(kernel32|kernelbase|user32|msvcrt|msvcp.*|advapi32|ws2_32|shell32|setupapi|ole32|oleaut32|gdi32|imm32|version|winmm|crypt32|dbghelp|iphlpapi|vulkan-1|ntdll|combase|sechost|rpcrt4|win32u|cfgmgr32)\\\\.dll$\")
+            if(NOT LOWER_DEP_NAME MATCHES \"^(kernel32|kernelbase|user32|msvcrt|msvcp.*|advapi32|ws2_32|shell32|setupapi|ole32|oleaut32|gdi32|imm32|version|winmm|crypt32|dbghelp|iphlpapi|vulkan-1|ntdll|combase|sechost|rpcrt4|win32u|cfgmgr32|d3d11|d3d12|dxgi)\\\\.dll$\")
                 message(STATUS \"deploying \${DEP_NAME}\")
                 file(INSTALL DESTINATION \"\${CMAKE_INSTALL_PREFIX}/$<CONFIG>\" TYPE SHARED_LIBRARY FILES \"\${DEP}\")
             endif()

@@ -20,8 +20,7 @@
 // A LOT OF HARDCODED AND MAGIC NUMBERS TEMPORARILY AND PANELS JUST FOR THE SAKE OF TESTING
 
 #if defined(__cpp_reflection)
-template <typename T>
-void DrawAutoUI(const T& obj) {
+template <typename T> void DrawAutoUI(const T& obj) {
 	ImGui::SeparatorText("reflection test dump");
 
 	template for (constexpr auto member : std::meta::nonstatic_data_members_of(^T)) {
@@ -31,27 +30,26 @@ void DrawAutoUI(const T& obj) {
 }
 #endif
 
-bool ui::init(rvkbucket &renderData) {
+bool ui::init(rvkbucket& renderData) {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 
-	ImGuiIO &io = ImGui::GetIO();
+	ImGuiIO& io = ImGui::GetIO();
 	//hardcoded but ig it's fine here
 	io.Fonts->AddFontFromFileTTF("resources/comicbd.ttf", 29.0f);
 	io.Fonts->AddFontFromFileTTF("resources/bruce.ttf", 52.0f);
 
 	std::array<VkDescriptorPoolSize, 11> imguiPoolSizes{{{VK_DESCRIPTOR_TYPE_SAMPLER, 24},
-			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 24},
-			{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 24},
-			{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 24},
-			{VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 24},
-			{VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 24},
-			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 24},
-			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 24},
-			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 24},
-			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 24},
-			{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 24}
-		}};
+														 {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 24},
+														 {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 24},
+														 {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 24},
+														 {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 24},
+														 {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 24},
+														 {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 24},
+														 {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 24},
+														 {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 24},
+														 {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 24},
+														 {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 24}}};
 
 	VkDescriptorPoolCreateInfo imguiPoolInfo{};
 	imguiPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -60,8 +58,7 @@ bool ui::init(rvkbucket &renderData) {
 	imguiPoolInfo.poolSizeCount = imguiPoolSizes.size();
 	imguiPoolInfo.pPoolSizes = imguiPoolSizes.data();
 
-	if (vkCreateDescriptorPool(renderData.vkdevice.device, &imguiPoolInfo, nullptr,
-	                           &renderData.dpools[rview::core::idximguipool])) {
+	if (vkCreateDescriptorPool(renderData.vkdevice.device, &imguiPoolInfo, nullptr, &renderData.dpools[rview::core::idximguipool])) {
 		return false;
 	}
 
@@ -106,7 +103,7 @@ bool ui::init(rvkbucket &renderData) {
 static uint32_t g_selected_entity = 0xFFFFFFFF;
 static int active_ik_gizmo_chain = 0;
 
-void ui::createdbgframe(rvkbucket &renderData) {
+void ui::createdbgframe(rvkbucket& renderData) {
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
 	ImGui::NewFrame();
@@ -177,7 +174,8 @@ void ui::createdbgframe(rvkbucket &renderData) {
 		if (currentPoolHandle != model_manager::FALLBACK_POOL_HANDLE) {
 			const auto* pool = model_manager::g_animPoolRegistry.GetPool(currentPoolHandle);
 
-			if (pool) currentPoolName = pool->name + " (ID: " + std::to_string(currentPoolHandle) + ")";
+			if (pool)
+				currentPoolName = pool->name + " (ID: " + std::to_string(currentPoolHandle) + ")";
 		}
 
 		if (ImGui::BeginCombo("Active Pool", currentPoolName.c_str())) {
@@ -194,10 +192,12 @@ void ui::createdbgframe(rvkbucket &renderData) {
 				}
 			}
 
-			if (isBindPoseSelected) ImGui::SetItemDefaultFocus();
+			if (isBindPoseSelected)
+				ImGui::SetItemDefaultFocus();
 
 			for (uint32_t i = 1; i < model_manager::AnimPoolRegistry::MAX_POOLS; ++i) {
-				if (!model_manager::g_animPoolRegistry.is_active[i]) continue;
+				if (!model_manager::g_animPoolRegistry.is_active[i])
+					continue;
 
 				uint32_t handle = (static_cast<uint32_t>(model_manager::g_animPoolRegistry.generations[i]) << 16) | i;
 				bool isSelected = (currentPoolHandle == handle);
@@ -215,7 +215,8 @@ void ui::createdbgframe(rvkbucket &renderData) {
 					}
 				}
 
-				if (isSelected) ImGui::SetItemDefaultFocus();
+				if (isSelected)
+					ImGui::SetItemDefaultFocus();
 			}
 
 			ImGui::EndCombo();
@@ -257,11 +258,7 @@ void ui::createdbgframe(rvkbucket &renderData) {
 					for (uint32_t i = 0; i < safeTargetCount; ++i) {
 						std::string label = "Shape Key " + std::to_string(i);
 
-						ImGui::SliderFloat(
-						    label.c_str(),
-						    &model_manager::g_registry.flat_morph_weights[offset + i],
-						    0.0f, 1.0f, "%.3f"
-						);
+						ImGui::SliderFloat(label.c_str(), &model_manager::g_registry.flat_morph_weights[offset + i], 0.0f, 1.0f, "%.3f");
 					}
 
 					ImGui::PopID();
@@ -301,7 +298,7 @@ void ui::createdbgframe(rvkbucket &renderData) {
 		if (ImGui::Button("Delete Instance", ImVec2(-1, 30))) {
 			uint32_t sparse_idx = model_manager::g_registry.dense_to_sparse[g_selected_entity];
 			uint32_t gen = model_manager::g_registry.generations[sparse_idx];
-			model_manager::Entity ent = { (gen << 20) | sparse_idx };
+			model_manager::Entity ent = {(gen << 20) | sparse_idx};
 
 			uint32_t targetModelID = g_scene.modelIDs[g_selected_entity];
 			vkrenderer::g_kill_queue.push_back({ent, targetModelID});
@@ -317,7 +314,7 @@ void ui::createdbgframe(rvkbucket &renderData) {
 				if (g_scene.modelIDs[i] == targetModelID) {
 					uint32_t sparse_idx = model_manager::g_registry.dense_to_sparse[i];
 					uint32_t gen = model_manager::g_registry.generations[sparse_idx];
-					vkrenderer::g_kill_queue.push_back({ { (gen << 20) | sparse_idx }, targetModelID });
+					vkrenderer::g_kill_queue.push_back({{(gen << 20) | sparse_idx}, targetModelID});
 				}
 			}
 
@@ -342,7 +339,8 @@ void ui::createdbgframe(rvkbucket &renderData) {
 
 	if (ImGui::BeginListBox("##PoolList", ImVec2(-FLT_MIN, 150))) {
 		for (uint32_t i = 1; i < model_manager::AnimPoolRegistry::MAX_POOLS; ++i) {
-			if (!model_manager::g_animPoolRegistry.is_active[i]) continue;
+			if (!model_manager::g_animPoolRegistry.is_active[i])
+				continue;
 
 			uint32_t handle = (static_cast<uint32_t>(model_manager::g_animPoolRegistry.generations[i]) << 16) | i;
 			auto& pool = model_manager::g_animPoolRegistry.pools[i];
@@ -354,7 +352,8 @@ void ui::createdbgframe(rvkbucket &renderData) {
 				selected_manager_pool = handle;
 			}
 
-			if (is_selected) ImGui::SetItemDefaultFocus();
+			if (is_selected)
+				ImGui::SetItemDefaultFocus();
 		}
 
 		ImGui::EndListBox();
@@ -372,7 +371,7 @@ void ui::createdbgframe(rvkbucket &renderData) {
 
 			ImGui::SeparatorText("Execution Domain");
 			int currentDomain = static_cast<int>(pool->domain);
-			const char* domainNames[] = { "CPU_BAKED", "GPU_BAKED", "~CPU_EVAL~", "~GPU_EVAL~" };
+			const char* domainNames[] = {"CPU_BAKED", "GPU_BAKED", "~CPU_EVAL~", "~GPU_EVAL~"};
 
 			if (ImGui::Combo("Domain", &currentDomain, domainNames, IM_ARRAYSIZE(domainNames))) {
 				if (currentDomain != static_cast<int>(pool->domain)) {
@@ -452,16 +451,13 @@ void ui::createdbgframe(rvkbucket &renderData) {
 		ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
 
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f), g_scene.worldPositions[g_selected_entity]) *
-		                      glm::mat4_cast(g_scene.rotations[g_selected_entity]) *
-		                      glm::scale(glm::mat4(1.0f), g_scene.scales[g_selected_entity]);
+							  glm::mat4_cast(g_scene.rotations[g_selected_entity]) * glm::scale(glm::mat4(1.0f), g_scene.scales[g_selected_entity]);
 
-		ImGuizmo::Manipulate(
-		    glm::value_ptr(vkrenderer::persviewproj[0]),
-		    glm::value_ptr(vkrenderer::persviewproj[1]),
-		    ImGuizmo::TRANSLATE | ImGuizmo::ROTATE | ImGuizmo::SCALE,
-		    ImGuizmo::LOCAL,
-		    glm::value_ptr(transform)
-		);
+		ImGuizmo::Manipulate(glm::value_ptr(vkrenderer::persviewproj[0]),
+							 glm::value_ptr(vkrenderer::persviewproj[1]),
+							 ImGuizmo::TRANSLATE | ImGuizmo::ROTATE | ImGuizmo::SCALE,
+							 ImGuizmo::LOCAL,
+							 glm::value_ptr(transform));
 
 		if (ImGuizmo::IsUsing()) {
 			glm::vec3 scale, translation, skew;
@@ -475,13 +471,13 @@ void ui::createdbgframe(rvkbucket &renderData) {
 		}
 	}
 }
-bool ui::createloadingscreen(rvkbucket &mvkobjs) {
+bool ui::createloadingscreen(rvkbucket& mvkobjs) {
 
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
 	ImGui::NewFrame();
 
-	ImGuiIO &io = ImGui::GetIO();
+	ImGuiIO& io = ImGui::GetIO();
 
 	ImGui_ImplSDL3_ProcessEvent(&mvkobjs.e);
 
@@ -505,13 +501,13 @@ bool ui::createloadingscreen(rvkbucket &mvkobjs) {
 	return true;
 }
 
-bool ui::createpausebuttons(rvkbucket &mvkobjs) {
+bool ui::createpausebuttons(rvkbucket& mvkobjs) {
 
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
 	ImGui::NewFrame();
 
-	ImGuiIO &io = ImGui::GetIO();
+	ImGuiIO& io = ImGui::GetIO();
 
 	ImGui_ImplSDL3_ProcessEvent(&mvkobjs.e);
 
@@ -586,7 +582,8 @@ void ui::addchat(std::string s) {
 }
 
 void ui::createdropwidget(rvkbucket& mvkobjs, VkCommandBuffer c) {
-	if (vkrenderer::g_activeDrops.empty()) return;
+	if (vkrenderer::g_activeDrops.empty())
+		return;
 
 	ImGui::SetNextWindowBgAlpha(0.9f);
 
@@ -609,9 +606,11 @@ void ui::createdropwidget(rvkbucket& mvkobjs, VkCommandBuffer c) {
 			if (is_disabled) {
 				const char* status = "Working...";
 
-				if (drop.currentStep == model_manager::ParseStep::parsing) status = "Parsing...";
+				if (drop.currentStep == model_manager::ParseStep::parsing)
+					status = "Parsing...";
 
-				if (drop.currentStep == model_manager::ParseStep::baking) status = "Baking...";
+				if (drop.currentStep == model_manager::ParseStep::baking)
+					status = "Baking...";
 
 				ImGui::TextColored(ImVec4(1, 1, 0, 1), "%s", status);
 				ImGui::BeginDisabled();
@@ -619,7 +618,8 @@ void ui::createdropwidget(rvkbucket& mvkobjs, VkCommandBuffer c) {
 
 			bool spawn_clicked = ImGui::Button("Spawn", ImVec2(120, 0));
 
-			if (is_disabled) ImGui::EndDisabled();
+			if (is_disabled)
+				ImGui::EndDisabled();
 
 			ImGui::SameLine();
 			bool cancel_clicked = ImGui::Button("Cancel", ImVec2(120, 0));
@@ -636,7 +636,8 @@ void ui::createdropwidget(rvkbucket& mvkobjs, VkCommandBuffer c) {
 			}
 		}
 
-		if (!allParsed) ImGui::BeginDisabled();
+		if (!allParsed)
+			ImGui::BeginDisabled();
 
 		if (ImGui::Button("Spawn All", ImVec2(120, 0))) {
 			for (auto& drop : vkrenderer::g_activeDrops) {
@@ -648,7 +649,8 @@ void ui::createdropwidget(rvkbucket& mvkobjs, VkCommandBuffer c) {
 			vkrenderer::g_activeDrops.clear();
 		}
 
-		if (!allParsed) ImGui::EndDisabled();
+		if (!allParsed)
+			ImGui::EndDisabled();
 
 		ImGui::SameLine();
 
@@ -659,12 +661,12 @@ void ui::createdropwidget(rvkbucket& mvkobjs, VkCommandBuffer c) {
 
 	ImGui::End();
 }
-void ui::render(rvkbucket &renderData, VkCommandBuffer cbuffer) {
+void ui::render(rvkbucket& renderData, VkCommandBuffer cbuffer) {
 	ImGui::Render();
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cbuffer);
 }
 
-void ui::cleanup(rvkbucket &mvkobjs) {
+void ui::cleanup(rvkbucket& mvkobjs) {
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplSDL3_Shutdown();
 	ImGui::DestroyContext();

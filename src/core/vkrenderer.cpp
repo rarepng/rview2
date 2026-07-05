@@ -25,10 +25,8 @@
 #include <ubo.hpp>
 #include <obs_bridge.hpp>
 
-void vkrenderer::immediate_submit(rvkbucket& mvkobjs,
-                                  std::function<void(VkCommandBuffer cbuffer)> &&fn) {
-	VkCommandBufferAllocateInfo allocInfo{
-		VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+void vkrenderer::immediate_submit(rvkbucket& mvkobjs, std::function<void(VkCommandBuffer cbuffer)>&& fn) {
+	VkCommandBufferAllocateInfo allocInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocInfo.commandPool = mvkobjs.cpools_graphics.at(0);
 	allocInfo.commandBufferCount = 1;
@@ -36,8 +34,7 @@ void vkrenderer::immediate_submit(rvkbucket& mvkobjs,
 	VkCommandBuffer cbuffer;
 	vkAllocateCommandBuffers(mvkobjs.vkdevice.device, &allocInfo, &cbuffer);
 
-	VkCommandBufferBeginInfo beginInfo{
-		VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+	VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	vkBeginCommandBuffer(cbuffer, &beginInfo);
 
@@ -60,12 +57,11 @@ void vkrenderer::immediate_submit(rvkbucket& mvkobjs,
 	vkWaitForFences(mvkobjs.vkdevice.device, 1, &tempFence, VK_TRUE, UINT64_MAX);
 	vkDestroyFence(mvkobjs.vkdevice.device, tempFence, nullptr);
 
-	vkFreeCommandBuffers(mvkobjs.vkdevice.device, mvkobjs.cpools_graphics.at(0),
-	                     1, &cbuffer);
+	vkFreeCommandBuffers(mvkobjs.vkdevice.device, mvkobjs.cpools_graphics.at(0), 1, &cbuffer);
 }
 
 // gotta move these somewhere more reasonable someday
-bool init_global_samplers(rvkbucket &objs) {
+bool init_global_samplers(rvkbucket& objs) {
 	VkSamplerCreateInfo info{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
 	info.magFilter = VK_FILTER_LINEAR;
 	info.minFilter = VK_FILTER_LINEAR;
@@ -78,15 +74,12 @@ bool init_global_samplers(rvkbucket &objs) {
 	info.maxAnisotropy = 16.0f;
 	info.anisotropyEnable = VK_TRUE;
 
-	if (vkCreateSampler(objs.vkdevice.device, &info, nullptr,
-	                    &objs.samplerz[0]) != VK_SUCCESS) {
+	if (vkCreateSampler(objs.vkdevice.device, &info, nullptr, &objs.samplerz[0]) != VK_SUCCESS) {
 		return false;
 	}
 
-	g_exitQ.enqueue(TeardownPhase::device, [device = objs.vkdevice.device,
-	sampler = objs.samplerz[0]]() {
-		vkDestroySampler(device, sampler, nullptr);
-	});
+	g_exitQ.enqueue(TeardownPhase::device,
+					[device = objs.vkdevice.device, sampler = objs.samplerz[0]]() { vkDestroySampler(device, sampler, nullptr); });
 
 
 	info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
@@ -97,59 +90,54 @@ bool init_global_samplers(rvkbucket &objs) {
 		return false;
 	}
 
-	g_exitQ.enqueue(TeardownPhase::device, [device = objs.vkdevice.device,
-	sampler = objs.samplerz[1]]() {
-		vkDestroySampler(device, sampler, nullptr);
-	});
+	g_exitQ.enqueue(TeardownPhase::device,
+					[device = objs.vkdevice.device, sampler = objs.samplerz[1]]() { vkDestroySampler(device, sampler, nullptr); });
 
 	return true;
 }
 
-bool init_dummy_textures(rvkbucket &objs, VkCommandPool &cmdPool) {
+bool init_dummy_textures(rvkbucket& objs, VkCommandPool& cmdPool) {
 
-	auto find_memory_type = [&](uint32_t typeFilter,
-	VkMemoryPropertyFlags properties) -> uint32_t {
+	auto find_memory_type = [&](uint32_t typeFilter, VkMemoryPropertyFlags properties) -> uint32_t {
 		VkPhysicalDeviceMemoryProperties memProperties;
-		vkGetPhysicalDeviceMemoryProperties(objs.vkdevice.physical_device,
-		                                    &memProperties);
+		vkGetPhysicalDeviceMemoryProperties(objs.vkdevice.physical_device, &memProperties);
 
 		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-			if ((typeFilter & (1 << i)) &&
-			        (memProperties.memoryTypes[i].propertyFlags & properties) ==
-			        properties) {
+			if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
 				return i;
 			}
 		}
 
 		return 0;
 	};
-	auto create_buffer = [&](VkDeviceSize size, VkBufferUsageFlags usage,
-	                         VkMemoryPropertyFlags properties, VkBuffer & buffer,
-	VkDeviceMemory & bufferMemory) {
-		VkBufferCreateInfo bufferInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-		bufferInfo.size = size;
-		bufferInfo.usage = usage;
-		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	auto create_buffer =
+		[&](VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
+			VkBufferCreateInfo bufferInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+			bufferInfo.size = size;
+			bufferInfo.usage = usage;
+			bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		vkCreateBuffer(objs.vkdevice.device, &bufferInfo, nullptr, &buffer);
+			vkCreateBuffer(objs.vkdevice.device, &bufferInfo, nullptr, &buffer);
 
-		VkMemoryRequirements memReqs;
-		vkGetBufferMemoryRequirements(objs.vkdevice.device, buffer, &memReqs);
+			VkMemoryRequirements memReqs;
+			vkGetBufferMemoryRequirements(objs.vkdevice.device, buffer, &memReqs);
 
-		VkMemoryAllocateInfo allocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
-		allocInfo.allocationSize = memReqs.size;
-		allocInfo.memoryTypeIndex =
-		    find_memory_type(memReqs.memoryTypeBits, properties);
+			VkMemoryAllocateInfo allocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+			allocInfo.allocationSize = memReqs.size;
+			allocInfo.memoryTypeIndex = find_memory_type(memReqs.memoryTypeBits, properties);
 
-		vkAllocateMemory(objs.vkdevice.device, &allocInfo, nullptr, &bufferMemory);
-		vkBindBufferMemory(objs.vkdevice.device, buffer, bufferMemory, 0);
-	};
+			vkAllocateMemory(objs.vkdevice.device, &allocInfo, nullptr, &bufferMemory);
+			vkBindBufferMemory(objs.vkdevice.device, buffer, bufferMemory, 0);
+		};
 
-	auto record_barrier = [](VkCommandBuffer cmd, VkImage image,
-	                         VkImageLayout oldLayout, VkImageLayout newLayout,
-	                         VkAccessFlags srcAccess, VkAccessFlags dstAccess,
-	                         VkPipelineStageFlags srcStage,
-	VkPipelineStageFlags dstStage) {
+	auto record_barrier = [](VkCommandBuffer cmd,
+							 VkImage image,
+							 VkImageLayout oldLayout,
+							 VkImageLayout newLayout,
+							 VkAccessFlags srcAccess,
+							 VkAccessFlags dstAccess,
+							 VkPipelineStageFlags srcStage,
+							 VkPipelineStageFlags dstStage) {
 		VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
 		barrier.oldLayout = oldLayout;
 		barrier.newLayout = newLayout;
@@ -164,8 +152,7 @@ bool init_dummy_textures(rvkbucket &objs, VkCommandPool &cmdPool) {
 		barrier.srcAccessMask = srcAccess;
 		barrier.dstAccessMask = dstAccess;
 
-		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1,
-		                     &barrier);
+		vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 	};
 
 	auto create_1x1_texture = [&](uint32_t pixelData) -> rview::core::DummyTexture {
@@ -179,8 +166,7 @@ bool init_dummy_textures(rvkbucket &objs, VkCommandPool &cmdPool) {
 		imageInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
 		imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 		imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		imageInfo.usage =
-		    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 		imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 
@@ -191,8 +177,7 @@ bool init_dummy_textures(rvkbucket &objs, VkCommandPool &cmdPool) {
 
 		VkMemoryAllocateInfo allocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
 		allocInfo.allocationSize = memReqs.size;
-		allocInfo.memoryTypeIndex = find_memory_type(
-		                                memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		allocInfo.memoryTypeIndex = find_memory_type(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 		vkAllocateMemory(objs.vkdevice.device, &allocInfo, nullptr, &tex.memory);
 		vkBindImageMemory(objs.vkdevice.device, tex.image, tex.memory, 0);
@@ -213,10 +198,11 @@ bool init_dummy_textures(rvkbucket &objs, VkCommandPool &cmdPool) {
 		VkDeviceMemory stagingMem;
 		VkDeviceSize imageSize = 4;
 
-		create_buffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-		              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		              stagingBuf, stagingMem);
+		create_buffer(imageSize,
+					  VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+					  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+					  stagingBuf,
+					  stagingMem);
 
 		// Map & Copy Data
 		void* data;
@@ -225,10 +211,14 @@ bool init_dummy_textures(rvkbucket &objs, VkCommandPool &cmdPool) {
 		vkUnmapMemory(objs.vkdevice.device, stagingMem);
 
 		vkrenderer::immediate_submit(objs, [&](VkCommandBuffer cmd) {
-			record_barrier(
-			    cmd, tex.image, VK_IMAGE_LAYOUT_UNDEFINED,
-			    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
-			    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+			record_barrier(cmd,
+						   tex.image,
+						   VK_IMAGE_LAYOUT_UNDEFINED,
+						   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+						   0,
+						   VK_ACCESS_TRANSFER_WRITE_BIT,
+						   VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+						   VK_PIPELINE_STAGE_TRANSFER_BIT);
 
 			VkBufferImageCopy region{};
 			region.bufferOffset = 0;
@@ -238,23 +228,22 @@ bool init_dummy_textures(rvkbucket &objs, VkCommandPool &cmdPool) {
 			region.imageOffset = {0, 0, 0};
 			region.imageExtent = {1, 1, 1};
 
-			vkCmdCopyBufferToImage(cmd, stagingBuf, tex.image,
-			                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+			vkCmdCopyBufferToImage(cmd, stagingBuf, tex.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-			record_barrier(cmd, tex.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			               VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-			               VK_PIPELINE_STAGE_TRANSFER_BIT,
-			               VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+			record_barrier(cmd,
+						   tex.image,
+						   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+						   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+						   VK_ACCESS_TRANSFER_WRITE_BIT,
+						   VK_ACCESS_SHADER_READ_BIT,
+						   VK_PIPELINE_STAGE_TRANSFER_BIT,
+						   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 		});
 
 		vkDestroyBuffer(objs.vkdevice.device, stagingBuf, nullptr);
 		vkFreeMemory(objs.vkdevice.device, stagingMem, nullptr);
 
-		g_exitQ.enqueue(TeardownPhase::device, [device = objs.vkdevice.device,
-		                                        img = tex.image,
-		                                        view = tex.view,
-		mem = tex.memory]() {
+		g_exitQ.enqueue(TeardownPhase::device, [device = objs.vkdevice.device, img = tex.image, view = tex.view, mem = tex.memory]() {
 			vkDestroyImageView(device, view, nullptr);
 			vkDestroyImage(device, img, nullptr);
 			vkFreeMemory(device, mem, nullptr);
@@ -334,51 +323,71 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 
 	g_commit_queue.reserve(64);
 
-	if (!initvma(mvkobjs)) return false;
+	if (!initvma(mvkobjs))
+		return false;
 
-	if (!getqueue(mvkobjs)) return false;
+	if (!getqueue(mvkobjs))
+		return false;
 
-	if (!createswapchain(mvkobjs)) return false;
+	if (!createswapchain(mvkobjs))
+		return false;
 
-	if (!createdepthbuffer(mvkobjs)) return false;
+	if (!createdepthbuffer(mvkobjs))
+		return false;
 
-	if (!createcommandpool(mvkobjs)) return false;
+	if (!createcommandpool(mvkobjs))
+		return false;
 
-	if (!createcommandbuffer(mvkobjs)) return false;
+	if (!createcommandbuffer(mvkobjs))
+		return false;
 
-	if (!createsyncobjects(mvkobjs)) return false;
+	if (!createsyncobjects(mvkobjs))
+		return false;
 
-	if (!initcpuQs(mvkobjs)) return false;
+	if (!initcpuQs(mvkobjs))
+		return false;
 
 	model_manager::reserve_mega_buffers(rview::anim::megabuffers);
 
-	if (!playout::init_bindless(mvkobjs)) return false;
+	if (!playout::init_bindless(mvkobjs))
+		return false;
 
-	if (!initglobalmats(mvkobjs)) return false;
+	if (!initglobalmats(mvkobjs))
+		return false;
 
 	model_manager::init_gpu_joint_buffers(mvkobjs);
 
-	if (!playout::init_pipelines(mvkobjs)) return false;
+	if (!playout::init_pipelines(mvkobjs))
+		return false;
 
-	if (!init_global_samplers(mvkobjs)) return false;
+	if (!init_global_samplers(mvkobjs))
+		return false;
 
-	if (!init_dummy_textures(mvkobjs, mvkobjs.cpools_graphics.at(0))) return false;
+	if (!init_dummy_textures(mvkobjs, mvkobjs.cpools_graphics.at(0)))
+		return false;
 
-	if (!rview::rvk::tex::load_env_map(mvkobjs, rview::core::exrtex.at(0))) return false;
+	if (!rview::rvk::tex::load_env_map(mvkobjs, rview::core::exrtex.at(0)))
+		return false;
 
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
 
-	if (!ubo::init_global(mvkobjs)) return false;
+	if (!ubo::init_global(mvkobjs))
+		return false;
 
-	if (!initglobalinstances(mvkobjs))return false;
+	if (!initglobalinstances(mvkobjs))
+		return false;
 
-	if (!initglobalmorphs(mvkobjs)) return false;
+	if (!initglobalmorphs(mvkobjs))
+		return false;
 
-	if (!initglobalindirect(mvkobjs))return false;
+	if (!initglobalindirect(mvkobjs))
+		return false;
 
-	if (!initglobalidrectUNINDEXED(mvkobjs))return false;
+	if (!initglobalidrectUNINDEXED(mvkobjs))
+		return false;
 
-	if (!create_obs_target(mvkobjs)) return false;
+	if (!create_obs_target(mvkobjs))
+		return false;
 
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
 
@@ -389,7 +398,7 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 	mvkobjs.width = mvkobjs.schain.extent.width;
 
 	if (initui(mvkobjs)) {
-		ImGuiIO &io = ImGui::GetIO();
+		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
 	} else
 		return false;
@@ -400,14 +409,15 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 }
 bool vkrenderer::initcpuQs(rvkbucket& mvkobjs) {
 	for (uint32_t i = 0; i < rview::core::MAX_FRAMES_IN_FLIGHT; ++i) {
-		if (!mvkobjs.sbelts[i].init(mvkobjs.alloc, 256 * 1024 * 1024)) return false;
+		if (!mvkobjs.sbelts[i].init(mvkobjs.alloc, 256 * 1024 * 1024))
+			return false;
 	}
 
 	return true;
 }
 bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 
-	if constexpr(rdebug::is_active) {
+	if constexpr (rdebug::is_active) {
 		rdebug::init(mvkobjs.inst, mvkobjs.vkdevice.physical_device, mvkobjs.vkdevice, mvkobjs.graphicsQ, mvkobjs.cbuffers_graphics.at(0).at(0));
 	}
 
@@ -451,11 +461,13 @@ bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 
 	simdjson::ondemand::document d;
 
-	if (auto error = p.iterate(j).get(d); error) return false;
+	if (auto error = p.iterate(j).get(d); error)
+		return false;
 
 	simdjson::ondemand::array models;
 
-	if (d["models"].get(models)) return false;
+	if (d["models"].get(models))
+		return false;
 
 	for (simdjson::ondemand::object x : models) {
 		std::string_view f = x["file"].get_string();
@@ -499,7 +511,7 @@ bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 
 	return true;
 }
-bool vkrenderer::initglobalmats(rvkbucket &mvkobjs) {
+bool vkrenderer::initglobalmats(rvkbucket& mvkobjs) {
 	size_t bufferSize = rview::core::MAX_GLOBAL_MATERIALS * sizeof(MaterialData);
 	VkBufferCreateInfo binfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
 	binfo.size = bufferSize;
@@ -511,9 +523,9 @@ bool vkrenderer::initglobalmats(rvkbucket &mvkobjs) {
 
 	VmaAllocationInfo allocResult;
 
-	if (vmaCreateBuffer(mvkobjs.alloc, &binfo, &vmaallocinfo,
-	                    &rview::core::global_materials.buffer,
-	                    &rview::core::global_materials.alloc, &allocResult) != VK_SUCCESS) {
+	if (vmaCreateBuffer(
+			mvkobjs.alloc, &binfo, &vmaallocinfo, &rview::core::global_materials.buffer, &rview::core::global_materials.alloc, &allocResult) !=
+		VK_SUCCESS) {
 		return false;
 	}
 
@@ -541,7 +553,7 @@ bool vkrenderer::initglobalmats(rvkbucket &mvkobjs) {
 		rview::core::global_materials.free_slots.push(i);
 	}
 
-	VkDescriptorBufferInfo ssboInfo{ rview::core::global_materials.buffer, 0, bufferSize };
+	VkDescriptorBufferInfo ssboInfo{rview::core::global_materials.buffer, 0, bufferSize};
 	VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
 	write.dstSet = rview::core::globalBindlessSet;
 	write.dstBinding = 4;
@@ -565,9 +577,12 @@ bool vkrenderer::initglobalinstances(rvkbucket& mvkobjs) {
 		ivmaallocinfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 		ivmaallocinfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-		if (vmaCreateBuffer(mvkobjs.alloc, &ibinfo, &ivmaallocinfo,
-		                    &rview::core::globalInstanceBuffers[i].buffer,
-		                    &rview::core::globalInstanceBuffers[i].alloc, nullptr) != VK_SUCCESS) {
+		if (vmaCreateBuffer(mvkobjs.alloc,
+							&ibinfo,
+							&ivmaallocinfo,
+							&rview::core::globalInstanceBuffers[i].buffer,
+							&rview::core::globalInstanceBuffers[i].alloc,
+							nullptr) != VK_SUCCESS) {
 			return false;
 		}
 
@@ -595,9 +610,12 @@ bool vkrenderer::initglobalindirect(rvkbucket& mvkobjs) {
 		ivmaallocinfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 		ivmaallocinfo.flags = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE; // VMA_MEMORY_USAGE_GPU_ONLY?
 
-		if (vmaCreateBuffer(mvkobjs.alloc, &ibinfo, &ivmaallocinfo,
-		                    &rview::core::globalIndirectBuffers[i].buffer,
-		                    &rview::core::globalIndirectBuffers[i].alloc, nullptr) != VK_SUCCESS) {
+		if (vmaCreateBuffer(mvkobjs.alloc,
+							&ibinfo,
+							&ivmaallocinfo,
+							&rview::core::globalIndirectBuffers[i].buffer,
+							&rview::core::globalIndirectBuffers[i].alloc,
+							nullptr) != VK_SUCCESS) {
 			return false;
 		}
 
@@ -620,9 +638,10 @@ bool vkrenderer::initglobalidrectUNINDEXED(rvkbucket& mvkobjs) {
 
 	for (uint32_t i = 0; i < rview::core::MAX_FRAMES_IN_FLIGHT; i++) {
 
-		if (!vkvbo::init(mvkobjs, rview::core::g_indirectCommandBuffers[i],
-		                 maxDrawCommands * sizeof(VkDrawIndirectCommand),
-		                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT)) {
+		if (!vkvbo::init(mvkobjs,
+						 rview::core::g_indirectCommandBuffers[i],
+						 maxDrawCommands * sizeof(VkDrawIndirectCommand),
+						 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT)) {
 			return false;
 		}
 
@@ -636,9 +655,10 @@ bool vkrenderer::initglobalidrectUNINDEXED(rvkbucket& mvkobjs) {
 		cmdWrite.pBufferInfo = &cmdInfo;
 		vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &cmdWrite, 0, nullptr);
 
-		if (!vkvbo::init(mvkobjs, rview::core::g_indirectCountBuffers[i],
-		                 sizeof(uint32_t),
-		                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT)) {
+		if (!vkvbo::init(mvkobjs,
+						 rview::core::g_indirectCountBuffers[i],
+						 sizeof(uint32_t),
+						 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT)) {
 			return false;
 		}
 
@@ -658,7 +678,8 @@ bool vkrenderer::initglobalidrectUNINDEXED(rvkbucket& mvkobjs) {
 void vkrenderer::update_dynamic_instances(rvkbucket& mvkobjs, uint32_t read_frame) {
 	uint32_t active_instances = g_scene.entity_count.load(std::memory_order_relaxed);
 
-	if (active_instances == 0) return;
+	if (active_instances == 0)
+		return;
 
 	uint32_t safe_instances = std::min(active_instances, 65535U);
 
@@ -666,7 +687,8 @@ void vkrenderer::update_dynamic_instances(rvkbucket& mvkobjs, uint32_t read_fram
 	std::vector<bool> model_skin_cache(max_model_id, false);
 
 	for (const auto& [id, cpuModel] : model_manager::g_cpuModels) {
-		if (id < max_model_id) model_skin_cache[id] = cpuModel.isSkinned;
+		if (id < max_model_id)
+			model_skin_cache[id] = cpuModel.isSkinned;
 	}
 
 	void* mappedData;
@@ -683,12 +705,11 @@ void vkrenderer::update_dynamic_instances(rvkbucket& mvkobjs, uint32_t read_fram
 			continue;
 		}
 
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), g_scene.worldPositions[i]) *
-		                      glm::toMat4(g_scene.rotations[i]) *
-		                      glm::scale(glm::mat4(1.0f), g_scene.scales[i]);
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), g_scene.worldPositions[i]) * glm::toMat4(g_scene.rotations[i]) *
+							  glm::scale(glm::mat4(1.0f), g_scene.scales[i]);
 
 		gpuInsts[i].worldTransform = transform;
-		gpuInsts[i].modelID        = g_scene.modelIDs[i];
+		gpuInsts[i].modelID = g_scene.modelIDs[i];
 
 		uint32_t poolHandle = g_scene.poolHandles[i];
 		const auto* pool = model_manager::g_animPoolRegistry.GetPool(poolHandle);
@@ -708,9 +729,9 @@ void vkrenderer::update_dynamic_instances(rvkbucket& mvkobjs, uint32_t read_fram
 			gpuInsts[i].jointOffset = pool->globalJointOffset;
 		}
 
-		gpuInsts[i].indexCount        = 0;
-		gpuInsts[i].firstIndex        = 0;
-		gpuInsts[i].vertexOffset      = 0;
+		gpuInsts[i].indexCount = 0;
+		gpuInsts[i].firstIndex = 0;
+		gpuInsts[i].vertexOffset = 0;
 		gpuInsts[i].morphWeightOffset = model_manager::g_registry.morph_weight_offsets[i];
 	}
 
@@ -720,7 +741,8 @@ void vkrenderer::update_dynamic_instances(rvkbucket& mvkobjs, uint32_t read_fram
 		std::memcpy(mappedWeights, model_manager::g_registry.flat_morph_weights.data(), total_morph_bytes);
 	}
 
-	vmaFlushAllocation(mvkobjs.alloc, rview::core::globalInstanceBuffers[rview::core::currentFrame].alloc, 0, safe_instances * sizeof(GPUInstanceData));
+	vmaFlushAllocation(
+		mvkobjs.alloc, rview::core::globalInstanceBuffers[rview::core::currentFrame].alloc, 0, safe_instances * sizeof(GPUInstanceData));
 	vmaUnmapMemory(mvkobjs.alloc, rview::core::globalInstanceBuffers[rview::core::currentFrame].alloc);
 
 	vmaFlushAllocation(mvkobjs.alloc, g_morphWeightBuffers[rview::core::currentFrame].alloc, 0, total_morph_bytes);
@@ -758,9 +780,7 @@ bool vkrenderer::getqueue(rvkbucket& mvkobjs) {
 	return true;
 }
 bool vkrenderer::createdepthbuffer(rvkbucket& mvkobjs) {
-	VkExtent3D depthimageextent = {mvkobjs.schain.extent.width,
-	                               mvkobjs.schain.extent.height, 1
-	                              };
+	VkExtent3D depthimageextent = {mvkobjs.schain.extent.width, mvkobjs.schain.extent.height, 1};
 
 	mvkobjs.rddepthformat = VK_FORMAT_D32_SFLOAT;
 
@@ -777,12 +797,9 @@ bool vkrenderer::createdepthbuffer(rvkbucket& mvkobjs) {
 
 	VmaAllocationCreateInfo depthallocinfo{};
 	depthallocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-	depthallocinfo.requiredFlags =
-	    VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	depthallocinfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	if (vmaCreateImage(mvkobjs.alloc, &depthimginfo, &depthallocinfo,
-	                   &mvkobjs.rddepthimage, &mvkobjs.rddepthimagealloc,
-	                   nullptr) != VK_SUCCESS) {
+	if (vmaCreateImage(mvkobjs.alloc, &depthimginfo, &depthallocinfo, &mvkobjs.rddepthimage, &mvkobjs.rddepthimagealloc, nullptr) != VK_SUCCESS) {
 		return false;
 	}
 
@@ -797,8 +814,7 @@ bool vkrenderer::createdepthbuffer(rvkbucket& mvkobjs) {
 	depthimgviewinfo.subresourceRange.layerCount = 1;
 	depthimgviewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-	if (vkCreateImageView(mvkobjs.vkdevice, &depthimgviewinfo, nullptr,
-	                      &mvkobjs.rddepthimageview) != VK_SUCCESS) {
+	if (vkCreateImageView(mvkobjs.vkdevice, &depthimgviewinfo, nullptr, &mvkobjs.rddepthimageview) != VK_SUCCESS) {
 		return false;
 	}
 
@@ -808,17 +824,11 @@ bool vkrenderer::createswapchain(rvkbucket& mvkobjs) {
 	vkb::SwapchainBuilder swapchainbuild{mvkobjs.vkdevice};
 
 	VkSurfaceCapabilitiesKHR surcap;
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mvkobjs.vkdevice.physical_device,
-	        mvkobjs.surface, &surcap);
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mvkobjs.vkdevice.physical_device, mvkobjs.surface, &surcap);
 
-	swapchainbuild.set_composite_alpha_flags((
-	            VkCompositeAlphaFlagBitsKHR)(surcap.supportedCompositeAlpha & 8 ? 8 : 1));
-	swapchainbuild.set_desired_format(
-	{VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR});
-	auto swapchainbuilret =
-	    swapchainbuild.set_old_swapchain(mvkobjs.schain)
-	    .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
-	    .build();
+	swapchainbuild.set_composite_alpha_flags((VkCompositeAlphaFlagBitsKHR)(surcap.supportedCompositeAlpha & 8 ? 8 : 1));
+	swapchainbuild.set_desired_format({VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR});
+	auto swapchainbuilret = swapchainbuild.set_old_swapchain(mvkobjs.schain).set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR).build();
 
 	if (!swapchainbuilret) {
 		return false;
@@ -838,10 +848,8 @@ bool vkrenderer::recreateswapchain(rvkbucket& mvkobjs) {
 	}
 
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
-	vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.rddepthimageview,
-	                   nullptr);
-	vmaDestroyImage(mvkobjs.alloc, mvkobjs.rddepthimage,
-	                mvkobjs.rddepthimagealloc);
+	vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.rddepthimageview, nullptr);
+	vmaDestroyImage(mvkobjs.alloc, mvkobjs.rddepthimage, mvkobjs.rddepthimagealloc);
 
 	mvkobjs.schain.destroy_image_views(mvkobjs.schainimgviews);
 
@@ -912,9 +920,8 @@ bool vkrenderer::initglobalmorphs(rvkbucket& mvkobjs) {
 		vmaallocinfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 		vmaallocinfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-		if (vmaCreateBuffer(mvkobjs.alloc, &binfo, &vmaallocinfo,
-		                    &g_morphWeightBuffers[i].buffer,
-		                    &g_morphWeightBuffers[i].alloc, nullptr) != VK_SUCCESS) {
+		if (vmaCreateBuffer(mvkobjs.alloc, &binfo, &vmaallocinfo, &g_morphWeightBuffers[i].buffer, &g_morphWeightBuffers[i].alloc, nullptr) !=
+			VK_SUCCESS) {
 			return false;
 		}
 
@@ -948,13 +955,24 @@ void vkrenderer::write_obs(rvkbucket& mvkobjs) {
 	barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
 	vkCmdPipelineBarrier(mvkobjs.cbuffers_graphics.at(0).at(rview::core::currentFrame),
-	                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-	                     0, 0, nullptr, 0, nullptr, 1, &barrier);
+						 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+						 VK_PIPELINE_STAGE_TRANSFER_BIT,
+						 0,
+						 0,
+						 nullptr,
+						 0,
+						 nullptr,
+						 1,
+						 &barrier);
 
 	VkClearColorValue clearColor = {{1.0f, 0.0f, 1.0f, 1.0f}};
 	VkImageSubresourceRange range = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-	vkCmdClearColorImage(mvkobjs.cbuffers_graphics.at(0).at(rview::core::currentFrame), mvkobjs.obs_target.img,
-	                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &range);
+	vkCmdClearColorImage(mvkobjs.cbuffers_graphics.at(0).at(rview::core::currentFrame),
+						 mvkobjs.obs_target.img,
+						 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+						 &clearColor,
+						 1,
+						 &range);
 
 	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -962,8 +980,15 @@ void vkrenderer::write_obs(rvkbucket& mvkobjs) {
 	barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 
 	vkCmdPipelineBarrier(mvkobjs.cbuffers_graphics.at(0).at(rview::core::currentFrame),
-	                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-	                     0, 0, nullptr, 0, nullptr, 1, &barrier);
+						 VK_PIPELINE_STAGE_TRANSFER_BIT,
+						 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+						 0,
+						 0,
+						 nullptr,
+						 0,
+						 nullptr,
+						 1,
+						 &barrier);
 }
 void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 
@@ -993,7 +1018,7 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	ui::cleanup(mvkobjs);
 	vksyncobjects::cleanup(mvkobjs);
 
-	for (auto &x : mvkobjs.dpools)
+	for (auto& x : mvkobjs.dpools)
 		rpool::destroy(mvkobjs.vkdevice.device, x);
 
 	playout::cleanup_pipelines(mvkobjs);
@@ -1014,10 +1039,8 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	mvkobjs.cleanupQ.flush();
 	mvkobjs.deletionQ.flush();
 
-	vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.rddepthimageview,
-	                   nullptr);
-	vmaDestroyImage(mvkobjs.alloc, mvkobjs.rddepthimage,
-	                mvkobjs.rddepthimagealloc);
+	vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.rddepthimageview, nullptr);
+	vmaDestroyImage(mvkobjs.alloc, mvkobjs.rddepthimage, mvkobjs.rddepthimagealloc);
 
 	// NO VMA!!!! (idk if it's better or not but i couldnt figure out how to make it work without creating a dedicated separate device and pool)
 	if (mvkobjs.obs_target.img) {
@@ -1031,12 +1054,9 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	}
 
 	if (rview::core::exrtex.at(0).img) {
-		vkDestroyImageView(mvkobjs.vkdevice.device, rview::core::exrtex.at(0).imgview,
-		                   nullptr);
-		vkDestroySampler(mvkobjs.vkdevice.device, rview::core::exrtex.at(0).imgsampler,
-		                 nullptr);
-		vmaDestroyImage(mvkobjs.alloc, rview::core::exrtex.at(0).img,
-		                rview::core::exrtex.at(0).alloc);
+		vkDestroyImageView(mvkobjs.vkdevice.device, rview::core::exrtex.at(0).imgview, nullptr);
+		vkDestroySampler(mvkobjs.vkdevice.device, rview::core::exrtex.at(0).imgsampler, nullptr);
+		vmaDestroyImage(mvkobjs.alloc, rview::core::exrtex.at(0).img, rview::core::exrtex.at(0).alloc);
 	}
 
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::global_materials.buffer, rview::core::global_materials.alloc);
@@ -1059,11 +1079,13 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
 
 	for (auto&& x : model_manager::g_gpu_joint_buffers) {
-		if (x.buffer) vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
+		if (x.buffer)
+			vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
 	}
 
 	for (auto&& x : g_morphWeightBuffers) {
-		if (x.buffer) vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
+		if (x.buffer)
+			vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
 	}
 
 	for (auto& [id, asset] : model_manager::g_cpuModels) {
@@ -1107,9 +1129,7 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 
 	model_manager::g_cpuModels.clear();
 	g_exitQ.flush_and_die();
-	std::ranges::for_each(mvkobjs.sbelts, [&mvkobjs](auto & x) {
-		x.free(mvkobjs.alloc);
-	});
+	std::ranges::for_each(mvkobjs.sbelts, [&mvkobjs](auto& x) { x.free(mvkobjs.alloc); });
 
 	if constexpr (rdebug::is_active) {
 		char* statsString = nullptr;
@@ -1136,16 +1156,13 @@ void vkrenderer::setsize(rvkbucket& mvkobjs, unsigned int w, unsigned int h) {
 	mvkobjs.height = h;
 
 	if (!w || !h)
-		persviewproj.at(1) = glm::perspective(
-		                         glm::radians(static_cast<float>(mvkobjs.schain.extent.width)),
-		                         static_cast<float>(mvkobjs.schain.extent.height) /
-		                         static_cast<float>(mvkobjs.height),
-		                         1.0f, 2.0f);
+		persviewproj.at(1) = glm::perspective(glm::radians(static_cast<float>(mvkobjs.schain.extent.width)),
+											  static_cast<float>(mvkobjs.schain.extent.height) / static_cast<float>(mvkobjs.height),
+											  1.0f,
+											  2.0f);
 	else
-		persviewproj.at(1) = glm::perspective(
-		                         rview::core::fov,
-		                         static_cast<float>(mvkobjs.width) / static_cast<float>(mvkobjs.height),
-		                         0.002f, 2000.0f);
+		persviewproj.at(1) =
+			glm::perspective(rview::core::fov, static_cast<float>(mvkobjs.width) / static_cast<float>(mvkobjs.height), 0.002f, 2000.0f);
 }
 bool vkrenderer::create_obs_target(rvkbucket& mvkobjs) {
 	VkPhysicalDeviceIDProperties idProps{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES};
@@ -1158,17 +1175,13 @@ bool vkrenderer::create_obs_target(rvkbucket& mvkobjs) {
 		return false;
 	}
 
-	mvkobjs.obs_target.shared_handle = obs_bridge::create_d3d_shared_texture(
-	                                       mvkobjs.obs_target.width,
-	                                       mvkobjs.obs_target.height,
-	                                       idProps.deviceLUID
-	                                   );
+	mvkobjs.obs_target.shared_handle = obs_bridge::create_d3d_shared_texture(mvkobjs.obs_target.width, mvkobjs.obs_target.height, idProps.deviceLUID);
 
-	if (!mvkobjs.obs_target.shared_handle) return false;
+	if (!mvkobjs.obs_target.shared_handle)
+		return false;
 
-	VkExternalMemoryHandleTypeFlagBitsKHR handleType = obs_bridge::use_d3d12 ?
-	    VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT_KHR :
-	    VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT;
+	VkExternalMemoryHandleTypeFlagBitsKHR handleType =
+		obs_bridge::use_d3d12 ? VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT_KHR : VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT;
 
 	VkExternalMemoryImageCreateInfo extMemInfo{VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO};
 	extMemInfo.handleTypes = handleType;
@@ -1177,13 +1190,13 @@ bool vkrenderer::create_obs_target(rvkbucket& mvkobjs) {
 	imageInfo.pNext = &extMemInfo;
 	imageInfo.imageType = VK_IMAGE_TYPE_2D;
 	imageInfo.format = VK_FORMAT_B8G8R8A8_SRGB;
-	imageInfo.extent = { mvkobjs.obs_target.width, mvkobjs.obs_target.height, 1 };
+	imageInfo.extent = {mvkobjs.obs_target.width, mvkobjs.obs_target.height, 1};
 	imageInfo.mipLevels = 1;
 	imageInfo.arrayLayers = 1;
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-	                  VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	imageInfo.usage =
+		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 	if (vkCreateImage(mvkobjs.vkdevice.device, &imageInfo, nullptr, &mvkobjs.obs_target.img) != VK_SUCCESS) {
 		return false;
@@ -1239,8 +1252,8 @@ bool vkrenderer::create_obs_target(rvkbucket& mvkobjs) {
 
 	return true;
 }
-void vkrenderer::copy_engine_to_obs(VkCommandBuffer cmdBuffer, rvkbucket& mvkobjs, VkImage engine_source_img, VkImage obs_target_img, uint32_t width,
-                                    uint32_t height) {
+void vkrenderer::copy_engine_to_obs(
+	VkCommandBuffer cmdBuffer, rvkbucket& mvkobjs, VkImage engine_source_img, VkImage obs_target_img, uint32_t width, uint32_t height) {
 
 	VkImageMemoryBarrier srcBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
 	srcBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
@@ -1263,9 +1276,7 @@ void vkrenderer::copy_engine_to_obs(VkCommandBuffer cmdBuffer, rvkbucket& mvkobj
 	dstBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
 	VkImageMemoryBarrier barriers[] = {srcBarrier, dstBarrier};
-	vkCmdPipelineBarrier(cmdBuffer,
-	                     VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-	                     0, 0, nullptr, 0, nullptr, 2, barriers);
+	vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 2, barriers);
 
 	VkImageBlit blit{};
 	blit.srcOffsets[0] = {0, 0, 0};
@@ -1278,9 +1289,13 @@ void vkrenderer::copy_engine_to_obs(VkCommandBuffer cmdBuffer, rvkbucket& mvkobj
 	blit.dstSubresource.layerCount = 1;
 
 	vkCmdBlitImage(cmdBuffer,
-	               engine_source_img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-	               obs_target_img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-	               1, &blit, VK_FILTER_LINEAR);
+				   engine_source_img,
+				   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				   obs_target_img,
+				   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				   1,
+				   &blit,
+				   VK_FILTER_LINEAR);
 
 	srcBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 	srcBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
@@ -1292,9 +1307,7 @@ void vkrenderer::copy_engine_to_obs(VkCommandBuffer cmdBuffer, rvkbucket& mvkobj
 	dstBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 
 	VkImageMemoryBarrier postBarriers[] = {srcBarrier, dstBarrier};
-	vkCmdPipelineBarrier(cmdBuffer,
-	                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-	                     0, 0, nullptr, 0, nullptr, 2, postBarriers);
+	vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 2, postBarriers);
 }
 // Vulkan to DX (MASSIVE FAILURE)
 // bool vkrenderer::create_obs_target(rvkbucket& mvkobjs) {
@@ -1375,7 +1388,7 @@ void vkrenderer::copy_engine_to_obs(VkCommandBuffer cmdBuffer, rvkbucket& mvkobj
 void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 	switch (e.type) {
 		case SDL_EVENT_KEY_DOWN:
-			[[likely]]
+		[[likely]]
 		case SDL_EVENT_KEY_UP:
 			[[likely]] {
 				bool is_down = (e.type == SDL_EVENT_KEY_DOWN);
@@ -1414,7 +1427,8 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 						break;
 
 					case SDLK_ESCAPE:
-						if (is_down) mvkobjs.mshutdown = true;
+						if (is_down)
+							mvkobjs.mshutdown = true;
 
 						break;
 				}
@@ -1423,12 +1437,14 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 			}
 
 		case SDL_EVENT_MOUSE_BUTTON_DOWN:
-			if (e.button.button == SDL_BUTTON_RIGHT) input_state[Key_RightClick] = true;
+			if (e.button.button == SDL_BUTTON_RIGHT)
+				input_state[Key_RightClick] = true;
 
 			break;
 
 		case SDL_EVENT_MOUSE_BUTTON_UP:
-			if (e.button.button == SDL_BUTTON_RIGHT) input_state[Key_RightClick] = false;
+			if (e.button.button == SDL_BUTTON_RIGHT)
+				input_state[Key_RightClick] = false;
 
 			break;
 
@@ -1437,7 +1453,8 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 				SDL_Event min_event;
 
 				while (SDL_WaitEvent(&min_event)) {
-					if (min_event.type == SDL_EVENT_WINDOW_RESTORED) break;
+					if (min_event.type == SDL_EVENT_WINDOW_RESTORED)
+						break;
 
 					if (min_event.type == SDL_EVENT_QUIT) {
 						mvkobjs.mshutdown = true;
@@ -1451,17 +1468,17 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 			[[unlikely]] {
 				std::string_view fname_view(e.drop.data);
 
-				if (fname_view.ends_with(".glb") || fname_view.ends_with(".vrm") ||
-				        fname_view.ends_with(".GLB") || fname_view.ends_with(".VRM")) {
+				if (fname_view.ends_with(".glb") || fname_view.ends_with(".vrm") || fname_view.ends_with(".GLB") || fname_view.ends_with(".VRM")) {
 
-					uint32_t currentDropID = g_dropCounter.fetch_add(1, std::memory_order_relaxed) % 8192; // TODO constexpr number of cancellation tokens [[MAGIC]]
+					uint32_t currentDropID =
+						g_dropCounter.fetch_add(1, std::memory_order_relaxed) % 8192; // TODO constexpr number of cancellation tokens [[MAGIC]]
 					g_cancellation_tokens[currentDropID].store(false, std::memory_order_release);
 
 					float mx, my;
 					SDL_GetMouseState(&mx, &my);
 					glm::vec4 viewport(0.0f, 0.0f, (float)mvkobjs.width, (float)mvkobjs.height);
 					glm::vec3 nearPt = glm::unProject(glm::vec3(mx, viewport.w - my, 0.0f), persviewproj[0], persviewproj[1], viewport);
-					glm::vec3 farPt  = glm::unProject(glm::vec3(mx, viewport.w - my, 1.0f), persviewproj[0], persviewproj[1], viewport);
+					glm::vec3 farPt = glm::unProject(glm::vec3(mx, viewport.w - my, 1.0f), persviewproj[0], persviewproj[1], viewport);
 					glm::vec3 rayDir = glm::normalize(farPt - nearPt);
 					float t = (glm::abs(rayDir.y) > 0.001f) ? (0.0f - rview::core::camwpos.y) / rayDir.y : -1.0f;
 					glm::vec3 hitPos = (t > 0.0f && t <= 50.0f) ? (rview::core::camwpos + rayDir * t) : (rview::core::camwpos + rayDir * 50.0f);
@@ -1540,7 +1557,8 @@ void vkrenderer::commitspawn(rvkbucket& mvkobjs, VkCommandBuffer c, model_manage
 	for (uint32_t i = 0; i < drop.requested_instances; ++i) {
 		model_manager::Entity new_ent = model_manager::g_registry.create_entity(modelID);
 
-		if (!model_manager::g_registry.is_valid(new_ent)) continue;
+		if (!model_manager::g_registry.is_valid(new_ent))
+			continue;
 
 		uint32_t dense_idx = model_manager::g_registry.get_dense_index(new_ent);
 		g_scene.poolHandles[dense_idx] = defaultPool;
@@ -1582,11 +1600,11 @@ void vkrenderer::movecam(rvkbucket& mvkobjs) {
 	float mx, my;
 	const SDL_MouseButtonFlags mouseMask = SDL_GetMouseState(&mx, &my);
 	const bool isRightClick = (mouseMask & SDL_BUTTON_MASK(SDL_BUTTON_RIGHT));
-	const bool isLeftClick  = (mouseMask & SDL_BUTTON_MASK(SDL_BUTTON_LEFT));
+	const bool isLeftClick = (mouseMask & SDL_BUTTON_MASK(SDL_BUTTON_LEFT));
 	float speed = 2.0f;
-	rview::core::camfor   = (float(input_state[Key_W]) * speed) - (float(input_state[Key_S]) * speed);
+	rview::core::camfor = (float(input_state[Key_W]) * speed) - (float(input_state[Key_S]) * speed);
 	rview::core::camright = (float(input_state[Key_D]) * speed) - (float(input_state[Key_A]) * speed);
-	rview::core::camup    = (float(input_state[Key_E]) * speed) - (float(input_state[Key_Q]) * speed);
+	rview::core::camup = (float(input_state[Key_E]) * speed) - (float(input_state[Key_Q]) * speed);
 
 	static bool wasLooking = false;
 	auto* win = reinterpret_cast<SDL_Window*>(mvkobjs.wind);
@@ -1609,7 +1627,7 @@ void vkrenderer::movecam(rvkbucket& mvkobjs) {
 	if (isRightClick) {
 		float rx, ry;
 		SDL_GetRelativeMouseState(&rx, &ry);
-		rview::core::azimuth   += rx * 0.1f;
+		rview::core::azimuth += rx * 0.1f;
 		rview::core::elevation -= ry * 0.1f;
 		rview::core::elevation = std::clamp(rview::core::elevation, -89.0f, 89.0f);
 	} else {
@@ -1622,10 +1640,8 @@ void vkrenderer::movecam(rvkbucket& mvkobjs) {
 	if (!io->WantCaptureMouse && isLeftClick && !isRightClick) {
 		glm::vec4 viewport(0.0f, 0.0f, (float)mvkobjs.width, (float)mvkobjs.height);
 
-		glm::vec3 nearPt = glm::unProject(glm::vec3(mx, viewport.w - my, 0.0f),
-		                                  persviewproj.at(0), persviewproj.at(1), viewport);
-		glm::vec3 farPt  = glm::unProject(glm::vec3(mx, viewport.w - my, 1.0f),
-		                                  persviewproj.at(0), persviewproj.at(1), viewport);
+		glm::vec3 nearPt = glm::unProject(glm::vec3(mx, viewport.w - my, 0.0f), persviewproj.at(0), persviewproj.at(1), viewport);
+		glm::vec3 farPt = glm::unProject(glm::vec3(mx, viewport.w - my, 1.0f), persviewproj.at(0), persviewproj.at(1), viewport);
 
 		glm::vec3 d = glm::normalize(farPt - nearPt);
 
@@ -1660,7 +1676,8 @@ glm::vec3 vkrenderer::navmeshnormal(float x, float z) {
 }
 
 void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
-	if (!g_assets.requiresUpload.load(std::memory_order_acquire)) return;
+	if (!g_assets.requiresUpload.load(std::memory_order_acquire))
+		return;
 
 	std::lock_guard<std::mutex> lock(g_assets.registryMutex);
 
@@ -1670,7 +1687,8 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 	std::vector<VkBufferMemoryBarrier2> barriers;
 
 	auto add_barrier = [&](VkBuffer buf) {
-		if (buf == VK_NULL_HANDLE) return;
+		if (buf == VK_NULL_HANDLE)
+			return;
 
 		VkBufferMemoryBarrier2 b{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
 		b.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
@@ -1690,8 +1708,10 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			uint32_t newCapacity = std::max(rview::core::g_rawIndexCapacity * 2, currentByteSize + (1024 * 1024 * 16));
 
 			GpuBuffer newBuffer;
-			vkvbo::init(mvkobjs, newBuffer, newCapacity, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-			            VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+			vkvbo::init(mvkobjs,
+						newBuffer,
+						newCapacity,
+						VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
 			if (rview::core::g_rawIndexSSBO.buffer != VK_NULL_HANDLE) {
 				VkBufferCopy copyRegion{0, 0, rview::core::g_rawIndexOffset};
@@ -1699,8 +1719,9 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			}
 
 			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(newBytesToUpload);
-			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.globalRawIndices.data() + rview::core::g_rawIndexOffset,
-			            newBytesToUpload);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset,
+						g_assets.globalRawIndices.data() + rview::core::g_rawIndexOffset,
+						newBytesToUpload);
 			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, newBytesToUpload);
 
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_rawIndexOffset, newBytesToUpload};
@@ -1719,8 +1740,9 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			descriptors_need_update = true;
 		} else {
 			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(newBytesToUpload);
-			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.globalRawIndices.data() + rview::core::g_rawIndexOffset,
-			            newBytesToUpload);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset,
+						g_assets.globalRawIndices.data() + rview::core::g_rawIndexOffset,
+						newBytesToUpload);
 			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, newBytesToUpload);
 
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_rawIndexOffset, newBytesToUpload};
@@ -1739,8 +1761,10 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			uint32_t newCapacity = std::max(g_morphDeltaCapacity * 2, currentMorphByteSize + (1024 * 1024 * 8));
 
 			GpuBuffer newBuffer;
-			vkvbo::init(mvkobjs, newBuffer, newCapacity, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-			            VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+			vkvbo::init(mvkobjs,
+						newBuffer,
+						newCapacity,
+						VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
 			if (g_morphDeltaSSBO.buffer != VK_NULL_HANDLE) {
 				VkBufferCopy copyRegion{0, 0, g_morphDeltaOffset};
@@ -1748,8 +1772,9 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			}
 
 			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(newMorphBytesToUpload);
-			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.globalMorphBytes.data() + g_morphDeltaOffset,
-			            newMorphBytesToUpload);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset,
+						g_assets.globalMorphBytes.data() + g_morphDeltaOffset,
+						newMorphBytesToUpload);
 			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, newMorphBytesToUpload);
 
 			VkBufferCopy tailRegion{beltOffset, g_morphDeltaOffset, newMorphBytesToUpload};
@@ -1768,8 +1793,9 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			descriptors_need_update = true;
 		} else {
 			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(newMorphBytesToUpload);
-			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.globalMorphBytes.data() + g_morphDeltaOffset,
-			            newMorphBytesToUpload);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset,
+						g_assets.globalMorphBytes.data() + g_morphDeltaOffset,
+						newMorphBytesToUpload);
 			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, newMorphBytesToUpload);
 
 			VkBufferCopy tailRegion{beltOffset, g_morphDeltaOffset, newMorphBytesToUpload};
@@ -1791,7 +1817,10 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			uint32_t newByteCap = newCap * sizeof(PrimitiveMetadata);
 
 			GpuBuffer newBuffer;
-			vkvbo::init(mvkobjs, newBuffer, newByteCap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+			vkvbo::init(mvkobjs,
+						newBuffer,
+						newByteCap,
+						VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
 			if (rview::core::g_primitiveRegistrySSBO.buffer != VK_NULL_HANDLE) {
 				VkBufferCopy copyRegion{0, 0, rview::core::g_primOffset * sizeof(PrimitiveMetadata)};
@@ -1799,7 +1828,9 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			}
 
 			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(uploadBytes);
-			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.primitives.data() + rview::core::g_primOffset, uploadBytes);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset,
+						g_assets.primitives.data() + rview::core::g_primOffset,
+						uploadBytes);
 			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, uploadBytes);
 
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_primOffset * sizeof(PrimitiveMetadata), uploadBytes};
@@ -1817,7 +1848,9 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			descriptors_need_update = true;
 		} else {
 			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(uploadBytes);
-			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.primitives.data() + rview::core::g_primOffset, uploadBytes);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset,
+						g_assets.primitives.data() + rview::core::g_primOffset,
+						uploadBytes);
 			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, uploadBytes);
 
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_primOffset * sizeof(PrimitiveMetadata), uploadBytes};
@@ -1839,7 +1872,10 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			uint32_t newByteCap = newCap * sizeof(ModelMetadata);
 
 			GpuBuffer newBuffer;
-			vkvbo::init(mvkobjs, newBuffer, newByteCap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+			vkvbo::init(mvkobjs,
+						newBuffer,
+						newByteCap,
+						VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
 			if (rview::core::g_modelRegistrySSBO.buffer != VK_NULL_HANDLE) {
 				VkBufferCopy copyRegion{0, 0, rview::core::g_modelOffset * sizeof(ModelMetadata)};
@@ -1847,7 +1883,8 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			}
 
 			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(uploadBytes);
-			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.models.data() + rview::core::g_modelOffset, uploadBytes);
+			std::memcpy(
+				mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.models.data() + rview::core::g_modelOffset, uploadBytes);
 			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, uploadBytes);
 
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_modelOffset * sizeof(ModelMetadata), uploadBytes};
@@ -1865,7 +1902,8 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 			descriptors_need_update = true;
 		} else {
 			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(uploadBytes);
-			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.models.data() + rview::core::g_modelOffset, uploadBytes);
+			std::memcpy(
+				mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, g_assets.models.data() + rview::core::g_modelOffset, uploadBytes);
 			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, uploadBytes);
 
 			VkBufferCopy tailRegion{beltOffset, rview::core::g_modelOffset * sizeof(ModelMetadata), uploadBytes};
@@ -1891,17 +1929,14 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	ZoneScoped;
 
-	if (vkWaitForFences(mvkobjs.vkdevice.device, 1,
-	                    &mvkobjs.fencez.at(rview::core::currentFrame), VK_TRUE,
-	                    UINT64_MAX) != VK_SUCCESS) {
+	if (vkWaitForFences(mvkobjs.vkdevice.device, 1, &mvkobjs.fencez.at(rview::core::currentFrame), VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
 		return false;
 	}
 
 	// good spot as any
 	mvkobjs.sbelts[rview::core::currentFrame].reset();
 
-	if (vkResetFences(mvkobjs.vkdevice.device, 1,
-	                  &mvkobjs.fencez.at(rview::core::currentFrame)) != VK_SUCCESS)
+	if (vkResetFences(mvkobjs.vkdevice.device, 1, &mvkobjs.fencez.at(rview::core::currentFrame)) != VK_SUCCESS)
 		return false;
 
 	//temp
@@ -1925,9 +1960,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	cmdbgninfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdbgninfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	if (vkBeginCommandBuffer(
-	            c, &cmdbgninfo) !=
-	        VK_SUCCESS)
+	if (vkBeginCommandBuffer(c, &cmdbgninfo) != VK_SUCCESS)
 		return false;
 
 
@@ -1938,8 +1971,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 	uint32_t imgidx = 0;
 	VkResult res = vkAcquireNextImageKHR(
-	                   mvkobjs.vkdevice.device, mvkobjs.schain.swapchain, UINT64_MAX,
-	                   mvkobjs.semaphorez[0][rview::core::currentFrame], VK_NULL_HANDLE, &imgidx);
+		mvkobjs.vkdevice.device, mvkobjs.schain.swapchain, UINT64_MAX, mvkobjs.semaphorez[0][rview::core::currentFrame], VK_NULL_HANDLE, &imgidx);
 
 	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
 		return recreateswapchain(mvkobjs);
@@ -1997,9 +2029,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		auto* deadStaging = new model_manager::StagingModelData(std::move(g_commit_queue.front()));
 		g_commit_queue.erase(g_commit_queue.begin());
 
-		g_jobs.enqueue([deadStaging]() {
-			delete deadStaging;
-		});
+		g_jobs.enqueue([deadStaging]() { delete deadStaging; });
 	}
 
 	model_manager::OrphanedAnimBuffer orphaned;
@@ -2030,9 +2060,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 			}
 
 			auto* deadTextures = new std::vector<texdata>(std::move(dead.textures));
-			g_reaper.enqueue([deadTextures]() {
-				delete deadTextures;
-			});
+			g_reaper.enqueue([deadTextures]() { delete deadTextures; });
 
 			g_asset_death_row[i] = std::move(g_asset_death_row.back());
 			g_asset_death_row.pop_back();
@@ -2070,9 +2098,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 				auto* deadCPUAsset = new model_manager::CPUModelAsset(std::move(it->second));
 				model_manager::g_cpuModels.erase(it);
 
-				g_reaper.enqueue([deadCPUAsset]() {
-					delete deadCPUAsset;
-				});
+				g_reaper.enqueue([deadCPUAsset]() { delete deadCPUAsset; });
 			}
 		}
 	}
@@ -2114,9 +2140,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	}
 
 
-	std::call_once(obswrite, [&]() {
-		vkrenderer::write_obs(mvkobjs);
-	});
+	std::call_once(obswrite, [&]() { vkrenderer::write_obs(mvkobjs); });
 
 
 	model_manager::PoolMigrationReq migReq;
@@ -2124,7 +2148,8 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	while (model_manager::g_poolMigrationQueue.pop(migReq)) {
 		auto* pool = model_manager::g_animPoolRegistry.GetPoolMutable(migReq.poolHandle);
 
-		if (!pool) continue;
+		if (!pool)
+			continue;
 
 		if (migReq.targetDomain == model_manager::ExecutionDomain::GPU_BAKED && pool->bakedAnimVBO.buffer == VK_NULL_HANDLE) {
 			pool->migrationState = model_manager::PoolMigrationState::MIGRATING_TO_GPU;
@@ -2134,7 +2159,8 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 			g_jobs.enqueue([handle]() {
 				auto* p = model_manager::g_animPoolRegistry.GetPoolMutable(handle);
 
-				if (!p) return;
+				if (!p)
+					return;
 
 				// ===================
 				// HEAVY BAKING HERE |
@@ -2172,17 +2198,16 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	while (model_manager::g_poolUploadQueue.pop(upReq)) {
 		auto* pool = model_manager::g_animPoolRegistry.GetPoolMutable(upReq.poolHandle);
 
-		if (!pool || pool->migrationState != model_manager::PoolMigrationState::MIGRATING_TO_GPU) continue;
+		if (!pool || pool->migrationState != model_manager::PoolMigrationState::MIGRATING_TO_GPU)
+			continue;
 
 		size_t byteSize = pool->finalJointDQs.size() * sizeof(DualQuatScale);
 		size_t alignedSize = (byteSize + 255) & ~255;
 
-		vkvbo::init(mvkobjs, pool->bakedAnimVBO, alignedSize,
-		            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		vkvbo::init(mvkobjs, pool->bakedAnimVBO, alignedSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
 		VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(byteSize);
-		std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset,
-		            pool->finalJointDQs.data(), byteSize);
+		std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset, pool->finalJointDQs.data(), byteSize);
 		vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, byteSize);
 
 		VkBufferCopy region{beltOffset, 0, byteSize};
@@ -2242,7 +2267,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 	// let that sync in
 	currentgraph.add_pass([&mvkobjs, c, imgidx] {
-		if constexpr(rdebug::is_active) {
+		if constexpr (rdebug::is_active) {
 			TracyVkZone(rdebug::tracyCTX, c, "syncs");
 		}
 
@@ -2288,8 +2313,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	});
 
 	currentgraph.add_pass([c] {
-
-		if constexpr(rdebug::is_active) {
+		if constexpr (rdebug::is_active) {
 			TracyVkZone(rdebug::tracyCTX, c, "compute/cull");
 		}
 
@@ -2310,15 +2334,22 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 		uint32_t active_instances = g_scene.entity_count.load(std::memory_order_relaxed);
 
-		if (active_instances == 0) return;
+		if (active_instances == 0)
+			return;
 
 		vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_COMPUTE, rview::core::globalcullpline);
-		vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_COMPUTE, rview::core::globalPipelineLayout, 0, 1, &rview::core::globalBindlessSet, 0, nullptr);
+		vkCmdBindDescriptorSets(
+			c, VK_PIPELINE_BIND_POINT_COMPUTE, rview::core::globalPipelineLayout, 0, 1, &rview::core::globalBindlessSet, 0, nullptr);
 
 		vkpushconstants pc{};
 		pc.stride = active_instances;
 		pc.frameIndex = rview::core::currentFrame;
-		vkCmdPushConstants(c, rview::core::globalPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(vkpushconstants), &pc);
+		vkCmdPushConstants(c,
+						   rview::core::globalPipelineLayout,
+						   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT,
+						   0,
+						   sizeof(vkpushconstants),
+						   &pc);
 
 		vkCmdDispatch(c, (active_instances + 63) / 64, 1, 1);
 
@@ -2354,8 +2385,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	});
 
 	currentgraph.add_pass([&mvkobjs, c, imgidx] {
-
-		if constexpr(rdebug::is_active) {
+		if constexpr (rdebug::is_active) {
 			TracyVkZone(rdebug::tracyCTX, c, "rendering");
 		}
 
@@ -2402,25 +2432,31 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 
 
-		vkCmdSetViewport(c, 0, 1,
-		                 &viewport);
-		vkCmdSetScissor(c, 0, 1,
-		                &scissor);
+		vkCmdSetViewport(c, 0, 1, &viewport);
+		vkCmdSetScissor(c, 0, 1, &scissor);
 
 
 
 		vkCmdBindPipeline(c, VK_PIPELINE_BIND_POINT_GRAPHICS, playout::skinnedpline);
-		vkCmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_GRAPHICS, rview::core::globalPipelineLayout, 0, 1, &rview::core::globalBindlessSet, 0, nullptr);
+		vkCmdBindDescriptorSets(
+			c, VK_PIPELINE_BIND_POINT_GRAPHICS, rview::core::globalPipelineLayout, 0, 1, &rview::core::globalBindlessSet, 0, nullptr);
 
 		vkpushconstants pc_mdi{};
 		pc_mdi.frameIndex = rview::core::currentFrame;
-		vkCmdPushConstants(c, rview::core::globalPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(vkpushconstants), &pc_mdi);
+		vkCmdPushConstants(c,
+						   rview::core::globalPipelineLayout,
+						   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT,
+						   0,
+						   sizeof(vkpushconstants),
+						   &pc_mdi);
 
-		vkCmdDrawIndirectCount(
-		    c,
-		    rview::core::g_indirectCommandBuffers[rview::core::currentFrame].buffer, 0,
-		    rview::core::g_indirectCountBuffers[rview::core::currentFrame].buffer, 0,
-		    100000, sizeof(VkDrawIndirectCommand));
+		vkCmdDrawIndirectCount(c,
+							   rview::core::g_indirectCommandBuffers[rview::core::currentFrame].buffer,
+							   0,
+							   rview::core::g_indirectCountBuffers[rview::core::currentFrame].buffer,
+							   0,
+							   100000,
+							   sizeof(VkDrawIndirectCommand));
 
 		// TODO MOVE to separate async pipeline >:( i probably wont ever but eh.. the thought that counts ig
 		ui::createdbgframe(mvkobjs);
@@ -2428,13 +2464,11 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		ui::render(mvkobjs, c);
 
 		vkCmdEndRendering(c);
-
 	});
 
 
 	currentgraph.add_pass([&mvkobjs, c, imgidx] {
-
-		if constexpr(rdebug::is_active) {
+		if constexpr (rdebug::is_active) {
 			TracyVkZone(rdebug::tracyCTX, c, "last sync");
 		}
 
@@ -2459,16 +2493,15 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		dependency_info.pImageMemoryBarriers = &barrier;
 
 		vkCmdPipelineBarrier2(c, &dependency_info);
-
 	});
 
 
 	currentgraph.execute();
 
-	vkrenderer::copy_engine_to_obs(c, mvkobjs, mvkobjs.schainimgs.at(imgidx), mvkobjs.obs_target.img, mvkobjs.obs_target.width,
-	                               mvkobjs.obs_target.height);
+	vkrenderer::copy_engine_to_obs(
+		c, mvkobjs, mvkobjs.schainimgs.at(imgidx), mvkobjs.obs_target.img, mvkobjs.obs_target.width, mvkobjs.obs_target.height);
 
-	if constexpr(rdebug::is_active) {
+	if constexpr (rdebug::is_active) {
 		TracyVkCollect(rdebug::tracyCTX, c);
 	}
 
@@ -2483,7 +2516,6 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 
 
-
 	VkSubmitInfo submitinfo{};
 	submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -2494,7 +2526,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	submitinfo.pWaitDstStageMask = waitstage.data();
 	std::array<VkSemaphore, 1> waitsemas{
 		mvkobjs.semaphorez.at(0).at(rview::core::currentFrame)
-		                  //   ,mvkobjs.semaphorez.at(2).at(rview::core::currentFrame)
+		//   ,mvkobjs.semaphorez.at(2).at(rview::core::currentFrame)
 	};
 	submitinfo.waitSemaphoreCount = waitsemas.size();
 	submitinfo.pWaitSemaphores = waitsemas.data();
@@ -2509,15 +2541,13 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 	{
 		std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
-		auto res  = vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo,
-		                          mvkobjs.fencez.at(rview::core::currentFrame));
+		auto res = vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.fencez.at(rview::core::currentFrame));
 
 		//   vkQueueWaitIdle(mvkobjs.graphicsQ);
 		if (res != VK_SUCCESS) {
 			std::cout << "QUEUE ERROR : " << res << std::endl;
 			return false;
 		}
-
 	}
 
 	VkPresentInfoKHR presentinfo{};
@@ -2555,8 +2585,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	obs_bridge::send_spout();
 
 	vkrenderer::mlasttick = tick;
-	rview::core::currentFrame =
-	    (rview::core::currentFrame + 1) % rview::core::MAX_FRAMES_IN_FLIGHT;
+	rview::core::currentFrame = (rview::core::currentFrame + 1) % rview::core::MAX_FRAMES_IN_FLIGHT;
 
 	return true;
 }

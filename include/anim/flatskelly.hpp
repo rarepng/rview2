@@ -92,12 +92,14 @@ struct ParsedSkeleton {
 		if (gltfNodes > 0) {
 			gltfToTopoMap = std::make_unique<int32_t[]>(gltfNodes);
 
-			for (uint32_t i = 0; i < gltfNodes; ++i) gltfToTopoMap[i] = -1;
+			for (uint32_t i = 0; i < gltfNodes; ++i)
+				gltfToTopoMap[i] = -1;
 		}
 	}
 
 	inline void UpdateGlobalMatrices(const glm::mat4& worldTransform = glm::mat4(1.0f)) {
-		if (nodeCount == 0) return;
+		if (nodeCount == 0)
+			return;
 
 		for (uint32_t i = 0; i < nodeCount; ++i) {
 			int32_t parent = parentIndices[i];
@@ -152,7 +154,8 @@ struct JobSkeletonState {
 	}
 
 	inline void UpdateGlobalMatrices(const glm::mat4& worldTransform = glm::mat4(1.0f)) {
-		if (nodeCount == 0) return;
+		if (nodeCount == 0)
+			return;
 
 		for (uint32_t i = 0; i < nodeCount; ++i) {
 			int32_t parent = parentIndices[i];

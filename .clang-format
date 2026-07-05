@@ -2,25 +2,26 @@
 Language: Cpp
 BasedOnStyle: LLVM
 
+SortIncludes: Never
+SortUsingDeclarations: Never
+BinPackArguments: false
+BinPackParameters: false
+AllowShortBlocksOnASingleLine: Empty
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
 UseTab: Always
 IndentWidth: 4
 TabWidth: 4
-
 BreakBeforeBraces: Attach
-
 IndentCaseLabels: true
-
 IndentPPDirectives: AfterHash
-
 SpaceBeforeAssignmentOperators: true
-
 SpaceBeforeParens: ControlStatements
-
 PointerAlignment: Left
 ReferenceAlignment: Left
-
 ColumnLimit: 150
-
 BreakBeforeBinaryOperators: None
 
 MaxEmptyLinesToKeep: 4
@@ -29,4 +30,5 @@ AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 AlignConsecutiveMacros: false
 ReflowComments: false
-...
+NamespaceIndentation: All
+FixNamespaceComments: false
