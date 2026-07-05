@@ -137,7 +137,7 @@ bool initglobalmats(rvkbucket& mvkobjs);
 bool initglobalinstances(rvkbucket& mvkobjs);
 bool initglobalindirect(rvkbucket& mvkobjs);
 bool initglobalidrectUNINDEXED(rvkbucket& mvkobjs);
-void update_dynamic_instances(rvkbucket& mvkobjs);
+void update_dynamic_instances(rvkbucket& mvkobjs, uint32_t read_frame);
 bool create_obs_target(rvkbucket& mvkobjs);
 bool init_obs_bridge(void* shared_handle, uint32_t width, uint32_t height, const uint8_t* device_luid);
 // void cleanup_obs_bridge();
@@ -196,6 +196,7 @@ void cancelspawn(uint32_t id);
 struct CondemnedAsset {
 	GpuBuffer vbo;
 	std::vector<texdata> textures;
+	uint32_t bindlessID = 0xFFFFFFFF;
 	uint32_t framesRemaining = rview::core::MAX_FRAMES_IN_FLIGHT + 1;
 };
 

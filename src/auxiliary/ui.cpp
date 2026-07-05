@@ -149,54 +149,6 @@ void ui::createdbgframe(rvkbucket &renderData) {
 		vkrenderer::setsize(renderData, renderData.width, renderData.height);
 	}
 
-	ImGui::SeparatorText("VTuber / Procedural");
-
-	static float breath_speed = 2.0f;
-	static float breath_amp = 0.02f;
-	ImGui::SliderFloat("Breathing Speed", &breath_speed, 0.1f, 5.0f);
-	ImGui::SliderFloat("Breathing Depth", &breath_amp, 0.0f, 0.1f);
-
-	static bool debug_mouse_gaze = false;
-	static float gaze_depth = 5.0f;
-	ImGui::Checkbox("Shift + Mouse drives IK Target", &debug_mouse_gaze);
-
-	if (debug_mouse_gaze) {
-		ImGui::SliderFloat("Gaze Depth", &gaze_depth, 1.0f, 10.0f);
-	}
-
-	//TEMP!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	// DOESNT WORK YET [[ PLEASE HOLD ]]
-	if (debug_mouse_gaze && g_selected_entity != 0xFFFFFFFF && g_scene.modelIDs[g_selected_entity] != 0xFFFFFFFF) {
-		const bool isShiftHeld = (SDL_GetKeyboardState(NULL)[SDL_SCANCODE_LSHIFT] ||
-		                          SDL_GetKeyboardState(NULL)[SDL_SCANCODE_RSHIFT]);
-
-		if (isShiftHeld) {
-			float mouse_x, mouse_y;
-			SDL_GetMouseState(&mouse_x, &mouse_y);
-
-			float ndc_x = (2.0f * mouse_x) / renderData.width - 1.0f;
-			float ndc_y = (2.0f * mouse_y) / renderData.height - 1.0f;
-
-			glm::mat4 invVP = glm::inverse(vkrenderer::persviewproj[1] * vkrenderer::persviewproj[0]);
-
-			glm::vec4 screenPos = glm::vec4(ndc_x, ndc_y, 0.1f, 1.0f);
-			glm::vec4 worldPos = invVP * screenPos;
-			worldPos /= worldPos.w;
-
-			glm::vec3 rayDir = glm::normalize(glm::vec3(worldPos) - rview::core::camwpos);
-
-			glm::vec3 target_pos = rview::core::camwpos + (rayDir * gaze_depth);
-
-			model_manager::g_registry.ik_target_pos[g_selected_entity][0] = target_pos;
-
-			if (model_manager::g_registry.ik_active_chains[g_selected_entity] == 0) {
-				model_manager::g_registry.ik_active_chains[g_selected_entity] = 1;
-			}
-		}
-	}
-
-	//TEMP!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 	int sel_ent = (g_selected_entity == 0xFFFFFFFF) ? -1 : static_cast<int>(g_selected_entity);
 	int max_ent = (active_entities > 0) ? active_entities - 1 : -1;
 
@@ -217,118 +169,72 @@ void ui::createdbgframe(rvkbucket &renderData) {
 
 		ImGui::DragFloat3("Scale", glm::value_ptr(g_scene.scales[g_selected_entity]), 0.1f);
 
-		ImGui::SeparatorText("Animation & IK");
+		ImGui::SeparatorText("Animation Pool Selection");
 
-		int current_flags = static_cast<int>(model_manager::g_registry.pipeline_flags[g_selected_entity]);
-		const char* modes[] = { "GPU Baked", "CPU Eval Only", "Hybrid (CPU + IK)", "Hero (Blend + IK)" };
-		int current_mode_idx = 0;
+		uint32_t currentPoolHandle = g_scene.poolHandles[g_selected_entity];
+		std::string currentPoolName = "Bind Pose / None";
 
-		if (current_flags == model_manager::MASK_HERO) current_mode_idx = 3;
-		else if (current_flags == model_manager::MASK_HYBRID) current_mode_idx = 2;
-		else if (current_flags == model_manager::ANIM_FLAG_CPU_EVAL) current_mode_idx = 1;
-		else current_mode_idx = 0;
+		if (currentPoolHandle != model_manager::FALLBACK_POOL_HANDLE) {
+			const auto* pool = model_manager::g_animPoolRegistry.GetPool(currentPoolHandle);
 
-		if (ImGui::Combo("Pipeline Mode", &current_mode_idx, modes, IM_ARRAYSIZE(modes))) {
-			model_manager::AnimPipelineFlags new_flags = model_manager::ANIM_FLAG_GPU_BAKED;
-
-			if (current_mode_idx == 1) new_flags = model_manager::ANIM_FLAG_CPU_EVAL;
-
-			if (current_mode_idx == 2) new_flags = model_manager::MASK_HYBRID;
-
-			if (current_mode_idx == 3) new_flags = model_manager::MASK_HERO;
-
-			uint64_t safe_frame = rview::core::global_frame_counter.load(std::memory_order_relaxed)
-			                      + rview::core::MAX_FRAMES_IN_FLIGHT + 1;
-
-			model_manager::g_stateChangeQueue.push({
-				g_selected_entity,
-				model_manager::g_registry.current_pool[g_selected_entity],
-				new_flags,
-				safe_frame
-			});
+			if (pool) currentPoolName = pool->name + " (ID: " + std::to_string(currentPoolHandle) + ")";
 		}
 
-		uint32_t current_pool_handle = model_manager::g_registry.current_pool[g_selected_entity];
-		const model_manager::AnimPoolData* current_pool = model_manager::g_animPoolRegistry.GetPool(current_pool_handle);
-		uint64_t active_signature = current_pool ? current_pool->skeletonSignature : 0;
+		if (ImGui::BeginCombo("Active Pool", currentPoolName.c_str())) {
+			bool isBindPoseSelected = (currentPoolHandle == model_manager::FALLBACK_POOL_HANDLE);
 
-		auto it = model_manager::g_cpuModels.find(g_scene.modelIDs[g_selected_entity]);
+			if (ImGui::Selectable("Bind Pose / None", isBindPoseSelected)) {
+				if (!isBindPoseSelected) {
+					model_manager::StateChangeReq req{};
+					req.dense_idx = g_selected_entity;
+					req.targetPool = model_manager::FALLBACK_POOL_HANDLE;
+					req.targetFlags = model_manager::ANIM_FLAG_NONE;
+					req.targetExecutionFrame = rview::core::global_frame_counter.load(std::memory_order_relaxed) + 1;
+					model_manager::g_stateChangeQueue.push(req);
+				}
+			}
 
-		if (it != model_manager::g_cpuModels.end() && !it->second.defaultClips.empty()) {
-			ImGui::SeparatorText("Model Default Clips");
+			if (isBindPoseSelected) ImGui::SetItemDefaultFocus();
 
-			std::string current_name = current_pool ? current_pool->name : "Bind Pose";
+			for (uint32_t i = 1; i < model_manager::AnimPoolRegistry::MAX_POOLS; ++i) {
+				if (!model_manager::g_animPoolRegistry.is_active[i]) continue;
 
-			if (ImGui::BeginCombo("Select Anim", current_name.c_str())) {
-				for (uint32_t handle : it->second.defaultClips) {
-					const auto* pool = model_manager::g_animPoolRegistry.GetPool(handle);
+				uint32_t handle = (static_cast<uint32_t>(model_manager::g_animPoolRegistry.generations[i]) << 16) | i;
+				bool isSelected = (currentPoolHandle == handle);
 
-					if (!pool) continue;
+				std::string poolLabel = model_manager::g_animPoolRegistry.pools[i].name + " (ID: " + std::to_string(handle) + ")";
 
-					bool is_selected = (current_pool_handle == handle);
-
-					if (ImGui::Selectable(pool->name.c_str(), is_selected)) {
-						uint64_t safe_frame = rview::core::global_frame_counter.load(std::memory_order_relaxed) + rview::core::MAX_FRAMES_IN_FLIGHT + 1;
-						model_manager::g_stateChangeQueue.push({
-							g_selected_entity, handle, model_manager::g_registry.pipeline_flags[g_selected_entity], safe_frame
-						});
-						g_scene.animTimePositions[g_selected_entity] = 0.0f;
+				if (ImGui::Selectable(poolLabel.c_str(), isSelected)) {
+					if (!isSelected) {
+						model_manager::StateChangeReq req{};
+						req.dense_idx = g_selected_entity;
+						req.targetPool = handle;
+						req.targetFlags = model_manager::g_animPoolRegistry.pools[i].pipelineFlags;
+						req.targetExecutionFrame = rview::core::global_frame_counter.load(std::memory_order_relaxed) + 1;
+						model_manager::g_stateChangeQueue.push(req);
 					}
-
-					if (is_selected) ImGui::SetItemDefaultFocus();
 				}
 
-				ImGui::EndCombo();
+				if (isSelected) ImGui::SetItemDefaultFocus();
 			}
+
+			ImGui::EndCombo();
 		}
 
-		if (active_signature != 0) {
-			ImGui::SeparatorText("Global Animation Pool (Shared)");
+		if (currentPoolHandle != model_manager::FALLBACK_POOL_HANDLE) {
+			auto* pool = model_manager::g_animPoolRegistry.GetPoolMutable(currentPoolHandle);
 
-			std::vector<uint32_t> compatible_pools;
-
-			// overriding without exact skeleton match causes memory corruption obviously
-			for (uint32_t p = 0; p < model_manager::g_animPoolRegistry.pools.size(); ++p) {
-				if (model_manager::g_animPoolRegistry.pools[p].skeletonSignature == active_signature) {
-					compatible_pools.push_back(p);
-				}
+			if (pool) {
+				ImGui::Text("Pipeline Flags: %u", static_cast<uint32_t>(pool->pipelineFlags));
+				ImGui::SliderFloat("Playback Speed", &pool->playbackSpeed, 0.0f, 5.0f, "%.2fx");
+				ImGui::Checkbox("Loop", &pool->loop);
+				ImGui::ProgressBar(pool->duration > 0.0f ? pool->currentTime / pool->duration : 0.0f);
 			}
-
-			std::string global_current = current_pool ? current_pool->name + " (ID: " + std::to_string(current_pool_handle) + ")" : "None";
-
-			if (ImGui::BeginCombo("Force Global Override", global_current.c_str())) {
-				for (uint32_t pHandle : compatible_pools) {
-					const auto& pool = model_manager::g_animPoolRegistry.pools[pHandle];
-					bool is_selected = (current_pool_handle == pHandle);
-					std::string label = pool.name + " (ID: " + std::to_string(pHandle) + ")";
-
-					if (ImGui::Selectable(label.c_str(), is_selected)) {
-						uint64_t safe_frame = rview::core::global_frame_counter.load(std::memory_order_relaxed) + rview::core::MAX_FRAMES_IN_FLIGHT + 1;
-						model_manager::g_stateChangeQueue.push({
-							g_selected_entity, pHandle, model_manager::g_registry.pipeline_flags[g_selected_entity], safe_frame
-						});
-						g_scene.animTimePositions[g_selected_entity] = 0.0f;
-					}
-
-					if (is_selected) ImGui::SetItemDefaultFocus();
-				}
-
-				ImGui::EndCombo();
-			}
-		}
-
-		ImGui::SameLine();
-
-		if (model_manager::g_registry.current_pool[g_selected_entity] == model_manager::INVALID_ANIM_POOL) {
-			ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "[BIND POSE / FROZEN]");
 		} else {
-			ImGui::TextDisabled("(Playing Clip)");
+			ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "[BIND POSE / FROZEN]");
 		}
 
 		ImGui::Checkbox("Visible", &model_manager::g_registry.is_visible[g_selected_entity]);
-
-		ImGui::SeparatorText("IK Controls");
-		ImGui::DragFloat3("IK Target", glm::value_ptr(model_manager::g_registry.ik_target_pos[g_selected_entity][0]), 0.05f);
 
 		ImGui::SeparatorText("Shape Keys / Morph Targets");
 
@@ -344,15 +250,16 @@ void ui::createdbgframe(rvkbucket &renderData) {
 				if (targetCount > 0) {
 					ImGui::PushID("MorphTargets");
 
-					uint32_t active_weights = static_cast<uint32_t>(model_manager::g_registry.morph_weights[g_selected_entity].size());
-					uint32_t safeTargetCount = std::min(targetCount, active_weights);
+					uint32_t offset = model_manager::g_registry.morph_weight_offsets[g_selected_entity];
+					uint32_t cnt = model_manager::g_registry.morph_weight_counts[g_selected_entity];
+					uint32_t safeTargetCount = std::min(targetCount, cnt);
 
 					for (uint32_t i = 0; i < safeTargetCount; ++i) {
 						std::string label = "Shape Key " + std::to_string(i);
 
 						ImGui::SliderFloat(
 						    label.c_str(),
-						    &model_manager::g_registry.morph_weights[g_selected_entity][i],
+						    &model_manager::g_registry.flat_morph_weights[offset + i],
 						    0.0f, 1.0f, "%.3f"
 						);
 					}
@@ -364,128 +271,18 @@ void ui::createdbgframe(rvkbucket &renderData) {
 			}
 		}
 
-
-		ImGui::SeparatorText("Animation Blending & Playback");
-
-		ImGui::SliderFloat("Playback Speed", &model_manager::g_registry.anim_speed[g_selected_entity], 0.0f, 5.0f, "%.2fx");
-
-		auto modelIt = model_manager::g_cpuModels.find(modelID);
-
-		if (modelIt != model_manager::g_cpuModels.end() && !modelIt->second.defaultClips.empty()) {
-			int numClips = static_cast<int>(modelIt->second.defaultClips.size());
-
-			ImGui::TextDisabled("Crossfade to a new clip:");
-
-			static int target_clip_idx = 0;
-			ImGui::SliderInt("Target Master Clip", &target_clip_idx, 0, numClips - 1);
-			ImGui::SliderFloat("Fade Duration", &model_manager::g_registry.blend_duration[g_selected_entity], 0.1f, 3.0f, "%.2f sec");
-
-			if (ImGui::Button("Trigger Fade", ImVec2(-1, 0))) {
-				model_manager::g_registry.target_pool[g_selected_entity] = modelIt->second.defaultClips[target_clip_idx];
-				model_manager::g_registry.current_blend_time[g_selected_entity] = 0.0f;
-			}
-
-			ImGui::Spacing();
-			ImGui::SliderFloat("Anim Magnitude", &model_manager::g_registry.anim_magnitude[g_selected_entity], 0.0f, 2.0f, "%.2f");
-
-			ImGui::SeparatorText("N-Way Blending (Simultaneous)");
-
-			for (uint32_t layer = 0; layer < model_manager::Registry::MAX_BLEND_LAYERS; ++layer) {
-				ImGui::PushID(layer);
-				ImGui::Text("Layer %d", layer);
-				ImGui::SetNextItemWidth(120.0f);
-				ImGui::SliderInt("Clip", &model_manager::g_registry.blend_clips[g_selected_entity][layer], -1, numClips - 1);
-				ImGui::SameLine();
-				ImGui::SetNextItemWidth(150.0f);
-				ImGui::SliderFloat("Weight", &model_manager::g_registry.blend_weights[g_selected_entity][layer], 0.0f, 1.0f);
-				ImGui::PopID();
-			}
-		}
-
-		ImGui::SeparatorText("IK Chains (Hybrid / Hero)");
-
-		model_manager::AnimPipelineFlags flags = model_manager::g_registry.pipeline_flags[g_selected_entity];
-
-		if ((flags & model_manager::ANIM_FLAG_IK) != 0) {
-
-			int active_chains = static_cast<int>(model_manager::g_registry.ik_active_chains[g_selected_entity]);
-
-			// hardcoded
-			if (ImGui::SliderInt("Active IK Chains", &active_chains, 0, 4)) {
-				model_manager::g_registry.ik_active_chains[g_selected_entity] = static_cast<uint32_t>(active_chains);
-			}
-
-			for (int i = 0; i < active_chains; ++i) {
-				ImGui::PushID(i);
-
-				if (ImGui::TreeNode("IK Chain")) {
-
-					ImGui::DragInt("Effector Bone ID", &model_manager::g_registry.ik_effector_node[g_selected_entity][i], 1, -1, 511);
-					ImGui::DragInt("Root Bone ID", &model_manager::g_registry.ik_root_node[g_selected_entity][i], 1, -1, 511);
-
-					ImGui::DragFloat3("Target Pos", glm::value_ptr(model_manager::g_registry.ik_target_pos[g_selected_entity][i]), 0.05f);
-
-					if (ImGui::RadioButton("Control Target with 3D Gizmo", active_ik_gizmo_chain == i)) {
-						active_ik_gizmo_chain = i;
-					}
-
-					ImGui::TreePop();
-				}
-
-				ImGui::PopID();
-			}
-		} else {
-			ImGui::TextDisabled("Switch to Hybrid or Hero mode to enable IK.");
-		}
-
 		if (ImGui::Button("Duplicate/Add Instance", ImVec2(-1, 30))) {
 			uint32_t srcModelID = g_scene.modelIDs[g_selected_entity];
-			bool isSkinned = g_scene.isSkinned[g_selected_entity];
 
-			uint32_t b_count = model_manager::g_registry.bone_count[g_selected_entity];
-			uint32_t j_count = model_manager::g_registry.joint_count[g_selected_entity];
-
-			uint32_t src_b_start = model_manager::g_registry.bone_start_index[g_selected_entity];
-			uint32_t src_j_start = model_manager::g_registry.joint_start_index[g_selected_entity];
-
-			uint32_t new_b_start = (b_count > 0) ? static_cast<uint32_t>(model_manager::g_bone_locals.size()) : 0;
-			uint32_t new_j_start = (j_count > 0) ? static_cast<uint32_t>(model_manager::g_joint_to_node.size()) : 0;
-
-			model_manager::Entity new_ent = model_manager::g_registry.create_entity(
-			                                    srcModelID, isSkinned, new_b_start, b_count, new_j_start, j_count
-			                                );
+			model_manager::Entity new_ent = model_manager::g_registry.create_entity(srcModelID);
 
 			if (model_manager::g_registry.is_valid(new_ent)) {
 				uint32_t new_dense_idx = model_manager::g_registry.get_dense_index(new_ent);
 
-				model_manager::g_registry.position(new_ent) = g_scene.worldPositions[g_selected_entity] + glm::vec3(1.0f, 0.0f, 1.0f);
+				g_scene.worldPositions[new_dense_idx] = g_scene.worldPositions[g_selected_entity] + glm::vec3(1.0f, 0.0f, 1.0f);
 				g_scene.rotations[new_dense_idx] = g_scene.rotations[g_selected_entity];
 				g_scene.scales[new_dense_idx] = g_scene.scales[g_selected_entity];
-
-				if (b_count > 0) {
-					for (uint32_t b = 0; b < b_count; ++b) {
-						int32_t old_parent = model_manager::g_bone_parents[src_b_start + b];
-
-						int32_t new_parent = (old_parent >= 0) ? (old_parent - src_b_start + new_b_start) : -1;
-
-						model_manager::g_bone_parents.push_back(new_parent);
-						model_manager::g_bone_entity_owner.push_back(new_dense_idx);
-						model_manager::g_bone_locals.push_back(model_manager::g_bone_locals[src_b_start + b]);
-						model_manager::g_bone_globals.push_back(model_manager::g_bone_globals[src_b_start + b]);
-					}
-
-					if (j_count > 0) {
-						for (uint32_t j = 0; j < j_count; ++j) {
-							uint32_t old_target_node = model_manager::g_joint_to_node[src_j_start + j];
-
-							uint32_t new_target_node = old_target_node - src_b_start + new_b_start;
-							model_manager::g_joint_to_node.push_back(new_target_node);
-
-							model_manager::g_joint_inverse_binds.push_back(model_manager::g_joint_inverse_binds[src_j_start + j]);
-							model_manager::g_joint_final_matrices.push_back(model_manager::g_joint_final_matrices[src_j_start + j]);
-						}
-					}
-				}
+				g_scene.poolHandles[new_dense_idx] = g_scene.poolHandles[g_selected_entity];
 
 				auto it = model_manager::g_cpuModels.find(srcModelID);
 
@@ -496,7 +293,6 @@ void ui::createdbgframe(rvkbucket &renderData) {
 				g_selected_entity = new_dense_idx;
 			}
 		}
-
 
 		ImGui::Spacing();
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.1f, 0.1f, 1.0f));
@@ -529,16 +325,125 @@ void ui::createdbgframe(rvkbucket &renderData) {
 		}
 
 		ImGui::PopStyleColor(2);
-
-
 	}
-
 
 	ImGui::Separator();
 
 	if (ImGui::Button("Save State to JSON", ImVec2(-1, 30))) {
 		rview::io::save_state_to_json();
 	}
+
+	ImGui::End();
+
+	ImGui::Begin("Animation Pool Manager");
+	static uint32_t selected_manager_pool = model_manager::FALLBACK_POOL_HANDLE;
+
+	ImGui::Text("Active Pools: %u / %u", model_manager::g_animPoolRegistry.get_active_count(), model_manager::AnimPoolRegistry::MAX_POOLS - 1);
+
+	if (ImGui::BeginListBox("##PoolList", ImVec2(-FLT_MIN, 150))) {
+		for (uint32_t i = 1; i < model_manager::AnimPoolRegistry::MAX_POOLS; ++i) {
+			if (!model_manager::g_animPoolRegistry.is_active[i]) continue;
+
+			uint32_t handle = (static_cast<uint32_t>(model_manager::g_animPoolRegistry.generations[i]) << 16) | i;
+			auto& pool = model_manager::g_animPoolRegistry.pools[i];
+
+			bool is_selected = (selected_manager_pool == handle);
+			std::string label = pool.name + "##" + std::to_string(handle);
+
+			if (ImGui::Selectable(label.c_str(), is_selected)) {
+				selected_manager_pool = handle;
+			}
+
+			if (is_selected) ImGui::SetItemDefaultFocus();
+		}
+
+		ImGui::EndListBox();
+	}
+
+	if (selected_manager_pool != model_manager::FALLBACK_POOL_HANDLE) {
+		auto* pool = model_manager::g_animPoolRegistry.GetPoolMutable(selected_manager_pool);
+
+		if (pool) {
+			ImGui::SeparatorText("Pool Information");
+			ImGui::Text("Name: %s", pool->name.c_str());
+			ImGui::Text("Duration: %.2fs", pool->duration);
+			ImGui::Text("Frames: %u @ %.1f Hz", pool->frameCount, pool->sampleRate);
+			ImGui::Text("Skeleton Signature: %llu", (unsigned long long)pool->skeletonSignature);
+
+			ImGui::SeparatorText("Execution Domain");
+			int currentDomain = static_cast<int>(pool->domain);
+			const char* domainNames[] = { "CPU_BAKED", "GPU_BAKED", "~CPU_EVAL~", "~GPU_EVAL~" };
+
+			if (ImGui::Combo("Domain", &currentDomain, domainNames, IM_ARRAYSIZE(domainNames))) {
+				if (currentDomain != static_cast<int>(pool->domain)) {
+					model_manager::PoolMigrationReq migReq{};
+					migReq.poolHandle = selected_manager_pool;
+					migReq.targetDomain = static_cast<model_manager::ExecutionDomain>(currentDomain);
+					model_manager::g_poolMigrationQueue.push(migReq);
+				}
+			}
+
+			if (pool->migrationState != model_manager::PoolMigrationState::STABLE) {
+				ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Migration in progress...");
+			}
+
+			bool uiRetain = pool->retainCpuData;
+
+			if (ImGui::Checkbox("Retain CPU Data (IK/Blending)", &uiRetain)) {
+				if (!uiRetain && pool->retainCpuData) {
+					model_manager::g_poolPurgeQueue.push({selected_manager_pool});
+				}
+			}
+
+			if (!uiRetain) {
+				ImGui::SameLine();
+				ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "[Purged]");
+			}
+
+			ImGui::SeparatorText("Actions");
+
+			if (ImGui::Button("Duplicate Pool", ImVec2(-1, 30))) {
+				model_manager::AnimPoolData clonedPool;
+				clonedPool.skeletonSignature = pool->skeletonSignature;
+				clonedPool.nodeCount = pool->nodeCount;
+				clonedPool.jointCount = pool->jointCount;
+				clonedPool.frameCount = pool->frameCount;
+				clonedPool.name = pool->name + " (Copy)";
+				clonedPool.duration = pool->duration;
+				clonedPool.sampleRate = pool->sampleRate;
+
+				clonedPool.pipelineFlags = model_manager::ANIM_FLAG_GPU_BAKED;
+				clonedPool.domain = model_manager::ExecutionDomain::GPU_BAKED;
+				clonedPool.migrationState = model_manager::PoolMigrationState::STABLE;
+
+				clonedPool.baseSkeleton = pool->baseSkeleton;
+				clonedPool.localTracks = pool->localTracks;
+				clonedPool.globalTransforms = pool->globalTransforms;
+				clonedPool.finalJointDQs = pool->finalJointDQs;
+
+				uint32_t newHandle = model_manager::g_animPoolRegistry.RegisterPool(std::move(clonedPool));
+
+				if (newHandle != model_manager::FALLBACK_POOL_HANDLE) {
+					selected_manager_pool = newHandle;
+				}
+			}
+
+			ImGui::Spacing();
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.2f, 0.2f, 1.0f));
+
+			if (ImGui::Button("Delete Pool", ImVec2(-1, 30))) {
+				model_manager::g_animPoolRegistry.DestroyPool(selected_manager_pool);
+				selected_manager_pool = model_manager::FALLBACK_POOL_HANDLE;
+			}
+
+			ImGui::PopStyleColor(2);
+
+		} else {
+			selected_manager_pool = model_manager::FALLBACK_POOL_HANDLE;
+		}
+	}
+
 
 	ImGui::End();
 
@@ -568,34 +473,8 @@ void ui::createdbgframe(rvkbucket &renderData) {
 			g_scene.rotations[g_selected_entity] = rotation;
 			g_scene.scales[g_selected_entity] = scale;
 		}
-
-		model_manager::AnimPipelineFlags gizmo_flags = model_manager::g_registry.pipeline_flags[g_selected_entity];
-
-		if ((gizmo_flags & model_manager::ANIM_FLAG_IK) != 0 &&
-		        model_manager::g_registry.ik_active_chains[g_selected_entity] > 0) {
-
-			int chain_idx = active_ik_gizmo_chain;
-
-			if (chain_idx >= static_cast<int>(model_manager::g_registry.ik_active_chains[g_selected_entity])) {
-				chain_idx = 0;
-				active_ik_gizmo_chain = 0;
-			}
-
-			glm::mat4 ik_matrix = glm::translate(glm::mat4(1.0f), model_manager::g_registry.ik_target_pos[g_selected_entity][chain_idx]);
-
-			ImGuizmo::Manipulate(
-			    glm::value_ptr(vkrenderer::persviewproj[0]),
-			    glm::value_ptr(vkrenderer::persviewproj[1]),
-			    ImGuizmo::TRANSLATE, ImGuizmo::WORLD, glm::value_ptr(ik_matrix)
-			);
-
-			if (ImGuizmo::IsUsing()) {
-				model_manager::g_registry.ik_target_pos[g_selected_entity][chain_idx] = glm::vec3(ik_matrix[3]);
-			}
-		}
 	}
 }
-
 bool ui::createloadingscreen(rvkbucket &mvkobjs) {
 
 	ImGui_ImplVulkan_NewFrame();

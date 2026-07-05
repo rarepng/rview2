@@ -176,6 +176,7 @@ struct cam {
 
 struct alignas(16) GPUInstanceData {
 	glm::mat4 worldTransform;
+	glm::mat4 normalTransform;
 	uint32_t modelID;
 	uint32_t jointOffset;
 	uint32_t isSkinned;

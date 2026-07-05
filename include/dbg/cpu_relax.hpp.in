@@ -1,0 +1,9 @@
+#pragma once
+
+@RVIEW_RELAX_HEADER@
+
+namespace rview::core {
+    [[gnu::always_inline]] inline void cpu_relax() noexcept {
+        @RVIEW_RELAX_INSTRUCTION@;
+    }
+}

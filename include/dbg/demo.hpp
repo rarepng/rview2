@@ -7,9 +7,7 @@
 #include <model_manager.hpp>
 
 namespace rdemo {
-//maybe will move to somwhere central along with debug idk..
 
-// consteval?
 inline constexpr uint32_t calc_grid_dim(uint32_t total_instances) {
 	uint32_t dim = 1;
 
@@ -19,6 +17,7 @@ inline constexpr uint32_t calc_grid_dim(uint32_t total_instances) {
 
 	return dim;
 }
+
 inline float pcg_hash(uint32_t input) {
 	uint32_t state = input * 747796405u + 2891336453u;
 	uint32_t word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
@@ -56,9 +55,7 @@ inline constexpr std::array<DemoSpawn, 2> MIXED_GRID_SPAWNS = {{
 					uint32_t num_clips = static_cast<uint32_t>(it->second.defaultClips.size());
 					uint32_t rand_clip_idx = static_cast<uint32_t>(pcg_hash(idx) * num_clips);
 
-					model_manager::g_registry.current_pool[dense] = it->second.defaultClips[rand_clip_idx];
-					model_manager::g_registry.pipeline_flags[dense] = model_manager::ANIM_FLAG_GPU_BAKED;
-					model_manager::g_registry.anim_speed[dense] = 0.8f + (pcg_hash(idx * 1337) * 0.4f);
+					g_scene.poolHandles[dense] = it->second.defaultClips[rand_clip_idx];
 				}
 			}
 		},
@@ -80,9 +77,7 @@ inline constexpr std::array<DemoSpawn, 2> MIXED_GRID_SPAWNS = {{
 					uint32_t num_clips = static_cast<uint32_t>(it->second.defaultClips.size());
 					uint32_t rand_clip_idx = static_cast<uint32_t>(pcg_hash(idx) * num_clips);
 
-					model_manager::g_registry.current_pool[dense] = it->second.defaultClips[rand_clip_idx];
-					model_manager::g_registry.pipeline_flags[dense] = model_manager::ANIM_FLAG_GPU_BAKED;
-					model_manager::g_registry.anim_speed[dense] = 0.8f + (pcg_hash(idx * 999) * 0.4f);
+					g_scene.poolHandles[dense] = it->second.defaultClips[rand_clip_idx];
 				}
 			}
 		}
@@ -91,7 +86,7 @@ inline constexpr std::array<DemoSpawn, 2> MIXED_GRID_SPAWNS = {{
 
 inline constexpr std::array<DemoSpawn, 2> CUBE_GRID_SPAWNS = {{
 		{
-			"resources/t1.glb", 2000, glm::vec3(0.0f),
+			"resources/ren.glb", 200, glm::vec3(0.0f),
 			[](uint32_t idx, uint32_t total, model_manager::Entity e, glm::vec3 origin) {
 				uint32_t dim = calc_grid_dim(total);
 
@@ -111,14 +106,12 @@ inline constexpr std::array<DemoSpawn, 2> CUBE_GRID_SPAWNS = {{
 					uint32_t num_clips = static_cast<uint32_t>(it->second.defaultClips.size());
 					uint32_t rand_clip_idx = static_cast<uint32_t>(pcg_hash(idx) * num_clips);
 
-					model_manager::g_registry.current_pool[dense] = it->second.defaultClips[rand_clip_idx];
-					model_manager::g_registry.pipeline_flags[dense] = model_manager::ANIM_FLAG_GPU_BAKED;
-					model_manager::g_registry.anim_speed[dense] = 0.8f + (pcg_hash(idx * 1337) * 0.4f);
+					g_scene.poolHandles[dense] = it->second.defaultClips[rand_clip_idx];
 				}
 			}
 		},
 		{
-			"resources/t0.glb", 2000, glm::vec3(1.5f, 1.5f, 1.5f),
+			"resources/nelf.glb", 200, glm::vec3(1.5f, 1.5f, 1.5f),
 			[](uint32_t idx, uint32_t total, model_manager::Entity e, glm::vec3 origin) {
 				uint32_t dim = calc_grid_dim(total);
 
@@ -138,9 +131,7 @@ inline constexpr std::array<DemoSpawn, 2> CUBE_GRID_SPAWNS = {{
 					uint32_t num_clips = static_cast<uint32_t>(it->second.defaultClips.size());
 					uint32_t rand_clip_idx = static_cast<uint32_t>(pcg_hash(idx) * num_clips);
 
-					model_manager::g_registry.current_pool[dense] = it->second.defaultClips[rand_clip_idx];
-					model_manager::g_registry.pipeline_flags[dense] = model_manager::ANIM_FLAG_GPU_BAKED;
-					model_manager::g_registry.anim_speed[dense] = 0.8f + (pcg_hash(idx * 999) * 0.4f);
+					g_scene.poolHandles[dense] = it->second.defaultClips[rand_clip_idx];
 				}
 			}
 		}
@@ -148,8 +139,8 @@ inline constexpr std::array<DemoSpawn, 2> CUBE_GRID_SPAWNS = {{
 };
 
 inline constexpr std::array<DemoScene, 2> SCENES = {{
-		{"20k Mixed Grid Chaos", MIXED_GRID_SPAWNS},
-		{"20k Interleaved 3D Cubes", CUBE_GRID_SPAWNS}
+		{"20k mixed grid", MIXED_GRID_SPAWNS},
+		{"20k interleaved", CUBE_GRID_SPAWNS}
 	}
 };
 

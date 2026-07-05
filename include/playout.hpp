@@ -37,7 +37,7 @@ inline bool init_bindless(rvkbucket& objs) {
 		rview::core::global_buffers.free_slots.push(i);
 	}
 
-	std::array<VkDescriptorSetLayoutBinding, 19> bindings{};
+	std::array<VkDescriptorSetLayoutBinding, 20> bindings{};
 
 	// tex
 	bindings[0].binding = 0;
@@ -153,7 +153,13 @@ inline bool init_bindless(rvkbucket& objs) {
 	bindings[18].descriptorCount = rview::core::MAX_FRAMES_IN_FLIGHT;
 	bindings[18].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-	std::array<VkDescriptorBindingFlags, 19> flags{};
+	// cooked animation pool tracks
+	bindings[19].binding = 19;
+	bindings[19].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	bindings[19].descriptorCount = MAX_BINDLESS;
+	bindings[19].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+
+	std::array<VkDescriptorBindingFlags, 20> flags{};
 	VkDescriptorBindingFlags bindlessFlags =
 	    VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
 	    VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
@@ -177,6 +183,7 @@ inline bool init_bindless(rvkbucket& objs) {
 	flags[16] = bindlessFlags;
 	flags[17] = bindlessFlags;
 	flags[18] = bindlessFlags;
+	flags[19] = bindlessFlags;
 
 	VkDescriptorSetLayoutBindingFlagsCreateInfo flagsInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO};
 	flagsInfo.bindingCount = static_cast<uint32_t>(flags.size());
@@ -197,7 +204,7 @@ inline bool init_bindless(rvkbucket& objs) {
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[1].descriptorCount = 1;
 	poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	poolSizes[2].descriptorCount = (MAX_BINDLESS * 3) + (rview::core::MAX_FRAMES_IN_FLIGHT * 9) + 6; // total descriptor counts
+	poolSizes[2].descriptorCount = (MAX_BINDLESS * 4) + (rview::core::MAX_FRAMES_IN_FLIGHT * 9) + 6; // total descriptor counts
 
 	VkDescriptorPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
 	poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;

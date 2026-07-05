@@ -14,6 +14,8 @@
 #include <map>
 #include <dbg/trace.hpp>
 #include <condition_variable>
+#include <rpmalloc.h>
+#include <cpu_relax.hpp>
 
 inline std::array<std::atomic<bool>, 8192> g_cancellation_tokens{}; // magic
 
@@ -134,7 +136,7 @@ public:
 					return false;
 				}
 
-				std::this_thread::yield();
+				rview::core::cpu_relax();
 			} else {
 				pos = dequeue_pos.load(std::memory_order_relaxed);
 			}
@@ -232,36 +234,61 @@ public:
 
 
 class ThreadLocalArena {
-	std::unique_ptr<uint8_t[]> buffer;
-	size_t capacity = 0;
-	size_t offset = 0;
+private:
+	struct Block {
+		std::unique_ptr<uint8_t[]> data;
+		size_t capacity;
+		size_t offset = 0;
+
+		explicit Block(size_t cap)
+			: data{std::make_unique_for_overwrite<uint8_t[]>(cap)}, capacity{cap} {}
+	};
+
+	std::vector<Block> blocks;
+	size_t defaultBlockSize = 0;
 
 public:
 	ThreadLocalArena() = default;
 
-	void init(size_t size) {
-		buffer = std::make_unique<uint8_t[]>(size);
-		capacity = size;
-		offset = 0;
+	void init(size_t initialBlockSize) {
+		defaultBlockSize = initialBlockSize;
+		blocks.emplace_back(initialBlockSize);
 	}
 
-	void* allocate(size_t size, size_t alignment = 64) {
-		size_t current_addr = reinterpret_cast<size_t>(buffer.get() + offset);
-		size_t padding = (alignment - (current_addr % alignment)) % alignment;
-
-		if (offset + padding + size > capacity) {
-			// [[OERFLOW]]
-			return nullptr;
+	[[nodiscard]] void* allocate(size_t size, size_t alignment = 64) {
+		if (blocks.empty()) [[unlikely]] {
+			init(defaultBlockSize > 0 ? defaultBlockSize : 8 * 1024 * 1024);
 		}
 
-		offset += padding;
-		void* ptr = buffer.get() + offset;
-		offset += size;
+		Block* current = &blocks.back();
+
+		size_t current_addr = reinterpret_cast<size_t>(current->data.get() + current->offset);
+		size_t padding = (alignment - (current_addr % alignment)) % alignment;
+
+		if (current->offset + padding + size > current->capacity) [[unlikely]] {
+			size_t newCapacity = std::max(defaultBlockSize, size + alignment);
+			blocks.emplace_back(newCapacity);
+
+			current = &blocks.back();
+			current_addr = reinterpret_cast<size_t>(current->data.get() + current->offset);
+			padding = (alignment - (current_addr % alignment)) % alignment;
+		}
+
+		current->offset += padding;
+		void* ptr = current->data.get() + current->offset;
+		current->offset += size;
+
 		return ptr;
 	}
 
-	void reset() {
-		offset = 0;
+	void reset() noexcept {
+		for (auto& block : blocks) {
+			block.offset = 0;
+		}
+
+		if (blocks.size() > 1) {
+			blocks.erase(blocks.begin() + 1, blocks.end());
+		}
 	}
 };
 
@@ -272,9 +299,9 @@ inline thread_local uint32_t t_arena_index = 0xFFFFFFFF;
 
 // temp memory for any job that requires [[invoke]]
 inline ThreadLocalArena& get_local_arena() {
-	if (t_arena_index == 0xFFFFFFFF) {
+	if (t_arena_index == 0xFFFFFFFF) [[unlikely]] {
 		t_arena_index = g_arena_counter.fetch_add(1, std::memory_order_relaxed) % MAX_WORKER_THREADS;
-		g_thread_arenas[t_arena_index].init(64 * 1024 * 1024); // 64MB sandbox per thread
+		g_thread_arenas[t_arena_index].init(8 * 1024 * 1024);
 	}
 
 	return g_thread_arenas[t_arena_index];
@@ -286,9 +313,7 @@ public:
 	inline static constexpr uint32_t QUEUE_SIZE = 1024;
 
 	threadpool() {
-		uint32_t num_threads = std::thread::hardware_concurrency();
-
-		if (num_threads <= 1) num_threads = 2;
+		uint32_t num_threads = std::max(2u, std::thread::hardware_concurrency() - 2);
 
 		running.store(true, std::memory_order_release);
 
@@ -330,7 +355,7 @@ public:
 		job new_job = job::make(std::forward<F>(f));
 
 		while (!queue.push(new_job)) {
-			std::this_thread::yield();
+			rview::core::cpu_relax();
 		}
 
 		jobs_available.release();
@@ -361,19 +386,93 @@ private:
 	void worker_loop() {
 		rdebug::set_thread_name("worker");
 
+		rpmalloc_thread_initialize();
+
 		while (running.load(std::memory_order_acquire)) {
+			rpmalloc_thread_collect();
 			jobs_available.acquire();
 
-			if (!running.load(std::memory_order_acquire)) return;
+			if (!running.load(std::memory_order_acquire)) {
+				rpmalloc_thread_finalize(1);
+				return;
+			}
 
 			ZoneScopedN("jobexec");
 
 			while (help_execute()) {}
 		}
+
+		rpmalloc_thread_finalize(1);
 	}
 };
 
 inline threadpool g_jobs{};
+
+class reaper_thread {
+public:
+	reaper_thread() {
+		running.store(true, std::memory_order_release);
+		worker = std::thread(&reaper_thread::loop, this);
+	}
+
+	~reaper_thread() {
+		if (running.exchange(false, std::memory_order_acq_rel)) {
+			items_available.release();
+
+			if (worker.joinable()) worker.join();
+
+			job current_job;
+
+			while (queue.pop(current_job)) {
+				if (current_job.destroy) current_job.destroy(current_job.payload);
+			}
+		}
+	}
+
+	template<typename F>
+	void enqueue(F&& f) {
+		job new_job = job::make(std::forward<F>(f));
+
+		while (!queue.push(new_job)) {
+			rview::core::cpu_relax();
+		}
+
+		items_available.release();
+	}
+
+private:
+	LockFreeMPMC<job, 1024> queue;
+	std::counting_semaphore<std::numeric_limits<std::ptrdiff_t>::max()> items_available{0};
+	std::atomic<bool> running{false};
+	std::thread worker;
+
+	void loop() {
+		rdebug::set_thread_name("reaper");
+		rpmalloc_thread_initialize();
+
+		while (running.load(std::memory_order_acquire)) {
+			rpmalloc_thread_collect();
+			items_available.acquire();
+
+			if (!running.load(std::memory_order_acquire)) {
+				rpmalloc_thread_finalize(1);
+				return;
+			}
+
+			ZoneScopedN("reaper_gc");
+			job current_job;
+
+			while (queue.pop(current_job)) {
+				current_job.run_and_dispose();
+			}
+		}
+
+		rpmalloc_thread_finalize(1);
+	}
+};
+
+// idk which is better, fan out or this but here it is exclusively for GC
+inline reaper_thread g_reaper{};
 
 inline JobStringArena g_job_strings(1024 * 1024);
 inline std::atomic<int> active_io_jobs{0};

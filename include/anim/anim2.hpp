@@ -9,6 +9,7 @@
 #include <fastgltf/types.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <iostream>
 
 // in to replace vkclip, vkchannel, vknode [[HOPEFULLY]]
 namespace fastgltf {
@@ -143,6 +144,7 @@ inline void* arena_alloc_aligned(ThreadLocalArena& arena, size_t size, size_t al
 	void* raw = arena.allocate(size + alignment);
 
 	if (!raw) {
+		std::cout << "ARENA OOM!!" << std::endl;
 		throw std::runtime_error("CRITICAL: ARENA OOM.");
 	}
 
@@ -162,11 +164,8 @@ inline DODRawClip extract_raw_clip(ThreadLocalArena& arena, const fastgltf::Asse
 
 	clip.channels = static_cast<DODRawChannel*>(arena_alloc_aligned(arena, clip.channelCount * sizeof(DODRawChannel)));
 
-	float** timeCache = static_cast<float**>(arena_alloc_aligned(arena, asset.accessors.size() * sizeof(float*)));
-	std::memset(timeCache, 0, asset.accessors.size() * sizeof(float*));
-
-	void** valCache = static_cast<void**>(arena_alloc_aligned(arena, asset.accessors.size() * sizeof(void*)));
-	std::memset(valCache, 0, asset.accessors.size() * sizeof(void*));
+	std::vector<float*> timeCache(asset.accessors.size(), nullptr);
+	std::vector<void*> valCache(asset.accessors.size(), nullptr);
 
 	for (uint32_t i = 0; i < clip.channelCount; ++i) {
 		const auto& inChan = anim.channels[i];

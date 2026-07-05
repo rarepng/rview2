@@ -70,6 +70,10 @@ StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t drop
 		return staging;
 	}
 
+	// for debug please ignore
+	// auto* leakedAsset = new auto(parser.loadGltfBinary(mappedFile.get(), std::filesystem::absolute(filepath)));
+	// fastgltf::Asset& asset = leakedAsset->get();
+
 	fastgltf::Asset& asset = assetResult.get();
 
 	staging.textures.reserve(asset.images.size());
@@ -442,42 +446,41 @@ StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t drop
 				uint32_t aIdx = static_cast<uint32_t>(animIdx);
 
 				g_jobs.enqueue([pCtx, aIdx]() {
-					ScopedJobGuard guard(*pCtx->pending_clips);
+					// ScopedJobGuard guard(*pCtx->pending_clips);
 
 					if (!g_jobs.is_running() ||
 					        (pCtx->dropID != 0xFFFFFFFF && g_cancellation_tokens[pCtx->dropID].load(std::memory_order_relaxed))) {
 						return;
 					}
 
+					auto* pArena = new ThreadLocalArena();
+					pArena->init(4 * 1024 * 1024); // magic
+
 					const auto& anim0 = pCtx->asset->animations[aIdx];
-
-					ThreadLocalArena isolatedArena;
-					isolatedArena.init(128 * 1024 * 1024); // magic
-
-					DODRawClip rawClip = extract_raw_clip(isolatedArena, *pCtx->asset, anim0);
-
+					DODRawClip rawClip = extract_raw_clip(*pArena, *pCtx->asset, anim0);
 					JobSkeletonState jobSkel;
-					jobSkel.allocate_from_arena(isolatedArena, *pCtx->staging->parsed_skel);
+					jobSkel.allocate_from_arena(*pArena, *pCtx->staging->parsed_skel);
 
-					AnimPoolData baked{};
-					baked.name = std::string(rawClip.name);
-					baked.skeletonSignature = GenerateSkeletonSignature(*pCtx->staging->parsed_skel);
-					baked.duration = rawClip.duration;
-					baked.sampleRate = rview::anim::samplerate;
-					baked.nodeCount = jobSkel.nodeCount;
-					baked.jointCount = jobSkel.jointCount;
 
-					baked.frameCount = static_cast<uint32_t>(baked.duration * baked.sampleRate) + 1;
+					AnimPoolData* baked = new AnimPoolData{};
+					baked->name = std::string(rawClip.name);
+					baked->skeletonSignature = GenerateSkeletonSignature(*pCtx->staging->parsed_skel);
+					baked->duration = rawClip.duration;
+					baked->sampleRate = rview::anim::samplerate;
+					baked->nodeCount = jobSkel.nodeCount;
+					baked->jointCount = jobSkel.jointCount;
 
-					if (baked.duration <= 0.0f || baked.frameCount == 0) baked.frameCount = 1;
+					baked->frameCount = static_cast<uint32_t>(baked->duration * baked->sampleRate) + 1;
 
-					baked.globalTransforms.resize(baked.frameCount * baked.nodeCount, glm::mat4(1.0f));
-					baked.finalJointDQs.resize(baked.frameCount * baked.jointCount, DualQuatScale());
-					baked.localTracks.resize(baked.frameCount * baked.nodeCount);
+					if (baked->duration <= 0.0f || baked->frameCount == 0) baked->frameCount = 1;
 
-					std::vector<LocalTRS> restPoseTracks(baked.nodeCount);
+					baked->globalTransforms.resize(baked->frameCount * baked->nodeCount, glm::mat4(1.0f));
+					baked->finalJointDQs.resize(baked->frameCount * baked->jointCount, DualQuatScale());
+					baked->localTracks.resize(baked->frameCount * baked->nodeCount);
 
-					for (uint32_t n = 0; n < baked.nodeCount; ++n) {
+					auto* restPoseTracks = new std::vector<LocalTRS>(baked->nodeCount);
+
+					for (uint32_t n = 0; n < baked->nodeCount; ++n) {
 						glm::mat4 restMat = pCtx->staging->parsed_skel->localTransforms[n];
 						LocalTRS trs;
 						trs.T = glm::vec3(restMat[3]);
@@ -489,12 +492,12 @@ StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t drop
 						    trs.S.z > 0.0001f ? glm::vec3(restMat[2]) / trs.S.z : glm::vec3(0, 0, 1)
 						);
 						trs.R = glm::quat_cast(rotMat);
-						restPoseTracks[n] = trs;
+						(*restPoseTracks)[n] = trs;
 					}
 
 					uint32_t framesPerBatch = 64;
-					uint32_t batchCount = (baked.frameCount + framesPerBatch - 1) / framesPerBatch;
-					std::atomic<int> batchesPending{static_cast<int>(batchCount)};
+					uint32_t batchCount = (baked->frameCount + framesPerBatch - 1) / framesPerBatch;
+					// std::atomic<int> batchesPending{static_cast<int>(batchCount)};
 
 					struct SubJobCtx {
 						AnimPoolData* baked;
@@ -503,111 +506,128 @@ StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t drop
 						DODRawClip* rawClip;
 						std::atomic<int>* batchesPending;
 						uint32_t framesPerBatch;
-					} subCtx { &baked, pCtx, &restPoseTracks, &rawClip, &batchesPending, framesPerBatch };
+						ThreadLocalArena* pArena;
+					};
 
-					SubJobCtx* pSubCtx = &subCtx;
+					auto* pSubCtx = new SubJobCtx{
+						baked,
+						pCtx,
+						restPoseTracks,
+						new DODRawClip(rawClip),
+						new std::atomic<int>(batchCount),
+						framesPerBatch,
+						pArena
+					};
 
 					for (uint32_t b = 0; b < batchCount; ++b) {
-						g_jobs.enqueue([pSubCtx, b]() {
-							ScopedJobGuard batchGuard(*pSubCtx->batchesPending);
+						g_jobs.enqueue([pSubCtx, b, aIdx]() {
+							// ScopedJobGuard batchGuard(*pSubCtx->batchesPending);
 
 							if (pSubCtx->pCtx->dropID != 0xFFFFFFFF &&
 							        g_cancellation_tokens[pSubCtx->pCtx->dropID].load(std::memory_order_relaxed)) {
-								return;
+								// return;
+							} else {
+								// pointer containment unit
+								AnimPoolData& bakedref = *pSubCtx->baked;
+								const DODRawClip& rawClip = *pSubCtx->rawClip;
+								const std::vector<LocalTRS>& restPoseTracks = *pSubCtx->restPoseTracks;
+								const ParsedSkeleton& skel = *pSubCtx->pCtx->staging->parsed_skel;
+								const auto& mask = *pSubCtx->pCtx->mask;
+								const uint32_t sampleRate = bakedref.sampleRate;
+
+
+								std::vector<glm::mat4> localTransforms(bakedref.nodeCount);
+								std::vector<glm::mat4> globalTransforms(bakedref.nodeCount);
+								std::vector<glm::mat4> finalJointMatrices(bakedref.jointCount);
+								std::vector<uint8_t> dirtyNodes(bakedref.nodeCount, 0);
+
+								uint32_t startF = b * pSubCtx->framesPerBatch;
+								uint32_t endF = std::min(startF + pSubCtx->framesPerBatch, bakedref.frameCount);
+
+								for (uint32_t f = startF; f < endF; ++f) {
+
+									// TOO COLD TO BE HERE
+									// if (pSubCtx->pCtx->dropID != 0xFFFFFFFF &&
+									// 	g_cancellation_tokens[pSubCtx->pCtx->dropID].load(std::memory_order_relaxed)) {
+									// 	return;
+									// }
+
+									float t = static_cast<float>(f) / sampleRate;
+
+									std::memcpy(&bakedref.localTracks[f * bakedref.nodeCount], restPoseTracks.data(), bakedref.nodeCount * sizeof(LocalTRS));
+									std::memcpy(localTransforms.data(), skel.localTransforms.get(), bakedref.nodeCount * sizeof(glm::mat4));
+									std::fill(dirtyNodes.begin(), dirtyNodes.end(), 0);
+
+									for (uint32_t c = 0; c < rawClip.channelCount; ++c) {
+										const DODRawChannel& chan = rawClip.channels[c];
+
+										if (!mask[chan.targetNode]) continue;
+
+										int32_t topoIdx = skel.gltfToTopoMap[chan.targetNode];
+
+										if (topoIdx >= 0 && topoIdx < static_cast<int32_t>(bakedref.nodeCount)) {
+											LocalTRS& trs = bakedref.localTracks[(f * bakedref.nodeCount) + topoIdx];
+
+											if (chan.path == AnimPathType::Rotation) trs.R = chan.sample_quat(t);
+											else if (chan.path == AnimPathType::Scale) trs.S = chan.sample_vec3(t);
+											else if (chan.path == AnimPathType::Translation) trs.T = chan.sample_vec3(t);
+
+											dirtyNodes[topoIdx] = 1;
+										}
+									}
+
+									for (uint32_t n = 0; n < bakedref.nodeCount; ++n) {
+										if (dirtyNodes[n]) {
+											const LocalTRS& trs = bakedref.localTracks[(f * bakedref.nodeCount) + n];
+											localTransforms[n] = glm::translate(glm::mat4(1.0f), trs.T) * glm::mat4_cast(trs.R) * glm::scale(glm::mat4(1.0f), trs.S);
+										}
+									}
+
+									for (uint32_t i = 0; i < bakedref.nodeCount; ++i) {
+										int32_t parent = skel.parentIndices[i];
+
+										if (parent >= 0) {
+											globalTransforms[i] = globalTransforms[parent] * localTransforms[i];
+										} else {
+											globalTransforms[i] = localTransforms[i];
+										}
+									}
+
+									for (uint32_t j = 0; j < bakedref.jointCount; ++j) {
+										uint32_t nodeIdx = skel.jointToNodeMap[j];
+										finalJointMatrices[j] = globalTransforms[nodeIdx] * skel.inverseBindMatrices[j];
+									}
+
+									uint32_t globalOffset = f * bakedref.nodeCount;
+									uint32_t jointOffset = f * bakedref.jointCount;
+									std::memcpy(&bakedref.globalTransforms[globalOffset], globalTransforms.data(), bakedref.nodeCount * sizeof(glm::mat4));
+
+									for (uint32_t j = 0; j < bakedref.jointCount; ++j) {
+										bakedref.finalJointDQs[jointOffset + j] = Mat4ToDualQuatScale(finalJointMatrices[j]);
+									}
+								}
 							}
 
-							// pointer containment unit
-							AnimPoolData& baked = *pSubCtx->baked;
-							const DODRawClip& rawClip = *pSubCtx->rawClip;
-							const std::vector<LocalTRS>& restPoseTracks = *pSubCtx->restPoseTracks;
-							const ParsedSkeleton& skel = *pSubCtx->pCtx->staging->parsed_skel;
-							const auto& mask = *pSubCtx->pCtx->mask;
-							const uint32_t sampleRate = baked.sampleRate;
+							if (pSubCtx->batchesPending->fetch_sub(1, std::memory_order_acq_rel) == 1) {
 
-							std::vector<glm::mat4> localTransforms(baked.nodeCount);
-							std::vector<glm::mat4> globalTransforms(baked.nodeCount);
-							std::vector<glm::mat4> finalJointMatrices(baked.jointCount);
-							std::vector<uint8_t> dirtyNodes(baked.nodeCount, 0);
+								pSubCtx->pCtx->staging->parsedPools[aIdx] = std::move(*pSubCtx->baked);
+								pSubCtx->pCtx->pending_clips->fetch_sub(1, std::memory_order_release);
 
-							uint32_t startF = b * pSubCtx->framesPerBatch;
-							uint32_t endF = std::min(startF + pSubCtx->framesPerBatch, baked.frameCount);
-
-							for (uint32_t f = startF; f < endF; ++f) {
-
-								// TOO COLD TO BE HERE
-								// if (pSubCtx->pCtx->dropID != 0xFFFFFFFF &&
-								// 	g_cancellation_tokens[pSubCtx->pCtx->dropID].load(std::memory_order_relaxed)) {
-								// 	return;
-								// }
-
-								float t = static_cast<float>(f) / sampleRate;
-
-								std::memcpy(&baked.localTracks[f * baked.nodeCount], restPoseTracks.data(), baked.nodeCount * sizeof(LocalTRS));
-								std::memcpy(localTransforms.data(), skel.localTransforms.get(), baked.nodeCount * sizeof(glm::mat4));
-								std::fill(dirtyNodes.begin(), dirtyNodes.end(), 0);
-
-								for (uint32_t c = 0; c < rawClip.channelCount; ++c) {
-									const DODRawChannel& chan = rawClip.channels[c];
-
-									if (!mask[chan.targetNode]) continue;
-
-									int32_t topoIdx = skel.gltfToTopoMap[chan.targetNode];
-
-									if (topoIdx >= 0 && topoIdx < static_cast<int32_t>(baked.nodeCount)) {
-										LocalTRS& trs = baked.localTracks[(f * baked.nodeCount) + topoIdx];
-
-										if (chan.path == AnimPathType::Rotation) trs.R = chan.sample_quat(t);
-										else if (chan.path == AnimPathType::Scale) trs.S = chan.sample_vec3(t);
-										else if (chan.path == AnimPathType::Translation) trs.T = chan.sample_vec3(t);
-
-										dirtyNodes[topoIdx] = 1;
-									}
-								}
-
-								for (uint32_t n = 0; n < baked.nodeCount; ++n) {
-									if (dirtyNodes[n]) {
-										const LocalTRS& trs = baked.localTracks[(f * baked.nodeCount) + n];
-										localTransforms[n] = glm::translate(glm::mat4(1.0f), trs.T) * glm::mat4_cast(trs.R) * glm::scale(glm::mat4(1.0f), trs.S);
-									}
-								}
-
-								for (uint32_t i = 0; i < baked.nodeCount; ++i) {
-									int32_t parent = skel.parentIndices[i];
-
-									if (parent >= 0) {
-										globalTransforms[i] = globalTransforms[parent] * localTransforms[i];
-									} else {
-										globalTransforms[i] = localTransforms[i];
-									}
-								}
-
-								for (uint32_t j = 0; j < baked.jointCount; ++j) {
-									uint32_t nodeIdx = skel.jointToNodeMap[j];
-									finalJointMatrices[j] = globalTransforms[nodeIdx] * skel.inverseBindMatrices[j];
-								}
-
-								uint32_t globalOffset = f * baked.nodeCount;
-								uint32_t jointOffset = f * baked.jointCount;
-								std::memcpy(&baked.globalTransforms[globalOffset], globalTransforms.data(), baked.nodeCount * sizeof(glm::mat4));
-
-								for (uint32_t j = 0; j < baked.jointCount; ++j) {
-									baked.finalJointDQs[jointOffset + j] = Mat4ToDualQuatScale(finalJointMatrices[j]);
-								}
+								delete pSubCtx->baked;
+								delete pSubCtx->restPoseTracks;
+								delete pSubCtx->rawClip;
+								delete pSubCtx->batchesPending;
+								delete pSubCtx->pArena;
+								delete pSubCtx;
 							}
 						});
 					}
-
-					while (batchesPending.load(std::memory_order_acquire) > 0) {
-						if (!g_jobs.help_execute()) std::this_thread::yield();
-					}
-
-					pCtx->staging->parsedPools[aIdx] = std::move(baked);
 				});
 			}
 
 			while (pending_clips.load(std::memory_order_acquire) > 0) {
 				if (!g_jobs.help_execute()) {
-					std::this_thread::yield();
+					rview::core::cpu_relax();
 				}
 			}
 		}
@@ -859,13 +879,91 @@ uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, Stagi
 		);
 	}
 
+	std::vector<VkDescriptorBufferInfo> animBufferInfos;
+	std::vector<uint32_t> animBindlessIndices;
+
+	for (auto& pool : staging.parsedPools) {
+		if (pool.frameCount > 0 && (pool.pipelineFlags & ANIM_FLAG_GPU_BAKED) != 0) {
+			size_t byteSize = pool.finalJointDQs.size() * sizeof(DualQuatScale);
+			size_t alignedSize = (byteSize + 255) & ~255;
+
+			vkvbo::init(mvkobjs, pool.bakedAnimVBO, alignedSize,
+			            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+
+			VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(byteSize);
+			std::memcpy(mvkobjs.sbelts[rview::core::currentFrame].mappedData + beltOffset,
+			            pool.finalJointDQs.data(), byteSize);
+			vmaFlushAllocation(mvkobjs.alloc, mvkobjs.sbelts[rview::core::currentFrame].allocation, beltOffset, byteSize);
+
+			VkBufferCopy region{beltOffset, 0, byteSize};
+			vkCmdCopyBuffer(cmd, mvkobjs.sbelts[rview::core::currentFrame].buffer, pool.bakedAnimVBO.buffer, 1, &region);
+
+			pool.bakedBindlessID = rview::core::globalBufferCounter.fetch_add(1, std::memory_order_relaxed);
+
+			animBufferInfos.push_back({pool.bakedAnimVBO.buffer, 0, byteSize});
+			animBindlessIndices.push_back(pool.bakedBindlessID);
+
+			if (!pool.retainCpuData) {
+				PurgePoolCPUDataAsync(pool);
+			}
+		}
+	}
+
+	if (!animBufferInfos.empty()) {
+		std::vector<VkWriteDescriptorSet> writes(animBufferInfos.size());
+
+		for (size_t i = 0; i < animBufferInfos.size(); ++i) {
+			writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			writes[i].dstSet = rview::core::globalBindlessSet;
+			writes[i].dstBinding = 19;
+			writes[i].dstArrayElement = animBindlessIndices[i];
+			writes[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			writes[i].descriptorCount = 1;
+			writes[i].pBufferInfo = &animBufferInfos[i];
+		}
+
+		std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
+		vkUpdateDescriptorSets(mvkobjs.vkdevice.device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+	}
+
+	// just to separate the locks!
+	if (!animBufferInfos.empty()) {
+		std::vector<VkBufferMemoryBarrier2> barriers(animBufferInfos.size());
+
+		for (size_t i = 0; i < animBufferInfos.size(); ++i) {
+			barriers[i] = {VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
+			barriers[i].srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+			barriers[i].srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+			barriers[i].dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+			barriers[i].dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+			barriers[i].buffer = animBufferInfos[i].buffer;
+			barriers[i].offset = 0;
+			barriers[i].size = VK_WHOLE_SIZE;
+		}
+
+		VkDependencyInfo dep{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+		dep.bufferMemoryBarrierCount = static_cast<uint32_t>(barriers.size());
+		dep.pBufferMemoryBarriers = barriers.data();
+		vkCmdPipelineBarrier2(cmd, &dep);
+	}
+
 	std::vector<uint32_t> committedHandles;
 	committedHandles.reserve(staging.parsedPools.size());
 
 	for (auto& pool : staging.parsedPools) {
 		if (pool.frameCount > 0) {
+			GpuBuffer orphanedVBO = pool.bakedAnimVBO;
+			uint32_t orphanedID = pool.bakedBindlessID;
+
 			uint32_t handle = g_animPoolRegistry.RegisterPool(std::move(pool));
-			committedHandles.push_back(handle);
+
+			if (handle == model_manager::FALLBACK_POOL_HANDLE) {
+				if (orphanedVBO.buffer != VK_NULL_HANDLE) {
+					g_orphanedAnimBuffers.push({orphanedVBO, orphanedID});
+				}
+			} else {
+				committedHandles.push_back(handle);
+			}
 		}
 	}
 
@@ -889,24 +987,33 @@ uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, Stagi
 	return assignedModelID;
 }
 
-void upload_joint_matrices(rvkbucket& mvkobjs) {
-	if (g_joint_final_matrices.empty()) return;
+void upload_joint_matrices(rvkbucket& mvkobjs, uint32_t read_frame) {
+	if (g_joint_final_matrices.empty() || g_joint_final_matrices[read_frame].empty()) return;
 
-	size_t upload_bytes = g_joint_final_matrices.size() * sizeof(DualQuatScale);
-	uint32_t frame_idx = rview::core::currentFrame;
+	uint32_t high_watermark = g_animPoolRegistry.jointAlloc.get_high_watermark();
 
-	if (upload_bytes > g_gpu_joint_buffers[frame_idx].size) {
+	if (high_watermark <= MAX_SAFE_JOINTS) return;
+
+	uint32_t active_dynamic_joints = high_watermark - MAX_SAFE_JOINTS;
+	size_t upload_bytes = active_dynamic_joints * sizeof(DualQuatScale);
+	size_t safeBlockOffsetBytes = MAX_SAFE_JOINTS * sizeof(DualQuatScale);
+
+	uint32_t gpu_frame_idx = rview::core::currentFrame;
+
+	if (safeBlockOffsetBytes + upload_bytes > g_gpu_joint_buffers[gpu_frame_idx].size) {
 		std::cerr << "CRITICAL: Joint Mega-Buffer overflowed GPU capacity!\n";
 		return;
 	}
 
 	void* mappedData;
-	vmaMapMemory(mvkobjs.alloc, g_gpu_joint_buffers[frame_idx].alloc, &mappedData);
+	vmaMapMemory(mvkobjs.alloc, g_gpu_joint_buffers[gpu_frame_idx].alloc, &mappedData);
 
-	std::memcpy(mappedData, g_joint_final_matrices.data(), upload_bytes);
+	uint8_t* destPtr = static_cast<uint8_t*>(mappedData) + safeBlockOffsetBytes;
 
-	vmaFlushAllocation(mvkobjs.alloc, g_gpu_joint_buffers[frame_idx].alloc, 0, upload_bytes);
-	vmaUnmapMemory(mvkobjs.alloc, g_gpu_joint_buffers[frame_idx].alloc);
+	std::memcpy(destPtr, g_joint_final_matrices[read_frame].data(), upload_bytes);
+
+	vmaFlushAllocation(mvkobjs.alloc, g_gpu_joint_buffers[gpu_frame_idx].alloc, safeBlockOffsetBytes, upload_bytes);
+	vmaUnmapMemory(mvkobjs.alloc, g_gpu_joint_buffers[gpu_frame_idx].alloc);
 }
 
 
@@ -914,6 +1021,16 @@ void init_gpu_joint_buffers(rvkbucket& mvkobjs) {
 	g_gpu_joint_buffers.resize(rview::core::MAX_FRAMES_IN_FLIGHT);
 
 	size_t bufferSize = rview::anim::maxjoints * sizeof(DualQuatScale);
+
+	std::vector<DualQuatScale> safeBlock(MAX_SAFE_JOINTS);
+
+	for (uint32_t i = 0; i < MAX_SAFE_JOINTS; ++i) {
+		safeBlock[i].real = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+		safeBlock[i].dual = glm::quat(0.0f, 0.0f, 0.0f, 0.0f);
+		safeBlock[i].scale = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
+	}
+
+	size_t safeBlockBytes = MAX_SAFE_JOINTS * sizeof(DualQuatScale);
 
 	for (uint32_t i = 0; i < rview::core::MAX_FRAMES_IN_FLIGHT; ++i) {
 		VkBufferCreateInfo binfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
@@ -924,14 +1041,19 @@ void init_gpu_joint_buffers(rvkbucket& mvkobjs) {
 		vmaallocinfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 		vmaallocinfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
+		VmaAllocationInfo allocInfo;
+
 		if (vmaCreateBuffer(mvkobjs.alloc, &binfo, &vmaallocinfo,
 		                    &g_gpu_joint_buffers[i].buffer,
-		                    &g_gpu_joint_buffers[i].alloc, nullptr) != VK_SUCCESS) {
+		                    &g_gpu_joint_buffers[i].alloc, &allocInfo) != VK_SUCCESS) {
 			std::cerr << "Fatal: Failed to allocate GPU joint buffer!\n";
 			return;
 		}
 
 		g_gpu_joint_buffers[i].size = bufferSize;
+
+		std::memcpy(allocInfo.pMappedData, safeBlock.data(), safeBlockBytes);
+		vmaFlushAllocation(mvkobjs.alloc, g_gpu_joint_buffers[i].alloc, 0, safeBlockBytes);
 
 		VkDescriptorBufferInfo ssboInfo{g_gpu_joint_buffers[i].buffer, 0, VK_WHOLE_SIZE};
 		VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
@@ -945,5 +1067,4 @@ void init_gpu_joint_buffers(rvkbucket& mvkobjs) {
 		vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &write, 0, nullptr);
 	}
 }
-
 }

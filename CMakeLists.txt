@@ -4,6 +4,9 @@ project(rview2 LANGUAGES CXX C)
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_C_STANDARD 23)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+
 set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
 
 find_package(Vulkan REQUIRED)
@@ -62,10 +65,23 @@ if(ASTYLE_EXECUTABLE)
         "include/*.hpp"
         "mods/*.cxxm"
     )
-    add_custom_target(format
+    add_custom_target(astyleformat
         COMMAND ${ASTYLE_EXECUTABLE} --options=${CMAKE_SOURCE_DIR}/.astylerc ${ALL_SOURCE_FILES}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "astyling..."
+    )
+endif()
+find_program(CLANG_FORMAT_EXECUTABLE clang-format)
+if(CLANG_FORMAT_EXECUTABLE)
+    file(GLOB_RECURSE ALL_SOURCE_FILES 
+        "src/*.cpp"
+        "include/*.hpp"
+        "mods/*.cxxm"
+    )
+    add_custom_target(format
+        COMMAND ${CLANG_FORMAT_EXECUTABLE} -i -style=file ${ALL_SOURCE_FILES}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "clang-formating..."
     )
 endif()
 
@@ -242,6 +258,7 @@ CPMAddPackage(
     EXCLUDE_FROM_ALL YES
     DOWNLOAD_ONLY YES
 )
+
 CPMAddPackage(
     NAME Spout2
     GITHUB_REPOSITORY leadedge/Spout2
@@ -249,6 +266,34 @@ CPMAddPackage(
     EXCLUDE_FROM_ALL YES
     DOWNLOAD_ONLY YES
 )
+
+CPMAddPackage(
+    NAME rpmalloc
+    GITHUB_REPOSITORY rampantpixels/rpmalloc
+    GIT_TAG 1.4.5
+    EXCLUDE_FROM_ALL YES
+    DOWNLOAD_ONLY YES
+)
+
+if(rpmalloc_ADDED)
+    add_library(rpmalloc_static STATIC ${rpmalloc_SOURCE_DIR}/rpmalloc/rpmalloc.c)
+    target_include_directories(rpmalloc_static PUBLIC ${rpmalloc_SOURCE_DIR}/rpmalloc)
+    
+    target_compile_definitions(rpmalloc_static PUBLIC 
+        ENABLE_STATISTICS=0 
+        ENABLE_ASSERTS=0
+    )
+    
+    target_compile_definitions(rpmalloc_static PRIVATE
+        "$<$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>:NDEBUG>"
+    )
+    
+    target_compile_options(rpmalloc_static PRIVATE
+        "$<$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>,$<CONFIG:Distribution>,$<CONFIG:BleedingEdge>,$<CONFIG:MinSizeRel>>:-O3>"
+        "$<$<CONFIG:BleedingEdge>:-march=native>"
+        "$<$<CONFIG:Distribution>:-march=x86-64-v3>"
+    )
+endif()
 
 if(WIN32)
     add_library(spout_dx STATIC EXCLUDE_FROM_ALL
@@ -304,6 +349,25 @@ set(OTHER_SOURCES
     ${imguizmo_SOURCE_DIR}/src/ImGuizmo.cpp
 )
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" _arch)
+if(_arch MATCHES "(x86_64|amd64|i386|i686)")
+    set(RVIEW_RELAX_HEADER "#include <immintrin.h>")
+    set(RVIEW_RELAX_INSTRUCTION "_mm_pause()")
+elseif(_arch MATCHES "(arm|aarch64)")
+    set(RVIEW_RELAX_HEADER "")
+    set(RVIEW_RELAX_INSTRUCTION "asm volatile(\"yield\" ::: \"memory\")")
+else()
+    set(RVIEW_RELAX_HEADER "#include <thread>")
+    set(RVIEW_RELAX_INSTRUCTION "std::this_thread::yield()")
+endif()
+
+configure_file(
+    "${PROJECT_SOURCE_DIR}/include/dbg/cpu_relax.hpp.in"
+    "${PROJECT_BINARY_DIR}/generated/include/cpu_relax.hpp"
+    @ONLY
+)
+
 if(CMAKE_BUILD_TYPE STREQUAL "x") # scrapped
 
     add_library(rview2 ${OTHER_SOURCES} ${PROJECT_SOURCES} ${PROJECT_HEADERS})
@@ -321,6 +385,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "x") # scrapped
         "${stb_SOURCE_DIR}"
         "${imgui_SOURCE_DIR}"
         "${tracy_SOURCE_DIR}/public"
+        "${rpmalloc_SOURCE_DIR}/rpmalloc"
         "${submodules_path}/jolt"
         "${submodules_path}/meshoptimizer/src"
         "${PROJECT_SOURCE_DIR}/include"
@@ -374,6 +439,7 @@ target_link_libraries(rview2
         glm
         Vulkan::Vulkan
         vk-bootstrap::vk-bootstrap
+        rpmalloc_static
         "-Wl,--start-group"
         GameNetworkingSockets_s
         OpenSSL::SSL
@@ -419,6 +485,7 @@ target_include_directories(rview2
         "${submodules_path}/vma/include"
         "${submodules_path}/jolt"
         "${submodules_path}/meshoptimizer/src"
+        "${PROJECT_BINARY_DIR}/generated/include" # in bin just in case of cross compiling
         "${PROJECT_SOURCE_DIR}/include"
 )
 
@@ -493,6 +560,7 @@ function(add_shader)
         COMMAND slangc
             -entry ${ARG_ENTRY}
             -stage ${ARG_STAGE}
+            -profile sm_6_10 # cba
             ${SLANG_COMMON_FLAGS}
             "${SHADER_SOURCE}"
             -o "${SPV_OUTPUT}"

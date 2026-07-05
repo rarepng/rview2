@@ -61,6 +61,7 @@ inline void configure_selector(vkb::PhysicalDeviceSelector& selector) {
 	f12.runtimeDescriptorArray = VK_TRUE;
 	// f12.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
 	f12.storageBuffer8BitAccess = VK_TRUE;
+	f12.uniformAndStorageBuffer8BitAccess = VK_TRUE;
 	f12.shaderInt8 = VK_TRUE;
 	f12.descriptorBindingPartiallyBound = VK_TRUE;
 	f12.descriptorIndexing = VK_TRUE;
@@ -72,6 +73,7 @@ inline void configure_selector(vkb::PhysicalDeviceSelector& selector) {
 	VkPhysicalDeviceVulkan11Features f11{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
 	f11.shaderDrawParameters = VK_TRUE;
 	f11.storageBuffer16BitAccess = VK_TRUE;
+	f11.uniformAndStorageBuffer16BitAccess = VK_TRUE;
 	VkPhysicalDeviceFeatures features{};
 	features.samplerAnisotropy = VK_TRUE;
 	features.multiDrawIndirect = VK_TRUE;
@@ -283,7 +285,7 @@ inline void frameupdate(rvkbucket& mvkobjs) {
 				if (remaining_time > 0.002) {
 					SDL_DelayNS(static_cast<Uint64>((remaining_time - 0.0015) * 1e9));
 				} else {
-					_mm_pause();
+					rview::core::cpu_relax();
 				}
 
 				frame_end = SDL_GetPerformanceCounter();
