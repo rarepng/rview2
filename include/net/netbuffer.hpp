@@ -19,7 +19,7 @@ struct netbuffer {
 
 	netbuffer() : d(nullptr), s(0) {};
 	netbuffer(const void* d0, uint64_t s0) : d((void*)d0), s(s0) {};
-	static netbuffer copy(const netbuffer &other) {
+	static netbuffer copy(const netbuffer& other) {
 		netbuffer b;
 		b.alloc(other.s);
 		memcpy(b.d, other.d, other.s);

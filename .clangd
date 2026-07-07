@@ -18,6 +18,6 @@ Diagnostics:
   UnusedIncludes: None
 ---
 If:
-  PathMatch: [.*sub/.*, .*build/.*, .*cmake_more_cache/.*]
+  PathMatch: [.*sub/.*, .*build/.*, .*cmake_more_cache/.*, ".*\\.in"]
 Diagnostics:
   Suppress: "*"

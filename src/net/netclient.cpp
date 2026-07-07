@@ -9,7 +9,7 @@ netclient::~netclient() {
 		m_NetworkThread.join();
 }
 
-void netclient::ConnectToServer(const std::string &serverAddress) {
+void netclient::ConnectToServer(const std::string& serverAddress) {
 	if (m_Running)
 		return;
 
@@ -17,9 +17,7 @@ void netclient::ConnectToServer(const std::string &serverAddress) {
 		m_NetworkThread.join();
 
 	m_ServerAddress = serverAddress;
-	m_NetworkThread = std::thread([this]() {
-		NetworkThreadFunc();
-	});
+	m_NetworkThread = std::thread([this]() { NetworkThreadFunc(); });
 }
 
 void netclient::Disconnect() {
@@ -29,15 +27,15 @@ void netclient::Disconnect() {
 		m_NetworkThread.join();
 }
 
-void netclient::SetDataReceivedCallback(const DataReceivedCallback &function) {
+void netclient::SetDataReceivedCallback(const DataReceivedCallback& function) {
 	m_DataReceivedCallback = function;
 }
 
-void netclient::SetServerConnectedCallback(const ServerConnectedCallback &function) {
+void netclient::SetServerConnectedCallback(const ServerConnectedCallback& function) {
 	m_ServerConnectedCallback = function;
 }
 
-void netclient::SetServerDisconnectedCallback(const ServerDisconnectedCallback &function) {
+void netclient::SetServerDisconnectedCallback(const ServerDisconnectedCallback& function) {
 	m_ServerDisconnectedCallback = function;
 }
 
@@ -94,8 +92,7 @@ void netclient::Shutdown() {
 
 void netclient::SendBuffer(netbuffer buffer, bool reliable) {
 	EResult result = m_Interface->SendMessageToConnection(
-	                     m_Connection, buffer.d, (uint32_t)buffer.s,
-	                     reliable ? k_nSteamNetworkingSend_Reliable : k_nSteamNetworkingSend_Unreliable, nullptr);
+		m_Connection, buffer.d, (uint32_t)buffer.s, reliable ? k_nSteamNetworkingSend_Reliable : k_nSteamNetworkingSend_Unreliable, nullptr);
 }
 
 void netclient::SendString(std::string string, bool reliable) {
@@ -109,7 +106,7 @@ void netclient::sendgamestate(int state0, bool reliable) {
 	SendBuffer(netbuffer(s.data(), s.size()), reliable);
 }
 
-void netclient::sendgamepos(const glm::vec3 &pos, bool reliable) {
+void netclient::sendgamepos(const glm::vec3& pos, bool reliable) {
 	std::string newpos{"4000000000000"};
 	std::memcpy(&newpos.at(1), &pos, 12);
 	SendBuffer(netbuffer(newpos.data(), newpos.size()), reliable);
@@ -117,7 +114,7 @@ void netclient::sendgamepos(const glm::vec3 &pos, bool reliable) {
 
 void netclient::PollIncomingMessages() {
 	while (m_Running) {
-		ISteamNetworkingMessage *incomingMessage = nullptr;
+		ISteamNetworkingMessage* incomingMessage = nullptr;
 		int messageCount = m_Interface->ReceiveMessagesOnConnection(m_Connection, &incomingMessage, 1);
 
 		if (messageCount == 0)
@@ -150,23 +147,23 @@ void netclient::OnConnectionStatusChanged(SteamNetConnectionStatusChangedCallbac
 
 		case k_ESteamNetworkingConnectionState_ClosedByPeer:
 		case k_ESteamNetworkingConnectionState_ProblemDetectedLocally: {
-				m_Running = false;
-				m_ConnectionStatus = ConnectionStatus::FailedToConnect;
-				m_ConnectionDebugMessage = info->m_info.m_szEndDebug;
+			m_Running = false;
+			m_ConnectionStatus = ConnectionStatus::FailedToConnect;
+			m_ConnectionDebugMessage = info->m_info.m_szEndDebug;
 
-				if (info->m_eOldState == k_ESteamNetworkingConnectionState_Connecting) {
-					std::cout << "Could not connect to remote host. " << info->m_info.m_szEndDebug << std::endl;
-				} else if (info->m_info.m_eState == k_ESteamNetworkingConnectionState_ProblemDetectedLocally) {
-					std::cout << "Lost connection with remote host. " << info->m_info.m_szEndDebug << std::endl;
-				} else {
-					std::cout << "Disconnected from host. " << info->m_info.m_szEndDebug << std::endl;
-				}
-
-				m_Interface->CloseConnection(info->m_hConn, 0, nullptr, false);
-				m_Connection = k_HSteamNetConnection_Invalid;
-				m_ConnectionStatus = ConnectionStatus::Disconnected;
-				break;
+			if (info->m_eOldState == k_ESteamNetworkingConnectionState_Connecting) {
+				std::cout << "Could not connect to remote host. " << info->m_info.m_szEndDebug << std::endl;
+			} else if (info->m_info.m_eState == k_ESteamNetworkingConnectionState_ProblemDetectedLocally) {
+				std::cout << "Lost connection with remote host. " << info->m_info.m_szEndDebug << std::endl;
+			} else {
+				std::cout << "Disconnected from host. " << info->m_info.m_szEndDebug << std::endl;
 			}
+
+			m_Interface->CloseConnection(info->m_hConn, 0, nullptr, false);
+			m_Connection = k_HSteamNetConnection_Invalid;
+			m_ConnectionStatus = ConnectionStatus::Disconnected;
+			break;
+		}
 
 		case k_ESteamNetworkingConnectionState_Connecting:
 			break;
@@ -181,7 +178,7 @@ void netclient::OnConnectionStatusChanged(SteamNetConnectionStatusChangedCallbac
 	}
 }
 
-void netclient::OnFatalError(const std::string &message) {
+void netclient::OnFatalError(const std::string& message) {
 	std::cout << message << std::endl;
 	m_Running = false;
 }

@@ -18,7 +18,7 @@ StructuredBuffer<MaterialData> materials;
 [[vk::binding(5, 0)]]
 ByteAddressBuffer vertexBuffers[];
 [[vk::binding(7, 0)]]
-StructuredBuffer<GPUInstanceData> instanceData[];
+RWStructuredBuffer<GPUInstanceData> instanceData[];
 [[vk::binding(8, 0)]]
 RWStructuredBuffer<VkDrawIndexedIndirectCommand> indirectIDXCommands[];
 
@@ -36,6 +36,20 @@ RWStructuredBuffer<uint> indirectDrawCount[];
 ByteAddressBuffer morphDeltas;
 [[vk::binding(18, 0)]]
 StructuredBuffer<float> morphWeights[];
+[[vk::binding(19, 0)]]
+StructuredBuffer<DualQuatScale> staticAnimBuffers[];
+[[vk::binding(20, 0)]]
+StructuredBuffer<GPUEntityState> entityStates[];
+
+struct GPUEntityState {
+  float4 position;
+  float4 rotation;
+  float4 scale;
+  uint modelID;
+  uint jointOffset;
+  uint isSkinned;
+  uint morphWeightOffset;
+};
 
 struct PXin {
   float4 sv_pos : SV_Position;
@@ -166,6 +180,34 @@ struct VkDrawIndirectCommand {
   uint firstVertex;
   uint firstInstance;
 };
+
+
+float4x4 buildTransform(float3 pos, float4 q, float3 s) {
+  float qxx = q.x * q.x; float qyy = q.y * q.y; float qzz = q.z * q.z;
+  float qxz = q.x * q.z; float qxy = q.x * q.y; float qyz = q.y * q.z;
+  float qwx = q.w * q.x; float qwy = q.w * q.y; float qwz = q.w * q.z;
+
+  float4x4 m;
+  m[0][0] = (1.0 - 2.0 * (qyy + qzz)) * s.x;
+  m[1][0] = (2.0 * (qxy + qwz))       * s.x;
+  m[2][0] = (2.0 * (qxz - qwy))       * s.x;
+  m[3][0] = 0.0;
+  m[0][1] = (2.0 * (qxy - qwz))       * s.y;
+  m[1][1] = (1.0 - 2.0 * (qxx + qzz)) * s.y;
+  m[2][1] = (2.0 * (qyz + qwx))       * s.y;
+  m[3][1] = 0.0;
+  m[0][2] = (2.0 * (qxz + qwy))       * s.z;
+  m[1][2] = (2.0 * (qyz - qwx))       * s.z;
+  m[2][2] = (1.0 - 2.0 * (qxx + qyy)) * s.z;
+  m[3][2] = 0.0;
+  m[0][3] = pos.x; 
+  m[1][3] = pos.y; 
+  m[2][3] = pos.z; 
+  m[3][3] = 1.0;
+  
+  return m;
+}
+
 
 float3x3 getNormalMatrix(float4x4 worldTransform) {
   float3x3 M = (float3x3)worldTransform;
@@ -322,6 +364,7 @@ float3 ACESFilm(float3 x) {
 float3 LinearToSRGB(float3 color) { return pow(color, 1.0 / 2.2); }
 struct GPUInstanceData {
   float4x4 worldTransform;
+  float4x4 normalTransform;
   uint modelID;
   uint jointOffset;
   uint isSkinned;
@@ -352,8 +395,8 @@ PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
   out.vColor = float4(1);
 
   uint16_t2 unpacked = bit_cast<uint16_t2>(id);
-  uint globalPrimID = (uint)unpacked.x;
-  uint instanceID = (uint)unpacked.y;
+  uint globalPrimID = WaveReadLaneFirst((uint)unpacked.x);
+  uint instanceID = WaveReadLaneFirst((uint)unpacked.y);
 
   GPUInstanceData inst = instanceData[pc.frameIndex][instanceID];
   PrimitiveMetadata prim = primitiveRegistry[globalPrimID];
@@ -364,29 +407,52 @@ PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
   uint vertexIndex = vertexID;
 
   if (prim.indexType < 3) {
-    uint byteOffset = prim.indexByteOffset;
     if (prim.indexType == 0) {
-      uint offset = byteOffset + vertexID;
-      uint word = rawIndexBuffer.Load(offset & ~3);
-      vertexIndex = (word >> ((offset & 3) * 8)) & 0xFF;
+      vertexIndex =
+          rawIndexBuffer.Load<uint8_t>(prim.indexByteOffset + vertexID);
     } else if (prim.indexType == 1) {
-      uint offset = byteOffset + (vertexID * 2);
-      uint word = rawIndexBuffer.Load(offset & ~3);
-      vertexIndex = (word >> ((offset & 2) * 8)) & 0xFFFF;
+      vertexIndex =
+          rawIndexBuffer.Load<uint16_t>(prim.indexByteOffset + (vertexID * 2));
     } else if (prim.indexType == 2) {
-      uint offset = byteOffset + (vertexID * 4);
-      uint alignedOffset = offset & ~3;
-      uint word0 = rawIndexBuffer.Load(alignedOffset);
-
-      if ((offset & 3) == 0) {
-        vertexIndex = word0;
-      } else {
-        uint word1 = rawIndexBuffer.Load(alignedOffset + 4);
-        uint shift = (offset & 3) * 8;
-        vertexIndex = (word0 >> shift) | (word1 << (32 - shift));
-      }
+      vertexIndex =
+          rawIndexBuffer.Load<uint>(prim.indexByteOffset + (vertexID * 4));
     }
   }
+  // safest but slowest
+  // if (prim.indexType < 3) {
+  //   uint byteOffset = prim.indexByteOffset;
+  //   if (prim.indexType == 0) {
+  //     uint offset = byteOffset + vertexID;
+  //     uint word = rawIndexBuffer.Load(offset & ~3);
+  //     vertexIndex = (word >> ((offset & 3) * 8)) & 0xFF;
+  //   } else if (prim.indexType == 1) {
+  //     uint offset = byteOffset + (vertexID * 2);
+  //     uint word = rawIndexBuffer.Load(offset & ~3);
+  //     vertexIndex = (word >> ((offset & 2) * 8)) & 0xFFFF;
+  //   } else if (prim.indexType == 2) {
+  //     uint offset = byteOffset + (vertexID * 4);
+  //     uint alignedOffset = offset & ~3;
+  //     uint word0 = rawIndexBuffer.Load(alignedOffset);
+
+  //     if ((offset & 3) == 0) {
+  //       vertexIndex = word0;
+  //     } else {
+  //       uint word1 = rawIndexBuffer.Load(alignedOffset + 4);
+  //       uint shift = (offset & 3) * 8;
+  //       vertexIndex = (word0 >> shift) | (word1 << (32 - shift));
+  //     }
+  //   }
+  // }
+  // could be replaced with this if i can gauarantee 4byte alignment
+  // if (prim.indexType < 3) {
+  //   if (prim.indexType == 0) {
+  //     vertexIndex = rawIndexBuffer.Load<uint8_t>(prim.indexByteOffset + vertexID);
+  //   } else if (prim.indexType == 1) {
+  //     vertexIndex = rawIndexBuffer.Load<uint16_t>(prim.indexByteOffset + (vertexID * 2));
+  //   } else if (prim.indexType == 2) {
+  //     vertexIndex = rawIndexBuffer.Load<uint>(prim.indexByteOffset + (vertexID * 4));
+  //   }
+  // }
 
   uint posSize = 0;
   vertexBuffers[prim.posIdx].GetDimensions(posSize);
@@ -411,12 +477,10 @@ PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
   if (prim.jointIdx != 0xFFFFFFFF) {
     if (prim.jointFmt == 1) {
       uint2 words = vertexBuffers[prim.jointIdx].Load2(vertexIndex * 8);
-      inJoint = uint4(words.x & 0xFFFF, words.x >> 16, words.y & 0xFFFF,
-                      words.y >> 16);
+      inJoint = uint4(bit_cast<uint16_t4>(words));
     } else {
       uint word = vertexBuffers[prim.jointIdx].Load(vertexIndex * 4);
-      inJoint = uint4(word & 0xFF, (word >> 8) & 0xFF, (word >> 16) & 0xFF,
-                      word >> 24);
+      inJoint = uint4(bit_cast<uint8_t4>(word));
     }
   }
 
@@ -425,16 +489,40 @@ PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
       inWeight = vertexBuffers[prim.weightIdx].Load<float4>(vertexIndex * 16);
     } else if (prim.weightFmt == 1) {
       uint2 words = vertexBuffers[prim.weightIdx].Load2(vertexIndex * 8);
-      inWeight = float4(words.x & 0xFFFF, words.x >> 16, words.y & 0xFFFF,
-                        words.y >> 16) /
-                 65535.0;
+      inWeight = float4(bit_cast<uint16_t4>(words)) / 65535.0;
     } else {
       uint word = vertexBuffers[prim.weightIdx].Load(vertexIndex * 4);
-      inWeight = float4(word & 0xFF, (word >> 8) & 0xFF, (word >> 16) & 0xFF,
-                        word >> 24) /
-                 255.0;
+      inWeight = float4(bit_cast<uint8_t4>(word)) / 255.0;
     }
   }
+
+  // if (prim.jointIdx != 0xFFFFFFFF) {
+  //   if (prim.jointFmt == 1) {
+  //     uint2 words = vertexBuffers[prim.jointIdx].Load2(vertexIndex * 8);
+  //     inJoint = uint4(words.x & 0xFFFF, words.x >> 16, words.y & 0xFFFF,
+  //                     words.y >> 16);
+  //   } else {
+  //     uint word = vertexBuffers[prim.jointIdx].Load(vertexIndex * 4);
+  //     inJoint = uint4(word & 0xFF, (word >> 8) & 0xFF, (word >> 16) & 0xFF,
+  //                     word >> 24);
+  //   }
+  // }
+
+  // if (prim.weightIdx != 0xFFFFFFFF) {
+  //   if (prim.weightFmt == 2) {
+  //     inWeight = vertexBuffers[prim.weightIdx].Load<float4>(vertexIndex * 16);
+  //   } else if (prim.weightFmt == 1) {
+  //     uint2 words = vertexBuffers[prim.weightIdx].Load2(vertexIndex * 8);
+  //     inWeight = float4(words.x & 0xFFFF, words.x >> 16, words.y & 0xFFFF,
+  //                       words.y >> 16) /
+  //                65535.0;
+  //   } else {
+  //     uint word = vertexBuffers[prim.weightIdx].Load(vertexIndex * 4);
+  //     inWeight = float4(word & 0xFF, (word >> 8) & 0xFF, (word >> 16) & 0xFF,
+  //                       word >> 24) /
+  //                255.0;
+  //   }
+  // }
   if (prim.targetCount > 0 && prim.morphDeltaIdx != 0xFFFFFFFF) {
     uint bytesPerComponent =
         (prim.morphFormat == 2) ? 1 : ((prim.morphFormat == 1) ? 2 : 4);
@@ -471,17 +559,30 @@ PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
 
   float4 locPos = float4(inPos, 1.0);
   float4 worldPos;
-  float3x3 normalMat = getNormalMatrix(inst.worldTransform);
+  float3x3 normalMat = (float3x3)inst.normalTransform;
 
-  if (inst.isSkinned == 1) {
-    DualQuatScale dq0 =
-        globalJoints[pc.frameIndex][inst.jointOffset + inJoint.x];
-    DualQuatScale dq1 =
-        globalJoints[pc.frameIndex][inst.jointOffset + inJoint.y];
-    DualQuatScale dq2 =
-        globalJoints[pc.frameIndex][inst.jointOffset + inJoint.z];
-    DualQuatScale dq3 =
-        globalJoints[pc.frameIndex][inst.jointOffset + inJoint.w];
+  if (inst.isSkinned > 0) {
+    uint skinMode = inst.isSkinned & 0xFFFF;
+    uint bindlessPoolID = inst.isSkinned >> 16;
+
+    // DualQuatScale dq0, dq1, dq2, dq3; // just sick of seeing the useless warning..
+    DualQuatScale identityDQ = { float4(0.0, 0.0, 0.0, 1.0), float4(0.0, 0.0, 0.0, 0.0), float4(1.0, 1.0, 1.0, 0.0) };
+    DualQuatScale dq0 = identityDQ;
+    DualQuatScale dq1 = identityDQ;
+    DualQuatScale dq2 = identityDQ;
+    DualQuatScale dq3 = identityDQ;
+
+    if (skinMode == 1) {
+      dq0 = globalJoints[pc.frameIndex][inst.jointOffset + inJoint.x];
+      dq1 = globalJoints[pc.frameIndex][inst.jointOffset + inJoint.y];
+      dq2 = globalJoints[pc.frameIndex][inst.jointOffset + inJoint.z];
+      dq3 = globalJoints[pc.frameIndex][inst.jointOffset + inJoint.w];
+    } else if (skinMode == 2) {
+      dq0 = staticAnimBuffers[bindlessPoolID][inst.jointOffset + inJoint.x];
+      dq1 = staticAnimBuffers[bindlessPoolID][inst.jointOffset + inJoint.y];
+      dq2 = staticAnimBuffers[bindlessPoolID][inst.jointOffset + inJoint.z];
+      dq3 = staticAnimBuffers[bindlessPoolID][inst.jointOffset + inJoint.w];
+    }
 
     if (dot(dq0.real, dq1.real) < 0.0) {
       dq1.real *= -1.0;
@@ -703,14 +804,33 @@ void cxmain(uint3 threadID: SV_DispatchThreadID) {
   if (instanceID >= pc.stride)
     return;
 
-  GPUInstanceData inst = instanceData[pc.frameIndex][instanceID];
-  if (inst.modelID == 0xFFFFFFFF)
-    return;
+  GPUEntityState state = entityStates[pc.frameIndex][instanceID];
+  if (state.modelID == 0xFFFFFFFF) return;
+
+  float4x4 worldTransform = buildTransform(state.position.xyz, state.rotation, state.scale.xyz);
+  
+  float3x3 norm3x3 = getNormalMatrix(worldTransform);
+  float4x4 normalTransform = {
+    norm3x3[0][0], norm3x3[0][1], norm3x3[0][2], 0.0,
+    norm3x3[1][0], norm3x3[1][1], norm3x3[1][2], 0.0,
+    norm3x3[2][0], norm3x3[2][1], norm3x3[2][2], 0.0,
+    0.0,           0.0,           0.0,           1.0
+  };
+
+  instanceData[pc.frameIndex][instanceID].worldTransform = worldTransform;
+  instanceData[pc.frameIndex][instanceID].normalTransform = normalTransform;
+  instanceData[pc.frameIndex][instanceID].modelID = state.modelID;
+  instanceData[pc.frameIndex][instanceID].jointOffset = state.jointOffset;
+  instanceData[pc.frameIndex][instanceID].isSkinned = state.isSkinned;
+  instanceData[pc.frameIndex][instanceID].indexCount = 0; 
+  instanceData[pc.frameIndex][instanceID].firstIndex = 0;
+  instanceData[pc.frameIndex][instanceID].vertexOffset = 0;
+  instanceData[pc.frameIndex][instanceID].morphWeightOffset = state.morphWeightOffset;
 
   float4x4 vp = mul(cammats.projection, cammats.view);
-  float4x4 mvp = mul(vp, inst.worldTransform);
+  float4x4 mvp = mul(vp, worldTransform);
 
-  ModelMetadata model = modelRegistry[inst.modelID];
+  ModelMetadata model = modelRegistry[state.modelID];
 
   // if (!IsVisibleTESTING(model.GetMin(), model.GetMax(), mvp)) return;
   if (!IsVisible(model.GetMin(), model.GetMax(), mvp))
@@ -726,7 +846,8 @@ void cxmain(uint3 threadID: SV_DispatchThreadID) {
     float3 minB = prim.GetMin();
     float3 maxB = prim.GetMax();
 
-    if (inst.isSkinned == 1) {
+    uint skinMode = state.isSkinned & 0xFFFF; // i forgot why this was necessary
+    if (skinMode > 0) {
       float3 center = (minB + maxB) * 0.5f;
       float3 extents = (maxB - minB) * 0.5f;
       float3 paddedExtents = extents * 1.25f;
@@ -751,7 +872,7 @@ void cxmain(uint3 threadID: SV_DispatchThreadID) {
       baseIndex = WaveReadLaneFirst(baseIndex);
       uint cmdIndex = baseIndex + waveOffset;
 
-      if (cmdIndex < 100000) { // idk if i can do it better than this or at all
+      if (cmdIndex < 90000) { // idk if i can do it better than this or at all
         uint packedID = (instanceID << 16) | (globalPrimID & 0xFFFF);
         VkDrawIndirectCommand cmd;
         cmd.vertexCount = prim.indexCount;
@@ -766,61 +887,61 @@ void cxmain(uint3 threadID: SV_DispatchThreadID) {
 }
 
 // decoding helpers
-float3 LoadInt8Vec3(uint offset) {
-  uint aligned = offset & ~3;
-  uint shift = (offset & 3) * 8;
-  uint2 w = morphDeltas.Load2(aligned);
+// float3 LoadInt8Vec3(uint offset) {
+//   uint aligned = offset & ~3;
+//   uint shift = (offset & 3) * 8;
+//   uint2 w = morphDeltas.Load2(aligned);
 
-  int x, y, z;
-  if (shift == 0) {
-    x = int(w.x << 24) >> 24;
-    y = int((w.x >> 8) << 24) >> 24;
-    z = int((w.x >> 16) << 24) >> 24;
-  } else if (shift == 8) {
-    x = int((w.x >> 8) << 24) >> 24;
-    y = int((w.x >> 16) << 24) >> 24;
-    z = int((w.x >> 24) << 24) >> 24;
-  } else if (shift == 16) {
-    x = int((w.x >> 16) << 24) >> 24;
-    y = int((w.x >> 24) << 24) >> 24;
-    z = int(w.y << 24) >> 24;
-  } else {
-    x = int((w.x >> 24) << 24) >> 24;
-    y = int(w.y << 24) >> 24;
-    z = int((w.y >> 8) << 24) >> 24;
-  }
-  return max(float3(x, y, z) / 127.0, -1.0);
-}
-int Read16(uint3 w, uint byteOffset) {
-  uint bitOffset = byteOffset * 8;
-  uint wordIdx = bitOffset / 32;
-  uint bitInWord = bitOffset % 32;
+//   int x, y, z;
+//   if (shift == 0) {
+//     x = int(w.x << 24) >> 24;
+//     y = int((w.x >> 8) << 24) >> 24;
+//     z = int((w.x >> 16) << 24) >> 24;
+//   } else if (shift == 8) {
+//     x = int((w.x >> 8) << 24) >> 24;
+//     y = int((w.x >> 16) << 24) >> 24;
+//     z = int((w.x >> 24) << 24) >> 24;
+//   } else if (shift == 16) {
+//     x = int((w.x >> 16) << 24) >> 24;
+//     y = int((w.x >> 24) << 24) >> 24;
+//     z = int(w.y << 24) >> 24;
+//   } else {
+//     x = int((w.x >> 24) << 24) >> 24;
+//     y = int(w.y << 24) >> 24;
+//     z = int((w.y >> 8) << 24) >> 24;
+//   }
+//   return max(float3(x, y, z) / 127.0, -1.0);
+// }
+// int Read16(uint3 w, uint byteOffset) {
+//   uint bitOffset = byteOffset * 8;
+//   uint wordIdx = bitOffset / 32;
+//   uint bitInWord = bitOffset % 32;
 
-  uint val = 0;
-  if (wordIdx == 0) {
-    val = (bitInWord <= 16)
-              ? ((w.x >> bitInWord) & 0xFFFF)
-              : (((w.x >> bitInWord) | (w.y << (32 - bitInWord))) & 0xFFFF);
-  } else if (wordIdx == 1) {
-    val = (bitInWord <= 16)
-              ? ((w.y >> bitInWord) & 0xFFFF)
-              : (((w.y >> bitInWord) | (w.z << (32 - bitInWord))) & 0xFFFF);
-  } else {
-    val = (w.z >> bitInWord) & 0xFFFF;
-  }
-  return (int(val) << 16) >> 16;
-}
-float3 LoadInt16Vec3(uint offset) {
-  uint aligned = offset & ~3;
-  uint3 w = morphDeltas.Load3(aligned);
-  uint localOffset = offset & 3;
+//   uint val = 0;
+//   if (wordIdx == 0) {
+//     val = (bitInWord <= 16)
+//               ? ((w.x >> bitInWord) & 0xFFFF)
+//               : (((w.x >> bitInWord) | (w.y << (32 - bitInWord))) & 0xFFFF);
+//   } else if (wordIdx == 1) {
+//     val = (bitInWord <= 16)
+//               ? ((w.y >> bitInWord) & 0xFFFF)
+//               : (((w.y >> bitInWord) | (w.z << (32 - bitInWord))) & 0xFFFF);
+//   } else {
+//     val = (w.z >> bitInWord) & 0xFFFF;
+//   }
+//   return (int(val) << 16) >> 16;
+// }
+// float3 LoadInt16Vec3(uint offset) {
+//   uint aligned = offset & ~3;
+//   uint3 w = morphDeltas.Load3(aligned);
+//   uint localOffset = offset & 3;
 
-  int x = Read16(w, localOffset);
-  int y = Read16(w, localOffset + 2);
-  int z = Read16(w, localOffset + 4);
+//   int x = Read16(w, localOffset);
+//   int y = Read16(w, localOffset + 2);
+//   int z = Read16(w, localOffset + 4);
 
-  return max(float3(x, y, z) / 32767.0, -1.0);
-}
+//   return max(float3(x, y, z) / 32767.0, -1.0);
+// }
 float3 LoadFloatVec3(uint offset) {
   uint aligned = offset & ~3;
   uint localOffset = offset & 3;
@@ -835,3 +956,45 @@ float3 LoadFloatVec3(uint offset) {
   uint zBits = (w.z >> shift) | (w.w << invShift);
   return asfloat(uint3(xBits, yBits, zBits));
 }
+
+float3 LoadInt8Vec3(uint offset) {
+  uint aligned = offset & ~3;
+  uint shift = (offset & 3) * 8;
+  uint2 w = morphDeltas.Load2(aligned);
+
+  uint packedData;
+  if (shift == 0)
+    packedData = w.x;
+  else if (shift == 8)
+    packedData = (w.x >> 8) | (w.y << 24);
+  else if (shift == 16)
+    packedData = (w.x >> 16) | (w.y << 16);
+  else
+    packedData = (w.x >> 24) | (w.y << 8);
+
+  return max(float3(bit_cast<int8_t4>(packedData).xyz) / 127.0, -1.0);
+}
+
+float3 LoadInt16Vec3(uint offset) {
+  uint aligned = offset & ~3;
+  uint shift = (offset & 3) * 8;
+  uint3 w = morphDeltas.Load3(aligned);
+
+  uint2 packed16;
+  if (shift == 0) {
+    packed16 = w.xy;
+  } else if (shift == 8) {
+    packed16.x = (w.x >> 8) | (w.y << 24);
+    packed16.y = (w.y >> 8) | (w.z << 24);
+  } else if (shift == 16) {
+    packed16.x = (w.x >> 16) | (w.y << 16);
+    packed16.y = (w.y >> 16) | (w.z << 16);
+  } else {
+    packed16.x = (w.x >> 24) | (w.y << 8);
+    packed16.y = (w.y >> 24) | (w.z << 8);
+  }
+
+  int16_t4 casted = bit_cast<int16_t4>(packed16);
+  return max(float3(casted.xyz) / 32767.0, -1.0);
+}
+

@@ -7,7 +7,7 @@
 #include <tracy/Tracy.hpp>
 
 class alignas(64) RenderGraph {
-public:
+  public:
 	// 1MB [[heap]] but only once at startup ((i hope))
 	static constexpr size_t MEMORY_CAPACITY = 1024 * 1024;
 	static constexpr size_t MAX_PASSES = 256;
@@ -30,8 +30,7 @@ public:
 	RenderGraph(const RenderGraph&) = delete;
 	RenderGraph& operator=(const RenderGraph&) = delete;
 
-	template<typename F>
-	void add_pass(F&& f) {
+	template <typename F> void add_pass(F&& f) {
 		using DecayedF = std::decay_t<F>;
 
 		void* ptr = buffer + offset;
@@ -39,7 +38,8 @@ public:
 
 		void* aligned_ptr = std::align(alignof(DecayedF), sizeof(DecayedF), ptr, space);
 
-		if (!aligned_ptr || pass_count >= MAX_PASSES) return;
+		if (!aligned_ptr || pass_count >= MAX_PASSES)
+			return;
 
 		offset = MEMORY_CAPACITY - space + sizeof(DecayedF);
 
@@ -48,14 +48,10 @@ public:
 		PassRecord& record = passes[pass_count++];
 		record.payload = aligned_ptr;
 
-		record.execute = [](void* data) {
-			(*static_cast<DecayedF*>(data))();
-		};
+		record.execute = [](void* data) { (*static_cast<DecayedF*>(data))(); };
 
 		if constexpr (!std::is_trivially_destructible_v<DecayedF>) {
-			record.destroy = [](void* data) {
-				static_cast<DecayedF*>(data)->~DecayedF();
-			};
+			record.destroy = [](void* data) { static_cast<DecayedF*>(data)->~DecayedF(); };
 		} else {
 			record.destroy = nullptr;
 		}
@@ -81,7 +77,7 @@ public:
 		offset = 0;
 	}
 
-private:
+  private:
 	struct PassRecord {
 		void (*execute)(void*);
 		void (*destroy)(void*);
@@ -91,6 +87,6 @@ private:
 	char* buffer{nullptr};
 	size_t offset{0};
 
-	alignas(64) PassRecord passes[MAX_PASSES] {};
+	alignas(64) PassRecord passes[MAX_PASSES]{};
 	uint32_t pass_count{0};
 };

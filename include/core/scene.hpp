@@ -15,25 +15,25 @@ struct alignas(64) SceneData {
 	alignas(64) std::array<glm::vec3, MAX_ENTITIES> scales{};
 
 	alignas(64) std::array<uint32_t, MAX_ENTITIES> modelIDs{};
-	alignas(64) std::array<float, MAX_ENTITIES> animTimePositions{};
-	alignas(64) std::array<uint32_t, MAX_ENTITIES> jointOffsets{};
-	alignas(64) std::array<uint32_t, MAX_ENTITIES> isSkinned{};
+
+	alignas(64) std::array<uint32_t, MAX_ENTITIES> poolHandles{};
 
 	alignas(64) std::atomic<uint32_t> entity_count{0};
 
-	inline uint32_t create_entity() {
+	inline uint32_t create_entity(uint32_t modelID, uint32_t poolHandle) {
 		uint32_t id = entity_count.fetch_add(1, std::memory_order_relaxed);
 
 		if (id >= MAX_ENTITIES) {
 			entity_count.fetch_sub(1, std::memory_order_relaxed);
-			return MAX_ENTITIES - 1;
+			return 0xFFFFFFFF;
 		}
 
 		worldPositions[id] = glm::vec3(0.0f);
 		scales[id] = glm::vec3(1.0f);
 		rotations[id] = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-		animTimePositions[id] = 0.0f;
-		modelIDs[id] = 0xFFFFFFFF;
+		modelIDs[id] = modelID;
+		poolHandles[id] = poolHandle;
+
 		return id;
 	}
 };
@@ -101,7 +101,7 @@ struct AssetRegistry {
 	uint32_t register_model(uint32_t primCount) {
 		std::lock_guard<std::mutex> lock(registryMutex);
 		uint32_t modelID = static_cast<uint32_t>(models.size());
-		models.push_back({ static_cast<uint32_t>(primitives.size()), primCount });
+		models.push_back({static_cast<uint32_t>(primitives.size()), primCount});
 		return modelID;
 	}
 };
