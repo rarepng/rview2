@@ -79,9 +79,9 @@ namespace rdemo {
 			  }
 		  }}}};
 
-	inline constexpr std::array<DemoSpawn, 2> CUBE_GRID_SPAWNS = {
+	inline constexpr std::array<DemoSpawn, 4> CUBE_GRID_SPAWNS = {
 		{{"resources/ren.glb",
-		  200,
+		  2000,
 		  glm::vec3(0.0f),
 		  [](uint32_t idx, uint32_t total, model_manager::Entity e, glm::vec3 origin) {
 			  uint32_t dim = calc_grid_dim(total);
@@ -90,7 +90,7 @@ namespace rdemo {
 			  uint32_t y = (idx / dim) % dim;
 			  uint32_t x = idx % dim;
 
-			  float spacing = 3.0f;
+			  float spacing = 20.0f;
 			  model_manager::g_registry.position(e) = origin + glm::vec3(x * spacing, y * spacing, z * spacing);
 
 			  uint32_t dense = model_manager::g_registry.get_dense_index(e);
@@ -105,14 +105,17 @@ namespace rdemo {
 				  g_scene.poolHandles[dense] = it->second.defaultClips[rand_clip_idx];
 			  }
 		  }},
-		 {"resources/nelf.glb", 200, glm::vec3(1.5f, 1.5f, 1.5f), [](uint32_t idx, uint32_t total, model_manager::Entity e, glm::vec3 origin) {
+		 {"resources/nelf.glb",
+		  2000,
+		  glm::vec3(5.0f, 5.0f, 5.0f),
+		  [](uint32_t idx, uint32_t total, model_manager::Entity e, glm::vec3 origin) {
 			  uint32_t dim = calc_grid_dim(total);
 
 			  uint32_t z = idx / (dim * dim);
 			  uint32_t y = (idx / dim) % dim;
 			  uint32_t x = idx % dim;
 
-			  float spacing = 3.0f;
+			  float spacing = 20.0f;
 			  model_manager::g_registry.position(e) = origin + glm::vec3(x * spacing, y * spacing, z * spacing);
 
 			  uint32_t dense = model_manager::g_registry.get_dense_index(e);
@@ -126,7 +129,59 @@ namespace rdemo {
 
 				  g_scene.poolHandles[dense] = it->second.defaultClips[rand_clip_idx];
 			  }
-		  }}}};
+		  }},
+		 {"resources/t1.glb",
+		  2000,
+		  glm::vec3(10.0f, 10.0f, 10.0f),
+		  [](uint32_t idx, uint32_t total, model_manager::Entity e, glm::vec3 origin) {
+			  uint32_t dim = calc_grid_dim(total);
+
+			  uint32_t z = idx / (dim * dim);
+			  uint32_t y = (idx / dim) % dim;
+			  uint32_t x = idx % dim;
+
+			  float spacing = 20.0f;
+			  model_manager::g_registry.position(e) = origin + glm::vec3(x * spacing, y * spacing, z * spacing);
+
+			  uint32_t dense = model_manager::g_registry.get_dense_index(e);
+			  uint32_t modelID = g_scene.modelIDs[dense];
+
+			  auto it = model_manager::g_cpuModels.find(modelID);
+
+			  if (it != model_manager::g_cpuModels.end() && !it->second.defaultClips.empty()) {
+				  uint32_t num_clips = static_cast<uint32_t>(it->second.defaultClips.size());
+				  uint32_t rand_clip_idx = static_cast<uint32_t>(pcg_hash(idx) * num_clips);
+
+				  g_scene.poolHandles[dense] = it->second.defaultClips[rand_clip_idx];
+			  }
+		  }},
+		 {"resources/t0.glb",
+		  2000,
+		  glm::vec3(15.0f, 15.0f, 15.0f),
+		  [](uint32_t idx, uint32_t total, model_manager::Entity e, glm::vec3 origin) {
+			  uint32_t dim = calc_grid_dim(total);
+
+			  uint32_t z = idx / (dim * dim);
+			  uint32_t y = (idx / dim) % dim;
+			  uint32_t x = idx % dim;
+
+			  float spacing = 20.0f;
+			  model_manager::g_registry.position(e) = origin + glm::vec3(x * spacing, y * spacing, z * spacing);
+
+			  uint32_t dense = model_manager::g_registry.get_dense_index(e);
+			  uint32_t modelID = g_scene.modelIDs[dense];
+
+			  auto it = model_manager::g_cpuModels.find(modelID);
+
+			  if (it != model_manager::g_cpuModels.end() && !it->second.defaultClips.empty()) {
+				  uint32_t num_clips = static_cast<uint32_t>(it->second.defaultClips.size());
+				  uint32_t rand_clip_idx = static_cast<uint32_t>(pcg_hash(idx) * num_clips);
+
+				  g_scene.poolHandles[dense] = it->second.defaultClips[rand_clip_idx];
+			  }
+		  }}
+
+		}};
 
 	inline constexpr std::array<DemoScene, 2> SCENES = {{{"20k mixed grid", MIXED_GRID_SPAWNS}, {"20k interleaved", CUBE_GRID_SPAWNS}}};
 

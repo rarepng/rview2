@@ -38,6 +38,18 @@ ByteAddressBuffer morphDeltas;
 StructuredBuffer<float> morphWeights[];
 [[vk::binding(19, 0)]]
 StructuredBuffer<DualQuatScale> staticAnimBuffers[];
+[[vk::binding(20, 0)]]
+StructuredBuffer<GPUEntityState> entityStates[];
+
+struct GPUEntityState {
+  float4 position;
+  float4 rotation;
+  float4 scale;
+  uint modelID;
+  uint jointOffset;
+  uint isSkinned;
+  uint morphWeightOffset;
+};
 
 struct PXin {
   float4 sv_pos : SV_Position;
@@ -168,6 +180,34 @@ struct VkDrawIndirectCommand {
   uint firstVertex;
   uint firstInstance;
 };
+
+
+float4x4 buildTransform(float3 pos, float4 q, float3 s) {
+  float qxx = q.x * q.x; float qyy = q.y * q.y; float qzz = q.z * q.z;
+  float qxz = q.x * q.z; float qxy = q.x * q.y; float qyz = q.y * q.z;
+  float qwx = q.w * q.x; float qwy = q.w * q.y; float qwz = q.w * q.z;
+
+  float4x4 m;
+  m[0][0] = (1.0 - 2.0 * (qyy + qzz)) * s.x;
+  m[1][0] = (2.0 * (qxy + qwz))       * s.x;
+  m[2][0] = (2.0 * (qxz - qwy))       * s.x;
+  m[3][0] = 0.0;
+  m[0][1] = (2.0 * (qxy - qwz))       * s.y;
+  m[1][1] = (1.0 - 2.0 * (qxx + qzz)) * s.y;
+  m[2][1] = (2.0 * (qyz + qwx))       * s.y;
+  m[3][1] = 0.0;
+  m[0][2] = (2.0 * (qxz + qwy))       * s.z;
+  m[1][2] = (2.0 * (qyz - qwx))       * s.z;
+  m[2][2] = (1.0 - 2.0 * (qxx + qyy)) * s.z;
+  m[3][2] = 0.0;
+  m[0][3] = pos.x; 
+  m[1][3] = pos.y; 
+  m[2][3] = pos.z; 
+  m[3][3] = 1.0;
+  
+  return m;
+}
+
 
 float3x3 getNormalMatrix(float4x4 worldTransform) {
   float3x3 M = (float3x3)worldTransform;
@@ -764,27 +804,37 @@ void cxmain(uint3 threadID: SV_DispatchThreadID) {
   if (instanceID >= pc.stride)
     return;
 
-  GPUInstanceData inst = instanceData[pc.frameIndex][instanceID];
-  if (inst.modelID == 0xFFFFFFFF)
-    return;
+  GPUEntityState state = entityStates[pc.frameIndex][instanceID];
+  if (state.modelID == 0xFFFFFFFF) return;
 
-  float4x4 vp = mul(cammats.projection, cammats.view);
-  float4x4 mvp = mul(vp, inst.worldTransform);
-
-  ModelMetadata model = modelRegistry[inst.modelID];
-
-  // if (!IsVisibleTESTING(model.GetMin(), model.GetMax(), mvp)) return;
-  if (!IsVisible(model.GetMin(), model.GetMax(), mvp))
-    return;
-
-  float3x3 norm3x3 = getNormalMatrix(inst.worldTransform);
-
-  instanceData[pc.frameIndex][instanceID].normalTransform = {
+  float4x4 worldTransform = buildTransform(state.position.xyz, state.rotation, state.scale.xyz);
+  
+  float3x3 norm3x3 = getNormalMatrix(worldTransform);
+  float4x4 normalTransform = {
     norm3x3[0][0], norm3x3[0][1], norm3x3[0][2], 0.0,
     norm3x3[1][0], norm3x3[1][1], norm3x3[1][2], 0.0,
     norm3x3[2][0], norm3x3[2][1], norm3x3[2][2], 0.0,
     0.0,           0.0,           0.0,           1.0
   };
+
+  instanceData[pc.frameIndex][instanceID].worldTransform = worldTransform;
+  instanceData[pc.frameIndex][instanceID].normalTransform = normalTransform;
+  instanceData[pc.frameIndex][instanceID].modelID = state.modelID;
+  instanceData[pc.frameIndex][instanceID].jointOffset = state.jointOffset;
+  instanceData[pc.frameIndex][instanceID].isSkinned = state.isSkinned;
+  instanceData[pc.frameIndex][instanceID].indexCount = 0; 
+  instanceData[pc.frameIndex][instanceID].firstIndex = 0;
+  instanceData[pc.frameIndex][instanceID].vertexOffset = 0;
+  instanceData[pc.frameIndex][instanceID].morphWeightOffset = state.morphWeightOffset;
+
+  float4x4 vp = mul(cammats.projection, cammats.view);
+  float4x4 mvp = mul(vp, worldTransform);
+
+  ModelMetadata model = modelRegistry[state.modelID];
+
+  // if (!IsVisibleTESTING(model.GetMin(), model.GetMax(), mvp)) return;
+  if (!IsVisible(model.GetMin(), model.GetMax(), mvp))
+    return;
 
   for (uint i = 0; i < model.primitiveCount; i++) {
     if (i > 100)
@@ -796,7 +846,7 @@ void cxmain(uint3 threadID: SV_DispatchThreadID) {
     float3 minB = prim.GetMin();
     float3 maxB = prim.GetMax();
 
-    uint skinMode = inst.isSkinned & 0xFFFF; // i forgot why this was necessary
+    uint skinMode = state.isSkinned & 0xFFFF; // i forgot why this was necessary
     if (skinMode > 0) {
       float3 center = (minB + maxB) * 0.5f;
       float3 extents = (maxB - minB) * 0.5f;

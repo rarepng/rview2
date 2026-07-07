@@ -67,10 +67,10 @@ struct DeletionQueue {
 		deletors.clear();
 	}
 };
-enum class skinningmode { linear = 0, dualquat };
-enum class replaydirection { forward = 0, backward };
-enum class blendmode { fadeinout = 0, crossfade, additive };
-enum class ikmode { off = 0, ccd, fabrik };
+enum struct skinningmode { linear = 0, dualquat };
+enum struct replaydirection { forward = 0, backward };
+enum struct blendmode { fadeinout = 0, crossfade, additive };
+enum struct ikmode { off = 0, ccd, fabrik };
 
 struct StagingBelt {
 	VkBuffer buffer;
@@ -99,7 +99,6 @@ struct StagingBelt {
 			return false;
 	}
 
-	//i have to think about syncing with this if i have 2+ staging buffers so each frame in flight has its own
 	void reset() {
 		currentOffset = 0;
 	}
@@ -110,7 +109,7 @@ struct StagingBelt {
 
 		if (alignedOffset + size > capacity) {
 			std::cout << "OOM Staging Buffer!\n";
-			return 0;
+			return VK_WHOLE_SIZE; // 🤞
 		}
 
 		currentOffset = alignedOffset + size;
@@ -185,6 +184,16 @@ struct alignas(16) GPUInstanceData {
 	uint32_t morphWeightOffset;
 };
 
+struct alignas(16) GPUEntityState {
+	glm::vec4 position;
+	glm::quat rotation;
+	glm::vec4 scale;
+	uint32_t modelID;
+	uint32_t jointOffset;
+	uint32_t isSkinned;
+	uint32_t morphWeightOffset;
+};
+
 struct ssbodata {
 	size_t size{0};
 	VkBuffer buffer = VK_NULL_HANDLE;
@@ -252,6 +261,7 @@ namespace rview {
 		inline GlobalBufferHeap global_buffers{};
 		inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> globalInstanceBuffers{};
 		inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> globalIndirectBuffers{};
+		inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> globalEntityStateBuffers{};
 		inline std::array<RenderGraph, rview::core::MAX_FRAMES_IN_FLIGHT> frameGraphs{};
 		inline GpuBuffer g_rawIndexSSBO{};
 		inline uint32_t g_rawIndexCapacity = 0;

@@ -16,8 +16,8 @@ namespace fastgltf {
 	template <> struct ElementTraits<glm::quat> : ElementTraitsBase<glm::quat, AccessorType::Vec4, float> {};
 }
 
-enum class AnimPathType { Translation, Rotation, Scale };
-enum class InterpolationType { Step, Linear, CubicSpline };
+enum struct AnimPathType { Translation, Rotation, Scale };
+enum struct InterpolationType { Step, Linear, CubicSpline };
 
 struct DODRawChannel {
 	uint32_t targetNode;

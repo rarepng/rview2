@@ -46,3 +46,6 @@ sparse binding?
 consider deque instead of most vectors?
 transferQ
 add pool import and modify pop up to "retainCpuData"
+it's time. virtual allocation for custom vectors instead of pre allocating rigid arrays or resizing vectors at runtime.
+properly chunk worker belts for big textures and other too fat assets
+fan out update attachments for evaluation of animation layers like ik and blending.

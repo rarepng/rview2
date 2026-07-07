@@ -23,7 +23,7 @@
 #include <vktex.hpp>
 #include <core/jobs.hpp>
 
-enum class AnimMode : uint8_t { Baked = 0, Hybrid = 1, Dynamic = 2, Hero = 3 };
+enum struct AnimMode : uint8_t { Baked = 0, Hybrid = 1, Dynamic = 2, Hero = 3 };
 
 
 inline DualQuatScale Mat4ToDualQuatScale(const glm::mat4& m) {
@@ -175,7 +175,7 @@ namespace model_manager {
 
 
 
-	class JointAllocator {
+	struct JointAllocator {
 		struct Block {
 			uint32_t offset;
 			uint32_t size;
@@ -184,7 +184,6 @@ namespace model_manager {
 		std::mutex mtx;
 		uint32_t m_capacity = 0;
 
-	  public:
 		void init(uint32_t capacity) {
 			std::lock_guard<std::mutex> lock(mtx);
 			freeBlocks.clear();
@@ -520,16 +519,19 @@ namespace model_manager {
 
 		glm::vec3 spawn_position = glm::vec3(0.0f);
 		bool skipui = false;
-		uint32_t dropID = 0xFFFFFFFF;
 		void (*demo_modifier)(uint32_t idx, uint32_t total, struct Entity e, glm::vec3 origin) = nullptr;
+		uint32_t dropID = 0xFFFFFFFF;
+		uint32_t assignedModelID = 0xFFFFFFFF;
+		uint32_t defaultPool = 0xFFFFFFFF;
+		//temp
+		std::vector<VkBuffer> buffersToAcquire;
+		std::vector<VkImage> imagesToAcquire;
 	};
 
 	std::string get_glb_json_chunk(std::string_view filepath);
 	StagingModelData parse_model_to_staging(std::string_view filepath, uint32_t dropID = 0xFFFFFFFF);
 
-	uint32_t
-	commit_staging_to_vulkan(rvkbucket& mvkobjs, VkCommandBuffer cmd, StagingModelData& staging, std::vector<uint32_t>& uploadedTextureBindlessIDs);
-
+	uint32_t commit_staging_to_vulkan(rvkbucket& mvkobjs, StagingModelData& staging, std::vector<uint32_t>& uploadedTextureBindlessIDs);
 
 
 	void upload_joint_matrices(rvkbucket& mvkobjs, uint32_t read_frame);
@@ -549,14 +551,12 @@ namespace model_manager {
 		}
 	};
 
-	class Registry {
-	  private:
+	struct Registry {
 		static constexpr uint32_t MAX_ENTITIES = SceneData::MAX_ENTITIES;
 		std::array<uint32_t, MAX_ENTITIES> sparse;
 		std::vector<uint32_t> free_indices;
 		std::mutex registry_mtx;
 
-	  public:
 		std::array<uint32_t, MAX_ENTITIES> dense_to_sparse;
 		std::array<uint32_t, MAX_ENTITIES> generations;
 
@@ -745,7 +745,7 @@ namespace model_manager {
 	}
 
 
-	enum class ParseStep { parsing, baking, done, cancelled };
+	enum struct ParseStep { parsing, baking, done, cancelled };
 
 	struct ProgressUpdate {
 		uint32_t requestID;
@@ -912,14 +912,27 @@ namespace model_manager {
 
 		g_anim_jobs_pending[write_frame].store(0, std::memory_order_relaxed);
 
+		// i just dont know which is better until i write my custom allocator
+
+		// auto dispatchDomain = [&](uint8_t flag, auto func) {
+		// 	if (bucket_counts[flag] > 0) {
+		// 		g_anim_jobs_pending[write_frame].fetch_add(1, std::memory_order_relaxed);
+		// 		auto* bucket = buckets[flag];
+		// 		auto count = bucket_counts[flag];
+		// 		g_jobs.enqueue([bucket, count, deltaTime, write_frame, func]() {
+		// 			func(bucket, count, deltaTime, write_frame);
+		// 			g_anim_jobs_pending[write_frame].fetch_sub(1, std::memory_order_release);
+		// 		});
+		// 	}
+		// };
 		auto dispatchDomain = [&](uint8_t flag, auto func) {
 			if (bucket_counts[flag] > 0) {
 				g_anim_jobs_pending[write_frame].fetch_add(1, std::memory_order_relaxed);
-				auto* bucket = buckets[flag];
-				auto count = bucket_counts[flag];
 
-				g_jobs.enqueue([bucket, count, deltaTime, write_frame, func]() {
-					func(bucket, count, deltaTime, write_frame);
+				std::vector<uint32_t> safe_bucket(buckets[flag], buckets[flag] + bucket_counts[flag]);
+
+				g_jobs.enqueue([handles = std::move(safe_bucket), deltaTime, write_frame, func]() {
+					func(handles.data(), handles.size(), deltaTime, write_frame);
 					g_anim_jobs_pending[write_frame].fetch_sub(1, std::memory_order_release);
 				});
 			}
@@ -945,4 +958,161 @@ namespace model_manager {
 
 		g_jobs.enqueue([deadData]() { delete deadData; });
 	}
+	inline std::mutex g_transfer_mtx;
+
+	inline void async_chunked_upload(rvkbucket& mvkobjs, GpuBuffer& dstBuffer, const void* srcData, size_t totalSize) {
+		if (totalSize == 0)
+			return;
+
+		const size_t CHUNK_SIZE = 16 * 1024 * 1024;
+		size_t allocatedChunk = std::min(totalSize, CHUNK_SIZE);
+
+		VkBufferCreateInfo binfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+		binfo.size = allocatedChunk;
+		binfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+		VmaAllocationCreateInfo vmaallocinfo{};
+		vmaallocinfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+		vmaallocinfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+		VkBuffer stagingBuffer;
+		VmaAllocation stagingAlloc;
+		VmaAllocationInfo stagingAllocInfo;
+		vmaCreateBuffer(mvkobjs.alloc, &binfo, &vmaallocinfo, &stagingBuffer, &stagingAlloc, &stagingAllocInfo);
+
+		uint32_t transferQFamily = mvkobjs.vkdevice.get_queue_index(vkb::QueueType::transfer).value();
+		uint32_t graphicsQFamily = mvkobjs.vkdevice.get_queue_index(vkb::QueueType::graphics).value();
+
+		VkCommandPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
+		poolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		poolInfo.queueFamilyIndex = transferQFamily;
+		VkCommandPool transferPool;
+		vkCreateCommandPool(mvkobjs.vkdevice.device, &poolInfo, nullptr, &transferPool);
+
+		VkCommandBufferAllocateInfo allocInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+		allocInfo.commandPool = transferPool;
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandBufferCount = 1;
+		VkCommandBuffer cmd;
+		vkAllocateCommandBuffers(mvkobjs.vkdevice.device, &allocInfo, &cmd);
+
+		VkFenceCreateInfo fenceInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+		VkFence chunkFence;
+		vkCreateFence(mvkobjs.vkdevice.device, &fenceInfo, nullptr, &chunkFence);
+
+		size_t offset = 0;
+		while (offset < totalSize) {
+			size_t currentChunk = std::min(allocatedChunk, totalSize - offset);
+
+			std::memcpy(stagingAllocInfo.pMappedData, static_cast<const uint8_t*>(srcData) + offset, currentChunk);
+			vmaFlushAllocation(mvkobjs.alloc, stagingAlloc, 0, currentChunk);
+
+			VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			vkBeginCommandBuffer(cmd, &beginInfo);
+
+			VkBufferCopy copyRegion{};
+			copyRegion.srcOffset = 0;
+			copyRegion.dstOffset = offset;
+			copyRegion.size = currentChunk;
+			vkCmdCopyBuffer(cmd, stagingBuffer, dstBuffer.buffer, 1, &copyRegion);
+			vkEndCommandBuffer(cmd);
+
+			VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+			submitInfo.commandBufferCount = 1;
+			submitInfo.pCommandBuffers = &cmd;
+
+			{
+				std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
+				vkQueueSubmit(mvkobjs.transferQ, 1, &submitInfo, chunkFence);
+			}
+			vkWaitForFences(mvkobjs.vkdevice.device, 1, &chunkFence, VK_TRUE, UINT64_MAX);
+			vkResetFences(mvkobjs.vkdevice.device, 1, &chunkFence);
+			vkResetCommandBuffer(cmd, 0);
+
+			offset += currentChunk;
+		}
+
+		if (transferQFamily != graphicsQFamily) {
+			VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			vkBeginCommandBuffer(cmd, &beginInfo);
+
+			VkBufferMemoryBarrier2 release{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
+			release.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+			release.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+			release.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
+			release.dstAccessMask = 0;
+			release.srcQueueFamilyIndex = transferQFamily;
+			release.dstQueueFamilyIndex = graphicsQFamily;
+			release.buffer = dstBuffer.buffer;
+			release.offset = 0;
+			release.size = VK_WHOLE_SIZE;
+
+			VkDependencyInfo dep{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+			dep.bufferMemoryBarrierCount = 1;
+			dep.pBufferMemoryBarriers = &release;
+			vkCmdPipelineBarrier2(cmd, &dep);
+			vkEndCommandBuffer(cmd);
+
+			VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+			submitInfo.commandBufferCount = 1;
+			submitInfo.pCommandBuffers = &cmd;
+			{
+				std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
+				vkQueueSubmit(mvkobjs.transferQ, 1, &submitInfo, chunkFence);
+			}
+			vkWaitForFences(mvkobjs.vkdevice.device, 1, &chunkFence, VK_TRUE, UINT64_MAX);
+		}
+
+		vkDestroyFence(mvkobjs.vkdevice.device, chunkFence, nullptr);
+		vkFreeCommandBuffers(mvkobjs.vkdevice.device, transferPool, 1, &cmd);
+		vkDestroyCommandPool(mvkobjs.vkdevice.device, transferPool, nullptr);
+		vmaDestroyBuffer(mvkobjs.alloc, stagingBuffer, stagingAlloc);
+	}
 }
+
+inline LockFreeMPMC<StagingBelt*, 16> g_worker_belts; // magic
+
+struct AsyncTransferContext {
+	rvkbucket& mvkobjs;
+	StagingBelt* belt;
+	VkCommandBuffer cmd;
+	VkFence fence;
+	VkQueue targetQueue;
+
+	void flush_and_reset() {
+		vkEndCommandBuffer(cmd);
+
+		VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+		submit.commandBufferCount = 1;
+		submit.pCommandBuffers = &cmd;
+
+		{
+			std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
+			vkQueueSubmit(targetQueue, 1, &submit, fence);
+		}
+
+		vkWaitForFences(mvkobjs.vkdevice.device, 1, &fence, VK_TRUE, UINT64_MAX);
+		vkResetFences(mvkobjs.vkdevice.device, 1, &fence);
+
+		belt->reset();
+
+		VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		vkBeginCommandBuffer(cmd, &beginInfo);
+	}
+
+	VkDeviceSize safe_reserve(VkDeviceSize size) {
+		VkDeviceSize offset = belt->reserve(size);
+		if (offset == VK_WHOLE_SIZE) {
+			flush_and_reset();
+			offset = belt->reserve(size);
+			if (offset == VK_WHOLE_SIZE) {
+				// i can probably find a way to fragment the single asset
+				throw std::runtime_error("single asset chunk exceeds belt capacity X_X");
+			}
+		}
+		return offset;
+	}
+};

@@ -14,7 +14,7 @@
 
 class netclient {
   public:
-	enum class ConnectionStatus { Disconnected = 0, Connected, Connecting, FailedToConnect };
+	enum struct ConnectionStatus { Disconnected = 0, Connected, Connecting, FailedToConnect };
 
   public:
 	using DataReceivedCallback = std::function<void(const netbuffer)>;

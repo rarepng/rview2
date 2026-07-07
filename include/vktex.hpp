@@ -6,6 +6,8 @@
 #include <string_view>
 #include <cstdint>
 
+struct AsyncTransferContext;
+
 namespace fastgltf {
 	class Asset;
 	struct Image;
@@ -37,7 +39,7 @@ namespace rview::rvk {
 }
 
 namespace rview::rvk::tex {
-	texdata upload_texture_async(rvkbucket& rdata, VkCommandBuffer cmd, const uint8_t* pixels, int w, int h);
+	texdata upload_texture_async(AsyncTransferContext& ctx, const uint8_t* pixels, int w, int h);
 	[[nodiscard]] BatchResult
 	load_batch(rvkbucket& rdata, std::vector<texdata>& out_textures, fastgltf::Asset& model, rview::rvk::TextureErrorCallback on_error = nullptr);
 

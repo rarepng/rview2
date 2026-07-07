@@ -65,8 +65,7 @@ struct alignas(64) job {
 
 
 
-template <typename T, size_t Capacity> class LockFreeMPMC {
-  private:
+template <typename T, size_t Capacity> struct LockFreeMPMC {
 	struct Cell {
 		std::atomic<size_t> sequence;
 		T data;
@@ -80,14 +79,13 @@ template <typename T, size_t Capacity> class LockFreeMPMC {
 	alignas(std::hardware_destructive_interference_size) std::atomic<size_t> enqueue_pos{0};
 	alignas(std::hardware_destructive_interference_size) std::atomic<size_t> dequeue_pos{0};
 
-  public:
 	LockFreeMPMC() {
 		for (size_t i = 0; i < Capacity; ++i) {
 			buffer[i].sequence.store(i, std::memory_order_relaxed);
 		}
 	}
 
-	bool push(T data) {
+	[[gnu::always_inline]] inline bool push(T data) {
 		Cell* cell = nullptr;
 		size_t pos = enqueue_pos.load(std::memory_order_relaxed);
 
@@ -144,19 +142,18 @@ template <typename T, size_t Capacity> class LockFreeMPMC {
 // will use more memory than regular cleanup
 // about 64 bytes per resource instead of 16
 // idk if ill use it but it's here
-enum class TeardownPhase : int { logic = 0, graph = 1, pline = 2, buffer = 4, vma = 8, device = 16, instance = 32, window = 64 };
-class teardown {
-  public:
+enum struct TeardownPhase : int { logic = 0, graph = 1, pline = 2, buffer = 4, vma = 8, device = 16, instance = 32, window = 64 };
+struct teardown {
 	teardown(const teardown&) = delete;
 	teardown& operator=(const teardown&) = delete;
 	teardown() = default;
 
-	void enqueue(TeardownPhase phase, std::move_only_function<void()>&& func) {
+	[[gnu::always_inline]] inline void enqueue(TeardownPhase phase, std::move_only_function<void()>&& func) {
 		std::lock_guard<std::mutex> lock(m_mutex);
 		m_queue[static_cast<int>(phase)].push_back(std::move(func));
 	}
 
-	void flush_and_die() {
+	[[gnu::always_inline]] inline void flush_and_die() {
 		std::lock_guard<std::mutex> lock(m_mutex);
 
 		if (m_is_dead)
@@ -173,7 +170,6 @@ class teardown {
 		m_queue.clear();
 	}
 
-  private:
 	std::mutex m_mutex;
 	bool m_is_dead = false;
 	std::map<int, std::vector<std::move_only_function<void()>>> m_queue;
@@ -190,15 +186,14 @@ struct ScopedJobGuard {
 	ScopedJobGuard(const ScopedJobGuard&) = delete;
 	ScopedJobGuard& operator=(const ScopedJobGuard&) = delete;
 };
-class JobStringArena {
+struct JobStringArena {
 	std::vector<char> buffer;
 	std::atomic<size_t> offset{0};
 
-  public:
-	JobStringArena(size_t size) {
+	[[gnu::always_inline]] inline JobStringArena(size_t size) {
 		buffer.resize(size);
 	}
-	const char* push_string(std::string_view str) {
+	[[gnu::always_inline]] inline const char* push_string(std::string_view str) {
 		size_t start = offset.fetch_add(str.size() + 1, std::memory_order_relaxed);
 
 		// add user friendly ":) file path is too long" or some &$#@
@@ -211,14 +206,13 @@ class JobStringArena {
 		return dest;
 	}
 
-	void reset() {
+	[[gnu::always_inline]] inline void reset() {
 		offset.store(0, std::memory_order_relaxed);
 	}
 };
 
 
-class ThreadLocalArena {
-  private:
+struct ThreadLocalArena {
 	struct Block {
 		std::unique_ptr<uint8_t[]> data;
 		size_t capacity;
@@ -230,7 +224,6 @@ class ThreadLocalArena {
 	std::vector<Block> blocks;
 	size_t defaultBlockSize = 0;
 
-  public:
 	ThreadLocalArena() = default;
 
 	void init(size_t initialBlockSize) {
@@ -290,10 +283,10 @@ inline ThreadLocalArena& get_local_arena() {
 	return g_thread_arenas[t_arena_index];
 }
 
-
-class threadpool {
-  public:
+enum struct JobPriority { High, Low };
+struct threadpool {
 	inline static constexpr uint32_t QUEUE_SIZE = 1024;
+	inline static constexpr uint32_t LOW_PRIORITY_QUEUE_SIZE = 4096;
 
 	threadpool() {
 		uint32_t num_threads = std::max(2u, std::thread::hardware_concurrency() - 2);
@@ -321,10 +314,13 @@ class threadpool {
 
 			job current_job;
 
-			while (queue.pop(current_job)) {
-				if (current_job.destroy) {
+			while (high_priority_queue.pop(current_job)) {
+				if (current_job.destroy)
 					current_job.destroy(current_job.payload);
-				}
+			}
+			while (low_priority_queue.pop(current_job)) {
+				if (current_job.destroy)
+					current_job.destroy(current_job.payload);
 			}
 		}
 	}
@@ -333,11 +329,19 @@ class threadpool {
 		stop_and_join_all();
 	}
 
-	template <typename F> void enqueue(F&& f) {
+	template <typename F> void enqueue(F&& f, JobPriority priority = JobPriority::High) {
 		job new_job = job::make(std::forward<F>(f));
 
-		while (!queue.push(new_job)) {
-			rview::core::cpu_relax();
+		if (priority == JobPriority::High) {
+			while (!high_priority_queue.push(new_job)) {
+				if (!help_execute())
+					rview::core::cpu_relax();
+			}
+		} else {
+			while (!low_priority_queue.push(new_job)) {
+				if (!help_execute())
+					rview::core::cpu_relax();
+			}
 		}
 
 		jobs_available.release();
@@ -346,10 +350,14 @@ class threadpool {
 	bool help_execute() {
 		job current_job;
 
-		if (queue.pop(current_job)) {
-			// X_X
-			// jobs_available.try_acquire();
+		// X_X
+		// no more jobs_available.try_acquire();
+		if (high_priority_queue.pop(current_job)) {
+			current_job.run_and_dispose();
+			return true;
+		}
 
+		if (low_priority_queue.pop(current_job)) {
 			current_job.run_and_dispose();
 			return true;
 		}
@@ -357,8 +365,8 @@ class threadpool {
 		return false;
 	}
 
-  private:
-	LockFreeMPMC<job, QUEUE_SIZE> queue;
+	LockFreeMPMC<job, QUEUE_SIZE> high_priority_queue;
+	LockFreeMPMC<job, LOW_PRIORITY_QUEUE_SIZE> low_priority_queue;
 	// $&#@ it we ball x2
 	std::counting_semaphore<std::numeric_limits<std::ptrdiff_t>::max()> jobs_available{0};
 	std::atomic<bool> running{false};
@@ -390,8 +398,7 @@ class threadpool {
 
 inline threadpool g_jobs{};
 
-class reaper_thread {
-  public:
+struct reaper_thread {
 	reaper_thread() {
 		running.store(true, std::memory_order_release);
 		worker = std::thread(&reaper_thread::loop, this);
@@ -423,7 +430,6 @@ class reaper_thread {
 		items_available.release();
 	}
 
-  private:
 	LockFreeMPMC<job, 1024> queue;
 	std::counting_semaphore<std::numeric_limits<std::ptrdiff_t>::max()> items_available{0};
 	std::atomic<bool> running{false};
