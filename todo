@@ -17,7 +17,10 @@ PAINFUL order independant transparency
 refractions and SSR
 inverse hull outlines (somehow efficiently)
 gltf compliance
-gltf extensions (emission, sheen, gloss)
+gltf extensions (emission, sheen, gloss) [KHR_materials_transmission, KHR_materials_ior, KHR_materials_volume, KHR_materials_clearcoat, KHR_materials_emissive_strength]
+gltf meshopt and draco [BOTH]
+basisu and ktx2 [BOTH]
+KHR_materials_unlit, KHR_texture_transform, maybe EXT_mesh_gpu_instancing
 PROPER DELETION and DEFERRED CLEANUP!!!!!! [[CRITICAL]] // maybe dedicated wait device idle lambda?
 volk for runtime recovery
 sparse virtual textures because $*@# id
