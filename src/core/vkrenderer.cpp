@@ -16,8 +16,7 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/spline.hpp>
 #include <dbg/demo.hpp>
-#include <vk/commandbuffer.hpp>
-#include <vk/commandpool.hpp>
+#include <vk/vkstuff.hpp>
 #include <vksyncobjects.hpp>
 #include <SDL3/SDL_vulkan.h>
 #include <vktex.hpp>

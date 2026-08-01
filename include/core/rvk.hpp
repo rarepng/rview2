@@ -342,6 +342,63 @@ namespace rview {
 };
 
 
+
+struct DODAnimationClip {
+	std::string name;
+	float duration = 0.0f;
+	float sampleRate = rview::anim::samplerate;
+	uint32_t nodeCount = 0;
+	uint32_t jointCount = 0;
+	uint32_t frameCount = 0;
+
+	std::vector<glm::mat4> globalTransforms;
+
+	std::vector<glm::mat4> finalJointMatrices;
+	std::vector<DualQuatScale> finalJointDQs;
+
+	std::vector<LocalTRS> localTracks;
+
+	inline const DualQuatScale* GetFinalJointsFrame(float time, bool loop) const {
+		if (frameCount == 0 || jointCount == 0)
+			return nullptr;
+
+		float adjustedTime = time;
+
+		if (loop) {
+			adjustedTime = std::fmod(time, duration);
+		} else {
+			adjustedTime = std::min(time, duration);
+		}
+
+		uint32_t frameIndex = static_cast<uint32_t>(adjustedTime * sampleRate);
+
+		if (frameIndex >= frameCount)
+			frameIndex = frameCount - 1;
+
+		return &finalJointDQs[frameIndex * jointCount];
+		// return &finalJointMatrices[frameIndex * jointCount];
+	}
+	inline const LocalTRS* GetLocalTracksFrame(float time, bool loop) const {
+		if (frameCount == 0 || nodeCount == 0)
+			return nullptr;
+
+		float adjustedTime = time;
+
+		if (loop)
+			adjustedTime = std::fmod(time, duration);
+		else
+			adjustedTime = std::min(time, duration);
+
+		uint32_t frameIndex = static_cast<uint32_t>(adjustedTime * sampleRate);
+
+		if (frameIndex >= frameCount)
+			frameIndex = frameCount - 1;
+
+		return &localTracks[frameIndex * nodeCount];
+	}
+};
+
+
 struct alignas(64) rdev {
 	vkb::Instance inst{};
 	vkb::Device vkdevice{};
@@ -398,61 +455,6 @@ struct alignas(64) rwind {
 		uint32_t width = 1920;
 		uint32_t height = 1080;
 	} obs_target;
-};
-
-struct DODAnimationClip {
-	std::string name;
-	float duration = 0.0f;
-	float sampleRate = rview::anim::samplerate;
-	uint32_t nodeCount = 0;
-	uint32_t jointCount = 0;
-	uint32_t frameCount = 0;
-
-	std::vector<glm::mat4> globalTransforms;
-
-	std::vector<glm::mat4> finalJointMatrices;
-	std::vector<DualQuatScale> finalJointDQs;
-
-	std::vector<LocalTRS> localTracks;
-
-	inline const DualQuatScale* GetFinalJointsFrame(float time, bool loop) const {
-		if (frameCount == 0 || jointCount == 0)
-			return nullptr;
-
-		float adjustedTime = time;
-
-		if (loop) {
-			adjustedTime = std::fmod(time, duration);
-		} else {
-			adjustedTime = std::min(time, duration);
-		}
-
-		uint32_t frameIndex = static_cast<uint32_t>(adjustedTime * sampleRate);
-
-		if (frameIndex >= frameCount)
-			frameIndex = frameCount - 1;
-
-		return &finalJointDQs[frameIndex * jointCount];
-		// return &finalJointMatrices[frameIndex * jointCount];
-	}
-	inline const LocalTRS* GetLocalTracksFrame(float time, bool loop) const {
-		if (frameCount == 0 || nodeCount == 0)
-			return nullptr;
-
-		float adjustedTime = time;
-
-		if (loop)
-			adjustedTime = std::fmod(time, duration);
-		else
-			adjustedTime = std::min(time, duration);
-
-		uint32_t frameIndex = static_cast<uint32_t>(adjustedTime * sampleRate);
-
-		if (frameIndex >= frameCount)
-			frameIndex = frameCount - 1;
-
-		return &localTracks[frameIndex * nodeCount];
-	}
 };
 
 
