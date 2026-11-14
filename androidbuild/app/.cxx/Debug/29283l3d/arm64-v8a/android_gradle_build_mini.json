@@ -1,0 +1,41 @@
+{
+  "buildFiles": [
+    "C:\\Users\\red\\Desktop\\rndroid\\android_proxy_toolchain.cmake",
+    "C:\\Users\\red\\Desktop\\rndroid\\CMakeLists.txt",
+    "D:\\.cpmcache\\sdl\\22ff\\CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "C:\\miasma\\gg\\bin\\ninja.exe",
+      "-C",
+      "C:\\Users\\red\\Desktop\\rndroid\\androidbuild\\app\\.cxx\\Debug\\29283l3d\\arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "C:\\miasma\\gg\\bin\\ninja.exe",
+    "-C",
+    "C:\\Users\\red\\Desktop\\rndroid\\androidbuild\\app\\.cxx\\Debug\\29283l3d\\arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "SDL3-static::@fc7b397d5a055aba6d5e": {
+      "artifactName": "SDL3-static",
+      "abi": "arm64-v8a",
+      "output": "C:\\Users\\red\\Desktop\\rndroid\\androidbuild\\app\\.cxx\\Debug\\29283l3d\\arm64-v8a\\_deps\\sdl-build\\libSDL3.a",
+      "runtimeFiles": []
+    },
+    "rview2::@6890427a1f51a3e7e1df": {
+      "artifactName": "rview2",
+      "abi": "arm64-v8a",
+      "output": "C:\\Users\\red\\Desktop\\rndroid\\androidbuild\\app\\build\\intermediates\\cxx\\Debug\\29283l3d\\obj\\arm64-v8a\\librview2.so",
+      "runtimeFiles": []
+    },
+    "SDL3_test::@fc7b397d5a055aba6d5e": {
+      "artifactName": "SDL3_test",
+      "abi": "arm64-v8a",
+      "output": "C:\\Users\\red\\Desktop\\rndroid\\androidbuild\\app\\.cxx\\Debug\\29283l3d\\arm64-v8a\\_deps\\sdl-build\\libSDL3_test.a",
+      "runtimeFiles": []
+    }
+  }
+}

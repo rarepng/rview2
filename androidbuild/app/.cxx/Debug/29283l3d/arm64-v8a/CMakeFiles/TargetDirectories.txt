@@ -1,0 +1,15 @@
+C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/CMakeFiles/rview2.dir
+C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/CMakeFiles/edit_cache.dir
+C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/CMakeFiles/rebuild_cache.dir
+C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/CMakeFiles/list_install_components.dir
+C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/CMakeFiles/install.dir
+C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/CMakeFiles/install/local.dir
+C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/CMakeFiles/install/strip.dir
+C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/_deps/sdl-build/CMakeFiles/SDL3-static.dir
+C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/_deps/sdl-build/CMakeFiles/SDL3_test.dir
+C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/_deps/sdl-build/CMakeFiles/edit_cache.dir
+C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/_deps/sdl-build/CMakeFiles/rebuild_cache.dir
+C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/_deps/sdl-build/CMakeFiles/list_install_components.dir
+C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/_deps/sdl-build/CMakeFiles/install.dir
+C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/_deps/sdl-build/CMakeFiles/install/local.dir
+C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/_deps/sdl-build/CMakeFiles/install/strip.dir

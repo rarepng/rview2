@@ -1,0 +1,3 @@
+C:\Users\red\Desktop\rndroid\android_proxy_toolchain.cmake
+C:\Users\red\Desktop\rndroid\CMakeLists.txt
+D:\.cpmcache\sdl\22ff\CMakeLists.txt

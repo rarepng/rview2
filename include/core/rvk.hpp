@@ -250,6 +250,10 @@ struct alignas(16) LocalTRS {
 
 namespace rview {
 	namespace core {
+
+		// android exclusive
+		inline bool g_is_swiping{false};
+
 		inline constexpr uint32_t MAX_FRAMES_IN_FLIGHT{3}; //fix!! different devices might not serve 3 swapchain images
 		inline constexpr uint32_t MAX_BINDLESS_BUFFERS = 1024;
 		static constexpr size_t MAX_GLOBAL_MATERIALS = 10000;
@@ -273,8 +277,8 @@ namespace rview {
 		inline uint32_t g_modelCapacity = 0;
 		inline uint32_t g_modelOffset = 0;
 		inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> g_indirectCommandBuffers;
-		inline std::array<GpuBuffer, rview::core::MAX_FRAMES_IN_FLIGHT> g_indirectCountBuffers;
-		inline ssbodata globalCameraUBO{};
+		inline GpuBuffer g_indirectCountBuffers;
+		inline std::array<ssbodata, rview::core::MAX_FRAMES_IN_FLIGHT> globalCameraUBO{};
 		inline GlobalMaterialHeap global_materials{};
 		inline std::vector<GPUInstanceData> frameInstances;
 		inline VkPipelineLayout globalPipelineLayout = VK_NULL_HANDLE;
@@ -320,7 +324,9 @@ namespace rview {
 		namespace platform {
 #ifdef _WIN32
 			constexpr bool is_windows = true;
-#else
+			constexpr bool is_android = false;
+#elifdef ANDROID
+			constexpr bool is_android = true;
 			constexpr bool is_windows = false;
 #endif
 			constexpr bool headless = RVIEW_HEADLESS;

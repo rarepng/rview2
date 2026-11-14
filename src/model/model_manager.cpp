@@ -21,29 +21,47 @@ namespace model_manager {
 	static std::unordered_map<uint32_t, GpuBuffer> g_modelVBOs;
 
 	std::string get_glb_json_chunk(std::string_view filepath) {
-		std::ifstream file(filepath.data(), std::ios::binary);
+		SDL_IOStream* io = SDL_IOFromFile(filepath.data(), "rb");
 
-		if (!file)
+		if (!io) {
+			SDL_Log("[rview2] Failed to open GLB: %s", SDL_GetError());
 			return "";
+		}
 
-		uint32_t magic, version, length;
-		file.read(reinterpret_cast<char*>(&magic), 4);
+		uint32_t header[3]; // magic: [0]magic, [1]version, [2]length
 
-		if (magic != 0x46546C67)
-			return ""; // magic gltf
+		if (SDL_ReadIO(io, header, sizeof(header)) != sizeof(header)) {
+			SDL_CloseIO(io);
+			return "";
+		}
 
-		file.read(reinterpret_cast<char*>(&version), 4);
-		file.read(reinterpret_cast<char*>(&length), 4);
+		if (header[0] != 0x46546C67) { // magic gltf
+			SDL_CloseIO(io);
+			return "";
+		}
 
-		uint32_t chunkLength, chunkType;
-		file.read(reinterpret_cast<char*>(&chunkLength), 4);
-		file.read(reinterpret_cast<char*>(&chunkType), 4);
+		uint32_t chunkHeader[2]; // magic: [0]chunkLength, [1]chunkType
 
-		if (chunkType != 0x4E4F534A)
-			return ""; // magic json
+		if (SDL_ReadIO(io, chunkHeader, sizeof(chunkHeader)) != sizeof(chunkHeader)) {
+			SDL_CloseIO(io);
+			return "";
+		}
+
+		if (chunkHeader[1] != 0x4E4F534A) { // magic json
+			SDL_CloseIO(io);
+			return "";
+		}
+
+		uint32_t chunkLength = chunkHeader[0];
 
 		std::string json(chunkLength, ' ');
-		file.read(json.data(), chunkLength);
+
+		if (SDL_ReadIO(io, json.data(), chunkLength) != chunkLength) {
+			SDL_CloseIO(io);
+			return "";
+		}
+
+		SDL_CloseIO(io);
 		return json;
 	}
 
@@ -62,15 +80,27 @@ namespace model_manager {
 		}
 
 		fastgltf::Parser parser(fastgltf::Extensions::KHR_texture_basisu);
-		auto mappedFile = fastgltf::MappedGltfFile::FromPath(filepath);
-
-		if (!mappedFile)
+		size_t fileSize = 0;
+		void* fileData = SDL_LoadFile(filepath.data(), &fileSize);
+		if (!fileData) {
+			SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, "SDL failed to load GLB:\n %s", filepath.data());
 			return staging;
+		}
+		auto dataResult = fastgltf::GltfDataBuffer::FromBytes(reinterpret_cast<const std::byte*>(fileData), fileSize);
 
-		auto assetResult = parser.loadGltfBinary(mappedFile.get(), std::filesystem::absolute(filepath));
+		if (dataResult.error() != fastgltf::Error::None) {
+			SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, "Failed to create GltfDataBuffer:\n %d", static_cast<int>(dataResult.error()));
+			SDL_free(fileData);
+			return staging;
+		}
+
+		// fastgltf::Options::LoadExternalBuffers?
+		auto assetResult = parser.loadGltfBinary(dataResult.get(), "", fastgltf::Options::None);
 
 		if (assetResult.error() != fastgltf::Error::None) {
-			std::cerr << "fastgltf error loading: " << filepath << "\n";
+			SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, "fastgltf error loading %s:\n %d", filepath.data(), static_cast<int>(assetResult.error()));
+
+			SDL_free(fileData);
 			return staging;
 		}
 
@@ -663,6 +693,8 @@ namespace model_manager {
 			std::memcpy(staging.parsed_skel->localTransforms.get(), savedRestPose.data(), staging.parsed_skel->nodeCount * sizeof(glm::mat4));
 			staging.parsed_skel->UpdateGlobalMatrices();
 		}
+
+		SDL_free(fileData);
 
 		return staging;
 	}

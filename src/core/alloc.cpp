@@ -5,6 +5,7 @@
 #include <new>
 #include <cstddef>
 #include <atomic>
+#include <core/jobs.hpp>
 
 static std::atomic<int> g_rpmalloc_state{0};
 thread_local bool t_rpmalloc_thread_init = false;
@@ -22,6 +23,8 @@ inline void ensure_rpmalloc() {
 
 		rpmalloc_thread_initialize();
 		t_rpmalloc_thread_init = true;
+		g_reaper.init();
+		g_jobs.init();
 	}
 }
 

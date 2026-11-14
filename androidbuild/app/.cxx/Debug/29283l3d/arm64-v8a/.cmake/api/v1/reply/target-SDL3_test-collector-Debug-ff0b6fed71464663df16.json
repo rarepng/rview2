@@ -1,0 +1,53 @@
+{
+	"abstract" : true,
+	"backtrace" : 3,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"include"
+		],
+		"files" : 
+		[
+			"D:/.cpmcache/sdl/22ff/cmake/sdlcommands.cmake",
+			"D:/.cpmcache/sdl/22ff/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 1
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 71,
+				"parent" : 0
+			},
+			{
+				"file" : 0,
+				"parent" : 1
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 2,
+				"parent" : 2
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"id" : "SDL3_test-collector::@fc7b397d5a055aba6d5e",
+	"name" : "SDL3_test-collector",
+	"paths" : 
+	{
+		"build" : "_deps/sdl-build",
+		"source" : "D:/.cpmcache/sdl/22ff"
+	},
+	"sources" : [],
+	"type" : "INTERFACE_LIBRARY"
+}

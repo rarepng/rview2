@@ -4,31 +4,37 @@
 #include <vulkan/vulkan.h>
 namespace ubo {
 	inline bool init_global(rvkbucket& mvkobjs) {
-		rview::core::globalCameraUBO.size = (2 * sizeof(glm::mat4)) + sizeof(glm::vec4);
+		size_t cameraUBOSize = (2 * sizeof(glm::mat4)) + sizeof(glm::vec4);
 
-		VkBufferCreateInfo binfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-		binfo.size = rview::core::globalCameraUBO.size;
-		binfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		for (uint32_t i = 0; i < rview::core::MAX_FRAMES_IN_FLIGHT; ++i) {
+			rview::core::globalCameraUBO[i].size = cameraUBOSize;
 
-		VmaAllocationCreateInfo vmaallocinfo{};
-		vmaallocinfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+			VkBufferCreateInfo binfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+			binfo.size = cameraUBOSize;
+			binfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
-		if (vmaCreateBuffer(
-				mvkobjs.alloc, &binfo, &vmaallocinfo, &rview::core::globalCameraUBO.buffer, &rview::core::globalCameraUBO.alloc, nullptr) !=
-			VK_SUCCESS)
-			return false;
+			VmaAllocationCreateInfo vmaallocinfo{};
+			vmaallocinfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-		VkDescriptorBufferInfo uinfo{rview::core::globalCameraUBO.buffer, 0, rview::core::globalCameraUBO.size};
+			if (vmaCreateBuffer(
+					mvkobjs.alloc, &binfo, &vmaallocinfo, &rview::core::globalCameraUBO[i].buffer, &rview::core::globalCameraUBO[i].alloc, nullptr) !=
+				VK_SUCCESS) {
+				return false;
+			}
 
-		VkWriteDescriptorSet writedset{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-		writedset.dstSet = rview::core::globalBindlessSet;
-		writedset.dstBinding = 1;
-		writedset.dstArrayElement = 0;
-		writedset.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		writedset.descriptorCount = 1;
-		writedset.pBufferInfo = &uinfo;
+			VkDescriptorBufferInfo uinfo{rview::core::globalCameraUBO[i].buffer, 0, cameraUBOSize};
 
-		vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &writedset, 0, nullptr);
+			VkWriteDescriptorSet writedset{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+			writedset.dstSet = rview::core::globalBindlessSet;
+			writedset.dstBinding = 1;
+			writedset.dstArrayElement = i;
+			writedset.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			writedset.descriptorCount = 1;
+			writedset.pBufferInfo = &uinfo;
+
+			vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &writedset, 0, nullptr);
+		}
+
 		return true;
 	}
 

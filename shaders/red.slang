@@ -8,7 +8,7 @@ static const float MIN_ROUGHNESS = 0.04;
 [[vk::binding(0, 0)]]
 Sampler2D tex[];
 [[vk::binding(1, 0)]]
-ConstantBuffer<cams> cammats;
+ConstantBuffer<cams> cammats[];
 [[vk::binding(2, 0)]]
 StructuredBuffer<DualQuatScale> globalJoints[];
 [[vk::binding(3, 0)]]
@@ -31,7 +31,7 @@ StructuredBuffer<ModelMetadata> modelRegistry;
 [[vk::binding(15, 0)]]
 RWStructuredBuffer<VkDrawIndirectCommand> indirectCommands[];
 [[vk::binding(16, 0)]]
-RWStructuredBuffer<uint> indirectDrawCount[];
+RWStructuredBuffer<uint> indirectDrawCount;
 [[vk::binding(17, 0)]]
 ByteAddressBuffer morphDeltas;
 [[vk::binding(18, 0)]]
@@ -630,7 +630,7 @@ PXin vxmain(uint vertexID: SV_VertexID, uint id: SV_VulkanInstanceID) {
   }
 
   out.worldPos = worldPos.xyz;
-  out.sv_pos = mul(mul(cammats.projection, cammats.view), worldPos);
+  out.sv_pos = mul(mul(cammats[pc.frameIndex].projection, cammats[pc.frameIndex].view), worldPos);
   out.uv = inUv;
 
   out.materialID = prim.materialID;
@@ -655,7 +655,7 @@ float4 pxmain(PXin in) : SV_Target {
     N = normalize(in.normal);
   }
 
-  float3 V = normalize(cammats.camPos - in.worldPos);
+  float3 V = normalize(cammats[pc.frameIndex].camPos - in.worldPos);
 
   float perceptualRoughness = mat.roughnessFactor;
   float metallic = mat.metallicFactor;
@@ -827,7 +827,7 @@ void cxmain(uint3 threadID: SV_DispatchThreadID) {
   instanceData[pc.frameIndex][instanceID].vertexOffset = 0;
   instanceData[pc.frameIndex][instanceID].morphWeightOffset = state.morphWeightOffset;
 
-  float4x4 vp = mul(cammats.projection, cammats.view);
+  float4x4 vp = mul(cammats[pc.frameIndex].projection, cammats[pc.frameIndex].view);
   float4x4 mvp = mul(vp, worldTransform);
 
   ModelMetadata model = modelRegistry[state.modelID];
@@ -859,14 +859,18 @@ void cxmain(uint3 threadID: SV_DispatchThreadID) {
     // if (!IsVisibleTESTING(minB, maxB, mvp)) continue;
     bool isVisible = IsVisible(minB, maxB, mvp);
 
+    //override
+    // isVisible = true;
+
     if (isVisible) {
       uint waveCount = WaveActiveCountBits(true);
       uint waveOffset = WavePrefixCountBits(true);
       uint baseIndex = 0;
 
       if (waveOffset == 0) {
-        InterlockedAdd(indirectDrawCount[pc.frameIndex][0], waveCount,
-                       baseIndex);
+          // Hardcode it to buffer 1
+          InterlockedAdd(indirectDrawCount[pc.frameIndex], waveCount,
+                         baseIndex);
       }
 
       baseIndex = WaveReadLaneFirst(baseIndex);

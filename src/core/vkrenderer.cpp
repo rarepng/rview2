@@ -4,7 +4,6 @@
 #include <core/rvk.hpp>
 #include <cstdint>
 #include <vkrenderer.hpp>
-#include <backends/imgui_impl_glfw.h>
 #include <imgui.h>
 #include <vk_mem_alloc.h>
 #include <cstdlib>
@@ -409,8 +408,13 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 }
 bool vkrenderer::initcpuQs(rvkbucket& mvkobjs) {
 	for (uint32_t i = 0; i < rview::core::MAX_FRAMES_IN_FLIGHT; ++i) {
-		if (!mvkobjs.sbelts[i].init(mvkobjs.alloc, 256 * 1024 * 1024))
-			return false;
+		if constexpr (rview::core::platform::is_android) {
+			if (!mvkobjs.sbelts[i].init(mvkobjs.alloc, 32 * 1024 * 1024))
+				return false;
+		} else {
+			if (!mvkobjs.sbelts[i].init(mvkobjs.alloc, 256 * 1024 * 1024))
+				return false;
+		}
 	}
 
 	// only 4
@@ -477,9 +481,20 @@ bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 	simdjson::ondemand::parser p;
 	simdjson::padded_string j;
 
-	if (auto error = simdjson::padded_string::load("boot.json").get(j); error) {
-		std::cerr << "X_X " << error << std::endl;
-		return false;
+	if constexpr (rview::core::platform::is_android) {
+		size_t datasize = 0;
+		void* data = SDL_LoadFile("boot.json", &datasize);
+		if (!data) {
+			std::cerr << "X_X Failed to load boot.json via SDL" << std::endl;
+			return false;
+		}
+		j = simdjson::padded_string(static_cast<char*>(data), datasize);
+		SDL_free(data);
+	} else {
+		if (auto error = simdjson::padded_string::load("boot.json").get(j); error) {
+			std::cerr << "X_X " << error << std::endl;
+			return false;
+		}
 	}
 
 	simdjson::ondemand::document d;
@@ -691,7 +706,7 @@ bool vkrenderer::initglobalindirect(rvkbucket& mvkobjs) {
 	return true;
 }
 bool vkrenderer::initglobalidrectUNINDEXED(rvkbucket& mvkobjs) {
-	uint32_t maxDrawCommands = 100000;
+	uint32_t maxDrawCommands = rview::core::platform::is_android ? 10000 : 100000;
 
 	for (uint32_t i = 0; i < rview::core::MAX_FRAMES_IN_FLIGHT; i++) {
 
@@ -711,24 +726,25 @@ bool vkrenderer::initglobalidrectUNINDEXED(rvkbucket& mvkobjs) {
 		cmdWrite.descriptorCount = 1;
 		cmdWrite.pBufferInfo = &cmdInfo;
 		vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &cmdWrite, 0, nullptr);
-
-		if (!vkvbo::init(mvkobjs,
-						 rview::core::g_indirectCountBuffers[i],
-						 sizeof(uint32_t),
-						 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT)) {
-			return false;
-		}
-
-		VkDescriptorBufferInfo countInfo{rview::core::g_indirectCountBuffers[i].buffer, 0, VK_WHOLE_SIZE};
-		VkWriteDescriptorSet countWrite{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-		countWrite.dstSet = rview::core::globalBindlessSet;
-		countWrite.dstBinding = 16;
-		countWrite.dstArrayElement = i;
-		countWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		countWrite.descriptorCount = 1;
-		countWrite.pBufferInfo = &countInfo;
-		vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &countWrite, 0, nullptr);
 	}
+
+
+	if (!vkvbo::init(mvkobjs,
+					 rview::core::g_indirectCountBuffers,
+					 sizeof(uint32_t) * rview::core::MAX_FRAMES_IN_FLIGHT,
+					 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT)) {
+		return false;
+	}
+
+	VkDescriptorBufferInfo countInfo{rview::core::g_indirectCountBuffers.buffer, 0, VK_WHOLE_SIZE};
+	VkWriteDescriptorSet countWrite{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+	countWrite.dstSet = rview::core::globalBindlessSet;
+	countWrite.dstBinding = 16;
+	countWrite.dstArrayElement = 0; // The driver can't clamp this, it's just 0!
+	countWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	countWrite.descriptorCount = 1;
+	countWrite.pBufferInfo = &countInfo;
+	vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &countWrite, 0, nullptr);
 
 	return true;
 }
@@ -801,7 +817,7 @@ void vkrenderer::update_dynamic_instances(rvkbucket& mvkobjs, uint32_t read_fram
 }
 bool vkrenderer::initvma(rvkbucket& mvkobjs) {
 	VmaAllocatorCreateInfo allocinfo{};
-	allocinfo.vulkanApiVersion = VK_API_VERSION_1_4;
+	allocinfo.vulkanApiVersion = rview::core::platform::is_android ? VK_API_VERSION_1_3 : VK_API_VERSION_1_4;
 	allocinfo.physicalDevice = mvkobjs.vkdevice.physical_device;
 	allocinfo.device = mvkobjs.vkdevice.device;
 	allocinfo.instance = mvkobjs.inst.instance;
@@ -825,15 +841,37 @@ bool vkrenderer::getqueue(rvkbucket& mvkobjs) {
 	mvkobjs.presentQidx = mvkobjs.vkdevice.get_queue_index(vkb::QueueType::present).value();
 	mvkobjs.computeQ = mvkobjs.vkdevice.get_queue(vkb::QueueType::compute).value();
 	mvkobjs.computeQidx = mvkobjs.vkdevice.get_queue_index(vkb::QueueType::compute).value();
-	mvkobjs.transferQ = mvkobjs.vkdevice.get_queue(vkb::QueueType::transfer).value();
-	mvkobjs.transferQidx = mvkobjs.vkdevice.get_queue_index(vkb::QueueType::transfer).value();
+	auto transfer_queue_ret = mvkobjs.vkdevice.get_queue(vkb::QueueType::transfer);
+
+	if (transfer_queue_ret.has_value()) {
+		mvkobjs.transferQ = transfer_queue_ret.value();
+		mvkobjs.transferQidx = mvkobjs.vkdevice.get_queue_index(vkb::QueueType::transfer).value();
+	} else {
+		mvkobjs.transferQ = mvkobjs.vkdevice.get_queue(vkb::QueueType::graphics).value();
+		mvkobjs.transferQidx = mvkobjs.vkdevice.get_queue_index(vkb::QueueType::graphics).value();
+	}
 
 	return true;
 }
 bool vkrenderer::createdepthbuffer(rvkbucket& mvkobjs) {
 	VkExtent3D depthimageextent = {mvkobjs.schain.extent.width, mvkobjs.schain.extent.height, 1};
 
-	mvkobjs.rddepthformat = VK_FORMAT_D32_SFLOAT;
+	if constexpr (rview::core::platform::is_android) {
+		VkFormat depth_formats[] = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D16_UNORM};
+		mvkobjs.rddepthformat = VK_FORMAT_UNDEFINED;
+		for (auto& format : depth_formats) {
+			VkFormatProperties props;
+			vkGetPhysicalDeviceFormatProperties(mvkobjs.vkdevice.physical_device, format, &props);
+			if (props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+				mvkobjs.rddepthformat = format;
+				break;
+			}
+		}
+		if (mvkobjs.rddepthformat == VK_FORMAT_UNDEFINED)
+			return false;
+	} else {
+		mvkobjs.rddepthformat = VK_FORMAT_D32_SFLOAT;
+	}
 
 	VkImageCreateInfo depthimginfo{};
 	depthimginfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -872,15 +910,23 @@ bool vkrenderer::createdepthbuffer(rvkbucket& mvkobjs) {
 	return true;
 }
 bool vkrenderer::createswapchain(rvkbucket& mvkobjs) {
+	if constexpr (rview::core::platform::is_android) {
+		if (!mvkobjs.surface)
+			return true;
+	}
 	vkb::SwapchainBuilder swapchainbuild{mvkobjs.vkdevice};
 
 	VkSurfaceCapabilitiesKHR surcap;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mvkobjs.vkdevice.physical_device, mvkobjs.surface, &surcap);
 
 	swapchainbuild.set_composite_alpha_flags((VkCompositeAlphaFlagBitsKHR)(surcap.supportedCompositeAlpha & 8 ? 8 : 1));
-	swapchainbuild.set_desired_format({VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR});
-	auto swapchainbuilret = swapchainbuild.set_old_swapchain(mvkobjs.schain).set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR).build();
+	if constexpr (rview::core::platform::is_android) {
+		swapchainbuild.use_default_format_selection();
+	} else {
+		swapchainbuild.set_desired_format({VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR});
+	}
 
+	auto swapchainbuilret = swapchainbuild.set_old_swapchain(mvkobjs.schain).set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR).build();
 	if (!swapchainbuilret) {
 		return false;
 	}
@@ -921,7 +967,8 @@ bool vkrenderer::createcommandpool(rvkbucket& mvkobjs) {
 	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_compute, vkb::QueueType::compute)) [[unlikely]] {
 		return false;
 	}
-	if (!commandpool::createsametype(mvkobjs, mvkobjs.cpools_transfer, vkb::QueueType::transfer)) [[unlikely]] {
+	if (!commandpool::createsametype(
+			mvkobjs, mvkobjs.cpools_transfer, rview::core::platform::is_android ? vkb::QueueType::graphics : vkb::QueueType::transfer)) [[unlikely]] {
 		return false;
 	}
 	return true;
@@ -991,55 +1038,58 @@ bool vkrenderer::initglobalmorphs(rvkbucket& mvkobjs) {
 	return true;
 }
 void vkrenderer::write_obs(rvkbucket& mvkobjs) {
-	VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = mvkobjs.obs_target.img;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
-	barrier.srcAccessMask = 0;
-	barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
-	vkCmdPipelineBarrier(mvkobjs.cbuffers_graphics.at(0).at(rview::core::currentFrame),
-						 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-						 VK_PIPELINE_STAGE_TRANSFER_BIT,
-						 0,
-						 0,
-						 nullptr,
-						 0,
-						 nullptr,
-						 1,
-						 &barrier);
+	if constexpr (rview::core::platform::is_windows) {
+		VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image = mvkobjs.obs_target.img;
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.baseMipLevel = 0;
+		barrier.subresourceRange.levelCount = 1;
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
-	VkClearColorValue clearColor = {{1.0f, 0.0f, 1.0f, 1.0f}};
-	VkImageSubresourceRange range = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-	vkCmdClearColorImage(mvkobjs.cbuffers_graphics.at(0).at(rview::core::currentFrame),
-						 mvkobjs.obs_target.img,
-						 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-						 &clearColor,
-						 1,
-						 &range);
+		vkCmdPipelineBarrier(mvkobjs.cbuffers_graphics.at(0).at(rview::core::currentFrame),
+							 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+							 VK_PIPELINE_STAGE_TRANSFER_BIT,
+							 0,
+							 0,
+							 nullptr,
+							 0,
+							 nullptr,
+							 1,
+							 &barrier);
 
-	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		VkClearColorValue clearColor = {{1.0f, 0.0f, 1.0f, 1.0f}};
+		VkImageSubresourceRange range = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+		vkCmdClearColorImage(mvkobjs.cbuffers_graphics.at(0).at(rview::core::currentFrame),
+							 mvkobjs.obs_target.img,
+							 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+							 &clearColor,
+							 1,
+							 &range);
 
-	vkCmdPipelineBarrier(mvkobjs.cbuffers_graphics.at(0).at(rview::core::currentFrame),
-						 VK_PIPELINE_STAGE_TRANSFER_BIT,
-						 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-						 0,
-						 0,
-						 nullptr,
-						 0,
-						 nullptr,
-						 1,
-						 &barrier);
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+
+		vkCmdPipelineBarrier(mvkobjs.cbuffers_graphics.at(0).at(rview::core::currentFrame),
+							 VK_PIPELINE_STAGE_TRANSFER_BIT,
+							 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+							 0,
+							 0,
+							 nullptr,
+							 0,
+							 nullptr,
+							 1,
+							 &barrier);
+	}
 }
 void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 
@@ -1093,15 +1143,15 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.rddepthimageview, nullptr);
 	vmaDestroyImage(mvkobjs.alloc, mvkobjs.rddepthimage, mvkobjs.rddepthimagealloc);
 
-	// NO VMA!!!! (idk if it's better or not but i couldnt figure out how to make it work without creating a dedicated separate device and pool)
-	if (mvkobjs.obs_target.img) {
-		vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.obs_target.view, nullptr);
-		vkDestroyImage(mvkobjs.vkdevice.device, mvkobjs.obs_target.img, nullptr);
-		vkFreeMemory(mvkobjs.vkdevice.device, mvkobjs.obs_target.memory, nullptr);
-	}
 
 	if constexpr (rview::core::platform::is_windows) {
 		// cleanup_obs_bridge();
+		// NO VMA!!!! (idk if it's better or not but i couldnt figure out how to make it work without creating a dedicated separate device and pool)
+		if (mvkobjs.obs_target.img) {
+			vkDestroyImageView(mvkobjs.vkdevice.device, mvkobjs.obs_target.view, nullptr);
+			vkDestroyImage(mvkobjs.vkdevice.device, mvkobjs.obs_target.img, nullptr);
+			vkFreeMemory(mvkobjs.vkdevice.device, mvkobjs.obs_target.memory, nullptr);
+		}
 	}
 
 	if (rview::core::exrtex.at(0).img) {
@@ -1111,17 +1161,18 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	}
 
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::global_materials.buffer, rview::core::global_materials.alloc);
-	vmaDestroyBuffer(mvkobjs.alloc, rview::core::globalCameraUBO.buffer, rview::core::globalCameraUBO.alloc);
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::g_rawIndexSSBO.buffer, rview::core::g_rawIndexSSBO.alloc);
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::g_primitiveRegistrySSBO.buffer, rview::core::g_primitiveRegistrySSBO.alloc);
 	vmaDestroyBuffer(mvkobjs.alloc, rview::core::g_modelRegistrySSBO.buffer, rview::core::g_modelRegistrySSBO.alloc);
 	vmaDestroyBuffer(mvkobjs.alloc, g_morphDeltaSSBO.buffer, g_morphDeltaSSBO.alloc);
 
+	for (auto&& x : rview::core::globalCameraUBO)
+		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
+
 	for (auto&& x : rview::core::g_indirectCommandBuffers)
 		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
 
-	for (auto&& x : rview::core::g_indirectCountBuffers)
-		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
+	vmaDestroyBuffer(mvkobjs.alloc, rview::core::g_indirectCountBuffers.buffer, rview::core::g_indirectCountBuffers.alloc);
 
 	for (auto&& x : rview::core::globalInstanceBuffers)
 		vmaDestroyBuffer(mvkobjs.alloc, x.buffer, x.alloc);
@@ -1225,89 +1276,92 @@ void vkrenderer::setsize(rvkbucket& mvkobjs, unsigned int w, unsigned int h) {
 			glm::perspective(rview::core::fov, static_cast<float>(mvkobjs.width) / static_cast<float>(mvkobjs.height), 0.002f, 2000.0f);
 }
 bool vkrenderer::create_obs_target(rvkbucket& mvkobjs) {
-	VkPhysicalDeviceIDProperties idProps{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES};
-	VkPhysicalDeviceProperties2 props2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
-	props2.pNext = &idProps;
-	vkGetPhysicalDeviceProperties2(mvkobjs.vkdevice.physical_device, &props2);
+	if constexpr (rview::core::platform::is_windows) {
+		VkPhysicalDeviceIDProperties idProps{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES};
+		VkPhysicalDeviceProperties2 props2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+		props2.pNext = &idProps;
+		vkGetPhysicalDeviceProperties2(mvkobjs.vkdevice.physical_device, &props2);
 
-	if (!idProps.deviceLUIDValid) {
-		std::cerr << "Vulkan side: Device lacks valid LUID." << std::endl;
-		return false;
-	}
-
-	mvkobjs.obs_target.shared_handle = obs_bridge::create_d3d_shared_texture(mvkobjs.obs_target.width, mvkobjs.obs_target.height, idProps.deviceLUID);
-
-	if (!mvkobjs.obs_target.shared_handle)
-		return false;
-
-	VkExternalMemoryHandleTypeFlagBitsKHR handleType =
-		obs_bridge::use_d3d12 ? VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT_KHR : VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT;
-
-	VkExternalMemoryImageCreateInfo extMemInfo{VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO};
-	extMemInfo.handleTypes = handleType;
-
-	VkImageCreateInfo imageInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
-	imageInfo.pNext = &extMemInfo;
-	imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageInfo.format = VK_FORMAT_B8G8R8A8_SRGB;
-	imageInfo.extent = {mvkobjs.obs_target.width, mvkobjs.obs_target.height, 1};
-	imageInfo.mipLevels = 1;
-	imageInfo.arrayLayers = 1;
-	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	imageInfo.usage =
-		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-
-	if (vkCreateImage(mvkobjs.vkdevice.device, &imageInfo, nullptr, &mvkobjs.obs_target.img) != VK_SUCCESS) {
-		return false;
-	}
-
-	VkMemoryRequirements memReqs;
-	vkGetImageMemoryRequirements(mvkobjs.vkdevice.device, mvkobjs.obs_target.img, &memReqs);
-
-	void* os_import_info = obs_bridge::get_vulkan_import_info(mvkobjs.obs_target.shared_handle);
-
-	VkMemoryDedicatedAllocateInfo dedicatedAllocInfo{VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO};
-	dedicatedAllocInfo.pNext = os_import_info;
-	dedicatedAllocInfo.image = mvkobjs.obs_target.img;
-	dedicatedAllocInfo.buffer = VK_NULL_HANDLE;
-
-	auto find_memory_type = [&](uint32_t typeFilter, VkMemoryPropertyFlags properties) -> uint32_t {
-		VkPhysicalDeviceMemoryProperties memProperties;
-		vkGetPhysicalDeviceMemoryProperties(mvkobjs.vkdevice.physical_device, &memProperties);
-
-		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-			if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-				return i;
-			}
+		if (!idProps.deviceLUIDValid) {
+			std::cerr << "Vulkan side: Device lacks valid LUID." << std::endl;
+			return false;
 		}
 
-		return 0;
-	};
+		mvkobjs.obs_target.shared_handle =
+			obs_bridge::create_d3d_shared_texture(mvkobjs.obs_target.width, mvkobjs.obs_target.height, idProps.deviceLUID);
 
-	VkMemoryAllocateInfo allocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
-	allocInfo.pNext = &dedicatedAllocInfo;
-	allocInfo.allocationSize = memReqs.size;
-	allocInfo.memoryTypeIndex = find_memory_type(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		if (!mvkobjs.obs_target.shared_handle)
+			return false;
 
-	if (vkAllocateMemory(mvkobjs.vkdevice.device, &allocInfo, nullptr, &mvkobjs.obs_target.memory) != VK_SUCCESS) {
-		return false;
-	}
+		VkExternalMemoryHandleTypeFlagBitsKHR handleType =
+			obs_bridge::use_d3d12 ? VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT_KHR : VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT;
 
-	vkBindImageMemory(mvkobjs.vkdevice.device, mvkobjs.obs_target.img, mvkobjs.obs_target.memory, 0);
+		VkExternalMemoryImageCreateInfo extMemInfo{VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO};
+		extMemInfo.handleTypes = handleType;
 
-	VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-	viewInfo.image = mvkobjs.obs_target.img;
-	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	viewInfo.format = VK_FORMAT_B8G8R8A8_SRGB;
-	viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	viewInfo.subresourceRange.baseMipLevel = 0;
-	viewInfo.subresourceRange.levelCount = 1;
-	viewInfo.subresourceRange.baseArrayLayer = 0;
-	viewInfo.subresourceRange.layerCount = 1;
+		VkImageCreateInfo imageInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+		imageInfo.pNext = &extMemInfo;
+		imageInfo.imageType = VK_IMAGE_TYPE_2D;
+		imageInfo.format = VK_FORMAT_B8G8R8A8_SRGB;
+		imageInfo.extent = {mvkobjs.obs_target.width, mvkobjs.obs_target.height, 1};
+		imageInfo.mipLevels = 1;
+		imageInfo.arrayLayers = 1;
+		imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+		imageInfo.usage =
+			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-	if (vkCreateImageView(mvkobjs.vkdevice.device, &viewInfo, nullptr, &mvkobjs.obs_target.view) != VK_SUCCESS) {
-		return false;
+		if (vkCreateImage(mvkobjs.vkdevice.device, &imageInfo, nullptr, &mvkobjs.obs_target.img) != VK_SUCCESS) {
+			return false;
+		}
+
+		VkMemoryRequirements memReqs;
+		vkGetImageMemoryRequirements(mvkobjs.vkdevice.device, mvkobjs.obs_target.img, &memReqs);
+
+		void* os_import_info = obs_bridge::get_vulkan_import_info(mvkobjs.obs_target.shared_handle);
+
+		VkMemoryDedicatedAllocateInfo dedicatedAllocInfo{VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO};
+		dedicatedAllocInfo.pNext = os_import_info;
+		dedicatedAllocInfo.image = mvkobjs.obs_target.img;
+		dedicatedAllocInfo.buffer = VK_NULL_HANDLE;
+
+		auto find_memory_type = [&](uint32_t typeFilter, VkMemoryPropertyFlags properties) -> uint32_t {
+			VkPhysicalDeviceMemoryProperties memProperties;
+			vkGetPhysicalDeviceMemoryProperties(mvkobjs.vkdevice.physical_device, &memProperties);
+
+			for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+				if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+					return i;
+				}
+			}
+
+			return 0;
+		};
+
+		VkMemoryAllocateInfo allocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+		allocInfo.pNext = &dedicatedAllocInfo;
+		allocInfo.allocationSize = memReqs.size;
+		allocInfo.memoryTypeIndex = find_memory_type(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+		if (vkAllocateMemory(mvkobjs.vkdevice.device, &allocInfo, nullptr, &mvkobjs.obs_target.memory) != VK_SUCCESS) {
+			return false;
+		}
+
+		vkBindImageMemory(mvkobjs.vkdevice.device, mvkobjs.obs_target.img, mvkobjs.obs_target.memory, 0);
+
+		VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+		viewInfo.image = mvkobjs.obs_target.img;
+		viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		viewInfo.format = VK_FORMAT_B8G8R8A8_SRGB;
+		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		viewInfo.subresourceRange.baseMipLevel = 0;
+		viewInfo.subresourceRange.levelCount = 1;
+		viewInfo.subresourceRange.baseArrayLayer = 0;
+		viewInfo.subresourceRange.layerCount = 1;
+
+		if (vkCreateImageView(mvkobjs.vkdevice.device, &viewInfo, nullptr, &mvkobjs.obs_target.view) != VK_SUCCESS) {
+			return false;
+		}
 	}
 
 	return true;
@@ -1315,59 +1369,62 @@ bool vkrenderer::create_obs_target(rvkbucket& mvkobjs) {
 void vkrenderer::copy_engine_to_obs(
 	VkCommandBuffer cmdBuffer, rvkbucket& mvkobjs, VkImage engine_source_img, VkImage obs_target_img, uint32_t width, uint32_t height) {
 
-	VkImageMemoryBarrier srcBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-	srcBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	srcBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	srcBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	srcBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	srcBarrier.image = engine_source_img;
-	srcBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-	srcBarrier.srcAccessMask = 0;
-	srcBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	if constexpr (rview::core::platform::is_windows) {
+		VkImageMemoryBarrier srcBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+		srcBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		srcBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		srcBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		srcBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		srcBarrier.image = engine_source_img;
+		srcBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+		srcBarrier.srcAccessMask = 0;
+		srcBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 
-	VkImageMemoryBarrier dstBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-	dstBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	dstBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	dstBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	dstBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	dstBarrier.image = obs_target_img;
-	dstBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-	dstBarrier.srcAccessMask = 0;
-	dstBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		VkImageMemoryBarrier dstBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+		dstBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		dstBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		dstBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		dstBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		dstBarrier.image = obs_target_img;
+		dstBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+		dstBarrier.srcAccessMask = 0;
+		dstBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
-	VkImageMemoryBarrier barriers[] = {srcBarrier, dstBarrier};
-	vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 2, barriers);
+		VkImageMemoryBarrier barriers[] = {srcBarrier, dstBarrier};
+		vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 2, barriers);
 
-	VkImageBlit blit{};
-	blit.srcOffsets[0] = {0, 0, 0};
-	blit.srcOffsets[1] = {(int32_t)mvkobjs.schain.extent.width, (int32_t)mvkobjs.schain.extent.height, 1};
-	blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	blit.srcSubresource.layerCount = 1;
-	blit.dstOffsets[0] = {0, 0, 0};
-	blit.dstOffsets[1] = {(int32_t)width, (int32_t)height, 1}; // streeeeeeetch
-	blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	blit.dstSubresource.layerCount = 1;
+		VkImageBlit blit{};
+		blit.srcOffsets[0] = {0, 0, 0};
+		blit.srcOffsets[1] = {(int32_t)mvkobjs.schain.extent.width, (int32_t)mvkobjs.schain.extent.height, 1};
+		blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.srcSubresource.layerCount = 1;
+		blit.dstOffsets[0] = {0, 0, 0};
+		blit.dstOffsets[1] = {(int32_t)width, (int32_t)height, 1}; // streeeeeeetch
+		blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.dstSubresource.layerCount = 1;
 
-	vkCmdBlitImage(cmdBuffer,
-				   engine_source_img,
-				   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-				   obs_target_img,
-				   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				   1,
-				   &blit,
-				   VK_FILTER_LINEAR);
+		vkCmdBlitImage(cmdBuffer,
+					   engine_source_img,
+					   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+					   obs_target_img,
+					   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+					   1,
+					   &blit,
+					   VK_FILTER_LINEAR);
 
-	srcBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	srcBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	srcBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-	srcBarrier.dstAccessMask = 0;
-	dstBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	dstBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-	dstBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	dstBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		srcBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		srcBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		srcBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		srcBarrier.dstAccessMask = 0;
+		dstBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		dstBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+		dstBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		dstBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 
-	VkImageMemoryBarrier postBarriers[] = {srcBarrier, dstBarrier};
-	vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 2, postBarriers);
+		VkImageMemoryBarrier postBarriers[] = {srcBarrier, dstBarrier};
+		vkCmdPipelineBarrier(
+			cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 2, postBarriers);
+	}
 }
 // Vulkan to DX (MASSIVE FAILURE)
 // bool vkrenderer::create_obs_target(rvkbucket& mvkobjs) {
@@ -1511,17 +1568,22 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 		case SDL_EVENT_WINDOW_MINIMIZED:
 			[[unlikely]] {
 				SDL_Event min_event;
-
 				while (SDL_WaitEvent(&min_event)) {
-					if (min_event.type == SDL_EVENT_WINDOW_RESTORED)
+					if (min_event.type == SDL_EVENT_WINDOW_RESTORED) {
+						if constexpr (rview::core::platform::is_android) {
+							if (!mvkobjs.surface) {
+								SDL_Vulkan_CreateSurface(mvkobjs.wind, mvkobjs.inst, nullptr, &mvkobjs.surface);
+							}
+							recreateswapchain(mvkobjs);
+						}
 						break;
+					}
 
 					if (min_event.type == SDL_EVENT_QUIT) {
 						mvkobjs.mshutdown = true;
 						break;
 					}
 				}
-
 				break;
 			}
 		case SDL_EVENT_DROP_FILE:
@@ -1596,6 +1658,35 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 				break;
 			}
 		case SDL_EVENT_DROP_COMPLETE:
+			break;
+		case SDL_EVENT_FINGER_DOWN:
+		case SDL_EVENT_FINGER_UP:
+			if constexpr (rview::core::platform::is_android) {
+				rview::core::g_is_swiping = false; // Reset swipe state on touch start/end
+			}
+			break;
+
+		case SDL_EVENT_FINGER_MOTION:
+			if constexpr (rview::core::platform::is_android) {
+				// Use a small deadzone so tapping the screen doesn't accidentally trigger a swipe
+				if (std::abs(e.tfinger.dx) > 0.002f || std::abs(e.tfinger.dy) > 0.002f) {
+					rview::core::g_is_swiping = true;
+				}
+
+				if (rview::core::g_is_swiping) {
+					// Sensitivity: 180.0f means a full-screen swipe rotates the camera 180 degrees.
+					// Adjust these values to make the swipe feel natural.
+					float touch_sens_x = 180.0f;
+					float touch_sens_y = 180.0f;
+
+					// Match your mouse rotation math
+					rview::core::azimuth += e.tfinger.dx * touch_sens_x;
+					rview::core::elevation -= e.tfinger.dy * touch_sens_y;
+
+					// Clamp elevation to prevent rolling/flipping over the top
+					rview::core::elevation = std::clamp(rview::core::elevation, -89.0f, 89.0f);
+				}
+			}
 			break;
 	}
 }
@@ -1737,7 +1828,13 @@ void vkrenderer::movecam(rvkbucket& mvkobjs) {
 
 	persviewproj.at(0) = vkcam::getview();
 
-	if (!io->WantCaptureMouse && isLeftClick && !isRightClick) {
+	bool can_raycast = (!io->WantCaptureMouse && isLeftClick && !isRightClick);
+
+	if constexpr (rview::core::platform::is_android) {
+		can_raycast = can_raycast && !rview::core::g_is_swiping;
+	}
+
+	if (can_raycast) {
 		glm::vec4 viewport(0.0f, 0.0f, (float)mvkobjs.width, (float)mvkobjs.height);
 
 		glm::vec3 nearPt = glm::unProject(glm::vec3(mx, viewport.w - my, 0.0f), persviewproj.at(0), persviewproj.at(1), viewport);
@@ -2045,6 +2142,21 @@ void flush_staging_and_resume(VkCommandBuffer& cmd, VkQueue queue, StagingBelt& 
 bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	ZoneScoped;
 
+	if constexpr (rview::core::platform::is_android) {
+		if (!mvkobjs.surface || !mvkobjs.schain.swapchain) {
+			SDL_Event e;
+			while (SDL_PollEvent(&e)) {
+				ImGui_ImplSDL3_ProcessEvent(&e);
+				sdlevent(mvkobjs, e);
+			}
+			rview::core::cpu_relax();
+			return true; // skip
+		}
+	}
+
+
+	VkDeviceSize countOffset = rview::core::currentFrame * sizeof(uint32_t);
+
 	if (vkWaitForFences(mvkobjs.vkdevice.device, 1, &mvkobjs.fencez.at(rview::core::currentFrame), VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
 		return false;
 	}
@@ -2089,7 +2201,18 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	VkResult res = vkAcquireNextImageKHR(
 		mvkobjs.vkdevice.device, mvkobjs.schain.swapchain, UINT64_MAX, mvkobjs.semaphorez[0][rview::core::currentFrame], VK_NULL_HANDLE, &imgidx);
 
-	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
+	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_ERROR_SURFACE_LOST_KHR) {
+		if constexpr (rview::core::platform::is_android) {
+			if (res == VK_ERROR_SURFACE_LOST_KHR) {
+				vkb::destroy_surface(mvkobjs.inst.instance, mvkobjs.surface);
+				mvkobjs.surface = VK_NULL_HANDLE;
+
+				SDL_Event push_min;
+				push_min.type = SDL_EVENT_WINDOW_MINIMIZED;
+				SDL_PushEvent(&push_min);
+				return true;
+			}
+		}
 		return recreateswapchain(mvkobjs);
 	} else {
 		if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) {
@@ -2247,16 +2370,20 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 	{
 		void* data;
-		vmaMapMemory(mvkobjs.alloc, rview::core::globalCameraUBO.alloc, &data);
+		vmaMapMemory(mvkobjs.alloc, rview::core::globalCameraUBO[rview::core::currentFrame].alloc, &data);
+
 		std::byte* dst = static_cast<std::byte*>(data);
 		std::memcpy(dst, persviewproj.data(), 2 * sizeof(glm::mat4));
 		glm::vec4 campos4(rview::core::camwpos, 0.0f);
 		std::memcpy(dst + (2 * sizeof(glm::mat4)), &campos4, sizeof(glm::vec4));
-		vmaUnmapMemory(mvkobjs.alloc, rview::core::globalCameraUBO.alloc);
+
+		vmaFlushAllocation(mvkobjs.alloc, rview::core::globalCameraUBO[rview::core::currentFrame].alloc, 0, VK_WHOLE_SIZE);
+
+		vmaUnmapMemory(mvkobjs.alloc, rview::core::globalCameraUBO[rview::core::currentFrame].alloc);
 	}
 
-
-	std::call_once(obswrite, [&]() { vkrenderer::write_obs(mvkobjs); });
+	if constexpr (rview::core::platform::is_windows)
+		std::call_once(obswrite, [&]() { vkrenderer::write_obs(mvkobjs); });
 
 
 	model_manager::PoolMigrationReq migReq;
@@ -2406,19 +2533,19 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		vkCmdPipelineBarrier2(c, &dep);
 	});
 
-	currentgraph.add_pass([c] {
+	currentgraph.add_pass([c, countOffset] {
 		if constexpr (rdebug::is_active) {
 			TracyVkZone(rdebug::tracyCTX, c, "compute/cull");
 		}
 
-		vkCmdFillBuffer(c, rview::core::g_indirectCountBuffers[rview::core::currentFrame].buffer, 0, sizeof(uint32_t), 0);
+		vkCmdFillBuffer(c, rview::core::g_indirectCountBuffers.buffer, countOffset, sizeof(uint32_t), 0);
 
 		VkBufferMemoryBarrier2 fillBarrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
 		fillBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
 		fillBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
 		fillBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
 		fillBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
-		fillBarrier.buffer = rview::core::g_indirectCountBuffers[rview::core::currentFrame].buffer;
+		fillBarrier.buffer = rview::core::g_indirectCountBuffers.buffer;
 		fillBarrier.size = sizeof(uint32_t);
 
 		VkDependencyInfo fillDep{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
@@ -2461,7 +2588,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		computeBarriers[1].srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
 		computeBarriers[1].dstStageMask = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
 		computeBarriers[1].dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
-		computeBarriers[1].buffer = rview::core::g_indirectCountBuffers[rview::core::currentFrame].buffer;
+		computeBarriers[1].buffer = rview::core::g_indirectCountBuffers.buffer;
 		computeBarriers[1].size = sizeof(uint32_t);
 
 		computeBarriers[2].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
@@ -2478,7 +2605,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		vkCmdPipelineBarrier2(c, &computeDep);
 	});
 
-	currentgraph.add_pass([&mvkobjs, c, imgidx] {
+	currentgraph.add_pass([&mvkobjs, c, imgidx, countOffset] {
 		if constexpr (rdebug::is_active) {
 			TracyVkZone(rdebug::tracyCTX, c, "rendering");
 		}
@@ -2547,8 +2674,8 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		vkCmdDrawIndirectCount(c,
 							   rview::core::g_indirectCommandBuffers[rview::core::currentFrame].buffer,
 							   0,
-							   rview::core::g_indirectCountBuffers[rview::core::currentFrame].buffer,
-							   0,
+							   rview::core::g_indirectCountBuffers.buffer,
+							   countOffset,
 							   100000,
 							   sizeof(VkDrawIndirectCommand));
 
@@ -2591,9 +2718,9 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 
 	currentgraph.execute();
-
-	vkrenderer::copy_engine_to_obs(
-		c, mvkobjs, mvkobjs.schainimgs.at(imgidx), mvkobjs.obs_target.img, mvkobjs.obs_target.width, mvkobjs.obs_target.height);
+	if constexpr (rview::core::platform::is_windows)
+		vkrenderer::copy_engine_to_obs(
+			c, mvkobjs, mvkobjs.schainimgs.at(imgidx), mvkobjs.obs_target.img, mvkobjs.obs_target.width, mvkobjs.obs_target.height);
 
 	if constexpr (rdebug::is_active) {
 		TracyVkCollect(rdebug::tracyCTX, c);
@@ -2676,7 +2803,8 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		}
 	}
 
-	obs_bridge::send_spout();
+	if constexpr (rview::core::platform::is_windows)
+		obs_bridge::send_spout();
 
 	vkrenderer::mlasttick = tick;
 	rview::core::currentFrame = (rview::core::currentFrame + 1) % rview::core::MAX_FRAMES_IN_FLIGHT;

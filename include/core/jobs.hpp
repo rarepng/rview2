@@ -16,6 +16,8 @@
 #include <condition_variable>
 #include <rpmalloc.h>
 #include <cpu_relax.hpp>
+#include <SDL3/SDL.h>
+#include <cassert>
 
 inline std::array<std::atomic<bool>, 8192> g_cancellation_tokens{}; // magic
 
@@ -288,13 +290,25 @@ struct threadpool {
 	inline static constexpr uint32_t QUEUE_SIZE = 1024;
 	inline static constexpr uint32_t LOW_PRIORITY_QUEUE_SIZE = 4096;
 
-	threadpool() {
-		uint32_t num_threads = std::max(2u, std::thread::hardware_concurrency() - 2);
+	threadpool() = default;
+
+	void init() {
+		if (is_running() || !workers.empty()) {
+			SDL_Log("threadpool already initialized");
+			return;
+		}
+
+		int32_t hc = static_cast<int32_t>(std::thread::hardware_concurrency());
+		uint32_t num_threads = static_cast<uint32_t>(std::max(2, hc - 2));
 
 		running.store(true, std::memory_order_release);
 
 		for (uint32_t i = 0; i < num_threads - 1; ++i) {
-			workers.emplace_back(&threadpool::worker_loop, this);
+			try {
+				workers.emplace_back(&threadpool::worker_loop, this);
+			} catch (const std::system_error& e) {
+				SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, "failed to spawn worker %u:\n %s", i, e.what());
+			}
 		}
 	}
 
@@ -399,9 +413,23 @@ struct threadpool {
 inline threadpool g_jobs{};
 
 struct reaper_thread {
-	reaper_thread() {
+	reaper_thread() = default;
+
+	void init() {
+
+		if (worker.joinable() || running.load(std::memory_order_acquire)) {
+			SDL_Log("reaper init() called but was already running");
+			return;
+		}
+
 		running.store(true, std::memory_order_release);
-		worker = std::thread(&reaper_thread::loop, this);
+		// abi mismatch XP
+		try {
+			worker = std::thread(&reaper_thread::loop, this);
+		} catch (const std::system_error& e) {
+			SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, " OS rejected reaper std::thread creation:\n %s", e.what());
+			running.store(false, std::memory_order_release);
+		}
 	}
 
 	~reaper_thread() {

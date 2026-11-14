@@ -29,14 +29,29 @@ template <typename T> void DrawAutoUI(const T& obj) {
 }
 #endif
 
+ImFont* LoadFontFromAPK(ImGuiIO& io, const char* filepath, float size_pixels) {
+	size_t data_size = 0;
+
+	void* sdl_data = SDL_LoadFile(filepath, &data_size);
+	if (!sdl_data) {
+		SDL_Log("[rview2] failed to load font %s: %s", filepath, SDL_GetError());
+		return nullptr;
+	}
+
+	void* imgui_data = ImGui::MemAlloc(data_size);
+	memcpy(imgui_data, sdl_data, data_size);
+	SDL_free(sdl_data);
+	return io.Fonts->AddFontFromMemoryTTF(imgui_data, static_cast<int>(data_size), size_pixels);
+}
+
 bool ui::init(rvkbucket& renderData) {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 
 	ImGuiIO& io = ImGui::GetIO();
 	//hardcoded but ig it's fine here
-	io.Fonts->AddFontFromFileTTF("resources/comicbd.ttf", 29.0f);
-	io.Fonts->AddFontFromFileTTF("resources/bruce.ttf", 52.0f);
+	LoadFontFromAPK(io, "resources/comicbd.ttf", 29.0f);
+	LoadFontFromAPK(io, "resources/bruce.ttf", 52.0f);
 
 	std::array<VkDescriptorPoolSize, 11> imguiPoolSizes{{{VK_DESCRIPTOR_TYPE_SAMPLER, 24},
 														 {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 24},

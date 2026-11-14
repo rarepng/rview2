@@ -1,0 +1,23 @@
+                        -HC:\Users\red\Desktop\rndroid
+-DCMAKE_SYSTEM_NAME=Android
+-DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+-DCMAKE_SYSTEM_VERSION=34
+-DANDROID_ABI=arm64-v8a
+-DCMAKE_ANDROID_ARCH_ABI=arm64-v8a
+-DANDROID_NDK=D:\.android\sdk\ndk\30.0.15729638
+-DCMAKE_ANDROID_NDK=D:\.android\sdk\ndk\30.0.15729638
+-DCMAKE_MAKE_PROGRAM=C:\miasma\gg\bin\ninja.exe
+-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=C:\Users\red\Desktop\rndroid\androidbuild\app\build\intermediates\cxx\Debug\29283l3d\obj\arm64-v8a
+-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=C:\Users\red\Desktop\rndroid\androidbuild\app\build\intermediates\cxx\Debug\29283l3d\obj\arm64-v8a
+-DCMAKE_BUILD_TYPE=Debug
+-BC:\Users\red\Desktop\rndroid\androidbuild\app\.cxx\Debug\29283l3d\arm64-v8a
+-GNinja
+-DCMAKE_TOOLCHAIN_FILE=C:\Users\red\Desktop\rndroid\android_proxy_toolchain.cmake
+-DCUSTOM_LLVM_DIR=C:/miasma/realLLVM/bin
+-DANDROID_PLATFORM=android-36
+-DANDROID_STL=c++_static
+-DRVIEW_HEADLESS=0
+-DCMAKE_C_COMPILER=C:/miasma/realLLVM/bin/clang.exe
+-DCMAKE_CXX_COMPILER=C:/miasma/realLLVM/bin/clang++.exe
+                        Build command args: []
+                        Version: 2

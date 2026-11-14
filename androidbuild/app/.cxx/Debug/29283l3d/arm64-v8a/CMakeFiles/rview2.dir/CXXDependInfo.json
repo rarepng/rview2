@@ -1,0 +1,33 @@
+{
+	"bmi-installation" : null,
+	"compiler-frontend-variant" : "GNU",
+	"compiler-id" : "Clang",
+	"compiler-simulate-id" : "",
+	"config" : "Debug",
+	"cxx-modules" : {},
+	"database-info" : null,
+	"dir-cur-bld" : "C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a",
+	"dir-cur-src" : "C:/Users/red/Desktop/rndroid",
+	"dir-top-bld" : "C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a",
+	"dir-top-src" : "C:/Users/red/Desktop/rndroid",
+	"exports" : [],
+	"forward-modules-from-target-dirs" : [],
+	"include-dirs" : 
+	[
+		"D:\\.cpmcache\\sdl\\22ff\\include",
+		"generated\\include",
+		"C:\\Users\\red\\Desktop\\rndroid\\include",
+		"_deps\\sdl-build\\include-revision"
+	],
+	"language" : "CXX",
+	"linked-target-dirs" : [],
+	"module-dir" : "C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/CMakeFiles/rview2.dir",
+	"sources" : 
+	{
+		"CMakeFiles/rview2.dir/src/main.cpp.o" : 
+		{
+			"language" : "CXX",
+			"source" : "C:/Users/red/Desktop/rndroid/src/main.cpp"
+		}
+	}
+}

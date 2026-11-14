@@ -287,25 +287,31 @@ namespace rview::rvk::tex {
 	bool load_env_map(rvkbucket& rdata, texdata& out_env_map) {
 
 		int w, h, channels;
-		//hardcoded
-		std::filesystem::path targetPath = "resources/bg.hdr";
+		const char* targetPath = "resources/bg.hdr";
 
-		std::cout << "[Debug] Current Working Directory: " << std::filesystem::current_path() << std::endl;
+		SDL_Log("[rview2] [Debug] attempting to load env map from: %s", targetPath);
 
-		if (!std::filesystem::exists(targetPath)) {
-			std::cout << "[Error] File DOES NOT EXIST at: " << std::filesystem::absolute(targetPath) << std::endl;
-			std::cout << "        (Did you forget to copy the 'resources' folder to the build/bin folder?)" << std::endl;
+		size_t fileSize = 0;
+		void* fileData = SDL_LoadFile(targetPath, &fileSize);
+
+		if (!fileData) {
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+						 "[rview2] [Error] file DOES NOT EXIST or SDL_LoadFile failed for %s:\n %s",
+						 targetPath,
+						 SDL_GetError());
 			return false;
 		}
 
-		float* pixels = stbi_loadf(targetPath.string().c_str(), &w, &h, &channels, 4);
+		float* pixels = stbi_loadf_from_memory(static_cast<const stbi_uc*>(fileData), static_cast<int>(fileSize), &w, &h, &channels, 4);
+
+		SDL_free(fileData);
 
 		if (!pixels) {
-			std::cout << "[Error] stbi_loadf failed! Reason: " << stbi_failure_reason() << std::endl;
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[rview2] [Error] stbi_loadf_from_memory failed:\n %s", stbi_failure_reason());
 			return false;
 		}
 
-		std::cout << "[Success] Loaded EXR: " << w << "x" << h << std::endl;
+		SDL_Log("[rview2] [Success] loaded HDR: %dx%d", w, h);
 
 		uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(w, h)))) + 1;
 		rview::core::hdrmiplod = mipLevels;

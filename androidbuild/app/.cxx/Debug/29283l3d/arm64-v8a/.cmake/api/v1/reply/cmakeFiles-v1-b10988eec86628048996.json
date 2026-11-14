@@ -1,0 +1,1828 @@
+{
+	"globsDependent" : 
+	[
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/SDL.c",
+				"D:/.cpmcache/sdl/22ff/src/SDL_assert.c",
+				"D:/.cpmcache/sdl/22ff/src/SDL_error.c",
+				"D:/.cpmcache/sdl/22ff/src/SDL_guid.c",
+				"D:/.cpmcache/sdl/22ff/src/SDL_hashtable.c",
+				"D:/.cpmcache/sdl/22ff/src/SDL_hints.c",
+				"D:/.cpmcache/sdl/22ff/src/SDL_list.c",
+				"D:/.cpmcache/sdl/22ff/src/SDL_log.c",
+				"D:/.cpmcache/sdl/22ff/src/SDL_properties.c",
+				"D:/.cpmcache/sdl/22ff/src/SDL_utils.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/SDL_assert_c.h",
+				"D:/.cpmcache/sdl/22ff/src/SDL_error_c.h",
+				"D:/.cpmcache/sdl/22ff/src/SDL_hashtable.h",
+				"D:/.cpmcache/sdl/22ff/src/SDL_hints_c.h",
+				"D:/.cpmcache/sdl/22ff/src/SDL_internal.h",
+				"D:/.cpmcache/sdl/22ff/src/SDL_list.h",
+				"D:/.cpmcache/sdl/22ff/src/SDL_log_c.h",
+				"D:/.cpmcache/sdl/22ff/src/SDL_properties_c.h",
+				"D:/.cpmcache/sdl/22ff/src/SDL_utils_c.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/atomic/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/atomic/SDL_atomic.c",
+				"D:/.cpmcache/sdl/22ff/src/atomic/SDL_spinlock.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/atomic/*.h",
+			"listDirectories" : true,
+			"paths" : []
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/audio/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/audio/SDL_audio.c",
+				"D:/.cpmcache/sdl/22ff/src/audio/SDL_audiocvt.c",
+				"D:/.cpmcache/sdl/22ff/src/audio/SDL_audiodev.c",
+				"D:/.cpmcache/sdl/22ff/src/audio/SDL_audioqueue.c",
+				"D:/.cpmcache/sdl/22ff/src/audio/SDL_audioresample.c",
+				"D:/.cpmcache/sdl/22ff/src/audio/SDL_audiotypecvt.c",
+				"D:/.cpmcache/sdl/22ff/src/audio/SDL_mixer.c",
+				"D:/.cpmcache/sdl/22ff/src/audio/SDL_wave.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/audio/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/audio/SDL_audio_c.h",
+				"D:/.cpmcache/sdl/22ff/src/audio/SDL_audio_channel_converters.h",
+				"D:/.cpmcache/sdl/22ff/src/audio/SDL_audiodev_c.h",
+				"D:/.cpmcache/sdl/22ff/src/audio/SDL_audioqueue.h",
+				"D:/.cpmcache/sdl/22ff/src/audio/SDL_audioresample.h",
+				"D:/.cpmcache/sdl/22ff/src/audio/SDL_sysaudio.h",
+				"D:/.cpmcache/sdl/22ff/src/audio/SDL_wave.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/audio/aaudio/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/audio/aaudio/SDL_aaudio.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/audio/aaudio/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/audio/aaudio/SDL_aaudio.h",
+				"D:/.cpmcache/sdl/22ff/src/audio/aaudio/SDL_aaudiofuncs.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/audio/disk/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/audio/disk/SDL_diskaudio.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/audio/disk/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/audio/disk/SDL_diskaudio.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/audio/dummy/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/audio/dummy/SDL_dummyaudio.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/audio/dummy/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/audio/dummy/SDL_dummyaudio.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/audio/openslES/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/audio/openslES/SDL_openslES.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/audio/openslES/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/audio/openslES/SDL_openslES.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/camera/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/camera/SDL_camera.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/camera/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/camera/SDL_camera_c.h",
+				"D:/.cpmcache/sdl/22ff/src/camera/SDL_syscamera.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/camera/android/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/camera/android/SDL_camera_android.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/camera/android/*.h",
+			"listDirectories" : true,
+			"paths" : []
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/camera/dummy/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/camera/dummy/SDL_camera_dummy.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/camera/dummy/*.h",
+			"listDirectories" : true,
+			"paths" : []
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/core/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/core/SDL_core_unsupported.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/core/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/core/SDL_core_unsupported.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/core/android/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/core/android/SDL_android.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/core/android/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/core/android/SDL_android.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/cpuinfo/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/cpuinfo/SDL_cpuinfo.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/cpuinfo/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/cpuinfo/SDL_cpuinfo_c.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/dynapi/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/dynapi/SDL_dynapi.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/dynapi/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/dynapi/SDL_dynapi.h",
+				"D:/.cpmcache/sdl/22ff/src/dynapi/SDL_dynapi_overrides.h",
+				"D:/.cpmcache/sdl/22ff/src/dynapi/SDL_dynapi_procs.h",
+				"D:/.cpmcache/sdl/22ff/src/dynapi/SDL_dynapi_unsupported.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/events/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_categories.c",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_clipboardevents.c",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_displayevents.c",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_dropevents.c",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_events.c",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_eventwatch.c",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_keyboard.c",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_keymap.c",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_keysym_to_keycode.c",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_keysym_to_scancode.c",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_mouse.c",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_pen.c",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_quit.c",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_scancode_tables.c",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_touch.c",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_windowevents.c",
+				"D:/.cpmcache/sdl/22ff/src/events/imKStoUCS.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/events/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_categories_c.h",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_clipboardevents_c.h",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_displayevents_c.h",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_dropevents_c.h",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_events_c.h",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_eventwatch_c.h",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_keyboard_c.h",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_keymap_c.h",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_keysym_to_keycode_c.h",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_keysym_to_scancode_c.h",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_mouse_c.h",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_pen_c.h",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_scancode_tables_c.h",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_touch_c.h",
+				"D:/.cpmcache/sdl/22ff/src/events/SDL_windowevents_c.h",
+				"D:/.cpmcache/sdl/22ff/src/events/blank_cursor.h",
+				"D:/.cpmcache/sdl/22ff/src/events/default_cursor.h",
+				"D:/.cpmcache/sdl/22ff/src/events/imKStoUCS.h",
+				"D:/.cpmcache/sdl/22ff/src/events/scancodes_darwin.h",
+				"D:/.cpmcache/sdl/22ff/src/events/scancodes_linux.h",
+				"D:/.cpmcache/sdl/22ff/src/events/scancodes_windows.h",
+				"D:/.cpmcache/sdl/22ff/src/events/scancodes_xfree86.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/filesystem/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/filesystem/SDL_filesystem.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/filesystem/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/filesystem/SDL_filesystem_c.h",
+				"D:/.cpmcache/sdl/22ff/src/filesystem/SDL_sysfilesystem.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/filesystem/android/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/filesystem/android/SDL_sysfilesystem.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/filesystem/android/*.h",
+			"listDirectories" : true,
+			"paths" : []
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/gpu/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/gpu/SDL_gpu.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/gpu/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/gpu/SDL_sysgpu.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/gpu/vulkan/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/gpu/vulkan/SDL_gpu_vulkan.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/gpu/vulkan/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/gpu/vulkan/SDL_gpu_vulkan_vkfuncs.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/haptic/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/haptic/SDL_haptic.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/haptic/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/haptic/SDL_haptic_c.h",
+				"D:/.cpmcache/sdl/22ff/src/haptic/SDL_syshaptic.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/haptic/android/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/haptic/android/SDL_syshaptic.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/haptic/android/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/haptic/android/SDL_syshaptic_c.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/haptic/hidapi/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/haptic/hidapi/SDL_hidapihaptic.c",
+				"D:/.cpmcache/sdl/22ff/src/haptic/hidapi/SDL_hidapihaptic_lg4ff.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/hidapi/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/hidapi/SDL_hidapi.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/hidapi/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/hidapi/SDL_hidapi_android.h",
+				"D:/.cpmcache/sdl/22ff/src/hidapi/SDL_hidapi_c.h",
+				"D:/.cpmcache/sdl/22ff/src/hidapi/SDL_hidapi_ios.h",
+				"D:/.cpmcache/sdl/22ff/src/hidapi/SDL_hidapi_libusb.h",
+				"D:/.cpmcache/sdl/22ff/src/hidapi/SDL_hidapi_linux.h",
+				"D:/.cpmcache/sdl/22ff/src/hidapi/SDL_hidapi_mac.h",
+				"D:/.cpmcache/sdl/22ff/src/hidapi/SDL_hidapi_netbsd.h",
+				"D:/.cpmcache/sdl/22ff/src/hidapi/SDL_hidapi_steamxbox.h",
+				"D:/.cpmcache/sdl/22ff/src/hidapi/SDL_hidapi_windows.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/io/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/io/SDL_asyncio.c",
+				"D:/.cpmcache/sdl/22ff/src/io/SDL_iostream.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/io/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/io/SDL_asyncio_c.h",
+				"D:/.cpmcache/sdl/22ff/src/io/SDL_iostream_c.h",
+				"D:/.cpmcache/sdl/22ff/src/io/SDL_sysasyncio.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/io/generic/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/io/generic/SDL_asyncio_generic.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/io/generic/*.h",
+			"listDirectories" : true,
+			"paths" : []
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/joystick/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/joystick/SDL_gamepad.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/SDL_joystick.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/SDL_steam_virtual_gamepad.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/controller_type.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/joystick/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/joystick/SDL_gamepad_c.h",
+				"D:/.cpmcache/sdl/22ff/src/joystick/SDL_gamepad_db.h",
+				"D:/.cpmcache/sdl/22ff/src/joystick/SDL_joystick_c.h",
+				"D:/.cpmcache/sdl/22ff/src/joystick/SDL_steam_virtual_gamepad.h",
+				"D:/.cpmcache/sdl/22ff/src/joystick/SDL_sysjoystick.h",
+				"D:/.cpmcache/sdl/22ff/src/joystick/controller_list.h",
+				"D:/.cpmcache/sdl/22ff/src/joystick/controller_type.h",
+				"D:/.cpmcache/sdl/22ff/src/joystick/usb_ids.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/joystick/android/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/joystick/android/SDL_sysjoystick.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/joystick/android/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/joystick/android/SDL_sysjoystick_c.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/joystick/hidapi/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_8bitdo.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_combined.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_flydigi.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_gamecube.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_gip.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_lg4ff.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_luna.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_ps3.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_ps4.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_ps5.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_rumble.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_shield.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_sinput.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_stadia.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_steam.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_steam_hori.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_steam_triton.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_steamdeck.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_switch.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_switch2.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_wii.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_xbox360.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_xbox360w.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_xboxone.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapi_zuiki.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_hidapijoystick.c",
+				"D:/.cpmcache/sdl/22ff/src/joystick/hidapi/SDL_report_descriptor.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/joystick/virtual/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/joystick/virtual/SDL_virtualjoystick.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/joystick/virtual/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/joystick/virtual/SDL_virtualjoystick_c.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/loadso/dlopen/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/loadso/dlopen/SDL_sysloadso.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/loadso/dlopen/*.h",
+			"listDirectories" : true,
+			"paths" : []
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/locale/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/locale/SDL_locale.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/locale/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/locale/SDL_syslocale.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/locale/android/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/locale/android/SDL_syslocale.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/locale/android/*.h",
+			"listDirectories" : true,
+			"paths" : []
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/main/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/main/SDL_main_callbacks.c",
+				"D:/.cpmcache/sdl/22ff/src/main/SDL_runapp.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/main/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/main/SDL_main_callbacks.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/main/generic/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/main/generic/SDL_sysmain_callbacks.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/main/generic/*.h",
+			"listDirectories" : true,
+			"paths" : []
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/misc/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/misc/SDL_libusb.c",
+				"D:/.cpmcache/sdl/22ff/src/misc/SDL_url.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/misc/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/misc/SDL_libusb.h",
+				"D:/.cpmcache/sdl/22ff/src/misc/SDL_sysurl.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/misc/android/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/misc/android/SDL_sysurl.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/misc/android/*.h",
+			"listDirectories" : true,
+			"paths" : []
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/power/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/power/SDL_power.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/power/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/power/SDL_syspower.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/power/android/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/power/android/SDL_syspower.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/power/android/*.h",
+			"listDirectories" : true,
+			"paths" : []
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/process/dummy/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/process/dummy/SDL_dummyprocess.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/render/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/render/SDL_render.c",
+				"D:/.cpmcache/sdl/22ff/src/render/SDL_render_unsupported.c",
+				"D:/.cpmcache/sdl/22ff/src/render/SDL_yuv_sw.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/render/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/render/SDL_d3dmath.h",
+				"D:/.cpmcache/sdl/22ff/src/render/SDL_render_debug_font.h",
+				"D:/.cpmcache/sdl/22ff/src/render/SDL_sysrender.h",
+				"D:/.cpmcache/sdl/22ff/src/render/SDL_yuv_sw_c.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/render/*/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d/SDL_render_d3d.c",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d/SDL_shaders_d3d.c",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d11/SDL_render_d3d11.c",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d11/SDL_shaders_d3d11.c",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d12/SDL_render_d3d12.c",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d12/SDL_shaders_d3d12.c",
+				"D:/.cpmcache/sdl/22ff/src/render/gpu/SDL_pipeline_gpu.c",
+				"D:/.cpmcache/sdl/22ff/src/render/gpu/SDL_render_gpu.c",
+				"D:/.cpmcache/sdl/22ff/src/render/gpu/SDL_shaders_gpu.c",
+				"D:/.cpmcache/sdl/22ff/src/render/ngage/SDL_render_ngage.c",
+				"D:/.cpmcache/sdl/22ff/src/render/opengl/SDL_render_gl.c",
+				"D:/.cpmcache/sdl/22ff/src/render/opengl/SDL_shaders_gl.c",
+				"D:/.cpmcache/sdl/22ff/src/render/opengles2/SDL_render_gles2.c",
+				"D:/.cpmcache/sdl/22ff/src/render/opengles2/SDL_shaders_gles2.c",
+				"D:/.cpmcache/sdl/22ff/src/render/ps2/SDL_render_ps2.c",
+				"D:/.cpmcache/sdl/22ff/src/render/psp/SDL_render_psp.c",
+				"D:/.cpmcache/sdl/22ff/src/render/software/SDL_blendfillrect.c",
+				"D:/.cpmcache/sdl/22ff/src/render/software/SDL_blendline.c",
+				"D:/.cpmcache/sdl/22ff/src/render/software/SDL_blendpoint.c",
+				"D:/.cpmcache/sdl/22ff/src/render/software/SDL_drawline.c",
+				"D:/.cpmcache/sdl/22ff/src/render/software/SDL_drawpoint.c",
+				"D:/.cpmcache/sdl/22ff/src/render/software/SDL_render_sw.c",
+				"D:/.cpmcache/sdl/22ff/src/render/software/SDL_triangle.c",
+				"D:/.cpmcache/sdl/22ff/src/render/vitagxm/SDL_render_vita_gxm.c",
+				"D:/.cpmcache/sdl/22ff/src/render/vitagxm/SDL_render_vita_gxm_memory.c",
+				"D:/.cpmcache/sdl/22ff/src/render/vitagxm/SDL_render_vita_gxm_tools.c",
+				"D:/.cpmcache/sdl/22ff/src/render/vulkan/SDL_render_vulkan.c",
+				"D:/.cpmcache/sdl/22ff/src/render/vulkan/SDL_shaders_vulkan.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/render/*/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d/D3D9_PixelShader_Palette.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d/D3D9_PixelShader_Palette_Linear.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d/D3D9_PixelShader_Palette_Nearest.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d/D3D9_PixelShader_YUV.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d/SDL_shaders_d3d.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d11/D3D11_PixelShader_Advanced.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d11/D3D11_PixelShader_Colors.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d11/D3D11_PixelShader_Textures.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d11/D3D11_VertexShader.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d11/SDL_shaders_d3d11.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d12/D3D12_PixelShader_Advanced.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d12/D3D12_PixelShader_Colors.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d12/D3D12_PixelShader_Textures.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d12/D3D12_RootSig_Advanced.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d12/D3D12_RootSig_Color.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d12/D3D12_RootSig_Texture.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d12/D3D12_VertexShader_Advanced.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d12/D3D12_VertexShader_Color.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d12/D3D12_VertexShader_Texture.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d12/SDL_render_d3d12_xbox.h",
+				"D:/.cpmcache/sdl/22ff/src/render/direct3d12/SDL_shaders_d3d12.h",
+				"D:/.cpmcache/sdl/22ff/src/render/gpu/SDL_gpu_util.h",
+				"D:/.cpmcache/sdl/22ff/src/render/gpu/SDL_pipeline_gpu.h",
+				"D:/.cpmcache/sdl/22ff/src/render/gpu/SDL_shaders_gpu.h",
+				"D:/.cpmcache/sdl/22ff/src/render/metal/SDL_shaders_metal_ios.h",
+				"D:/.cpmcache/sdl/22ff/src/render/metal/SDL_shaders_metal_iphonesimulator.h",
+				"D:/.cpmcache/sdl/22ff/src/render/metal/SDL_shaders_metal_macos.h",
+				"D:/.cpmcache/sdl/22ff/src/render/metal/SDL_shaders_metal_tvos.h",
+				"D:/.cpmcache/sdl/22ff/src/render/metal/SDL_shaders_metal_tvsimulator.h",
+				"D:/.cpmcache/sdl/22ff/src/render/ngage/SDL_render_ngage_c.h",
+				"D:/.cpmcache/sdl/22ff/src/render/opengl/SDL_glfuncs.h",
+				"D:/.cpmcache/sdl/22ff/src/render/opengl/SDL_shaders_gl.h",
+				"D:/.cpmcache/sdl/22ff/src/render/opengles2/SDL_gles2funcs.h",
+				"D:/.cpmcache/sdl/22ff/src/render/opengles2/SDL_shaders_gles2.h",
+				"D:/.cpmcache/sdl/22ff/src/render/psp/SDL_render_psp_c.h",
+				"D:/.cpmcache/sdl/22ff/src/render/software/SDL_blendfillrect.h",
+				"D:/.cpmcache/sdl/22ff/src/render/software/SDL_blendline.h",
+				"D:/.cpmcache/sdl/22ff/src/render/software/SDL_blendpoint.h",
+				"D:/.cpmcache/sdl/22ff/src/render/software/SDL_draw.h",
+				"D:/.cpmcache/sdl/22ff/src/render/software/SDL_drawline.h",
+				"D:/.cpmcache/sdl/22ff/src/render/software/SDL_drawpoint.h",
+				"D:/.cpmcache/sdl/22ff/src/render/software/SDL_render_sw_c.h",
+				"D:/.cpmcache/sdl/22ff/src/render/software/SDL_triangle.h",
+				"D:/.cpmcache/sdl/22ff/src/render/vitagxm/SDL_render_vita_gxm_memory.h",
+				"D:/.cpmcache/sdl/22ff/src/render/vitagxm/SDL_render_vita_gxm_shaders.h",
+				"D:/.cpmcache/sdl/22ff/src/render/vitagxm/SDL_render_vita_gxm_tools.h",
+				"D:/.cpmcache/sdl/22ff/src/render/vitagxm/SDL_render_vita_gxm_types.h",
+				"D:/.cpmcache/sdl/22ff/src/render/vulkan/SDL_shaders_vulkan.h",
+				"D:/.cpmcache/sdl/22ff/src/render/vulkan/VULKAN_PixelShader_Advanced.h",
+				"D:/.cpmcache/sdl/22ff/src/render/vulkan/VULKAN_PixelShader_Colors.h",
+				"D:/.cpmcache/sdl/22ff/src/render/vulkan/VULKAN_PixelShader_Textures.h",
+				"D:/.cpmcache/sdl/22ff/src/render/vulkan/VULKAN_VertexShader.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/sensor/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/sensor/SDL_sensor.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/sensor/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/sensor/SDL_sensor_c.h",
+				"D:/.cpmcache/sdl/22ff/src/sensor/SDL_syssensor.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/sensor/android/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/sensor/android/SDL_androidsensor.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/sensor/android/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/sensor/android/SDL_androidsensor.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/stdlib/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_crc16.c",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_crc32.c",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_getenv.c",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_iconv.c",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_malloc.c",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_memcpy.c",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_memmove.c",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_memset.c",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_mslibc.c",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_murmur3.c",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_qsort.c",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_random.c",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_stdlib.c",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_string.c",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_strtokr.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/stdlib/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_casefolding.h",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_getenv_c.h",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_sysstdlib.h",
+				"D:/.cpmcache/sdl/22ff/src/stdlib/SDL_vacopy.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/storage/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/storage/SDL_storage.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/storage/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/storage/SDL_sysstorage.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/storage/generic/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/storage/generic/SDL_genericstorage.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/storage/generic/*.h",
+			"listDirectories" : true,
+			"paths" : []
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/thread/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/thread/SDL_thread.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/thread/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/thread/SDL_systhread.h",
+				"D:/.cpmcache/sdl/22ff/src/thread/SDL_thread_c.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/time/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/time/SDL_time.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/time/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/time/SDL_time_c.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/time/unix/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/time/unix/SDL_systime.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/time/unix/*.h",
+			"listDirectories" : true,
+			"paths" : []
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/timer/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/timer/SDL_timer.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/timer/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/timer/SDL_timer_c.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/timer/unix/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/timer/unix/SDL_systimer.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/timer/unix/*.h",
+			"listDirectories" : true,
+			"paths" : []
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/tray/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/tray/SDL_tray_utils.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/tray/dummy/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/tray/dummy/SDL_tray.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/video/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_RLEaccel.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_blit.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_blit_0.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_blit_1.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_blit_A.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_blit_N.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_blit_auto.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_blit_copy.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_blit_slow.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_bmp.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_clipboard.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_egl.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_fillrect.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_pixels.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_rect.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_rotate.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_stb.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_stretch.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_surface.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_video.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_video_unsupported.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_vulkan_utils.c",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_yuv.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/video/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_RLEaccel_c.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_blit.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_blit_auto.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_blit_copy.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_blit_slow.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_clipboard_c.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_egl_c.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_pixels_c.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_rect_c.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_rect_impl.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_rotate.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_stb_c.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_surface_c.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_sysvideo.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_video_c.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_video_unsupported.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_vulkan_internal.h",
+				"D:/.cpmcache/sdl/22ff/src/video/SDL_yuv_c.h",
+				"D:/.cpmcache/sdl/22ff/src/video/miniz.h",
+				"D:/.cpmcache/sdl/22ff/src/video/stb_image.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/video/android/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidclipboard.c",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidevents.c",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidgl.c",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidkeyboard.c",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidmessagebox.c",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidmouse.c",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidpen.c",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidtouch.c",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidvideo.c",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidvulkan.c",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidwindow.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/video/android/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidclipboard.h",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidevents.h",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidgl.h",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidkeyboard.h",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidmessagebox.h",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidmouse.h",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidpen.h",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidtouch.h",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidvideo.h",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidvulkan.h",
+				"D:/.cpmcache/sdl/22ff/src/video/android/SDL_androidwindow.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/video/dummy/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/video/dummy/SDL_nullevents.c",
+				"D:/.cpmcache/sdl/22ff/src/video/dummy/SDL_nullframebuffer.c",
+				"D:/.cpmcache/sdl/22ff/src/video/dummy/SDL_nullvideo.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/video/dummy/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/video/dummy/SDL_nullevents_c.h",
+				"D:/.cpmcache/sdl/22ff/src/video/dummy/SDL_nullframebuffer_c.h",
+				"D:/.cpmcache/sdl/22ff/src/video/dummy/SDL_nullvideo.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/video/offscreen/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/video/offscreen/SDL_offscreenevents.c",
+				"D:/.cpmcache/sdl/22ff/src/video/offscreen/SDL_offscreenframebuffer.c",
+				"D:/.cpmcache/sdl/22ff/src/video/offscreen/SDL_offscreenopengles.c",
+				"D:/.cpmcache/sdl/22ff/src/video/offscreen/SDL_offscreenvideo.c",
+				"D:/.cpmcache/sdl/22ff/src/video/offscreen/SDL_offscreenvulkan.c",
+				"D:/.cpmcache/sdl/22ff/src/video/offscreen/SDL_offscreenwindow.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/video/offscreen/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/video/offscreen/SDL_offscreenevents_c.h",
+				"D:/.cpmcache/sdl/22ff/src/video/offscreen/SDL_offscreenframebuffer_c.h",
+				"D:/.cpmcache/sdl/22ff/src/video/offscreen/SDL_offscreenopengles.h",
+				"D:/.cpmcache/sdl/22ff/src/video/offscreen/SDL_offscreenvideo.h",
+				"D:/.cpmcache/sdl/22ff/src/video/offscreen/SDL_offscreenvulkan.h",
+				"D:/.cpmcache/sdl/22ff/src/video/offscreen/SDL_offscreenwindow.h"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/video/yuv2rgb/*.c",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/video/yuv2rgb/yuv_rgb_lsx.c",
+				"D:/.cpmcache/sdl/22ff/src/video/yuv2rgb/yuv_rgb_sse.c",
+				"D:/.cpmcache/sdl/22ff/src/video/yuv2rgb/yuv_rgb_std.c"
+			]
+		},
+		{
+			"expression" : "D:/.cpmcache/sdl/22ff/src/video/yuv2rgb/*.h",
+			"listDirectories" : true,
+			"paths" : 
+			[
+				"D:/.cpmcache/sdl/22ff/src/video/yuv2rgb/yuv_rgb.h",
+				"D:/.cpmcache/sdl/22ff/src/video/yuv2rgb/yuv_rgb_common.h",
+				"D:/.cpmcache/sdl/22ff/src/video/yuv2rgb/yuv_rgb_internal.h",
+				"D:/.cpmcache/sdl/22ff/src/video/yuv2rgb/yuv_rgb_lsx.h",
+				"D:/.cpmcache/sdl/22ff/src/video/yuv2rgb/yuv_rgb_lsx_func.h",
+				"D:/.cpmcache/sdl/22ff/src/video/yuv2rgb/yuv_rgb_sse.h",
+				"D:/.cpmcache/sdl/22ff/src/video/yuv2rgb/yuv_rgb_sse_func.h",
+				"D:/.cpmcache/sdl/22ff/src/video/yuv2rgb/yuv_rgb_std.h",
+				"D:/.cpmcache/sdl/22ff/src/video/yuv2rgb/yuv_rgb_std_func.h"
+			]
+		}
+	],
+	"inputs" : 
+	[
+		{
+			"path" : "CMakeLists.txt"
+		},
+		{
+			"isGenerated" : true,
+			"path" : "androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/CMakeFiles/4.2.0-rc3/CMakeSystem.cmake"
+		},
+		{
+			"path" : "android_proxy_toolchain.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.android/sdk/ndk/30.0.15729638/build/cmake/android.toolchain.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.android/sdk/ndk/30.0.15729638/build/cmake/android-legacy.toolchain.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.android/sdk/ndk/30.0.15729638/build/cmake/abis.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.android/sdk/ndk/30.0.15729638/build/cmake/platforms.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakeSystemSpecificInitialize.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/Android-Initialize.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.android/sdk/ndk/30.0.15729638/build/cmake/hooks/pre/Android-Initialize.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/Linux-Initialize.cmake"
+		},
+		{
+			"isGenerated" : true,
+			"path" : "androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/CMakeFiles/4.2.0-rc3/CMakeCXXCompiler.cmake"
+		},
+		{
+			"isGenerated" : true,
+			"path" : "androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/CMakeFiles/4.2.0-rc3/CMakeCCompiler.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakeSystemSpecificInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakeGenericSystem.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakeInitializeConfigs.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/Android.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.android/sdk/ndk/30.0.15729638/build/cmake/hooks/pre/Android.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/Linux.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/UnixPaths.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakeCXXInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakeLanguageInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Compiler/Clang-CXX.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Compiler/Clang.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Compiler/CMakeCommonCompilerMacros.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Compiler/GNU.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Compiler/CMakeCommonCompilerMacros.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/Android-Clang-CXX.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/Android-Clang.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.android/sdk/ndk/30.0.15729638/build/cmake/hooks/pre/Android-Clang.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.android/sdk/ndk/30.0.15729638/build/cmake/flags.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakeCommonLanguageInclude.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Internal/CMakeCXXLinkerInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Internal/CMakeCommonLinkerInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Linker/LLD-CXX.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Linker/LLD.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Linker/GNU.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/Linker/Android-LLD-CXX.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/Linker/Linux-LLD-CXX.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/Linker/Linux-LLD.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/Linker/Linux-GNU.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/Linker/GNU.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakeCInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakeLanguageInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Compiler/Clang-C.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Compiler/Clang.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/Android-Clang-C.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/Android-Clang.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakeCommonLanguageInclude.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Internal/CMakeCLinkerInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Internal/CMakeCommonLinkerInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Linker/LLD-C.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Linker/LLD.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Linker/GNU.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/Linker/Android-LLD-C.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/Linker/Linux-LLD-C.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Platform/Linker/Linux-LLD.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindVulkan.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindPackageHandleStandardArgs.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindPackageMessage.cmake"
+		},
+		{
+			"isGenerated" : true,
+			"path" : "androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/_deps/CPM.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FetchContent.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/ExternalProject/shared_internal_commands.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindGit.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindPackageHandleStandardArgs.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindPackageMessage.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/CMakeLists.txt"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CheckLibraryExists.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CheckIncludeFile.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CheckIncludeFiles.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CheckLanguage.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CheckSymbolExists.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CheckCSourceCompiles.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Internal/CheckSourceCompiles.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CheckCSourceRuns.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Internal/CheckSourceRuns.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CheckCCompilerFlag.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Internal/CheckCompilerFlag.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Internal/CheckFlagCommonConfig.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Internal/CheckSourceCompiles.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakeCheckCompilerFlagCommonPatterns.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CheckCSourceCompiles.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CheckCXXCompilerFlag.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Internal/CheckCompilerFlag.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CheckCXXSourceCompiles.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Internal/CheckSourceCompiles.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CheckStructHasMember.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CheckSourceCompiles.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Internal/CheckSourceCompiles.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CheckCSourceCompiles.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CheckCXXSourceCompiles.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakeDependentOption.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakeParseArguments.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakePushCheckState.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/GNUInstallDirs.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindPkgConfig.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindPackageHandleStandardArgs.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindPackageMessage.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/cmake/macros.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CheckLinkerFlag.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Internal/CheckLinkerFlag.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Internal/CheckFlagCommonConfig.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/Internal/CheckSourceCompiles.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakeCheckCompilerFlagCommonPatterns.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/cmake/sdlchecks.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/cmake/sdlcommands.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/cmake/sdlcompilers.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/cmake/sdlcpu.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/cmake/sdlmanpages.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakeParseArguments.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/GNUInstallDirs.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/cmake/sdlplatform.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/cmake/GetGitRevisionDescription.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/cmake/3rdparty.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/cmake/PreseedMSVCCache.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/cmake/PreseedEmscriptenCache.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/cmake/PreseedNokiaNGageCache.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/cmake/FindLibUSB.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindPackageHandleStandardArgs.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindPackageMessage.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindPkgConfig.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindPackageHandleStandardArgs.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindPackageMessage.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/include/build_config/SDL_build_config.h.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindGit.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindPackageHandleStandardArgs.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/FindPackageMessage.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/.git/HEAD"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/cmake/GetGitRevisionDescription.cmake.in"
+		},
+		{
+			"isGenerated" : true,
+			"path" : "androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/_deps/sdl-build/CMakeFiles/git-data/grabRef.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/.git/HEAD"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/include/build_config/SDL_revision.h.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/CMakePackageConfigHelpers.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/WriteBasicConfigVersionFile.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "D:/.cpmcache/sdl/22ff/cmake/SDL3Config.cmake.in"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/miasma/cmake/share/cmake-4.2/Modules/BasicConfigVersion-AnyNewerVersion.cmake.in"
+		},
+		{
+			"isGenerated" : true,
+			"path" : "androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a/_deps/sdl-build/CMakeFiles/SDL_build_config.h.intermediate"
+		}
+	],
+	"kind" : "cmakeFiles",
+	"paths" : 
+	{
+		"build" : "C:/Users/red/Desktop/rndroid/androidbuild/app/.cxx/Debug/29283l3d/arm64-v8a",
+		"source" : "C:/Users/red/Desktop/rndroid"
+	},
+	"version" : 
+	{
+		"major" : 1,
+		"minor" : 1
+	}
+}

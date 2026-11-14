@@ -1,0 +1,41 @@
+{
+	"abstract" : true,
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library"
+		],
+		"files" : 
+		[
+			"D:/.cpmcache/sdl/22ff/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 3899,
+				"parent" : 0
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"id" : "SDL3_Headers::@fc7b397d5a055aba6d5e",
+	"name" : "SDL3_Headers",
+	"paths" : 
+	{
+		"build" : "_deps/sdl-build",
+		"source" : "D:/.cpmcache/sdl/22ff"
+	},
+	"sources" : [],
+	"type" : "INTERFACE_LIBRARY"
+}

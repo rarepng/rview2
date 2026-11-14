@@ -1,7 +1,6 @@
 #pragma once
 #include <vector>
 #include <core/rvk.hpp>
-#include <meta>
 
 template <size_t Size = 90> struct PerfGraph {
 	std::array<float, Size> data{};

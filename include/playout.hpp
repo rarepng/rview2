@@ -59,7 +59,7 @@ namespace playout {
 		// ubo (cam)
 		bindings[1].binding = 1;
 		bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		bindings[1].descriptorCount = 1;
+		bindings[1].descriptorCount = rview::core::MAX_FRAMES_IN_FLIGHT;
 		bindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
 
 		// ssbo (joints)
@@ -218,9 +218,9 @@ namespace playout {
 		poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		poolSizes[0].descriptorCount = MAX_BINDLESS + 2;
 		poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSizes[1].descriptorCount = 1;
+		poolSizes[1].descriptorCount = rview::core::MAX_FRAMES_IN_FLIGHT;
 		poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		poolSizes[2].descriptorCount = (MAX_BINDLESS * 4) + (rview::core::MAX_FRAMES_IN_FLIGHT * 10) + 6; // total descriptor counts
+		poolSizes[2].descriptorCount = (MAX_BINDLESS * 4) + (rview::core::MAX_FRAMES_IN_FLIGHT * 12) + 4; // total descriptor counts
 
 		VkDescriptorPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
 		poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;

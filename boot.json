@@ -1,9 +1,29 @@
 {
     "models": [
         {
-            "file": "resources/v.vrm",
+            "file": "resources/t0.glb",
             "count": 1,
             "position": [0.0, 0.0, 0.0],
+            "shaders": {
+                "vx": "shaders/vx.spv",
+                "px": "shaders/px.spv",
+                "cx": "shaders/cx.spv"
+            }
+        },
+        {
+            "file": "resources/v.vrm",
+            "count": 1,
+            "position": [2.0, 0.0, 2.0],
+            "shaders": {
+                "vx": "shaders/vx.spv",
+                "px": "shaders/px.spv",
+                "cx": "shaders/cx.spv"
+            }
+        },
+        {
+            "file": "resources/t1.glb",
+            "count": 2,
+            "position": [-2.0, 0.0, -2.0],
             "shaders": {
                 "vx": "shaders/vx.spv",
                 "px": "shaders/px.spv",
