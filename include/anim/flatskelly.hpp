@@ -129,7 +129,7 @@ struct JobSkeletonState {
 	glm::mat4* inverseBindMatrices = nullptr;
 	glm::mat4* finalJointMatrices = nullptr;
 
-	void allocate_from_arena(ThreadLocalArena& arena, const ParsedSkeleton& source) {
+	void allocate_from_arena(tlarena& arena, const ParsedSkeleton& source) {
 		nodeCount = source.nodeCount;
 		jointCount = source.jointCount;
 

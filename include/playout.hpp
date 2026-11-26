@@ -254,7 +254,7 @@ namespace playout {
 			return false;
 		}
 
-		g_exitQ.enqueue(TeardownPhase::device,
+		gexitq.enqueue(tdphase::device,
 						[device = objs.vkdevice.device,
 						 layout = rview::core::globalBindlessLayout,
 						 pool = rview::core::globalBindlessPool,

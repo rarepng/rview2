@@ -21,6 +21,7 @@
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 #include <dbg/trace.hpp>
+#include <dbg/metrics.hpp>
 
 
 static inline VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -321,6 +322,7 @@ namespace vkwind {
 		double accumulator = 0.0;
 		const double fixed_dt = 1.0 / 60.0;
 		double target_fps = 144.0;
+		if (gm.bnocap()) target_fps = 0.0;
 		double target_frame_time = target_fps > 0.0 ? (1.0 / target_fps) : 0.0;
 
 		while (!mvkobjs.mshutdown) {
@@ -358,15 +360,22 @@ namespace vkwind {
 					elapsed_frame_time = static_cast<double>(frame_end - current_counter) / perf_freq;
 				}
 			}
-
+			
+			gjobs.msample();
+			gm.fend(gaiojobs.load(std::memory_order_relaxed) > 0 || !vkrenderer::g_commit_queue.empty());
+			if (gm.bquit()) mvkobjs.mshutdown = true;
 			FrameMark;
 		}
 	}
 
 	inline void cleanup(rvkbucket& mvkobjs) {
-		g_jobs.stop_and_join_all();
+		gm.mark(mmark::quit);
+		gjobs.sjoin();
+		gm.mark(mmark::joined);
 		vkDeviceWaitIdle(mvkobjs.vkdevice.device);
 		vkrenderer::cleanup(mvkobjs);
+		gm.mark(mmark::cleaned);
+		gm.report();
 		SDL_DestroyWindow(mvkobjs.wind);
 		SDL_Quit();
 	}

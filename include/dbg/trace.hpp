@@ -8,6 +8,13 @@ namespace rdebug {
 
 	constexpr bool is_active = RVIEW_DEBUG;
 
+	// will get rid of preprocessors soon promise
+	#ifdef TRACY_ENABLE
+		constexpr bool has_tracy = true;
+	#else
+		constexpr bool has_tracy = false;
+	#endif
+
 	inline PFN_vkSetDebugUtilsObjectNameEXT SetObjectName = nullptr;
 	inline PFN_vkCmdBeginDebugUtilsLabelEXT CmdBeginLabel = nullptr;
 	inline PFN_vkCmdEndDebugUtilsLabelEXT CmdEndLabel = nullptr;
@@ -18,6 +25,8 @@ namespace rdebug {
 			SetObjectName = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectNameEXT"));
 			CmdBeginLabel = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT"));
 			CmdEndLabel = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT"));
+		}
+		if constexpr (has_tracy) {
 			tracyCTX = TracyVkContext(physdev, device, queue, cmdbuf);
 		}
 	}

@@ -23,8 +23,6 @@ inline void ensure_rpmalloc() {
 
 		rpmalloc_thread_initialize();
 		t_rpmalloc_thread_init = true;
-		g_reaper.init();
-		g_jobs.init();
 	}
 }
 

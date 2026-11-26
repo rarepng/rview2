@@ -21,10 +21,17 @@ int main(int c, char** v) {
 		}
 	}
 
+	gm.mark(mmark::mainentry);
+	gm.bargs(c, v);
+	gm.wkind(3);
 	std::unique_ptr<rvkbucket> mvk = std::make_unique<rvkbucket>();
 	rdebug::set_thread_name("main");
 
 	if (vkwind::init("RViewer", *mvk)) {
+		// gm.mark(mmark::initdone);
+		greaper.init();
+		gjobs.init();
+		gm.mark(mmark::initdone); // ????
 		if constexpr (rview::core::platform::is_android) {
 			SDL_SetLogPriorities(SDL_LOG_PRIORITY_VERBOSE);
 			SDL_Log("[rview2] !!!!!!!!!!!!!!!! TEST SDL LOG !!!!!!!!!!!!!!!!");

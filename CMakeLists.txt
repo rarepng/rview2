@@ -478,6 +478,8 @@ include(CMakeLocal.txt OPTIONAL)
 target_compile_definitions(rview2 PRIVATE
 "RVIEW_DEBUG=$<IF:$<CONFIG:Debug>,1,0>"
 "RVIEW_DEMO=$<BOOL:${RVIEW_DEMO}>"
+"RVIEW_METRICS=$<IF:$<BOOL:${RVIEW_NO_METRICS}>,0,1>"
+"RVIEW_CONFIG=\"$<CONFIG>\""
 
 )
 
@@ -517,7 +519,7 @@ endif()
 
 target_link_libraries(rview2
     PRIVATE
-        "$<$<CONFIG:Debug>:TracyClient>"
+        "$<$<OR:$<CONFIG:Debug>,$<BOOL:${RVIEW_TRACY}>>:TracyClient>"
         SDL3::SDL3-static
         SDL3_image::SDL3_image-static
         fastgltf

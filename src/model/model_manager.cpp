@@ -113,6 +113,11 @@ namespace model_manager {
 		staging.textures.reserve(asset.images.size());
 
 		for (size_t i = 0; i < asset.images.size(); ++i) {
+			if (!gjobs.isrun()) {
+				SDL_free(fileData);
+				return staging;
+			}
+
 			auto& img_asset = asset.images[i];
 			StagingTexture st{};
 			st.imageIndex = i;
@@ -463,6 +468,8 @@ namespace model_manager {
 			staging.parsedPools.resize(asset.animations.size());
 
 			if (!asset.animations.empty()) {
+				gm.lstep(mstep::bakebegin);
+				gm.linfo(static_cast<uint32_t>(asset.animations.size()), static_cast<uint32_t>(staging.parsed_skel->nodeCount));
 				std::atomic<int> pending_clips{static_cast<int>(asset.animations.size())};
 				std::vector<bool> allTrueMask(asset.nodes.size(), true);
 
@@ -488,16 +495,18 @@ namespace model_manager {
 				for (size_t animIdx = 0; animIdx < asset.animations.size(); ++animIdx) {
 					uint32_t aIdx = static_cast<uint32_t>(animIdx);
 
-					g_jobs.enqueue(
-						[pCtx, aIdx]() {
+					gjobs.enqueue(
+						[pCtx, aIdx]() noexcept {
+							ZoneScopedN("bakeclip");
 							// ScopedJobGuard guard(*pCtx->pending_clips);
 
-							if (!g_jobs.is_running() ||
-								(pCtx->dropID != 0xFFFFFFFF && g_cancellation_tokens[pCtx->dropID].load(std::memory_order_relaxed))) {
+							if (!gjobs.isrun() ||
+								(pCtx->dropID != 0xFFFFFFFF && gctokens[pCtx->dropID].load(std::memory_order_relaxed))) {
+								pCtx->pending_clips->fetch_sub(1, std::memory_order_release);
 								return;
 							}
 
-							auto* pArena = new ThreadLocalArena();
+							auto* pArena = new tlarena();
 							pArena->init(4 * 1024 * 1024); // magic
 
 							const auto& anim0 = pCtx->asset->animations[aIdx];
@@ -550,19 +559,21 @@ namespace model_manager {
 								DODRawClip* rawClip;
 								std::atomic<int>* batchesPending;
 								uint32_t framesPerBatch;
-								ThreadLocalArena* pArena;
+								tlarena* pArena;
 							};
 
 							auto* pSubCtx = new SubJobCtx{
 								baked, pCtx, restPoseTracks, new DODRawClip(rawClip), new std::atomic<int>(batchCount), framesPerBatch, pArena};
 
 							for (uint32_t b = 0; b < batchCount; ++b) {
-								g_jobs.enqueue(
-									[pSubCtx, b, aIdx]() {
+								gjobs.enqueue(
+									[pSubCtx, b, aIdx]() noexcept {
+										ZoneScopedN("bakebatch");
 										// ScopedJobGuard batchGuard(*pSubCtx->batchesPending);
 
-										if (pSubCtx->pCtx->dropID != 0xFFFFFFFF &&
-											g_cancellation_tokens[pSubCtx->pCtx->dropID].load(std::memory_order_relaxed)) {
+										if (!gjobs.isrun() ||
+											(pSubCtx->pCtx->dropID != 0xFFFFFFFF &&
+											 gctokens[pSubCtx->pCtx->dropID].load(std::memory_order_relaxed))) {
 											// return;
 										} else {
 											// pointer containment unit
@@ -669,20 +680,17 @@ namespace model_manager {
 											delete pSubCtx;
 										}
 									},
-									JobPriority::Low);
+									jprio::low);
 							}
 						},
-						JobPriority::Low);
+						jprio::low);
 				}
-
-				while (pending_clips.load(std::memory_order_acquire) > 0) {
-					if (!g_jobs.help_execute()) {
-						rview::core::cpu_relax();
-					}
-				}
+				
+				gjobs.wjobs(pending_clips);
+				gm.lstep(mstep::bakeend);
 			}
 
-			if (dropID != 0xFFFFFFFF && !g_cancellation_tokens[dropID].load(std::memory_order_acquire)) {
+			if (dropID != 0xFFFFFFFF && !gctokens[dropID].load(std::memory_order_acquire)) {
 				ProgressUpdate doneUpdate;
 				doneUpdate.requestID = dropID;
 				doneUpdate.step = ParseStep::done;

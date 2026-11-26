@@ -18,124 +18,131 @@
 #include <cpu_relax.hpp>
 #include <SDL3/SDL.h>
 #include <cassert>
+#include <algorithm>
+#include <bit>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <limits>
+#include <string_view>
+#include <system_error>
+#include <utility>
+#include <dbg/metrics.hpp>
 
-inline std::array<std::atomic<bool>, 8192> g_cancellation_tokens{}; // magic
-
-struct alignas(64) job {
-	void (*execute)(void*){nullptr};
-	void (*destroy)(void*){nullptr};
-	alignas(16) char payload[48]{}; // 8+8 for the ptrs and 48 payload
+struct alignas(8) job {
+	void (*exec)(void*){nullptr};
+	alignas(8) char payload[48]{}; // 8 for the ptr and 48 payload??
 
 	job() = default;
 
 	template <typename F> static job make(F&& f) {
-		using DecayedF = std::decay_t<F>;
+		using df = std::decay_t<F>;
 		// CRUICAL!!
-		static_assert(sizeof(DecayedF) <= 48, "lambda capture exceeds 56 bytes. NO HEAPS ALLOWED");
+		static_assert(sizeof(df) <= 48, "lambda capture exceeds 48 bytes. NO HEAPS ALLOWED");
 		// static_assert(std::is_trivially_destructible_v<std::remove_reference_t<F>>, "must be trivially destructible.");
-		static_assert(alignof(DecayedF) <= 16, "lambda alignment exceeds 16 bytes");
+		static_assert(alignof(df) <= 8, "lambda alignment exceeds 8 bytes");
+		static_assert(std::is_trivially_copyable_v<df>, "lambda captures must be trivially copyable (no std::string, no smart pointers)");
+		static_assert(std::is_nothrow_invocable_v<df&>, "jobs must not throw: mark the lambda noexcept");
 
 		job j;
-		j.execute = [](void* ptr) { (*static_cast<DecayedF*>(ptr))(); };
+		j.exec = [](void* ptr) { (*static_cast<df*>(ptr))(); };
 
-		if constexpr (!std::is_trivially_destructible_v<DecayedF>) {
-			j.destroy = [](void* ptr) { static_cast<DecayedF*>(ptr)->~DecayedF(); };
-		}
-
-		void* target = j.payload;
-		size_t space = 48;
-		std::align(alignof(DecayedF), sizeof(DecayedF), target, space);
-
-		new (target) DecayedF(std::forward<F>(f));
+		new (j.payload) df(std::forward<F>(f));
 
 		return j;
 	}
 
 
-	inline void run_and_dispose() {
-		if (execute) {
-			execute(payload);
+	inline void rdispose() noexcept {
+		if (exec) {
+			exec(payload);
 
-			if (destroy)
-				destroy(payload);
-
-			execute = nullptr;
-			destroy = nullptr;
+			exec = nullptr;
 		}
 	}
 };
 
+static_assert(sizeof(job) == 56, "job must stay 56 bytes so seq + job is exactly one 64-byte cache line");
 
 
-template <typename T, size_t Capacity> struct LockFreeMPMC {
-	struct Cell {
-		std::atomic<size_t> sequence;
+
+template <typename T, size_t Capacity> struct lfmpmc {
+	struct alignas(64) cell {
+		std::atomic<size_t> seq;
 		T data;
 	};
 
+	static_assert(!std::is_same_v<T, job> || sizeof(cell) == 64, "seq + job must pack into exactly one 64-byte cache line");
+
 	static_assert((Capacity != 0) && ((Capacity & (~Capacity + 1)) == Capacity), "Capacity must be a power of 2");
-	static constexpr size_t buffer_mask = Capacity - 1;
+	static constexpr size_t bmask = Capacity - 1;
 
-	std::array<Cell, Capacity> buffer;
+	std::array<cell, Capacity> buffer;
 
-	alignas(std::hardware_destructive_interference_size) std::atomic<size_t> enqueue_pos{0};
-	alignas(std::hardware_destructive_interference_size) std::atomic<size_t> dequeue_pos{0};
+	alignas(std::hardware_destructive_interference_size) std::atomic<size_t> eqpos{0};
+	alignas(std::hardware_destructive_interference_size) std::atomic<size_t> dqpos{0};
 
-	LockFreeMPMC() {
+	lfmpmc() {
 		for (size_t i = 0; i < Capacity; ++i) {
-			buffer[i].sequence.store(i, std::memory_order_relaxed);
+			buffer[i].seq.store(i, std::memory_order_relaxed);
 		}
 	}
 
-	[[gnu::always_inline]] inline bool push(T data) {
-		Cell* cell = nullptr;
-		size_t pos = enqueue_pos.load(std::memory_order_relaxed);
+	
+	[[gnu::always_inline]] inline bool push(T&& data) noexcept {
+		cell* ccell = nullptr;
+		size_t pos = eqpos.load(std::memory_order_relaxed);
 
 		for (;;) {
-			cell = &buffer[pos & buffer_mask];
-			size_t seq = cell->sequence.load(std::memory_order_acquire);
+			ccell = &buffer[pos & bmask];
+			size_t seq = ccell->seq.load(std::memory_order_acquire);
 			std::ptrdiff_t dif = static_cast<std::ptrdiff_t>(seq) - static_cast<std::ptrdiff_t>(pos);
 
 			if (dif == 0) {
-				if (enqueue_pos.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed))
+				if (eqpos.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed))
 					break;
 			} else if (dif < 0) {
 				return false;
 			} else {
-				pos = enqueue_pos.load(std::memory_order_relaxed);
+				pos = eqpos.load(std::memory_order_relaxed);
 			}
 		}
 
-		cell->data = std::move(data);
-		cell->sequence.store(pos + 1, std::memory_order_release);
+		ccell->data = std::move(data);
+		ccell->seq.store(pos + 1, std::memory_order_release);
 		return true;
 	}
 
-	bool pop(T& data) {
-		Cell* cell = nullptr;
-		size_t pos = dequeue_pos.load(std::memory_order_relaxed);
+	[[gnu::always_inline]] inline bool push(const T& data) noexcept {
+		T copy(data);
+		return push(std::move(copy));
+	}
+
+	bool pop(T& data) noexcept {
+		cell* ccell = nullptr;
+		size_t pos = dqpos.load(std::memory_order_relaxed);
 
 		for (;;) {
-			cell = &buffer[pos & buffer_mask];
-			size_t seq = cell->sequence.load(std::memory_order_acquire);
+			ccell = &buffer[pos & bmask];
+			size_t seq = ccell->seq.load(std::memory_order_acquire);
 			std::ptrdiff_t dif = static_cast<std::ptrdiff_t>(seq) - static_cast<std::ptrdiff_t>(pos + 1);
 
 			if (dif == 0) {
-				if (dequeue_pos.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed))
+				if (dqpos.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed))
 					break;
 			} else if (dif < 0) {
-				if (pos == enqueue_pos.load(std::memory_order_relaxed)) {
+				if (pos == eqpos.load(std::memory_order_relaxed)) {
 					return false;
 				}
 
 				rview::core::cpu_relax();
 			} else {
-				pos = dequeue_pos.load(std::memory_order_relaxed);
+				pos = dqpos.load(std::memory_order_relaxed);
 			}
 		}
 
-		data = std::move(cell->data);
-		cell->sequence.store(pos + buffer_mask + 1, std::memory_order_release);
+		data = std::move(ccell->data);
+		ccell->seq.store(pos + bmask + 1, std::memory_order_release);
 		return true;
 	}
 };
@@ -144,62 +151,109 @@ template <typename T, size_t Capacity> struct LockFreeMPMC {
 // will use more memory than regular cleanup
 // about 64 bytes per resource instead of 16
 // idk if ill use it but it's here
-enum struct TeardownPhase : int { logic = 0, graph = 1, pline = 2, buffer = 4, vma = 8, device = 16, instance = 32, window = 64 };
+enum struct tdphase : int { logic = 0, graph = 1, pline = 2, buffer = 4, vma = 8, device = 16, instance = 32, window = 64 };
 struct teardown {
 	teardown(const teardown&) = delete;
 	teardown& operator=(const teardown&) = delete;
 	teardown() = default;
 
-	[[gnu::always_inline]] inline void enqueue(TeardownPhase phase, std::move_only_function<void()>&& func) {
-		std::lock_guard<std::mutex> lock(m_mutex);
-		m_queue[static_cast<int>(phase)].push_back(std::move(func));
+	struct node {
+		node* next;
+		int phase;
+		std::move_only_function<void()> func;
+	};
+
+	
+	
+	static node* closed() noexcept {
+		return reinterpret_cast<node*>(static_cast<uintptr_t>(1));
 	}
 
-	[[gnu::always_inline]] inline void flush_and_die() {
-		std::lock_guard<std::mutex> lock(m_mutex);
+	
+	[[gnu::always_inline]] inline bool enqueue(tdphase phase, std::move_only_function<void()>&& func) {
+		node* n = new node{nullptr, static_cast<int>(phase), std::move(func)};
+		node* head = pqueue.load(std::memory_order_acquire);
 
-		if (m_is_dead)
+		do {
+			if (head == closed()) {
+				func = std::move(n->func);
+				delete n;
+				return false;
+			}
+
+			n->next = head;
+		} while (!pqueue.compare_exchange_weak(head, n, std::memory_order_acq_rel, std::memory_order_acquire));
+
+		return true;
+	}
+
+	[[gnu::always_inline]] inline void fdie() {
+		node* head = pqueue.exchange(closed(), std::memory_order_acq_rel);
+
+		if (head == closed())
 			return;
 
-		m_is_dead = true;
+		dead.store(true, std::memory_order_release);
 
-		for (auto& [phase, callbacks] : m_queue) {
-			for (auto it = callbacks.rbegin(); it != callbacks.rend(); ++it) {
-				(*it)();
-			}
+		
+		
+		std::vector<node*> nodes;
+
+		for (node* n = head; n != nullptr; n = n->next) {
+			nodes.push_back(n);
 		}
 
-		m_queue.clear();
+		std::stable_sort(nodes.begin(), nodes.end(), [](const node* a, const node* b) { return a->phase < b->phase; });
+
+		
+		for (node* n : nodes) {
+			n->func();
+		}
+
+		for (node* n : nodes) {
+			delete n;
+		}
 	}
 
-	std::mutex m_mutex;
-	bool m_is_dead = false;
-	std::map<int, std::vector<std::move_only_function<void()>>> m_queue;
+	~teardown() {
+		node* head = pqueue.exchange(closed(), std::memory_order_acq_rel);
+
+		while (head != nullptr && head != closed()) {
+			node* next = head->next;
+			delete head;
+			head = next;
+		}
+	}
+
+	std::atomic<bool> dead{false};
+	std::atomic<node*> pqueue{nullptr};
 };
 
-inline teardown g_exitQ;
-struct ScopedJobGuard {
+struct sjguard {
 	std::atomic<int>& counter;
 
-	ScopedJobGuard(std::atomic<int>& c) : counter(c) {}
-	~ScopedJobGuard() {
+	sjguard(std::atomic<int>& c) : counter(c) {}
+	~sjguard() {
 		counter.fetch_sub(1, std::memory_order_release);
 	}
-	ScopedJobGuard(const ScopedJobGuard&) = delete;
-	ScopedJobGuard& operator=(const ScopedJobGuard&) = delete;
+	sjguard(const sjguard&) = delete;
+	sjguard& operator=(const sjguard&) = delete;
 };
-struct JobStringArena {
+struct jsarena {
 	std::vector<char> buffer;
 	std::atomic<size_t> offset{0};
 
-	[[gnu::always_inline]] inline JobStringArena(size_t size) {
+	[[gnu::always_inline]] inline jsarena(size_t size) {
 		buffer.resize(size);
 	}
-	[[gnu::always_inline]] inline const char* push_string(std::string_view str) {
+	[[gnu::always_inline]] inline const char* pstring(std::string_view str) noexcept {
 		size_t start = offset.fetch_add(str.size() + 1, std::memory_order_relaxed);
 
 		// add user friendly ":) file path is too long" or some &$#@
-		assert(start + str.size() + 1 <= buffer.size() && "Arena out of memory!");
+		if (start > buffer.size() || str.size() + 1 > buffer.size() - start) [[unlikely]] {
+			SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, "Arena out of memory!");
+			std::abort();
+		}
 
 		char* dest = &buffer[start];
 		memcpy(dest, str.data(), str.size());
@@ -214,55 +268,76 @@ struct JobStringArena {
 };
 
 
-struct ThreadLocalArena {
-	struct Block {
+struct tlarena {
+	struct blk {
 		std::unique_ptr<uint8_t[]> data;
 		size_t capacity;
 		size_t offset = 0;
 
-		explicit Block(size_t cap) : data{std::make_unique_for_overwrite<uint8_t[]>(cap)}, capacity{cap} {}
+		explicit blk(size_t cap) : data{std::make_unique_for_overwrite<uint8_t[]>(cap)}, capacity{cap} {}
 	};
 
-	std::vector<Block> blocks;
-	size_t defaultBlockSize = 0;
+	std::vector<blk> blocks;
+	size_t dbsize = 0;
+	size_t cbidx = 0; 
 
-	ThreadLocalArena() = default;
+	tlarena() = default;
 
-	void init(size_t initialBlockSize) {
-		defaultBlockSize = initialBlockSize;
-		blocks.emplace_back(initialBlockSize);
+	void init(size_t ibsize) {
+		dbsize = ibsize;
+		blocks.emplace_back(ibsize);
 	}
 
-	[[nodiscard]] void* allocate(size_t size, size_t alignment = 64) {
+	
+	void prewarm() noexcept {
+		for (auto& block : blocks) {
+			memset(block.data.get(), 0, block.capacity);
+		}
+	}
+
+	[[nodiscard]] void* allocate(size_t size, size_t align = 64) {
+		assert(std::has_single_bit(align));
+
 		if (blocks.empty()) [[unlikely]] {
-			init(defaultBlockSize > 0 ? defaultBlockSize : 8 * 1024 * 1024);
+			init(dbsize > 0 ? dbsize : 8 * 1024 * 1024);
 		}
 
-		Block* current = &blocks.back();
+		blk* cblk = &blocks[cbidx];
 
-		size_t current_addr = reinterpret_cast<size_t>(current->data.get() + current->offset);
-		size_t padding = (alignment - (current_addr % alignment)) % alignment;
+		size_t caddr = reinterpret_cast<size_t>(cblk->data.get() + cblk->offset);
+		size_t padding = (0 - caddr) & (align - 1);
 
-		if (current->offset + padding + size > current->capacity) [[unlikely]] {
-			size_t newCapacity = std::max(defaultBlockSize, size + alignment);
-			blocks.emplace_back(newCapacity);
+		while (cblk->offset + padding + size > cblk->capacity) [[unlikely]] {
+			
+			if (cbidx + 1 == blocks.size()) {
+				size_t ncap = std::max(dbsize, size + align);
+				blocks.emplace_back(ncap);
+			}
 
-			current = &blocks.back();
-			current_addr = reinterpret_cast<size_t>(current->data.get() + current->offset);
-			padding = (alignment - (current_addr % alignment)) % alignment;
+			cblk = &blocks[++cbidx];
+			caddr = reinterpret_cast<size_t>(cblk->data.get() + cblk->offset);
+			padding = (0 - caddr) & (align - 1);
 		}
 
-		current->offset += padding;
-		void* ptr = current->data.get() + current->offset;
-		current->offset += size;
+		cblk->offset += padding;
+		void* ptr = cblk->data.get() + cblk->offset;
+		cblk->offset += size;
 
 		return ptr;
 	}
 
+	
 	void reset() noexcept {
 		for (auto& block : blocks) {
 			block.offset = 0;
 		}
+
+		cbidx = 0;
+	}
+
+	
+	void trim() noexcept {
+		reset();
 
 		if (blocks.size() > 1) {
 			blocks.erase(blocks.begin() + 1, blocks.end());
@@ -270,154 +345,306 @@ struct ThreadLocalArena {
 	}
 };
 
-inline constexpr size_t MAX_WORKER_THREADS = 64;
-inline std::array<ThreadLocalArena, MAX_WORKER_THREADS> g_thread_arenas;
-inline std::atomic<uint32_t> g_arena_counter{0};
-inline thread_local uint32_t t_arena_index = 0xFFFFFFFF;
+inline constexpr size_t MWTHREADS = 64;
 
-// temp memory for any job that requires [[invoke]]
-inline ThreadLocalArena& get_local_arena() {
-	if (t_arena_index == 0xFFFFFFFF) [[unlikely]] {
-		t_arena_index = g_arena_counter.fetch_add(1, std::memory_order_relaxed) % MAX_WORKER_THREADS;
-		g_thread_arenas[t_arena_index].init(8 * 1024 * 1024);
+
+
+[[gnu::always_inline]] inline bool cidle(std::atomic<int>& nidle) noexcept {
+	int n = nidle.load(std::memory_order_seq_cst);
+
+	while (n > 0) {
+		if (nidle.compare_exchange_weak(n, n - 1, std::memory_order_seq_cst))
+			return true;
 	}
 
-	return g_thread_arenas[t_arena_index];
+	return false;
 }
 
-enum struct JobPriority { High, Low };
+// high: short work a frame is waiting for. low: anything that can run long (file io, parsing, uploads, baking).
+enum struct jprio { high, low };
 struct threadpool {
-	inline static constexpr uint32_t QUEUE_SIZE = 1024;
-	inline static constexpr uint32_t LOW_PRIORITY_QUEUE_SIZE = 4096;
+	inline static constexpr uint32_t HPQCAP = 1024;
+	inline static constexpr uint32_t LPQCAP = 4096;
+	
+	
+	inline static constexpr uint32_t WSPINS = 0;
+	
+	
+	inline static constexpr uint32_t HWORKERS = 1;
 
 	threadpool() = default;
 
 	void init() {
-		if (is_running() || !workers.empty()) {
+		if (isrun() || !workers.empty() || stopped.load(std::memory_order_acquire)) {
 			SDL_Log("threadpool already initialized");
 			return;
 		}
 
 		int32_t hc = static_cast<int32_t>(std::thread::hardware_concurrency());
-		uint32_t num_threads = static_cast<uint32_t>(std::max(2, hc - 2));
+		uint32_t nthreads = static_cast<uint32_t>(std::max(2, hc - 2));
+		uint32_t nlow = nthreads > HWORKERS ? nthreads - HWORKERS : 1;
 
 		running.store(true, std::memory_order_release);
 
-		for (uint32_t i = 0; i < num_threads - 1; ++i) {
+		for (uint32_t i = 0; i < nthreads; ++i) {
 			try {
-				workers.emplace_back(&threadpool::worker_loop, this);
+				workers.emplace_back(&threadpool::wloop, this, i < nlow);
 			} catch (const std::system_error& e) {
 				SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, "failed to spawn worker %u:\n %s", i, e.what());
 			}
 		}
 	}
 
-	bool is_running() const {
+	bool isrun() const {
 		return running.load(std::memory_order_acquire);
 	}
 
-	void stop_and_join_all() {
-		if (running.exchange(false, std::memory_order_acq_rel)) {
-			jobs_available.release(workers.size() * 2);
+	void sjoin() {
+		if (stopped.exchange(true, std::memory_order_seq_cst))
+			return;
 
-			for (auto& w : workers) {
-				if (w.joinable()) {
-					w.join();
-				}
-			}
+		running.store(false, std::memory_order_seq_cst);
+		std::atomic_thread_fence(std::memory_order_seq_cst);
 
-			job current_job;
+		
+		while (cidle(nidle)) {
+			javail.release();
+		}
 
-			while (high_priority_queue.pop(current_job)) {
-				if (current_job.destroy)
-					current_job.destroy(current_job.payload);
-			}
-			while (low_priority_queue.pop(current_job)) {
-				if (current_job.destroy)
-					current_job.destroy(current_job.payload);
+		while (cidle(hnidle)) {
+			hjavail.release();
+		}
+
+		for (auto& w : workers) {
+			if (w.joinable()) {
+				w.join();
 			}
 		}
+
+		
+		while (hexec(true)) {}
 	}
 
 	~threadpool() {
-		stop_and_join_all();
+		sjoin();
 	}
 
-	template <typename F> void enqueue(F&& f, JobPriority priority = JobPriority::High) {
-		job new_job = job::make(std::forward<F>(f));
+	template <typename F> void enqueue(F&& f, jprio priority = jprio::high) {
+		job njob = job::make(std::forward<F>(f));
 
-		if (priority == JobPriority::High) {
-			while (!high_priority_queue.push(new_job)) {
-				if (!help_execute())
+		
+		if (stopped.load(std::memory_order_acquire)) [[unlikely]] {
+			njob.rdispose();
+			return;
+		}
+
+		gm.jenq(priority == jprio::low);
+
+		bool full = false;
+
+		if (priority == jprio::high) {
+			while (!hpqueue.push(njob)) {
+				full = true;
+
+				if (!hexec(hlow()))
 					rview::core::cpu_relax();
 			}
 		} else {
-			while (!low_priority_queue.push(new_job)) {
-				if (!help_execute())
+			while (!lpqueue.push(njob)) {
+				full = true;
+
+				if (!hexec(hlow()))
 					rview::core::cpu_relax();
 			}
 		}
 
-		jobs_available.release();
+		if (full) [[unlikely]]
+			nfull.fetch_add(1, std::memory_order_relaxed);
+
+		
+		
+		std::atomic_thread_fence(std::memory_order_seq_cst);
+
+		
+		
+		if (priority == jprio::high && cidle(hnidle)) {
+			hjavail.release();
+			gm.jrel(true);
+		} else if (cidle(nidle)) {
+			gm.jrel(false);
+			javail.release();
+		}
+
+		
+		if (stopped.load(std::memory_order_seq_cst)) [[unlikely]] {
+			while (hexec(true)) {}
+		}
 	}
 
-	bool help_execute() {
-		job current_job;
+	
+	
+	bool hlow() const noexcept {
+		return tlow || !running.load(std::memory_order_acquire);
+	}
+
+	
+	bool hexec(bool lowok = true) noexcept {
+		job cjob;
 
 		// X_X
-		// no more jobs_available.try_acquire();
-		if (high_priority_queue.pop(current_job)) {
-			current_job.run_and_dispose();
+		// no more javail.try_acquire();
+		if (hpqueue.pop(cjob)) {
+			bool plow = std::exchange(tlow, false);
+			const uint64_t mt = gm.jbegin();
+			cjob.rdispose();
+			gm.jend(mt, false);
+			tlow = plow;
 			return true;
 		}
 
-		if (low_priority_queue.pop(current_job)) {
-			current_job.run_and_dispose();
+		if (lowok && lpqueue.pop(cjob)) {
+			bool plow = std::exchange(tlow, true);
+			const uint64_t mt = gm.jbegin();
+			cjob.rdispose();
+			gm.jend(mt, true);
+			tlow = plow;
 			return true;
 		}
 
 		return false;
 	}
 
-	LockFreeMPMC<job, QUEUE_SIZE> high_priority_queue;
-	LockFreeMPMC<job, LOW_PRIORITY_QUEUE_SIZE> low_priority_queue;
+	
+	void wjobs(std::atomic<int>& pcount) noexcept {
+		const uint64_t mt = gm.wjbegin();
+		while (pcount.load(std::memory_order_acquire) > 0) {
+			if (!hexec(hlow()))
+				rview::core::cpu_relax();
+		}
+
+		gm.wjend(mt);
+	}
+
+	
+	void msample() const noexcept {
+		auto depth = [](const auto& q) noexcept {
+			const std::ptrdiff_t d = static_cast<std::ptrdiff_t>(q.eqpos.load(std::memory_order_relaxed) - q.dqpos.load(std::memory_order_relaxed));
+			return static_cast<uint32_t>(d > 0 ? d : 0);
+		};
+
+		gm.jsample(depth(hpqueue), depth(lpqueue), static_cast<uint32_t>(nidle.load(std::memory_order_relaxed)),
+				   static_cast<uint32_t>(hnidle.load(std::memory_order_relaxed)), nfull.load(std::memory_order_relaxed));
+	}
+
+	
+	template <typename F> void pfor(uint32_t total, uint32_t bsize, F&& fn) {
+		
+		static_assert(std::is_nothrow_invocable_v<F&, uint32_t, uint32_t>, "pfor body must not throw: mark it noexcept");
+
+		if (total == 0)
+			return;
+
+		if (bsize == 0) [[unlikely]]
+			bsize = total;
+
+		
+		uint32_t nbatches = static_cast<uint32_t>((static_cast<uint64_t>(total) + bsize - 1) / bsize);
+
+		if (nbatches == 1) {
+			fn(0u, total);
+			return;
+		}
+
+		assert(nbatches - 1 <= static_cast<uint32_t>(std::numeric_limits<int>::max()));
+		std::atomic<int> pcount{static_cast<int>(nbatches - 1)};
+
+		for (uint32_t i = 0; i < nbatches - 1; ++i) {
+			uint32_t bstart = i * bsize;
+			uint32_t bend = bstart + bsize;
+
+			
+			enqueue([pfn = std::addressof(fn), pc = &pcount, bstart, bend]() noexcept {
+				sjguard guard(*pc);
+				(*pfn)(bstart, bend);
+			});
+		}
+
+		fn((nbatches - 1) * bsize, total);
+		wjobs(pcount);
+	}
+
+	lfmpmc<job, HPQCAP> hpqueue;
+	lfmpmc<job, LPQCAP> lpqueue;
 	// $&#@ it we ball x2
-	std::counting_semaphore<std::numeric_limits<std::ptrdiff_t>::max()> jobs_available{0};
+	std::counting_semaphore<std::numeric_limits<std::ptrdiff_t>::max()> javail{0};
+	std::counting_semaphore<std::numeric_limits<std::ptrdiff_t>::max()> hjavail{0};
+	std::atomic<int> nidle{0};  
+	std::atomic<int> hnidle{0}; 
 	std::atomic<bool> running{false};
+	std::atomic<bool> stopped{false};
+	std::atomic<uint64_t> nfull{0}; 
 
 	std::vector<std::thread> workers;
+	inline static thread_local bool tlow = false; 
 
-	void worker_loop() {
+	void wloop(bool lowok) {
 		rdebug::set_thread_name("worker");
 
 		rpmalloc_thread_initialize();
+		gm.wkind(lowok ? 1 : 2);
 
-		while (running.load(std::memory_order_acquire)) {
-			rpmalloc_thread_collect();
-			jobs_available.acquire();
+		std::atomic<int>& cnidle = lowok ? nidle : hnidle;
+		auto& cjavail = lowok ? javail : hjavail;
 
-			if (!running.load(std::memory_order_acquire)) {
-				rpmalloc_thread_finalize(1);
-				return;
+		for (;;) {
+			{
+				ZoneScopedN("jobexec");
+
+				while (hexec(lowok)) {}
 			}
 
-			ZoneScopedN("jobexec");
+			if (!running.load(std::memory_order_acquire))
+				break;
 
-			while (help_execute()) {}
+			// stay hot for a moment
+			bool found = false;
+
+			for (uint32_t i = 0; i < WSPINS && !found; ++i) {
+				rview::core::cpu_relax();
+				found = hexec(lowok);
+			}
+
+			if (found)
+				continue;
+
+			
+			
+			cnidle.fetch_add(1, std::memory_order_seq_cst);
+			std::atomic_thread_fence(std::memory_order_seq_cst);
+
+			if (hexec(lowok) || !running.load(std::memory_order_seq_cst)) {
+				
+				
+				if (cidle(cnidle))
+					continue;
+			}
+
+			rpmalloc_thread_collect();
+			const uint64_t mt = mnow();
+			cjavail.acquire();
+			gm.jwoke(mt, !lowok, running.load(std::memory_order_relaxed));
 		}
 
 		rpmalloc_thread_finalize(1);
 	}
 };
 
-inline threadpool g_jobs{};
-
-struct reaper_thread {
-	reaper_thread() = default;
+struct gcworker {
+	gcworker() = default;
 
 	void init() {
 
-		if (worker.joinable() || running.load(std::memory_order_acquire)) {
+		if (worker.joinable() || running.load(std::memory_order_acquire) || stopped.load(std::memory_order_acquire)) {
 			SDL_Log("reaper init() called but was already running");
 			return;
 		}
@@ -425,71 +652,145 @@ struct reaper_thread {
 		running.store(true, std::memory_order_release);
 		// abi mismatch XP
 		try {
-			worker = std::thread(&reaper_thread::loop, this);
+			worker = std::thread(&gcworker::loop, this);
 		} catch (const std::system_error& e) {
 			SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, " OS rejected reaper std::thread creation:\n %s", e.what());
 			running.store(false, std::memory_order_release);
 		}
 	}
 
-	~reaper_thread() {
-		if (running.exchange(false, std::memory_order_acq_rel)) {
-			items_available.release();
+	void sjoin() {
+		if (stopped.exchange(true, std::memory_order_seq_cst))
+			return;
 
-			if (worker.joinable())
-				worker.join();
+		running.store(false, std::memory_order_seq_cst);
+		std::atomic_thread_fence(std::memory_order_seq_cst);
 
-			job current_job;
+		if (cidle(nidle))
+			iavail.release();
 
-			while (queue.pop(current_job)) {
-				if (current_job.destroy)
-					current_job.destroy(current_job.payload);
-			}
-		}
+		if (worker.joinable())
+			worker.join();
+
+		// collecting stragglers
+		while (hexec()) {}
+	}
+
+	~gcworker() {
+		sjoin();
 	}
 
 	template <typename F> void enqueue(F&& f) {
-		job new_job = job::make(std::forward<F>(f));
+		job njob = job::make(std::forward<F>(f));
 
-		while (!queue.push(new_job)) {
-			rview::core::cpu_relax();
+		
+		if (stopped.load(std::memory_order_acquire)) [[unlikely]] {
+			njob.rdispose();
+			return;
 		}
 
-		items_available.release();
+		while (!queue.push(njob)) {
+			
+			
+			if (tself == this || !running.load(std::memory_order_acquire)) {
+				hexec();
+			} else {
+				rview::core::cpu_relax();
+			}
+		}
+
+		
+		std::atomic_thread_fence(std::memory_order_seq_cst);
+
+		if (cidle(nidle))
+			iavail.release();
+
+		if (stopped.load(std::memory_order_seq_cst)) [[unlikely]] {
+			while (hexec()) {}
+		}
 	}
 
-	LockFreeMPMC<job, 1024> queue;
-	std::counting_semaphore<std::numeric_limits<std::ptrdiff_t>::max()> items_available{0};
+	bool hexec() noexcept {
+		job cjob;
+
+		if (queue.pop(cjob)) {
+			cjob.rdispose();
+			return true;
+		}
+
+		return false;
+	}
+
+	lfmpmc<job, 1024> queue;
+	std::counting_semaphore<std::numeric_limits<std::ptrdiff_t>::max()> iavail{0};
+	std::atomic<int> nidle{0};
 	std::atomic<bool> running{false};
+	std::atomic<bool> stopped{false};
 	std::thread worker;
+	inline static thread_local const gcworker* tself = nullptr;
 
 	void loop() {
 		rdebug::set_thread_name("reaper");
 		rpmalloc_thread_initialize();
+		tself = this;
 
-		while (running.load(std::memory_order_acquire)) {
+		for (;;) {
+			{
+				ZoneScopedN("reaper_gc");
+
+				while (hexec()) {}
+			}
+
+			if (!running.load(std::memory_order_acquire))
+				break;
+
+			
+			nidle.fetch_add(1, std::memory_order_seq_cst);
+			std::atomic_thread_fence(std::memory_order_seq_cst);
+
+			if (hexec() || !running.load(std::memory_order_seq_cst)) {
+				if (cidle(nidle))
+					continue;
+			}
+
 			rpmalloc_thread_collect();
-			items_available.acquire();
-
-			if (!running.load(std::memory_order_acquire)) {
-				rpmalloc_thread_finalize(1);
-				return;
-			}
-
-			ZoneScopedN("reaper_gc");
-			job current_job;
-
-			while (queue.pop(current_job)) {
-				current_job.run_and_dispose();
-			}
+			iavail.acquire();
 		}
 
 		rpmalloc_thread_finalize(1);
 	}
 };
 
-// idk which is better, fan out or this but here it is exclusively for GC
-inline reaper_thread g_reaper{};
+// destruction order (last declared dies first)
 
-inline JobStringArena g_job_strings(1024 * 1024);
-inline std::atomic<int> active_io_jobs{0};
+alignas(64) inline std::array<std::atomic<bool>, 8192> gctokens{}; // magic
+
+inline std::atomic<int> gaiojobs{0};
+inline teardown gexitq;
+inline jsarena gjstrings(1024 * 1024);
+
+inline std::array<tlarena, MWTHREADS> gtlarenas;
+inline std::atomic<uint32_t> gacount{0};
+inline thread_local uint32_t taidx = 0xFFFFFFFF;
+
+// temp memory for any job that requires [[invoke]]
+inline tlarena& ctlarena() {
+	if (taidx == 0xFFFFFFFF) [[unlikely]] {
+		uint32_t idx = gacount.fetch_add(1, std::memory_order_relaxed);
+
+		if (idx >= MWTHREADS) [[unlikely]] {
+			SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, "ctlarena: out of thread arena slots (%u)", static_cast<unsigned>(MWTHREADS));
+			std::abort();
+		}
+
+		taidx = idx;
+		gtlarenas[taidx].init(8 * 1024 * 1024);
+	}
+
+	return gtlarenas[taidx];
+}
+
+// idk which is better, fan out or this but here it is exclusively for GC
+inline gcworker greaper{};
+
+inline threadpool gjobs{};

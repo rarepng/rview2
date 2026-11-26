@@ -23,6 +23,16 @@
 #include <ubo.hpp>
 #include <obs_bridge.hpp>
 
+// i ccba
+inline void jdump() noexcept {
+	size_t hq = gjobs.hpqueue.eqpos.load() - gjobs.hpqueue.dqpos.load();
+	size_t lq = gjobs.lpqueue.eqpos.load() - gjobs.lpqueue.dqpos.load();
+
+	SDL_Log("jobs: queued high %zu low %zu | parked general %d high-only %d of %zu workers | loads in flight %d | full hits %llu",
+		hq, lq, gjobs.nidle.load(), gjobs.hnidle.load(), gjobs.workers.size(), gaiojobs.load(),
+		static_cast<unsigned long long>(gjobs.nfull.load()));
+}
+
 void vkrenderer::immediate_submit(rvkbucket& mvkobjs, std::function<void(VkCommandBuffer cbuffer)>&& fn) {
 	VkCommandBufferAllocateInfo allocInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -76,7 +86,7 @@ bool init_global_samplers(rvkbucket& objs) {
 		return false;
 	}
 
-	g_exitQ.enqueue(TeardownPhase::device,
+	gexitq.enqueue(tdphase::device,
 					[device = objs.vkdevice.device, sampler = objs.samplerz[0]]() { vkDestroySampler(device, sampler, nullptr); });
 
 
@@ -88,7 +98,7 @@ bool init_global_samplers(rvkbucket& objs) {
 		return false;
 	}
 
-	g_exitQ.enqueue(TeardownPhase::device,
+	gexitq.enqueue(tdphase::device,
 					[device = objs.vkdevice.device, sampler = objs.samplerz[1]]() { vkDestroySampler(device, sampler, nullptr); });
 
 	return true;
@@ -241,7 +251,7 @@ bool init_dummy_textures(rvkbucket& objs, VkCommandPool& cmdPool) {
 		vkDestroyBuffer(objs.vkdevice.device, stagingBuf, nullptr);
 		vkFreeMemory(objs.vkdevice.device, stagingMem, nullptr);
 
-		g_exitQ.enqueue(TeardownPhase::device, [device = objs.vkdevice.device, img = tex.image, view = tex.view, mem = tex.memory]() {
+		gexitq.enqueue(tdphase::device, [device = objs.vkdevice.device, img = tex.image, view = tex.view, mem = tex.memory]() {
 			vkDestroyImageView(device, view, nullptr);
 			vkDestroyImage(device, img, nullptr);
 			vkFreeMemory(device, mem, nullptr);
@@ -293,6 +303,13 @@ float map2(glm::vec3 x) {
 	return std::max(x.y, 0.0f);
 }
 
+
+static VkQueryPool g_gpuQueryPool = VK_NULL_HANDLE;
+static float g_gpuTimestampPeriod = 0.0f;
+static bool g_gpuQueryUsed[rview::core::MAX_FRAMES_IN_FLIGHT] = {};
+static uint64_t g_lastVmemSample = 0;
+
+
 bool vkrenderer::init(rvkbucket& mvkobjs) {
 	std::srand(static_cast<int>(time(NULL)));
 
@@ -327,6 +344,35 @@ bool vkrenderer::init(rvkbucket& mvkobjs) {
 
 	if (!getqueue(mvkobjs))
 		return false;
+
+	{
+		VmaAllocatorInfo allocInfo{};
+		vmaGetAllocatorInfo(mvkobjs.alloc, &allocInfo);
+		const VkPhysicalDeviceProperties* physProps = nullptr;
+		vmaGetPhysicalDeviceProperties(mvkobjs.alloc, &physProps);
+
+		uint32_t qfCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(allocInfo.physicalDevice, &qfCount, nullptr);
+		std::vector<VkQueueFamilyProperties> qfProps(qfCount);
+		if (qfCount > 0) {
+			vkGetPhysicalDeviceQueueFamilyProperties(allocInfo.physicalDevice, &qfCount, qfProps.data());
+		}
+
+		const float period = physProps ? physProps->limits.timestampPeriod : 0.0f;
+		const uint32_t validBits = (mvkobjs.graphicsQidx < qfCount) ? qfProps[mvkobjs.graphicsQidx].timestampValidBits : 0u;
+
+		if (period > 0.0f && validBits > 0u) {
+			VkQueryPoolCreateInfo qpci{};
+			qpci.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+			qpci.queryType = VK_QUERY_TYPE_TIMESTAMP;
+			qpci.queryCount = static_cast<uint32_t>(2 * rview::core::MAX_FRAMES_IN_FLIGHT);
+			if (vkCreateQueryPool(mvkobjs.vkdevice.device, &qpci, nullptr, &g_gpuQueryPool) == VK_SUCCESS) {
+				g_gpuTimestampPeriod = period;
+			} else {
+				g_gpuQueryPool = VK_NULL_HANDLE;
+			}
+		}
+	}
 
 	if (!createswapchain(mvkobjs))
 		return false;
@@ -432,7 +478,7 @@ bool vkrenderer::initcpuQs(rvkbucket& mvkobjs) {
 }
 bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 
-	if constexpr (rdebug::is_active) {
+	if constexpr (rdebug::is_active || rdebug::has_tracy) {
 		rdebug::init(mvkobjs.inst, mvkobjs.vkdevice.physical_device, mvkobjs.vkdevice, mvkobjs.graphicsQ, mvkobjs.cbuffers_graphics.at(0).at(0));
 	}
 
@@ -440,39 +486,58 @@ bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 		const auto& scene = rdemo::SCENES[1];
 
 		for (const auto& spawn : scene.spawns) {
-			const char* fname = g_job_strings.push_string(spawn.filepath);
+			const char* fname = gjstrings.pstring(spawn.filepath);
 			uint32_t count = spawn.count;
 			glm::vec3 origin = spawn.origin;
 			auto modifier = spawn.modifier;
 
-			active_io_jobs.fetch_add(1, std::memory_order_release);
-			g_jobs.enqueue(
-				[fname, count, origin, modifier, &mvkobjs]() {
-					model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
-					staging.requested_instances = count;
-					staging.spawn_position = origin;
-					staging.skipui = true;
-					staging.demo_modifier = modifier;
+			const uint32_t lid = gm.lnew(fname);
+			gaiojobs.fetch_add(1, std::memory_order_release);
+			gjobs.enqueue(
+				[fname, count, origin, modifier, lid, &mvkobjs]() noexcept {
+					SDL_Log("[load %u] job started", 999999);
+					sjguard ioguard(gaiojobs);
+					mloadscope mls(lid);
+					ZoneScopedN("load");
 
-					if (!staging.meshes.empty()) {
-						std::vector<uint32_t> uploadedTexIDs(staging.textures.size(), 0xFFFFFFFF);
+					try {
 
-						staging.assignedModelID = model_manager::commit_staging_to_vulkan(mvkobjs, staging, uploadedTexIDs);
+						model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
+						gm.lstep(mstep::parsed);
+						staging.loadID = lid;
+						SDL_Log("[load %u] parsed: %zu meshes, %zu textures", 999999, staging.meshes.size(), staging.textures.size());
+						staging.requested_instances = count;
+						staging.spawn_position = origin;
+						staging.skipui = true;
+						staging.demo_modifier = modifier;
 
-						auto it = model_manager::g_cpuModels.find(staging.assignedModelID);
-						staging.defaultPool = (it != model_manager::g_cpuModels.end() && !it->second.defaultClips.empty())
-												  ? it->second.defaultClips[0]
-												  : model_manager::FALLBACK_POOL_HANDLE;
+						if (!staging.meshes.empty()) {
+							std::vector<uint32_t> uploadedTexIDs(staging.textures.size(), 0xFFFFFFFF);
 
-						while (!vkrenderer::pending_staging_models.push(std::move(staging))) {
-							rview::core::cpu_relax();
+							staging.assignedModelID = model_manager::commit_staging_to_vulkan(mvkobjs, staging, uploadedTexIDs);
+							gm.lstep(mstep::committed);
+							SDL_Log("[load %u] committed as model %u", 999999, staging.assignedModelID);
+							auto it = model_manager::g_cpuModels.find(staging.assignedModelID);
+							staging.defaultPool = (it != model_manager::g_cpuModels.end() && !it->second.defaultClips.empty())
+													  ? it->second.defaultClips[0]
+													  : model_manager::FALLBACK_POOL_HANDLE;
+
+							while (!vkrenderer::pending_staging_models.push(std::move(staging))) {
+								if (!gjobs.isrun())
+									break;
+								rview::core::cpu_relax();
+							}
+							gm.lstep(mstep::pushed);
+							SDL_Log("[load %u] handed to main thread", 999999);
+
+						} else {
+							std::cerr << "Failed to find demo models: " << fname << "\n";
 						}
-					} else {
-						std::cerr << "Failed to find demo models: " << fname << "\n";
+					} catch (const std::exception& e) {
+						std::cerr << "Failed to load " << fname << ": " << e.what() << "\n";
 					}
-					active_io_jobs.fetch_sub(1, std::memory_order_release);
 				},
-				JobPriority::Low);
+				jprio::low);
 		}
 
 		return true; // will skip boot.json for nows
@@ -521,36 +586,54 @@ bool vkrenderer::initscene(rvkbucket& mvkobjs) {
 		float pZ = static_cast<float>((*it).get_double());
 		glm::vec3 start_pos(pX, pY, pZ);
 		uint32_t instance_count = static_cast<uint32_t>(c);
-		const char* fname = g_job_strings.push_string(f);
-		active_io_jobs.fetch_add(1, std::memory_order_release);
+		const char* fname = gjstrings.pstring(f);
+		gaiojobs.fetch_add(1, std::memory_order_release);
 
-		g_jobs.enqueue(
-			[fname, instance_count, start_pos, &mvkobjs]() {
-				model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
-				staging.requested_instances = instance_count;
-				staging.dropID = 0xFFFFFFFF; // irrelevant
-				staging.skipui = true;
-				staging.spawn_position = start_pos;
+		gjobs.enqueue(
+			[fname, instance_count, start_pos, &mvkobjs]() noexcept {
+				sjguard ioguard(gaiojobs);
 
-				if (!staging.meshes.empty()) {
-					std::vector<uint32_t> uploadedTexIDs(staging.textures.size(), 0xFFFFFFFF);
+				// quitting: sjoin() still runs every queued job, so a load that has not started has to end here
+				if (!gjobs.isrun())
+					return;
 
-					staging.assignedModelID = model_manager::commit_staging_to_vulkan(mvkobjs, staging, uploadedTexIDs);
+				// jobs are noexcept: a throw from parsing or uploading has to end here
+				try {
+					model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname);
 
-					auto it = model_manager::g_cpuModels.find(staging.assignedModelID);
-					staging.defaultPool = (it != model_manager::g_cpuModels.end() && !it->second.defaultClips.empty())
-											  ? it->second.defaultClips[0]
-											  : model_manager::FALLBACK_POOL_HANDLE;
+					// quitting: drop the model before any of it reaches the gpu
+					if (!gjobs.isrun())
+						return;
 
-					while (!vkrenderer::pending_staging_models.push(std::move(staging))) {
-						rview::core::cpu_relax();
+					staging.requested_instances = instance_count;
+					staging.dropID = 0xFFFFFFFF; // irrelevant
+					staging.skipui = true;
+					staging.spawn_position = start_pos;
+
+					if (!staging.meshes.empty()) {
+						std::vector<uint32_t> uploadedTexIDs(staging.textures.size(), 0xFFFFFFFF);
+
+						staging.assignedModelID = model_manager::commit_staging_to_vulkan(mvkobjs, staging, uploadedTexIDs);
+
+						auto it = model_manager::g_cpuModels.find(staging.assignedModelID);
+						staging.defaultPool = (it != model_manager::g_cpuModels.end() && !it->second.defaultClips.empty())
+												  ? it->second.defaultClips[0]
+												  : model_manager::FALLBACK_POOL_HANDLE;
+
+						while (!vkrenderer::pending_staging_models.push(std::move(staging))) {
+							if (!gjobs.isrun())
+								break;
+							rview::core::cpu_relax();
+						}
+
+					} else {
+						std::cerr << "Failed to parse boot model: " << fname << "\n";
 					}
-				} else {
-					std::cerr << "Failed to parse boot model: " << fname << "\n";
+				} catch (const std::exception& e) {
+					std::cerr << "Failed to load " << fname << ": " << e.what() << "\n";
 				}
-				active_io_jobs.fetch_sub(1, std::memory_order_release);
 			},
-			JobPriority::Low);
+			jprio::low);
 	}
 
 	return true;
@@ -757,7 +840,8 @@ void vkrenderer::update_dynamic_instances(rvkbucket& mvkobjs, uint32_t read_fram
 	uint32_t safe_instances = std::min(active_instances, 65535U);
 
 	uint32_t max_model_id = static_cast<uint32_t>(g_assets.models.size());
-	std::vector<bool> model_skin_cache(max_model_id, false);
+	static std::vector<uint8_t> model_skin_cache;
+	model_skin_cache.assign(max_model_id, 0);
 
 	for (const auto& [id, cpuModel] : model_manager::g_cpuModels) {
 		if (id < max_model_id)
@@ -1095,24 +1179,24 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 
 	cancelall();
 
-	while (active_io_jobs.load(std::memory_order_acquire) > 0) {
+	while (gaiojobs.load(std::memory_order_acquire) > 0) {
 		SDL_Event e;
 
 		while (SDL_PollEvent(&e)) {
 			ImGui_ImplSDL3_ProcessEvent(&e); // main thread NEVER help.
 		}
 
-		// g_jobs.help_execute(); // idk if this was a good idea..
+		// gjobs.hexec(); // idk if this was a good idea..
 		rview::core::cpu_relax();
 	}
 
-	g_jobs.stop_and_join_all();
+	gjobs.sjoin();
 
 	rview::io::save_state_to_json();
 
 	vkDeviceWaitIdle(mvkobjs.vkdevice.device);
 
-	if constexpr (rdebug::is_active) {
+	if constexpr (rdebug::has_tracy) {
 		TracyVkDestroy(rdebug::tracyCTX);
 	}
 
@@ -1233,7 +1317,7 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	}
 
 	model_manager::g_cpuModels.clear();
-	g_exitQ.flush_and_die();
+	gexitq.fdie();
 	std::ranges::for_each(mvkobjs.sbelts, [&mvkobjs](auto& x) { x.free(mvkobjs.alloc); });
 
 	StagingBelt* workerBelt = nullptr;
@@ -1257,6 +1341,13 @@ void vkrenderer::cleanup(rvkbucket& mvkobjs) {
 	vmaDestroyAllocator(mvkobjs.alloc);
 	mvkobjs.schain.destroy_image_views(mvkobjs.schainimgviews);
 	vkb::destroy_swapchain(mvkobjs.schain);
+	if (g_gpuQueryPool != VK_NULL_HANDLE) {
+		vkDestroyQueryPool(mvkobjs.vkdevice.device, g_gpuQueryPool, nullptr);
+		g_gpuQueryPool = VK_NULL_HANDLE;
+		g_gpuTimestampPeriod = 0.0f;
+		for (bool& u : g_gpuQueryUsed)
+			u = false;
+	}
 	vkb::destroy_device(mvkobjs.vkdevice);
 	vkb::destroy_surface(mvkobjs.inst.instance, mvkobjs.surface);
 	vkb::destroy_instance(mvkobjs.inst);
@@ -1594,7 +1685,7 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 
 					uint32_t currentDropID =
 						g_dropCounter.fetch_add(1, std::memory_order_relaxed) % 8192; // TODO constexpr number of cancellation tokens [[MAGIC]]
-					g_cancellation_tokens[currentDropID].store(false, std::memory_order_release);
+					gctokens[currentDropID].store(false, std::memory_order_release);
 
 					float mx, my;
 					SDL_GetMouseState(&mx, &my);
@@ -1612,47 +1703,56 @@ void vkrenderer::sdlevent(rvkbucket& mvkobjs, const SDL_Event& e) {
 					vkrenderer::g_activeDrops.emplace_back(std::move(session));
 					vkrenderer::g_openDropModal = true;
 
-					if (active_io_jobs.load(std::memory_order_acquire) == 0) {
-						g_job_strings.reset();
+					if (gaiojobs.load(std::memory_order_acquire) == 0) {
+						gjstrings.reset();
 					}
 
-					const char* fname = g_job_strings.push_string(fname_view);
-					active_io_jobs.fetch_add(1, std::memory_order_release);
+					const char* fname = gjstrings.pstring(fname_view);
+					gaiojobs.fetch_add(1, std::memory_order_release);
+					SDL_Log("[load %u] enqueue %s", currentDropID, fname);
+					gjobs.enqueue(
+						[fname, currentDropID, &mvkobjs]() noexcept {
+							SDL_Log("[load %u] job started", currentDropID);
+							sjguard ioguard(gaiojobs);
 
-					g_jobs.enqueue(
-						[fname, currentDropID, &mvkobjs]() {
-							model_manager::g_progress_queue.push({currentDropID, model_manager::ParseStep::parsing});
+							try {
+								model_manager::g_progress_queue.push({currentDropID, model_manager::ParseStep::parsing});
 
-							model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname, currentDropID);
-
-							if (g_cancellation_tokens[currentDropID].load(std::memory_order_acquire)) {
-								model_manager::g_progress_queue.push({currentDropID, model_manager::ParseStep::cancelled});
-								active_io_jobs.fetch_sub(1, std::memory_order_release);
-								return;
-							}
-
-							model_manager::g_progress_queue.push({currentDropID, model_manager::ParseStep::done});
-
-							staging.dropID = currentDropID;
-							staging.skipui = false;
-
-							if (!staging.meshes.empty()) {
-								std::vector<uint32_t> uploadedTexIDs(staging.textures.size(), 0xFFFFFFFF);
-
-								staging.assignedModelID = model_manager::commit_staging_to_vulkan(mvkobjs, staging, uploadedTexIDs);
-
-								auto it = model_manager::g_cpuModels.find(staging.assignedModelID);
-								staging.defaultPool = (it != model_manager::g_cpuModels.end() && !it->second.defaultClips.empty())
-														  ? it->second.defaultClips[0]
-														  : model_manager::FALLBACK_POOL_HANDLE;
-
-								while (!vkrenderer::pending_staging_models.push(std::move(staging))) {
-									rview::core::cpu_relax();
+								model_manager::StagingModelData staging = model_manager::parse_model_to_staging(fname, currentDropID);
+								SDL_Log("[load %u] parsed: %zu meshes, %zu textures", currentDropID, staging.meshes.size(), staging.textures.size());
+								if (gctokens[currentDropID].load(std::memory_order_acquire)) {
+									model_manager::g_progress_queue.push({currentDropID, model_manager::ParseStep::cancelled});
+									return;
 								}
+
+								model_manager::g_progress_queue.push({currentDropID, model_manager::ParseStep::done});
+
+								staging.dropID = currentDropID;
+								staging.skipui = false;
+
+								if (!staging.meshes.empty()) {
+									std::vector<uint32_t> uploadedTexIDs(staging.textures.size(), 0xFFFFFFFF);
+
+									staging.assignedModelID = model_manager::commit_staging_to_vulkan(mvkobjs, staging, uploadedTexIDs);
+									SDL_Log("[load %u] committed as model %u", currentDropID, staging.assignedModelID);
+									auto it = model_manager::g_cpuModels.find(staging.assignedModelID);
+									staging.defaultPool = (it != model_manager::g_cpuModels.end() && !it->second.defaultClips.empty())
+															  ? it->second.defaultClips[0]
+															  : model_manager::FALLBACK_POOL_HANDLE;
+
+									while (!vkrenderer::pending_staging_models.push(std::move(staging))) {
+										SDL_Log("[load %u] handed to main thread", currentDropID);
+										if (!gjobs.isrun())
+											break;
+										rview::core::cpu_relax();
+									}
+								}
+							} catch (const std::exception& e) {
+								std::cerr << "Failed to load " << fname << ": " << e.what() << "\n";
+								model_manager::g_progress_queue.push({currentDropID, model_manager::ParseStep::cancelled});
 							}
-							active_io_jobs.fetch_sub(1, std::memory_order_release);
 						},
-						JobPriority::Low);
+						jprio::low);
 				}
 
 				break;
@@ -1700,6 +1800,7 @@ void vkrenderer::moveplayer() {
 }
 // 1. MUST use && to avoid copy-constructor deleted errors
 void vkrenderer::commitspawn(rvkbucket& mvkobjs, VkCommandBuffer c, model_manager::StagingModelData&& drop) {
+	gm.lspawn(drop.loadID);
 	if (mvkobjs.transferQidx != mvkobjs.graphicsQidx) {
 		std::vector<VkBufferMemoryBarrier2> acquires(drop.buffersToAcquire.size());
 		for (size_t i = 0; i < drop.buffersToAcquire.size(); ++i) {
@@ -1774,13 +1875,13 @@ void vkrenderer::spawnall(rvkbucket& mvkobjs, VkCommandBuffer c) {
 
 void vkrenderer::cancelspawn(uint32_t id) {
 	uint32_t dropID = g_activeDrops[id].dropID;
-	g_cancellation_tokens[dropID].store(true, std::memory_order_release);
+	gctokens[dropID].store(true, std::memory_order_release);
 	g_activeDrops.erase(g_activeDrops.begin() + id);
 }
 
 void vkrenderer::cancelall() {
 	for (auto& drop : g_activeDrops) {
-		g_cancellation_tokens[drop.dropID].store(true, std::memory_order_release);
+		gctokens[drop.dropID].store(true, std::memory_order_release);
 	}
 
 	g_activeDrops.clear();
@@ -1872,11 +1973,17 @@ glm::vec3 vkrenderer::navmeshnormal(float x, float z) {
 	return glm::vec3{0.0f, 1.0f, 0.0f};
 }
 
+static constexpr uint32_t ASSET_UPLOAD_BUDGET = 8 * 1024 * 1024; // MAGIC but not that much
+
 void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 	if (!g_assets.requiresUpload.load(std::memory_order_acquire))
 		return;
 
-	std::lock_guard<std::mutex> lock(g_assets.registryMutex);
+	// never wait, try next frame
+	std::unique_lock<std::mutex> lock(g_assets.registryMutex, std::try_to_lock);
+
+	if (!lock.owns_lock())
+		return;
 
 	g_assets.requiresUpload.store(false, std::memory_order_release);
 
@@ -1901,7 +2008,7 @@ void vkrenderer::sync_assets_to_gpu(VkCommandBuffer cmd, rvkbucket& mvkobjs) {
 	uint32_t newBytesToUpload = currentByteSize - rview::core::g_rawIndexOffset;
 
 	if (newBytesToUpload > 0) {
-		uint32_t chunkBytes = std::min(newBytesToUpload, (uint32_t)(64 * 1024 * 1024));
+		uint32_t chunkBytes = std::min(newBytesToUpload, ASSET_UPLOAD_BUDGET);
 		VkDeviceSize beltOffset = mvkobjs.sbelts[rview::core::currentFrame].reserve(chunkBytes);
 
 		if (beltOffset == VK_WHOLE_SIZE) {
@@ -2141,6 +2248,11 @@ void flush_staging_and_resume(VkCommandBuffer& cmd, VkQueue queue, StagingBelt& 
 }
 bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	ZoneScoped;
+	mscope mfs;
+	static size_t faketick{0};
+	faketick++;
+	if(faketick%2000 == 0)
+		jdump();
 
 	if constexpr (rview::core::platform::is_android) {
 		if (!mvkobjs.surface || !mvkobjs.schain.swapchain) {
@@ -2156,11 +2268,29 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 
 	VkDeviceSize countOffset = rview::core::currentFrame * sizeof(uint32_t);
-
+	gm.stage(mstage::fence);
 	if (vkWaitForFences(mvkobjs.vkdevice.device, 1, &mvkobjs.fencez.at(rview::core::currentFrame), VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
 		return false;
 	}
 
+	if (g_gpuQueryPool != VK_NULL_HANDLE && g_gpuQueryUsed[rview::core::currentFrame]) {
+		uint64_t ts[2] = {0, 0};
+		VkResult qres = vkGetQueryPoolResults(
+			mvkobjs.vkdevice.device,
+			g_gpuQueryPool,
+			static_cast<uint32_t>(2 * rview::core::currentFrame),
+			2,
+			sizeof(ts),
+			ts,
+			sizeof(uint64_t),
+			VK_QUERY_RESULT_64_BIT);
+		if (qres == VK_SUCCESS && ts[1] >= ts[0]) {
+			gm.gpu(static_cast<uint64_t>(static_cast<double>(ts[1] - ts[0]) * static_cast<double>(g_gpuTimestampPeriod)));
+		}
+		g_gpuQueryUsed[rview::core::currentFrame] = false;
+	}
+
+	gm.stage(mstage::setup);
 	// good spot as any
 	mvkobjs.sbelts[rview::core::currentFrame].reset();
 
@@ -2191,6 +2321,11 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	if (vkBeginCommandBuffer(c, &cmdbgninfo) != VK_SUCCESS)
 		return false;
 
+	if (g_gpuQueryPool != VK_NULL_HANDLE) {
+		vkCmdResetQueryPool(c, g_gpuQueryPool, static_cast<uint32_t>(2 * rview::core::currentFrame), 2);
+		vkCmdWriteTimestamp(c, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, g_gpuQueryPool, static_cast<uint32_t>(2 * rview::core::currentFrame));
+	}
+
 
 	double tick = static_cast<double>(SDL_GetTicks()) / 1000.0;
 	rview::core::tickdiff = tick - vkrenderer::mlasttick;
@@ -2198,6 +2333,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	mframetimer.start();
 
 	uint32_t imgidx = 0;
+	gm.stage(mstage::acquire);
 	VkResult res = vkAcquireNextImageKHR(
 		mvkobjs.vkdevice.device, mvkobjs.schain.swapchain, UINT64_MAX, mvkobjs.semaphorez[0][rview::core::currentFrame], VK_NULL_HANDLE, &imgidx);
 
@@ -2224,7 +2360,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	if (mvkobjs.schain.extent.width == 0 || mvkobjs.schain.extent.height == 0)
 		return true;
 
-
+	gm.stage(mstage::events);
 	SDL_Event e;
 
 	while (SDL_PollEvent(&e)) {
@@ -2232,11 +2368,12 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		sdlevent(mvkobjs, e);
 	}
 
-
+	gm.stage(mstage::intake);
 	// maybe this is not worth it...
 	model_manager::ProgressUpdate update;
 
 	while (model_manager::g_progress_queue.pop(update)) {
+		SDL_Log("[load %u] step %d", update.requestID, static_cast<int>(update.step));
 		for (auto& drop : g_activeDrops) {
 			if (drop.dropID == update.requestID) {
 				drop.currentStep = update.step;
@@ -2248,6 +2385,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	model_manager::StagingModelData ephemeralstage;
 
 	while (pending_staging_models.pop(ephemeralstage)) {
+		SDL_Log("[load %u] main thread received", ephemeralstage.dropID);
 		if (ephemeralstage.skipui) {
 			g_commit_queue.push_back(std::move(ephemeralstage));
 		} else {
@@ -2261,6 +2399,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		}
 	}
 
+	gm.stage(mstage::commit);
 	//couldnt think of somewhere better to leave this
 	if (!g_commit_queue.empty()) {
 		commitspawn(mvkobjs, c, std::move(g_commit_queue.front()));
@@ -2268,9 +2407,10 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		auto* deadStaging = new model_manager::StagingModelData(std::move(g_commit_queue.front()));
 		g_commit_queue.erase(g_commit_queue.begin());
 
-		g_jobs.enqueue([deadStaging]() { delete deadStaging; });
+		greaper.enqueue([deadStaging]() noexcept { delete deadStaging; });
 	}
 
+	gm.stage(mstage::deathrow);
 	model_manager::OrphanedAnimBuffer orphaned;
 
 	while (model_manager::g_orphanedAnimBuffers.pop(orphaned)) {
@@ -2298,8 +2438,10 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 				vkDestroyImageView(mvkobjs.vkdevice.device, tex.imgview, nullptr);
 			}
 
-			auto* deadTextures = new std::vector<texdata>(std::move(dead.textures));
-			g_reaper.enqueue([deadTextures]() { delete deadTextures; });
+			if (!dead.textures.empty()) {
+				auto* deadTextures = new std::vector<texdata>(std::move(dead.textures));
+				greaper.enqueue([deadTextures]() noexcept { delete deadTextures; });
+			}
 
 			g_asset_death_row[i] = std::move(g_asset_death_row.back());
 			g_asset_death_row.pop_back();
@@ -2308,54 +2450,234 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		}
 	}
 
-	for (auto& kill : g_kill_queue) {
-		model_manager::g_registry.destroy_entity(kill.entity);
-		auto it = model_manager::g_cpuModels.find(kill.modelID);
+	gm.stage(mstage::kills);
+	const bool anim_quiet = model_manager::AnimQuiet();
+	gm.quiet(anim_quiet);
 
-		if (it != model_manager::g_cpuModels.end()) {
-			it->second.refCount--;
+	if (anim_quiet) {
+		for (auto& kill : g_kill_queue) {
+			model_manager::g_registry.destroy_entity(kill.entity);
+			auto it = model_manager::g_cpuModels.find(kill.modelID);
 
-			if (it->second.refCount == 0) {
-				for (uint32_t poolHandle : it->second.defaultClips) {
-					model_manager::g_animPoolRegistry.DestroyPool(poolHandle);
-				}
+			if (it != model_manager::g_cpuModels.end()) {
+				it->second.refCount--;
 
-				{
-					std::lock_guard<std::mutex> lock(rview::core::global_materials.mtx);
+				if (it->second.refCount == 0) {
+					model_manager::g_animPoolRegistry.DestroyPools(it->second.defaultClips.data(), it->second.defaultClips.size());
 
-					for (uint32_t matID : it->second.materialIDs) {
-						rview::core::global_materials.free_slots.push(matID);
+					{
+						std::lock_guard<std::mutex> lock(rview::core::global_materials.mtx);
+
+						for (uint32_t matID : it->second.materialIDs) {
+							rview::core::global_materials.free_slots.push(matID);
+						}
 					}
+
+					vkrenderer::CondemnedAsset deadAsset;
+					deadAsset.vbo = it->second.geometryVBO;
+					deadAsset.textures = std::move(it->second.textures);
+
+					g_asset_death_row.push_back(std::move(deadAsset));
+
+					auto* deadCPUAsset = new model_manager::CPUModelAsset(std::move(it->second));
+					model_manager::g_cpuModels.erase(it);
+
+					greaper.enqueue([deadCPUAsset]() noexcept { delete deadCPUAsset; });
 				}
-
-				vkrenderer::CondemnedAsset deadAsset;
-				deadAsset.vbo = it->second.geometryVBO;
-				deadAsset.textures = std::move(it->second.textures);
-
-				g_asset_death_row.push_back(std::move(deadAsset));
-
-				auto* deadCPUAsset = new model_manager::CPUModelAsset(std::move(it->second));
-				model_manager::g_cpuModels.erase(it);
-
-				g_reaper.enqueue([deadCPUAsset]() { delete deadCPUAsset; });
 			}
 		}
+
+		g_kill_queue.clear();
 	}
 
-	g_kill_queue.clear();
-
+	gm.stage(mstage::statechg);
 	rview::core::global_frame_counter.fetch_add(1, std::memory_order_relaxed);
 
 	model_manager::ProcessDeferredStateChanges(rview::core::global_frame_counter.load(std::memory_order_relaxed));
+	model_manager::g_animPoolRegistry.SyncNames();
 
+	gm.stage(mstage::quiet);
+	if (anim_quiet) {
+		model_manager::PoolMigrationReq migReq;
+		std::vector<uint32_t>* bakeBatch = nullptr;
+		constexpr size_t BAKE_BATCH = 32;
+
+		auto flushBakeBatch = [&]() {
+			if (!bakeBatch)
+				return;
+
+			auto* batch = bakeBatch;
+			bakeBatch = nullptr;
+
+			gjobs.enqueue(
+				[batch, &mvkobjs]() noexcept {
+					ZoneScopedN("uibake");
+					try {
+						size_t stagingBytes = 0;
+
+						for (uint32_t handle : *batch) {
+							if (auto* p = model_manager::g_animPoolRegistry.GetPoolMutable(handle))
+								stagingBytes += p->finalJointDQs.size() * sizeof(DualQuatScale);
+						}
+
+						model_manager::ChunkUploader uploader(mvkobjs, stagingBytes);
+
+						for (uint32_t handle : *batch) {
+							auto* p = model_manager::g_animPoolRegistry.GetPoolMutable(handle);
+							if (!p)
+								continue;
+
+							// ===================
+							//    HEAVY BAKING   |
+							// ===================
+
+							size_t byteSize = p->finalJointDQs.size() * sizeof(DualQuatScale);
+							if (byteSize == 0)
+								continue;
+
+							size_t alignedSize = (byteSize + 255) & ~255;
+							GpuBuffer targetVBO;
+							vkvbo::init(mvkobjs, targetVBO, alignedSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+							uploader.upload(targetVBO, p->finalJointDQs.data(), byteSize);
+							p->bakedAnimVBO = targetVBO;
+						}
+
+						uploader.flush();
+					} catch (const std::exception& e) {
+						std::cerr << "anim bake failed: " << e.what() << "\n";
+					}
+
+					for (uint32_t handle : *batch) {
+						while (!model_manager::g_poolUploadQueue.push({handle})) {
+							rview::core::cpu_relax();
+						}
+					}
+
+					delete batch;
+				},
+				jprio::low);
+		};
+
+		while (model_manager::g_poolMigrationQueue.pop(migReq)) {
+			auto* pool = model_manager::g_animPoolRegistry.GetPoolMutable(migReq.poolHandle);
+
+			if (!pool || pool->migrationState != model_manager::PoolMigrationState::STABLE)
+				continue;
+
+			if (migReq.targetDomain == model_manager::ExecutionDomain::GPU_BAKED && pool->bakedAnimVBO.buffer == VK_NULL_HANDLE) {
+				pool->migrationState = model_manager::PoolMigrationState::MIGRATING_TO_GPU;
+
+				if (!bakeBatch) {
+					bakeBatch = new std::vector<uint32_t>();
+					bakeBatch->reserve(BAKE_BATCH);
+				}
+
+				bakeBatch->push_back(migReq.poolHandle);
+
+				if (bakeBatch->size() == BAKE_BATCH)
+					flushBakeBatch();
+			} else if (migReq.targetDomain == model_manager::ExecutionDomain::CPU_BAKED && pool->bakedAnimVBO.buffer != VK_NULL_HANDLE) {
+				vkrenderer::CondemnedAsset deadAsset;
+				deadAsset.vbo = pool->bakedAnimVBO;
+				deadAsset.bindlessID = pool->bakedBindlessID;
+				vkrenderer::g_asset_death_row.push_back(std::move(deadAsset));
+
+				pool->bakedAnimVBO.buffer = VK_NULL_HANDLE;
+				pool->bakedBindlessID = 0xFFFFFFFF;
+				pool->pipelineFlags = model_manager::ANIM_FLAG_CPU_BAKED;
+				pool->domain = model_manager::ExecutionDomain::CPU_BAKED;
+			}
+		}
+
+		flushBakeBatch();
+
+		model_manager::PoolPurgeReq purgeReq;
+		static std::vector<model_manager::PoolPurgeReq> busyPurges;
+		busyPurges.clear();
+
+		while (model_manager::g_poolPurgeQueue.pop(purgeReq)) {
+			auto* pool = model_manager::g_animPoolRegistry.GetPoolMutable(purgeReq.poolHandle);
+
+			if (pool && pool->migrationState != model_manager::PoolMigrationState::STABLE) {
+				busyPurges.push_back(purgeReq);
+				continue;
+			}
+
+			if (pool && pool->retainCpuData) {
+				pool->retainCpuData = false;
+
+				model_manager::PurgePoolCPUDataAsync(*pool);
+			}
+		}
+
+		for (const auto& busy : busyPurges) {
+			model_manager::g_poolPurgeQueue.push(busy);
+		}
+
+		model_manager::PoolUploadReq upReq;
+
+		while (model_manager::g_poolUploadQueue.pop(upReq)) {
+			auto* pool = model_manager::g_animPoolRegistry.GetPoolMutable(upReq.poolHandle);
+			if (!pool || pool->migrationState != model_manager::PoolMigrationState::MIGRATING_TO_GPU)
+				continue;
+
+			if (pool->condemned || pool->bakedAnimVBO.buffer == VK_NULL_HANDLE) {
+				pool->migrationState = model_manager::PoolMigrationState::STABLE;
+
+				if (pool->condemned)
+					model_manager::g_animPoolRegistry.DestroyPools(&upReq.poolHandle, 1);
+
+				continue;
+			}
+
+			uint32_t newID;
+			{
+				std::lock_guard<std::mutex> lock(rview::core::global_buffers.mtx);
+				if (!rview::core::global_buffers.free_slots.empty()) {
+					newID = rview::core::global_buffers.free_slots.front();
+					rview::core::global_buffers.free_slots.pop();
+				} else {
+					newID = rview::core::globalBufferCounter.fetch_add(1, std::memory_order_relaxed);
+				}
+			}
+			pool->bakedBindlessID = newID;
+
+			VkDescriptorBufferInfo bufInfo{pool->bakedAnimVBO.buffer, 0, pool->bakedAnimVBO.size};
+			VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+			write.dstSet = rview::core::globalBindlessSet;
+			write.dstBinding = 19;
+			write.dstArrayElement = pool->bakedBindlessID;
+			write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			write.descriptorCount = 1;
+			write.pBufferInfo = &bufInfo;
+
+			{
+				std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
+				vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &write, 0, nullptr);
+			}
+
+			if (!pool->finalJointDQs.empty())
+				model_manager::reap(std::move(pool->finalJointDQs));
+
+			pool->pipelineFlags = model_manager::ANIM_FLAG_GPU_BAKED;
+			pool->domain = model_manager::ExecutionDomain::GPU_BAKED;
+			pool->migrationState = model_manager::PoolMigrationState::STABLE;
+		}
+	}
+
+	gm.stage(mstage::poolprep);
 	uint32_t write_frame = rview::core::currentFrame;
 	uint32_t read_frame = (rview::core::currentFrame + rview::core::MAX_FRAMES_IN_FLIGHT - 1) % rview::core::MAX_FRAMES_IN_FLIGHT;
 
+	model_manager::MarkPoolsInUse();
+
 	if (model_manager::g_anim_jobs_pending[read_frame].load(std::memory_order_acquire) == 0) {
+		model_manager::CatchUpPools(read_frame);
 		model_manager::UpdateAttachments();
 		model_manager::upload_joint_matrices(mvkobjs, read_frame);
 	}
 
+	gm.stage(mstage::dispatch);
 	model_manager::g_anim_time_accumulator += rview::core::tickdiff;
 
 	if (model_manager::g_anim_jobs_pending[write_frame].load(std::memory_order_acquire) == 0) {
@@ -2363,8 +2685,11 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		model_manager::g_anim_time_accumulator = 0.0f;
 	}
 
+	gm.stage(mstage::instances);
 	update_dynamic_instances(mvkobjs, read_frame);
+	gm.stage(mstage::assetsync);
 	sync_assets_to_gpu(c, mvkobjs);
+	gm.stage(mstage::record);
 	movecam(mvkobjs);
 	moveplayer();
 
@@ -2386,109 +2711,12 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		std::call_once(obswrite, [&]() { vkrenderer::write_obs(mvkobjs); });
 
 
-	model_manager::PoolMigrationReq migReq;
-
-	while (model_manager::g_poolMigrationQueue.pop(migReq)) {
-		auto* pool = model_manager::g_animPoolRegistry.GetPoolMutable(migReq.poolHandle);
-
-		if (!pool)
-			continue;
-
-		if (migReq.targetDomain == model_manager::ExecutionDomain::GPU_BAKED && pool->bakedAnimVBO.buffer == VK_NULL_HANDLE) {
-			pool->migrationState = model_manager::PoolMigrationState::MIGRATING_TO_GPU;
-
-			uint32_t handle = migReq.poolHandle;
-
-			g_jobs.enqueue(
-				[handle, &mvkobjs]() {
-					auto* p = model_manager::g_animPoolRegistry.GetPoolMutable(handle);
-					if (!p)
-						return;
-
-					// ===================
-					// HEAVY BAKING HERE |
-					// ===================
-
-					size_t byteSize = p->finalJointDQs.size() * sizeof(DualQuatScale);
-					size_t alignedSize = (byteSize + 255) & ~255;
-					GpuBuffer targetVBO;
-					vkvbo::init(mvkobjs, targetVBO, alignedSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-					model_manager::async_chunked_upload(mvkobjs, targetVBO, p->finalJointDQs.data(), byteSize);
-					p->bakedAnimVBO = targetVBO;
-					model_manager::g_poolUploadQueue.push({handle});
-				},
-				JobPriority::Low);
-		} else if (migReq.targetDomain == model_manager::ExecutionDomain::CPU_BAKED && pool->bakedAnimVBO.buffer != VK_NULL_HANDLE) {
-			vkrenderer::CondemnedAsset deadAsset;
-			deadAsset.vbo = pool->bakedAnimVBO;
-			deadAsset.bindlessID = pool->bakedBindlessID;
-			vkrenderer::g_asset_death_row.push_back(std::move(deadAsset));
-
-			pool->bakedAnimVBO.buffer = VK_NULL_HANDLE;
-			pool->bakedBindlessID = 0xFFFFFFFF;
-			pool->pipelineFlags = model_manager::ANIM_FLAG_CPU_BAKED;
-			pool->domain = model_manager::ExecutionDomain::CPU_BAKED;
-		}
-	}
-
-	model_manager::PoolPurgeReq purgeReq;
-
-	while (model_manager::g_poolPurgeQueue.pop(purgeReq)) {
-		auto* pool = model_manager::g_animPoolRegistry.GetPoolMutable(purgeReq.poolHandle);
-
-		if (pool && pool->retainCpuData) {
-			pool->retainCpuData = false;
-
-			model_manager::PurgePoolCPUDataAsync(*pool);
-		}
-	}
-
-	model_manager::PoolUploadReq upReq;
-
-	while (model_manager::g_poolUploadQueue.pop(upReq)) {
-		auto* pool = model_manager::g_animPoolRegistry.GetPoolMutable(upReq.poolHandle);
-		if (!pool || pool->migrationState != model_manager::PoolMigrationState::MIGRATING_TO_GPU)
-			continue;
-
-		uint32_t newID;
-		{
-			std::lock_guard<std::mutex> lock(rview::core::global_buffers.mtx);
-			if (!rview::core::global_buffers.free_slots.empty()) {
-				newID = rview::core::global_buffers.free_slots.front();
-				rview::core::global_buffers.free_slots.pop();
-			} else {
-				newID = rview::core::globalBufferCounter.fetch_add(1, std::memory_order_relaxed);
-			}
-		}
-		pool->bakedBindlessID = newID;
-
-		VkDescriptorBufferInfo bufInfo{pool->bakedAnimVBO.buffer, 0, pool->bakedAnimVBO.size};
-		VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-		write.dstSet = rview::core::globalBindlessSet;
-		write.dstBinding = 19;
-		write.dstArrayElement = pool->bakedBindlessID;
-		write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		write.descriptorCount = 1;
-		write.pBufferInfo = &bufInfo;
-
-		{
-			std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
-			vkUpdateDescriptorSets(mvkobjs.vkdevice.device, 1, &write, 0, nullptr);
-		}
-
-		std::vector<DualQuatScale> deadDQs = std::move(pool->finalJointDQs);
-		g_jobs.enqueue([d = std::move(deadDQs)]() mutable {}, JobPriority::Low);
-
-		pool->pipelineFlags = model_manager::ANIM_FLAG_GPU_BAKED;
-		pool->domain = model_manager::ExecutionDomain::GPU_BAKED;
-		pool->migrationState = model_manager::PoolMigrationState::STABLE;
-	}
 
 
 
 	// let that sync in
 	currentgraph.add_pass([&mvkobjs, c, imgidx] {
-		if constexpr (rdebug::is_active) {
+		if constexpr (rdebug::has_tracy) {
 			TracyVkZone(rdebug::tracyCTX, c, "syncs");
 		}
 
@@ -2534,7 +2762,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	});
 
 	currentgraph.add_pass([c, countOffset] {
-		if constexpr (rdebug::is_active) {
+		if constexpr (rdebug::has_tracy) {
 			TracyVkZone(rdebug::tracyCTX, c, "compute/cull");
 		}
 
@@ -2606,7 +2834,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	});
 
 	currentgraph.add_pass([&mvkobjs, c, imgidx, countOffset] {
-		if constexpr (rdebug::is_active) {
+		if constexpr (rdebug::has_tracy) {
 			TracyVkZone(rdebug::tracyCTX, c, "rendering");
 		}
 
@@ -2678,18 +2906,20 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 							   countOffset,
 							   100000,
 							   sizeof(VkDrawIndirectCommand));
-
+		
+		gm.stage(mstage::ui);
 		// TODO MOVE to separate async pipeline >:( i probably wont ever but eh.. the thought that counts ig
 		ui::createdbgframe(mvkobjs);
 		ui::createdropwidget(mvkobjs, c);
 		ui::render(mvkobjs, c);
+		gm.stage(mstage::graph);
 
 		vkCmdEndRendering(c);
 	});
 
 
 	currentgraph.add_pass([&mvkobjs, c, imgidx] {
-		if constexpr (rdebug::is_active) {
+		if constexpr (rdebug::has_tracy) {
 			TracyVkZone(rdebug::tracyCTX, c, "last sync");
 		}
 
@@ -2716,14 +2946,19 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		vkCmdPipelineBarrier2(c, &dependency_info);
 	});
 
-
+	gm.stage(mstage::graph);
 	currentgraph.execute();
+
 	if constexpr (rview::core::platform::is_windows)
 		vkrenderer::copy_engine_to_obs(
 			c, mvkobjs, mvkobjs.schainimgs.at(imgidx), mvkobjs.obs_target.img, mvkobjs.obs_target.width, mvkobjs.obs_target.height);
 
-	if constexpr (rdebug::is_active) {
+	if constexpr (rdebug::has_tracy) {
 		TracyVkCollect(rdebug::tracyCTX, c);
+	}
+
+	if (g_gpuQueryPool != VK_NULL_HANDLE) {
+		vkCmdWriteTimestamp(c, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, g_gpuQueryPool, static_cast<uint32_t>(2 * rview::core::currentFrame + 1));
 	}
 
 	if (vkEndCommandBuffer(c) != VK_SUCCESS)
@@ -2761,7 +2996,9 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 	vkResetFences(mvkobjs.vkdevice.device, 1, &mvkobjs.fencez.at(rview::core::currentFrame));
 
 	{
+		gm.stage(mstage::lockwait);
 		std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
+		gm.stage(mstage::submit);
 		auto res = vkQueueSubmit(mvkobjs.graphicsQ, 1, &submitinfo, mvkobjs.fencez.at(rview::core::currentFrame));
 
 		//   vkQueueWaitIdle(mvkobjs.graphicsQ);
@@ -2771,6 +3008,11 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		}
 	}
 
+	if (g_gpuQueryPool != VK_NULL_HANDLE) {
+		g_gpuQueryUsed[rview::core::currentFrame] = true;
+	}
+
+	gm.stage(mstage::tail);
 	VkPresentInfoKHR presentinfo{};
 	presentinfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentinfo.waitSemaphoreCount = 1;
@@ -2781,6 +3023,7 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 
 	presentinfo.pImageIndices = &imgidx;
 
+	gm.stage(mstage::lockwait);
 	auto start_lock = std::chrono::high_resolution_clock::now();
 
 	rview::core::mtx2->lock();
@@ -2792,14 +3035,37 @@ bool vkrenderer::draw(rvkbucket& mvkobjs) {
 		std::cout << "MAIN THREAD BLOCKED FOR: " << lock_time.count() << " ms\n";
 	}
 
+	gm.stage(mstage::present);
 	res = vkQueuePresentKHR(mvkobjs.presentQ, &presentinfo);
 	rview::core::mtx2->unlock();
+	gm.stage(mstage::tail);
 
 	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
 		return recreateswapchain(mvkobjs);
 	} else {
 		if (res != VK_SUCCESS) {
 			return false;
+		}
+	}
+
+	{
+		const uint64_t now = mnow();
+		if (g_lastVmemSample == 0 || mms(now - g_lastVmemSample) >= 1000.0) {
+			g_lastVmemSample = now;
+			const VkPhysicalDeviceMemoryProperties* memprops = nullptr;
+			vmaGetMemoryProperties(mvkobjs.alloc, &memprops);
+			if (memprops) {
+				VmaBudget budgets[VK_MAX_MEMORY_HEAPS]{};
+				vmaGetHeapBudgets(mvkobjs.alloc, budgets);
+				uint64_t sumused = 0;
+				uint64_t sumbudget = 0;
+				const uint32_t heapCount = memprops->memoryHeapCount < VK_MAX_MEMORY_HEAPS ? memprops->memoryHeapCount : VK_MAX_MEMORY_HEAPS;
+				for (uint32_t i = 0; i < heapCount; ++i) {
+					sumused += budgets[i].usage;
+					sumbudget += budgets[i].budget;
+				}
+				gm.vmem(sumused, sumbudget);
+			}
 		}
 	}
 

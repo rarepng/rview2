@@ -23,6 +23,7 @@
 #include <core/scene.hpp>
 #include <vkvbo.hpp>
 #include <model_manager.hpp>
+#include <dbg/metrics.hpp>
 
 enum InputKey : uint8_t { Key_W = 0, Key_S, Key_A, Key_D, Key_Q, Key_E, Key_RightClick, Input_Count };
 namespace rview {
@@ -96,7 +97,7 @@ namespace vkrenderer {
 
 	inline std::bitset<Input_Count> input_state;
 
-	inline LockFreeMPMC<model_manager::StagingModelData, 32> pending_staging_models;
+	inline lfmpmc<model_manager::StagingModelData, 32> pending_staging_models;
 	inline glm::vec3 playermoveto{0.0f};
 	inline glm::vec3 playerlookto{0.0f};
 

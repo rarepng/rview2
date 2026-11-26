@@ -144,7 +144,7 @@ struct DODRawClip {
 };
 
 // avx512 safe?
-inline void* arena_alloc_aligned(ThreadLocalArena& arena, size_t size, size_t alignment = 64) {
+inline void* arena_alloc_aligned(tlarena& arena, size_t size, size_t alignment = 64) {
 	void* raw = arena.allocate(size + alignment);
 
 	if (!raw) {
@@ -161,7 +161,7 @@ inline void* arena_alloc_aligned(ThreadLocalArena& arena, size_t size, size_t al
 	return reinterpret_cast<void*>(ptr + offset);
 }
 
-inline DODRawClip extract_raw_clip(ThreadLocalArena& arena, const fastgltf::Asset& asset, const fastgltf::Animation& anim) {
+inline DODRawClip extract_raw_clip(tlarena& arena, const fastgltf::Asset& asset, const fastgltf::Animation& anim) {
 	DODRawClip clip;
 	clip.name = anim.name;
 	clip.duration = 0.0f;

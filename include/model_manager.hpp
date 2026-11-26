@@ -22,6 +22,11 @@
 #include <core/scene.hpp>
 #include <vktex.hpp>
 #include <core/jobs.hpp>
+#include <algorithm>
+#include <atomic>
+#include <cmath>
+#include <cstring>
+#include <dbg/metrics.hpp>
 
 enum struct AnimMode : uint8_t { Baked = 0, Hybrid = 1, Dynamic = 2, Hero = 3 };
 
@@ -61,10 +66,20 @@ namespace model_manager {
 	inline std::atomic<int> g_pending_anim_chunks{0};
 	inline std::atomic<bool> g_animations_ready{false};
 
+	// MAGIC
 	constexpr uint32_t INVALID_ANIM_POOL = 0xFFFFFFFF;
 	constexpr uint32_t FALLBACK_POOL_HANDLE = 0;
 	constexpr uint32_t UNIVERSAL_SAFE_JOINT_OFFSET = 0;
 	constexpr uint32_t MAX_SAFE_JOINTS = 512;
+
+	constexpr uint32_t MAX_ANIM_POOLS = 16384;
+
+	inline std::array<tlarena, rview::core::MAX_FRAMES_IN_FLIGHT> g_anim_arenas;
+
+	inline std::array<uint8_t, MAX_ANIM_POOLS> g_pool_used{};
+	inline std::array<std::array<uint8_t, MAX_ANIM_POOLS>, rview::core::MAX_FRAMES_IN_FLIGHT> g_pool_copied{};
+	inline bool g_pool_used_valid = false;
+	inline uint32_t g_cpu_baked_pools = 0;
 
 	inline uint64_t GenerateSkeletonSignature(const ParsedSkeleton& skel) {
 		uint64_t hash = 2526925769548455446ull;
@@ -148,6 +163,8 @@ namespace model_manager {
 		bool retainCpuData = false;
 		PoolMigrationState migrationState = PoolMigrationState::STABLE;
 
+		bool condemned = false; // report back !!
+
 		GpuBuffer bakedAnimVBO{};
 		uint32_t bakedBindlessID = 0xFFFFFFFF;
 
@@ -176,58 +193,65 @@ namespace model_manager {
 
 
 	struct JointAllocator {
-		struct Block {
-			uint32_t offset;
-			uint32_t size;
-		};
-		std::vector<Block> freeBlocks;
-		std::mutex mtx;
+		static constexpr uint32_t MAX_FREE_BLOCKS = 4096;
+
+		std::array<std::atomic<uint64_t>, MAX_FREE_BLOCKS> freeBlocks{}; // 0 = empty slot
+		std::atomic<uint32_t> freeCount{0};
+		std::atomic<uint32_t> top{0};
 		uint32_t m_capacity = 0;
 
+		static constexpr uint64_t pack(uint32_t offset, uint32_t size) {
+			return (static_cast<uint64_t>(offset) << 32) | size;
+		}
+		static constexpr uint32_t off(uint64_t block) {
+			return static_cast<uint32_t>(block >> 32);
+		}
+		static constexpr uint32_t len(uint64_t block) {
+			return static_cast<uint32_t>(block);
+		}
+
 		void init(uint32_t capacity) {
-			std::lock_guard<std::mutex> lock(mtx);
-			freeBlocks.clear();
+			for (auto& slot : freeBlocks) {
+				slot.store(0, std::memory_order_relaxed);
+			}
+
+			freeCount.store(0, std::memory_order_relaxed);
 			m_capacity = capacity;
 
-			if (capacity > UNIVERSAL_SAFE_JOINT_OFFSET + MAX_SAFE_JOINTS) {
-				freeBlocks.push_back({UNIVERSAL_SAFE_JOINT_OFFSET + MAX_SAFE_JOINTS, capacity - (UNIVERSAL_SAFE_JOINT_OFFSET + MAX_SAFE_JOINTS)});
-			}
+			const uint32_t base = UNIVERSAL_SAFE_JOINT_OFFSET + MAX_SAFE_JOINTS;
+			top.store(capacity > base ? base : capacity, std::memory_order_release);
 		}
 
 		uint32_t get_high_watermark() {
-			std::lock_guard<std::mutex> lock(mtx);
-
-			if (freeBlocks.empty())
-				return m_capacity;
-
-			const auto& lastBlock = freeBlocks.back();
-
-			if (lastBlock.offset + lastBlock.size == m_capacity) {
-				return lastBlock.offset;
-			}
-
-			return m_capacity;
+			return top.load(std::memory_order_acquire);
 		}
 
 		uint32_t allocate(uint32_t count) {
 			if (count == 0)
 				return UNIVERSAL_SAFE_JOINT_OFFSET;
 
-			std::lock_guard<std::mutex> lock(mtx);
+			if (freeCount.load(std::memory_order_relaxed) != 0) {
+				for (auto& slot : freeBlocks) {
+					uint64_t block = slot.load(std::memory_order_acquire);
 
-			for (auto it = freeBlocks.begin(); it != freeBlocks.end(); ++it) {
-				if (it->size >= count) {
-					uint32_t allocated_offset = it->offset;
+					while (block != 0 && len(block) >= count) {
+						uint64_t rest = len(block) == count ? 0 : pack(off(block) + count, len(block) - count);
 
-					if (it->size == count) {
-						freeBlocks.erase(it);
-					} else {
-						it->offset += count;
-						it->size -= count;
+						if (slot.compare_exchange_weak(block, rest, std::memory_order_acq_rel, std::memory_order_acquire)) {
+							if (rest == 0)
+								freeCount.fetch_sub(1, std::memory_order_relaxed);
+
+							return off(block);
+						}
 					}
-
-					return allocated_offset;
 				}
+			}
+
+			uint32_t t = top.load(std::memory_order_acquire);
+
+			while (t <= m_capacity && count <= m_capacity - t) {
+				if (top.compare_exchange_weak(t, t + count, std::memory_order_acq_rel, std::memory_order_acquire))
+					return t;
 			}
 
 			return 0xFFFFFFFF; // OOM
@@ -237,47 +261,89 @@ namespace model_manager {
 			if (offset == 0xFFFFFFFF || offset == UNIVERSAL_SAFE_JOINT_OFFSET || count == 0)
 				return;
 
-			std::lock_guard<std::mutex> lock(mtx);
-			freeBlocks.push_back({offset, count});
+			uint32_t lo = offset;
+			uint32_t hi = offset + count;
 
-			std::sort(freeBlocks.begin(), freeBlocks.end(), [](const Block& a, const Block& b) { return a.offset < b.offset; });
+			for (bool again = true; again;) {
+				again = false;
 
-			for (size_t i = 0; i < freeBlocks.size() - 1;) {
-				if (freeBlocks[i].offset + freeBlocks[i].size == freeBlocks[i + 1].offset) {
-					freeBlocks[i].size += freeBlocks[i + 1].size;
-					freeBlocks.erase(freeBlocks.begin() + i + 1);
-				} else {
-					i++;
+				for (auto& slot : freeBlocks) {
+					uint64_t block = slot.load(std::memory_order_acquire);
+
+					if (block == 0 || (off(block) + len(block) != lo && off(block) != hi))
+						continue;
+
+					if (slot.compare_exchange_strong(block, 0, std::memory_order_acq_rel, std::memory_order_acquire)) {
+						freeCount.fetch_sub(1, std::memory_order_relaxed);
+						lo = std::min(lo, off(block));
+						hi = std::max(hi, off(block) + len(block));
+					}
+
+					again = true; // look again
 				}
 			}
+
+			uint32_t t = hi;
+
+			if (top.compare_exchange_strong(t, lo, std::memory_order_acq_rel, std::memory_order_acquire))
+				return;
+
+			for (auto& slot : freeBlocks) {
+				uint64_t empty = 0;
+
+				if (slot.compare_exchange_strong(empty, pack(lo, hi - lo), std::memory_order_acq_rel, std::memory_order_acquire)) {
+					freeCount.fetch_add(1, std::memory_order_relaxed);
+					return;
+				}
+			}
+
+			SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, "joint allocator free table is full: %u joints stay unavailable", hi - lo);
 		}
 	};
 	struct OrphanedAnimBuffer {
 		GpuBuffer vbo;
 		uint32_t bindlessID;
 	};
-	inline LockFreeMPMC<OrphanedAnimBuffer, 256> g_orphanedAnimBuffers;
+	inline lfmpmc<OrphanedAnimBuffer, MAX_ANIM_POOLS> g_orphanedAnimBuffers;
+
+	struct OrphanedCPUAnimData {
+		std::vector<LocalTRS> locals;
+		std::vector<glm::mat4> globals;
+		std::vector<DualQuatScale> dqs;
+	};
+
+	template <typename T> inline void reap(T&& dead) {
+		auto* corpse = new std::decay_t<T>(std::forward<T>(dead));
+
+		greaper.enqueue([corpse]() noexcept { delete corpse; });
+	}
 
 
 	struct AnimPoolRegistry {
-		std::mutex mtx;
-		static constexpr uint32_t MAX_POOLS = 4096;
+		static constexpr uint32_t MAX_POOLS = MAX_ANIM_POOLS;
 
 		std::array<AnimPoolData, MAX_POOLS> pools;
-		std::array<uint16_t, MAX_POOLS> generations;
-		std::array<bool, MAX_POOLS> is_active;
-		std::vector<uint32_t> free_indices;
+		std::array<std::atomic<uint16_t>, MAX_POOLS> generations;
+		std::array<std::atomic<bool>, MAX_POOLS> is_active;
+		lfmpmc<uint32_t, MAX_POOLS> free_indices;
+		std::atomic<uint32_t> active_count{1};
+		lfmpmc<uint32_t, MAX_POOLS> unnamed;
 		std::unordered_map<std::string, uint32_t> nameToHandle;
+		std::array<uint32_t, MAX_POOLS> dying; // all of us are
+		std::atomic<bool> full_logged{false};
 
 		JointAllocator jointAlloc;
 
 		AnimPoolRegistry() {
-			generations.fill(0);
-			is_active.fill(false);
-			free_indices.reserve(MAX_POOLS);
+			for (uint32_t i = 0; i < MAX_POOLS; ++i) {
+				generations[i].store(0, std::memory_order_relaxed);
+				is_active[i].store(false, std::memory_order_relaxed);
+			}
 
-			for (uint32_t i = MAX_POOLS - 1; i >= 1; --i) {
-				free_indices.push_back(i);
+			dying.fill(INVALID_ANIM_POOL);
+
+			for (uint32_t i = 1; i < MAX_POOLS; ++i) {
+				free_indices.push(i);
 			}
 
 			AnimPoolData fallback{};
@@ -294,7 +360,7 @@ namespace model_manager {
 			fallback.bakedBindlessID = 0xFFFFFFFF;
 
 			pools[0] = std::move(fallback);
-			is_active[0] = true;
+			is_active[0].store(true, std::memory_order_release);
 			nameToHandle["__FALLBACK_POOL__"] = 0;
 		}
 
@@ -303,83 +369,142 @@ namespace model_manager {
 		}
 
 		uint32_t get_active_count() const {
-			return MAX_POOLS - static_cast<uint32_t>(free_indices.size());
+			return active_count.load(std::memory_order_relaxed);
 		}
 
 		uint32_t RegisterPool(AnimPoolData&& data) {
-			std::lock_guard<std::mutex> lock(mtx);
+			uint32_t index;
 
-			if (free_indices.empty())
+			if (!free_indices.pop(index)) {
+				// not silent anymore
+				if (!full_logged.exchange(true, std::memory_order_relaxed))
+					SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, "anim pool registry is full (%u pools): new pools get the fallback pool", MAX_ANIM_POOLS);
+
 				return FALLBACK_POOL_HANDLE;
+			}
 
 			uint32_t jointOffset = jointAlloc.allocate(data.jointCount);
 
 			if (data.domain == ExecutionDomain::CPU_BAKED || data.retainCpuData || (data.pipelineFlags & ANIM_FLAG_CPU_BAKED) != 0) {
-				jointOffset = jointAlloc.allocate(data.jointCount);
-
 				if (jointOffset == 0xFFFFFFFF) {
+					free_indices.push(index);
 					return FALLBACK_POOL_HANDLE;
 				}
 			}
 
-			uint32_t index = free_indices.back();
-			free_indices.pop_back();
-
 			data.globalJointOffset = jointOffset;
-			uint32_t handle = (static_cast<uint32_t>(generations[index]) << 16) | index;
-
-			std::string unique_name = data.name + "_uid" + std::to_string(handle);
-			nameToHandle[unique_name] = handle;
+			data.condemned = false;
+			uint32_t handle = (static_cast<uint32_t>(generations[index].load(std::memory_order_acquire)) << 16) | index;
 
 			pools[index] = std::move(data);
-			is_active[index] = true;
+			is_active[index].store(true, std::memory_order_release);
+			active_count.fetch_add(1, std::memory_order_relaxed);
+
+			unnamed.push(handle);
 
 			return handle;
 		}
 
-		void DestroyPool(uint32_t handle) {
-			if (handle == FALLBACK_POOL_HANDLE || handle == INVALID_ANIM_POOL)
-				return;
+		void SyncNames() {
+			uint32_t handle;
 
-			uint32_t index = handle & 0xFFFF;
-			uint16_t gen = static_cast<uint16_t>(handle >> 16);
+			while (unnamed.pop(handle)) {
+				uint32_t index = handle & 0xFFFF;
+				uint16_t gen = static_cast<uint16_t>(handle >> 16);
 
-			std::lock_guard<std::mutex> lock(mtx);
+				if (index < MAX_POOLS && generations[index].load(std::memory_order_acquire) == gen && is_active[index].load(std::memory_order_acquire)) {
+					nameToHandle[pools[index].name + "_uid" + std::to_string(handle)] = handle;
+				}
+			}
+		}
 
-			if (index >= MAX_POOLS || generations[index] != gen || !is_active[index])
-				return;
+		void DestroyPools(const uint32_t* handles, size_t count) {
+			SyncNames();
 
-			if (pools[index].bakedAnimVBO.buffer != VK_NULL_HANDLE) {
-				g_orphanedAnimBuffers.push({pools[index].bakedAnimVBO, pools[index].bakedBindlessID});
-				pools[index].bakedAnimVBO.buffer = VK_NULL_HANDLE;
-				pools[index].bakedBindlessID = 0xFFFFFFFF;
+			bool any = false;
+
+			for (size_t h = 0; h < count; ++h) {
+				uint32_t handle = handles[h];
+
+				if (handle == FALLBACK_POOL_HANDLE || handle == INVALID_ANIM_POOL)
+					continue;
+
+				uint32_t index = handle & 0xFFFF;
+				uint16_t gen = static_cast<uint16_t>(handle >> 16);
+
+				if (index >= MAX_POOLS || generations[index].load(std::memory_order_acquire) != gen || !is_active[index].load(std::memory_order_acquire))
+					continue;
+
+				AnimPoolData& pool = pools[index];
+
+				if (pool.migrationState != PoolMigrationState::STABLE) {
+					pool.condemned = true;
+					continue;
+				}
+
+				if (pool.bakedAnimVBO.buffer != VK_NULL_HANDLE) {
+					if (!g_orphanedAnimBuffers.push({pool.bakedAnimVBO, pool.bakedBindlessID}))
+						SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, "orphaned anim buffer queue is full: one gpu buffer leaks");
+
+					pool.bakedAnimVBO.buffer = VK_NULL_HANDLE;
+					pool.bakedBindlessID = 0xFFFFFFFF;
+				}
+
+				if (pool.globalJointOffset != UNIVERSAL_SAFE_JOINT_OFFSET) {
+					jointAlloc.free(pool.globalJointOffset, pool.jointCount);
+				}
+
+				nameToHandle.erase(pool.name + "_uid" + std::to_string(handle));
+
+				
+				if (!pool.localTracks.empty() || !pool.globalTransforms.empty() || !pool.finalJointDQs.empty()) {
+					reap(OrphanedCPUAnimData{std::move(pool.localTracks), std::move(pool.globalTransforms), std::move(pool.finalJointDQs)});
+				}
+
+				pool.baseSkeleton.reset();
+				pool.condemned = false;
+
+				is_active[index].store(false, std::memory_order_release);
+				generations[index].fetch_add(1, std::memory_order_acq_rel);
+				active_count.fetch_sub(1, std::memory_order_relaxed);
+
+				dying[index] = handle;
+				any = true;
 			}
 
-			if (pools[index].globalJointOffset != UNIVERSAL_SAFE_JOINT_OFFSET) {
-				jointAlloc.free(pools[index].globalJointOffset, pools[index].jointCount);
-			}
+			if (!any)
+				return;
 
 			uint32_t active_entities = g_scene.entity_count.load(std::memory_order_relaxed);
 
 			for (uint32_t i = 0; i < active_entities; ++i) {
-				if (g_scene.poolHandles[i] == handle) {
+				uint32_t index = g_scene.poolHandles[i] & 0xFFFF;
+
+				if (index < MAX_POOLS && dying[index] == g_scene.poolHandles[i]) {
 					g_scene.poolHandles[i] = FALLBACK_POOL_HANDLE;
 				}
 			}
 
-			std::string unique_name = pools[index].name + "_uid" + std::to_string(handle);
-			nameToHandle.erase(unique_name);
+			
+			for (size_t h = 0; h < count; ++h) {
+				uint32_t index = handles[h] & 0xFFFF;
 
-			is_active[index] = false;
-			generations[index]++;
-			free_indices.push_back(index);
+				if (index < MAX_POOLS && dying[index] == handles[h]) {
+					dying[index] = INVALID_ANIM_POOL;
+					free_indices.push(index);
+				}
+			}
+		}
+
+		void DestroyPool(uint32_t handle) {
+			DestroyPools(&handle, 1);
 		}
 
 		const AnimPoolData* GetPool(uint32_t handle) const {
 			uint32_t index = handle & 0xFFFF;
 			uint16_t gen = static_cast<uint16_t>(handle >> 16);
 
-			if (index < MAX_POOLS && generations[index] == gen && is_active[index]) {
+			if (index < MAX_POOLS && generations[index].load(std::memory_order_acquire) == gen && is_active[index].load(std::memory_order_acquire)) {
 				return &pools[index];
 			}
 
@@ -390,7 +515,7 @@ namespace model_manager {
 			uint32_t index = handle & 0xFFFF;
 			uint16_t gen = static_cast<uint16_t>(handle >> 16);
 
-			if (index < MAX_POOLS && generations[index] == gen && is_active[index]) {
+			if (index < MAX_POOLS && generations[index].load(std::memory_order_acquire) == gen && is_active[index].load(std::memory_order_acquire)) {
 				return &pools[index];
 			}
 
@@ -401,7 +526,7 @@ namespace model_manager {
 	struct PoolUploadReq {
 		uint32_t poolHandle;
 	};
-	inline LockFreeMPMC<PoolUploadReq, 256> g_poolUploadQueue;
+	inline lfmpmc<PoolUploadReq, MAX_ANIM_POOLS> g_poolUploadQueue;
 	inline AnimPoolRegistry g_animPoolRegistry;
 
 
@@ -423,7 +548,7 @@ namespace model_manager {
 		uint64_t targetExecutionFrame;
 	};
 
-	inline LockFreeMPMC<StateChangeReq, 4096> g_stateChangeQueue;
+	inline lfmpmc<StateChangeReq, 4096> g_stateChangeQueue;
 
 	inline std::vector<StateChangeReq> g_pendingStateChanges;
 
@@ -523,6 +648,7 @@ namespace model_manager {
 		uint32_t dropID = 0xFFFFFFFF;
 		uint32_t assignedModelID = 0xFFFFFFFF;
 		uint32_t defaultPool = 0xFFFFFFFF;
+		uint32_t loadID = 0xFFFFFFFF;
 		//temp
 		std::vector<VkBuffer> buffersToAcquire;
 		std::vector<VkImage> imagesToAcquire;
@@ -551,11 +677,11 @@ namespace model_manager {
 		}
 	};
 
+	
 	struct Registry {
 		static constexpr uint32_t MAX_ENTITIES = SceneData::MAX_ENTITIES;
 		std::array<uint32_t, MAX_ENTITIES> sparse;
 		std::vector<uint32_t> free_indices;
-		std::mutex registry_mtx;
 
 		std::array<uint32_t, MAX_ENTITIES> dense_to_sparse;
 		std::array<uint32_t, MAX_ENTITIES> generations;
@@ -580,8 +706,6 @@ namespace model_manager {
 		}
 
 		Entity create_entity(uint32_t modelID) {
-			std::lock_guard<std::mutex> lock(registry_mtx);
-
 			uint32_t entity_idx;
 
 			if (!free_indices.empty()) {
@@ -631,8 +755,6 @@ namespace model_manager {
 		}
 
 		void destroy_entity(Entity e) {
-			std::lock_guard<std::mutex> lock(registry_mtx);
-
 			if (!is_valid(e))
 				return;
 
@@ -754,13 +876,13 @@ namespace model_manager {
 	};
 
 	// queue just for telemetry might delete
-	inline LockFreeMPMC<ProgressUpdate, 128> g_progress_queue;
+	inline lfmpmc<ProgressUpdate, 128> g_progress_queue;
 
 	struct PoolMigrationReq {
 		uint32_t poolHandle;
 		ExecutionDomain targetDomain;
 	};
-	inline LockFreeMPMC<PoolMigrationReq, 256> g_poolMigrationQueue;
+	inline lfmpmc<PoolMigrationReq, MAX_ANIM_POOLS> g_poolMigrationQueue;
 
 	inline void ProcessDeferredStateChanges(uint64_t current_engine_frame) {
 		ZoneScopedN("Process State Changes");
@@ -814,6 +936,24 @@ namespace model_manager {
 		}
 	}
 
+	
+	inline uint32_t PoolFrameIndex(const AnimPoolData& pool) {
+		float timePos = pool.currentTime;
+		bool loop = pool.loop;
+
+		float adjustedTime = loop ? std::fmod(timePos, pool.duration) : std::min(timePos, pool.duration);
+
+		if (adjustedTime < 0.0f)
+			adjustedTime += pool.duration;
+
+		uint32_t frameIndex = static_cast<uint32_t>(adjustedTime * pool.sampleRate);
+
+		if (frameIndex >= pool.frameCount)
+			frameIndex = pool.frameCount - 1;
+
+		return frameIndex;
+	}
+
 	template <uint8_t Flags> void ProcessPoolChunk(const uint32_t* poolHandles, size_t count, float deltaTime, uint32_t write_frame) {
 		ZoneScopedN("ProcessPoolChunk");
 
@@ -825,20 +965,16 @@ namespace model_manager {
 				continue;
 
 			pool.currentTime += deltaTime * pool.playbackSpeed;
-			float timePos = pool.currentTime;
-			bool loop = pool.loop;
-
-			float adjustedTime = loop ? std::fmod(timePos, pool.duration) : std::min(timePos, pool.duration);
-
-			if (adjustedTime < 0.0f)
-				adjustedTime += pool.duration;
-
-			uint32_t frameIndex = static_cast<uint32_t>(adjustedTime * pool.sampleRate);
-
-			if (frameIndex >= pool.frameCount)
-				frameIndex = pool.frameCount - 1;
+			uint32_t frameIndex = PoolFrameIndex(pool);
 
 			if constexpr ((Flags & ANIM_FLAG_CPU_BAKED) != 0) {
+				
+				pool.currentFrameIndex[write_frame] = frameIndex;
+
+				
+				if ((static_cast<size_t>(frameIndex) + 1) * pool.jointCount > pool.finalJointDQs.size())
+					continue;
+
 				const DualQuatScale* frameDQs = &pool.finalJointDQs[frameIndex * pool.jointCount];
 				std::memcpy(&g_joint_final_matrices[write_frame][pool.globalJointOffset - MAX_SAFE_JOINTS],
 							frameDQs,
@@ -869,29 +1005,102 @@ namespace model_manager {
 		}
 	}
 
+	
+	
+	inline bool AnimQuiet() {
+		for (auto& pending : g_anim_jobs_pending) {
+			if (pending.load(std::memory_order_acquire) != 0)
+				return false;
+		}
+
+		return true;
+	}
+
+	
+	
+	inline void MarkPoolsInUse() {
+		g_pool_used_valid = false;
+
+		if (g_cpu_baked_pools == 0)
+			return;
+
+		ZoneScopedN("Mark Pools In Use");
+
+		g_pool_used.fill(0);
+		uint32_t active_entities = g_scene.entity_count.load(std::memory_order_relaxed);
+
+		for (uint32_t i = 0; i < active_entities; ++i) {
+			uint32_t index = g_scene.poolHandles[i] & 0xFFFF;
+
+			if (index < MAX_ANIM_POOLS)
+				g_pool_used[index] = 1;
+		}
+
+		g_pool_used_valid = true;
+	}
+
+	
+	
+	
+	inline void CatchUpPools(uint32_t read_frame) {
+		if (!g_pool_used_valid || !AnimQuiet())
+			return;
+
+		for (uint32_t p = 1; p < MAX_ANIM_POOLS; ++p) {
+			if (!g_pool_used[p] || g_pool_copied[read_frame][p])
+				continue;
+
+			if (!g_animPoolRegistry.is_active[p].load(std::memory_order_acquire))
+				continue;
+
+			const AnimPoolData& pool = g_animPoolRegistry.pools[p];
+
+			if (static_cast<uint8_t>(pool.pipelineFlags) != ANIM_FLAG_CPU_BAKED || pool.frameCount == 0 || pool.duration <= 0.0f || pool.jointCount == 0)
+				continue;
+
+			if (pool.globalJointOffset < MAX_SAFE_JOINTS || pool.globalJointOffset == 0xFFFFFFFF)
+				continue;
+
+			size_t first = static_cast<size_t>(PoolFrameIndex(pool)) * pool.jointCount;
+
+			if (first + pool.jointCount > pool.finalJointDQs.size())
+				continue;
+
+			std::memcpy(&g_joint_final_matrices[read_frame][pool.globalJointOffset - MAX_SAFE_JOINTS],
+						&pool.finalJointDQs[first],
+						pool.jointCount * sizeof(DualQuatScale));
+			g_pool_copied[read_frame][p] = 1;
+		}
+	}
+
 	inline void DispatchAnimationJobs(float deltaTime, uint32_t write_frame) {
 		ZoneScoped;
 
-		uint32_t active_pools = static_cast<uint32_t>(g_animPoolRegistry.pools.size());
-
-		if (active_pools <= 1)
+		if (g_animPoolRegistry.get_active_count() <= 1)
 			return;
 
-		ThreadLocalArena& arena = get_local_arena();
+		
+		
+		tlarena& arena = g_anim_arenas[write_frame];
 		arena.reset();
 
 		constexpr uint8_t MAX_FLAGS = 64;
-		uint32_t* buckets[MAX_FLAGS];
+		uint32_t* buckets[MAX_FLAGS] = {nullptr};
 		uint32_t bucket_counts[MAX_FLAGS] = {0};
 
-		for (uint8_t i = 0; i < MAX_FLAGS; ++i) {
-			buckets[i] = static_cast<uint32_t*>(arena.allocate(active_pools * sizeof(uint32_t)));
-		}
+		struct entry {
+			uint32_t pool;
+			uint32_t flag;
+		};
 
-		bool has_active = false;
+		auto* entries = static_cast<entry*>(arena.allocate(MAX_ANIM_POOLS * sizeof(entry), alignof(entry)));
+		uint32_t entry_count = 0;
+		uint32_t cpu_baked = 0;
+
+		g_pool_copied[write_frame].fill(0);
 
 		for (uint32_t p = 1; p < AnimPoolRegistry::MAX_POOLS; ++p) {
-			if (!g_animPoolRegistry.is_active[p])
+			if (!g_animPoolRegistry.is_active[p].load(std::memory_order_acquire))
 				continue;
 
 			AnimPoolData& pool = g_animPoolRegistry.pools[p];
@@ -899,40 +1108,57 @@ namespace model_manager {
 			if (pool.frameCount == 0)
 				continue;
 
-			has_active = true;
 			uint8_t flagMask = static_cast<uint8_t>(pool.pipelineFlags);
 
+			if (flagMask == ANIM_FLAG_CPU_BAKED) {
+				++cpu_baked;
+
+				if (g_pool_used_valid && !g_pool_used[p]) {
+					
+					
+					flagMask = ANIM_FLAG_GPU_BAKED;
+				} else {
+					g_pool_copied[write_frame][p] = 1;
+				}
+			}
+
 			if (flagMask < MAX_FLAGS) {
-				buckets[flagMask][bucket_counts[flagMask]++] = p;
+				entries[entry_count++] = {p, flagMask};
+				++bucket_counts[flagMask];
 			}
 		}
 
-		if (!has_active)
+		g_cpu_baked_pools = cpu_baked;
+
+		if (entry_count == 0)
 			return;
+
+		
+		for (uint8_t i = 0; i < MAX_FLAGS; ++i) {
+			if (bucket_counts[i] > 0) {
+				buckets[i] = static_cast<uint32_t*>(arena.allocate(bucket_counts[i] * sizeof(uint32_t), alignof(uint32_t)));
+				bucket_counts[i] = 0;
+			}
+		}
+
+		for (uint32_t e = 0; e < entry_count; ++e) {
+			buckets[entries[e].flag][bucket_counts[entries[e].flag]++] = entries[e].pool;
+		}
 
 		g_anim_jobs_pending[write_frame].store(0, std::memory_order_relaxed);
 
 		// i just dont know which is better until i write my custom allocator
 
-		// auto dispatchDomain = [&](uint8_t flag, auto func) {
-		// 	if (bucket_counts[flag] > 0) {
-		// 		g_anim_jobs_pending[write_frame].fetch_add(1, std::memory_order_relaxed);
-		// 		auto* bucket = buckets[flag];
-		// 		auto count = bucket_counts[flag];
-		// 		g_jobs.enqueue([bucket, count, deltaTime, write_frame, func]() {
-		// 			func(bucket, count, deltaTime, write_frame);
-		// 			g_anim_jobs_pending[write_frame].fetch_sub(1, std::memory_order_release);
-		// 		});
-		// 	}
-		// };
 		auto dispatchDomain = [&](uint8_t flag, auto func) {
 			if (bucket_counts[flag] > 0) {
 				g_anim_jobs_pending[write_frame].fetch_add(1, std::memory_order_relaxed);
-
-				std::vector<uint32_t> safe_bucket(buckets[flag], buckets[flag] + bucket_counts[flag]);
-
-				g_jobs.enqueue([handles = std::move(safe_bucket), deltaTime, write_frame, func]() {
-					func(handles.data(), handles.size(), deltaTime, write_frame);
+				auto* bucket = buckets[flag];
+				auto count = bucket_counts[flag];
+				const uint64_t tq = mnow();
+				gjobs.enqueue([bucket, count, deltaTime, write_frame, func, tq]() noexcept {
+					const uint64_t t0 = mnow();
+					func(bucket, count, deltaTime, write_frame);
+					gm.janim(t0 - tq, mnow() - t0);
 					g_anim_jobs_pending[write_frame].fetch_sub(1, std::memory_order_release);
 				});
 			}
@@ -945,77 +1171,81 @@ namespace model_manager {
 	struct PoolPurgeReq {
 		uint32_t poolHandle;
 	};
-	inline LockFreeMPMC<PoolPurgeReq, 256> g_poolPurgeQueue;
-
-	struct OrphanedCPUAnimData {
-		std::vector<LocalTRS> locals;
-		std::vector<glm::mat4> globals;
-		std::vector<DualQuatScale> dqs;
-	};
+	inline lfmpmc<PoolPurgeReq, MAX_ANIM_POOLS> g_poolPurgeQueue;
 
 	inline void PurgePoolCPUDataAsync(AnimPoolData& pool) {
-		auto* deadData = new OrphanedCPUAnimData{std::move(pool.localTracks), std::move(pool.globalTransforms), std::move(pool.finalJointDQs)};
-
-		g_jobs.enqueue([deadData]() { delete deadData; });
+		reap(OrphanedCPUAnimData{std::move(pool.localTracks), std::move(pool.globalTransforms), std::move(pool.finalJointDQs)});
 	}
 	inline std::mutex g_transfer_mtx;
 
-	inline void async_chunked_upload(rvkbucket& mvkobjs, GpuBuffer& dstBuffer, const void* srcData, size_t totalSize) {
-		if (totalSize == 0)
-			return;
+	
+	
+	struct ChunkUploader {
+		static constexpr size_t CHUNK_SIZE = 16 * 1024 * 1024;
 
-		const size_t CHUNK_SIZE = 16 * 1024 * 1024;
-		size_t allocatedChunk = std::min(totalSize, CHUNK_SIZE);
+		rvkbucket& mvkobjs;
+		size_t capacity = 0;
+		size_t used = 0;
+		bool recording = false;
+		uint32_t transferQFamily = 0;
+		uint32_t graphicsQFamily = 0;
+		VkBuffer stagingBuffer = VK_NULL_HANDLE;
+		VmaAllocation stagingAlloc = VK_NULL_HANDLE;
+		VmaAllocationInfo stagingAllocInfo{};
+		VkCommandPool transferPool = VK_NULL_HANDLE;
+		VkCommandBuffer cmd = VK_NULL_HANDLE;
+		VkFence chunkFence = VK_NULL_HANDLE;
 
-		VkBufferCreateInfo binfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-		binfo.size = allocatedChunk;
-		binfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		ChunkUploader(const ChunkUploader&) = delete;
+		ChunkUploader& operator=(const ChunkUploader&) = delete;
 
-		VmaAllocationCreateInfo vmaallocinfo{};
-		vmaallocinfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-		vmaallocinfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+		
+		explicit ChunkUploader(rvkbucket& objs, size_t stagingSize = CHUNK_SIZE)
+			: mvkobjs(objs), capacity(std::min(std::max<size_t>(stagingSize, 64 * 1024), CHUNK_SIZE)) {
+			VkBufferCreateInfo binfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+			binfo.size = capacity;
+			binfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
-		VkBuffer stagingBuffer;
-		VmaAllocation stagingAlloc;
-		VmaAllocationInfo stagingAllocInfo;
-		vmaCreateBuffer(mvkobjs.alloc, &binfo, &vmaallocinfo, &stagingBuffer, &stagingAlloc, &stagingAllocInfo);
+			VmaAllocationCreateInfo vmaallocinfo{};
+			vmaallocinfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+			vmaallocinfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-		uint32_t transferQFamily = mvkobjs.vkdevice.get_queue_index(vkb::QueueType::transfer).value();
-		uint32_t graphicsQFamily = mvkobjs.vkdevice.get_queue_index(vkb::QueueType::graphics).value();
+			vmaCreateBuffer(mvkobjs.alloc, &binfo, &vmaallocinfo, &stagingBuffer, &stagingAlloc, &stagingAllocInfo);
 
-		VkCommandPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
-		poolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-		poolInfo.queueFamilyIndex = transferQFamily;
-		VkCommandPool transferPool;
-		vkCreateCommandPool(mvkobjs.vkdevice.device, &poolInfo, nullptr, &transferPool);
+			transferQFamily = mvkobjs.vkdevice.get_queue_index(vkb::QueueType::transfer).value();
+			graphicsQFamily = mvkobjs.vkdevice.get_queue_index(vkb::QueueType::graphics).value();
 
-		VkCommandBufferAllocateInfo allocInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-		allocInfo.commandPool = transferPool;
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandBufferCount = 1;
-		VkCommandBuffer cmd;
-		vkAllocateCommandBuffers(mvkobjs.vkdevice.device, &allocInfo, &cmd);
+			VkCommandPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
+			poolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+			poolInfo.queueFamilyIndex = transferQFamily;
+			vkCreateCommandPool(mvkobjs.vkdevice.device, &poolInfo, nullptr, &transferPool);
 
-		VkFenceCreateInfo fenceInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-		VkFence chunkFence;
-		vkCreateFence(mvkobjs.vkdevice.device, &fenceInfo, nullptr, &chunkFence);
+			VkCommandBufferAllocateInfo allocInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+			allocInfo.commandPool = transferPool;
+			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			allocInfo.commandBufferCount = 1;
+			vkAllocateCommandBuffers(mvkobjs.vkdevice.device, &allocInfo, &cmd);
 
-		size_t offset = 0;
-		while (offset < totalSize) {
-			size_t currentChunk = std::min(allocatedChunk, totalSize - offset);
+			VkFenceCreateInfo fenceInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+			vkCreateFence(mvkobjs.vkdevice.device, &fenceInfo, nullptr, &chunkFence);
+		}
 
-			std::memcpy(stagingAllocInfo.pMappedData, static_cast<const uint8_t*>(srcData) + offset, currentChunk);
-			vmaFlushAllocation(mvkobjs.alloc, stagingAlloc, 0, currentChunk);
+		void begin() {
+			if (recording)
+				return;
 
 			VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
 			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 			vkBeginCommandBuffer(cmd, &beginInfo);
+			recording = true;
+		}
 
-			VkBufferCopy copyRegion{};
-			copyRegion.srcOffset = 0;
-			copyRegion.dstOffset = offset;
-			copyRegion.size = currentChunk;
-			vkCmdCopyBuffer(cmd, stagingBuffer, dstBuffer.buffer, 1, &copyRegion);
+		
+		void flush() {
+			if (!recording)
+				return;
+
+			vmaFlushAllocation(mvkobjs.alloc, stagingAlloc, 0, used);
 			vkEndCommandBuffer(cmd);
 
 			VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
@@ -1030,49 +1260,79 @@ namespace model_manager {
 			vkResetFences(mvkobjs.vkdevice.device, 1, &chunkFence);
 			vkResetCommandBuffer(cmd, 0);
 
-			offset += currentChunk;
+			recording = false;
+			used = 0;
 		}
 
-		if (transferQFamily != graphicsQFamily) {
-			VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-			vkBeginCommandBuffer(cmd, &beginInfo);
+		
+		
+		void upload(GpuBuffer& dstBuffer, const void* srcData, size_t totalSize) {
+			if (totalSize == 0)
+				return;
 
-			VkBufferMemoryBarrier2 release{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
-			release.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-			release.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-			release.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
-			release.dstAccessMask = 0;
-			release.srcQueueFamilyIndex = transferQFamily;
-			release.dstQueueFamilyIndex = graphicsQFamily;
-			release.buffer = dstBuffer.buffer;
-			release.offset = 0;
-			release.size = VK_WHOLE_SIZE;
+			size_t offset = 0;
 
-			VkDependencyInfo dep{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
-			dep.bufferMemoryBarrierCount = 1;
-			dep.pBufferMemoryBarriers = &release;
-			vkCmdPipelineBarrier2(cmd, &dep);
-			vkEndCommandBuffer(cmd);
+			while (offset < totalSize) {
+				if (used == capacity)
+					flush();
 
-			VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-			submitInfo.commandBufferCount = 1;
-			submitInfo.pCommandBuffers = &cmd;
-			{
-				std::lock_guard<std::shared_mutex> lock(*rview::core::mtx2);
-				vkQueueSubmit(mvkobjs.transferQ, 1, &submitInfo, chunkFence);
+				size_t currentChunk = std::min(capacity - used, totalSize - offset);
+
+				std::memcpy(static_cast<uint8_t*>(stagingAllocInfo.pMappedData) + used, static_cast<const uint8_t*>(srcData) + offset, currentChunk);
+
+				begin();
+
+				VkBufferCopy copyRegion{};
+				copyRegion.srcOffset = used;
+				copyRegion.dstOffset = offset;
+				copyRegion.size = currentChunk;
+				vkCmdCopyBuffer(cmd, stagingBuffer, dstBuffer.buffer, 1, &copyRegion);
+
+				used += currentChunk;
+				offset += currentChunk;
 			}
-			vkWaitForFences(mvkobjs.vkdevice.device, 1, &chunkFence, VK_TRUE, UINT64_MAX);
+
+			if (transferQFamily != graphicsQFamily) {
+				
+				VkBufferMemoryBarrier2 release{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
+				release.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+				release.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+				release.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
+				release.dstAccessMask = 0;
+				release.srcQueueFamilyIndex = transferQFamily;
+				release.dstQueueFamilyIndex = graphicsQFamily;
+				release.buffer = dstBuffer.buffer;
+				release.offset = 0;
+				release.size = VK_WHOLE_SIZE;
+
+				VkDependencyInfo dep{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+				dep.bufferMemoryBarrierCount = 1;
+				dep.pBufferMemoryBarriers = &release;
+				vkCmdPipelineBarrier2(cmd, &dep);
+			}
 		}
 
-		vkDestroyFence(mvkobjs.vkdevice.device, chunkFence, nullptr);
-		vkFreeCommandBuffers(mvkobjs.vkdevice.device, transferPool, 1, &cmd);
-		vkDestroyCommandPool(mvkobjs.vkdevice.device, transferPool, nullptr);
-		vmaDestroyBuffer(mvkobjs.alloc, stagingBuffer, stagingAlloc);
+		~ChunkUploader() {
+			flush();
+
+			vkDestroyFence(mvkobjs.vkdevice.device, chunkFence, nullptr);
+			vkFreeCommandBuffers(mvkobjs.vkdevice.device, transferPool, 1, &cmd);
+			vkDestroyCommandPool(mvkobjs.vkdevice.device, transferPool, nullptr);
+			vmaDestroyBuffer(mvkobjs.alloc, stagingBuffer, stagingAlloc);
+		}
+	};
+
+	
+	inline void async_chunked_upload(rvkbucket& mvkobjs, GpuBuffer& dstBuffer, const void* srcData, size_t totalSize) {
+		if (totalSize == 0)
+			return;
+
+		ChunkUploader uploader(mvkobjs, totalSize);
+		uploader.upload(dstBuffer, srcData, totalSize);
 	}
 }
 
-inline LockFreeMPMC<StagingBelt*, 16> g_worker_belts; // magic
+inline lfmpmc<StagingBelt*, 16> g_worker_belts; // magic
 
 struct AsyncTransferContext {
 	rvkbucket& mvkobjs;
